@@ -624,25 +624,9 @@ class Overlay(ComposableWidget):
         self._complete_entry_future(entry, OverlayResult(value=None, reason=reason))
         self.remove_entry(entry)
 
-    def _normalize_to_route(self, content: Widget | Route) -> Route:
-        """Normalize overlay content to a Route.
-
-        This is the single boundary adapter for `show(...)` input polymorphism.
-        Internal overlay runtime should operate on `Route` only.
-        """
-        if isinstance(content, Route):
-            return content
-
-        widget = content
-        return Route(builder=lambda: widget, transition_spec=Transitions.empty())
-
-    def _to_overlay_entry_route(self, *, entry: OverlayEntry, route: Route) -> _OverlayEntryRoute:
-        """Wrap a content route into the modal runtime route adapter."""
-        return _OverlayEntryRoute(entry, transition_spec=route.transition_spec)
-
     def show(
         self,
-        content: Widget | Route,
+        content: Widget,
         *,
         passthrough: bool = False,
         dismiss_on_outside_tap: bool = False,
@@ -660,7 +644,7 @@ class Overlay(ComposableWidget):
         system's layer composer.
 
         Args:
-            content: Widget or Route to present.
+            content: Widget to present.
             passthrough: Whether input reaches the content behind this entry.
                 ``False`` (the default) installs a full-screen blocking layer and
                 occludes everything below, for both pointer and keyboard.
@@ -676,7 +660,8 @@ class Overlay(ComposableWidget):
                 content. Purely visual — input blocking is ``passthrough``'s job.
             timeout: Seconds after which the entry auto-dismisses, or ``None``.
             position: Where to place the content. Defaults to centered.
-            transition_spec: Enter/exit animation for the entry.
+            transition_spec: Enter/exit animation for the entry. Defaults to
+                none: the entry appears and disappears at once.
 
         Returns:
             An :class:`OverlayHandle` for the shown entry.
@@ -702,14 +687,7 @@ class Overlay(ComposableWidget):
 
         entry: OverlayEntry
 
-        content_route = self._normalize_to_route(content)
-
-        if transition_spec is not None:
-            match getattr(content_route, "transition_spec", None):
-                case _:
-                    content_route.transition_spec = transition_spec
-
-        content_widget = content_route.build_widget()
+        content_widget = content
 
         effective_position = position or OverlayPosition.aligned("center")
 
@@ -718,15 +696,6 @@ class Overlay(ComposableWidget):
 
         def on_dispose() -> None:
             self._complete_entry_future(entry, OverlayResult(value=None, reason=OverlayDismissReason.DISPOSED))
-            try:
-                content_route._widget = None  # type: ignore[attr-defined]
-            except Exception:
-                exception_once(
-                    logger,
-                    f"overlay_show_release_cached_widget_exc:{type(content_route).__name__}",
-                    "Overlay show release cached widget raised (route=%s)",
-                    type(content_route).__name__,
-                )
 
         def build_layer(route: _OverlayEntryRoute) -> Widget:
             context = OverlayLayerCompositionContext(
@@ -804,7 +773,7 @@ class Overlay(ComposableWidget):
             return layer
 
         entry = OverlayEntry(builder=build_entry_widget, on_dispose=on_dispose)
-        modal_route = self._to_overlay_entry_route(entry=entry, route=content_route)
+        modal_route = _OverlayEntryRoute(entry, transition_spec=transition_spec)
         route_holder["route"] = modal_route
         modal_route._content_widget = content_widget
         modal_route._passthrough = passthrough
@@ -854,15 +823,11 @@ class Overlay(ComposableWidget):
         return self._modal_navigator
 
     def insert_entry(self, entry: OverlayEntry) -> None:
-        route = Route(builder=entry.build_widget, transition_spec=Transitions.empty())
-        self._insert_entry_with_route(entry, route)
+        self._insert_entry_with_route(entry, _OverlayEntryRoute(entry))
 
-    def _insert_entry_with_route(self, entry: OverlayEntry, route: Route) -> None:
-        modal_route = (
-            route if isinstance(route, _OverlayEntryRoute) else self._to_overlay_entry_route(entry=entry, route=route)
-        )
-        self._entry_to_route[entry] = modal_route
-        self._modal_navigator.push(modal_route)
+    def _insert_entry_with_route(self, entry: OverlayEntry, route: _OverlayEntryRoute) -> None:
+        self._entry_to_route[entry] = route
+        self._modal_navigator.push(route)
 
     def remove_entry(self, entry: OverlayEntry) -> None:
         route = self._entry_to_route.pop(entry, None)
@@ -922,21 +887,8 @@ class Overlay(ComposableWidget):
     def close_topmost(self) -> None:
         self.request_close_topmost()
 
-    def close(self, value: Any = None, target: Widget | Route | None = None) -> None:
+    def close(self, value: Any = None, target: Widget | None = None) -> None:
         if target is not None:
-            # 1. If target is a Route, look for exact match
-            if isinstance(target, Route):
-                for entry, route in list(self._entry_to_route.items()):
-                    if route is target:
-                        self._complete_entry_future(
-                            entry, OverlayResult(value=value, reason=OverlayDismissReason.CLOSED)
-                        )
-                        self.remove_entry(entry)
-                        return
-                logger.warning("Overlay.close called with route target=%r, but it was not found.", target)
-                return
-
-            # 2. If target is a Widget, find the entry that contains it
             # Map route widgets to their entries for quick lookup
             route_widget_to_entry = {
                 route._widget: entry

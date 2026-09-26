@@ -5,11 +5,9 @@ from nuiitivet.input.codes import BUTTON_MIDDLE, BUTTON_RIGHT
 from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.modifiers._hit_participation import HitParticipationBox
-from nuiitivet.overlay.overlay_route import OverlayRoute
 from nuiitivet.modifiers.passthrough_pointer import PassthroughPointerBox
 from nuiitivet.overlay import Overlay
 from nuiitivet.overlay.result import OverlayDismissReason
-from nuiitivet.navigation import Route
 from nuiitivet.layout.container import Container
 from nuiitivet.modifiers.clickable import clickable
 from nuiitivet.material.buttons import Button
@@ -301,19 +299,6 @@ def test_overlay_dialog_ok_button_clickable_via_app_routing() -> None:
     assert clicked == [True]
 
 
-def test_overlay_dialog_route_is_disposed_on_close_topmost() -> None:
-    overlay = Overlay()
-
-    route = Route(builder=lambda: BasicDialog(title="Title"))
-    overlay.show(route, backdrop=True)
-
-    # Route widget is created eagerly by Overlay.show().
-    assert route._widget is not None
-
-    overlay.close_topmost()
-    assert route._widget is None
-
-
 async def test_overlay_dialog_async_resolves_with_close_result(nuiitivet_mount) -> None:
     overlay = Overlay()
     host = nuiitivet_mount(overlay)
@@ -344,7 +329,7 @@ async def test_overlay_dialog_async_resolves_none_on_close_without_result(
     assert result.reason is OverlayDismissReason.CLOSED
 
 
-def test_overlay_show_widget_and_route_have_disposal_parity() -> None:
+def test_overlay_show_widget_is_unmounted_on_close_topmost() -> None:
     class _UnmountCountWidget(Widget):
         def __init__(self) -> None:
             super().__init__()
@@ -364,13 +349,3 @@ def test_overlay_show_widget_and_route_have_disposal_parity() -> None:
 
     assert overlay_widget.has_entries() is False
     assert widget_input.unmount_count == 1
-
-    overlay_route = Overlay()
-    route_widget = _UnmountCountWidget()
-    route_input = OverlayRoute(builder=lambda: route_widget)
-    overlay_route.show(route_input, backdrop=True)
-    overlay_route.close_topmost()
-
-    assert overlay_route.has_entries() is False
-    assert route_widget.unmount_count == 1
-    assert route_input._widget is None  # type: ignore[attr-defined]

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
-from nuiitivet.navigation.route import Route
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -12,6 +11,6 @@ from nuiitivet.widgeting.widget import Widget
 
 
 class IntentResolver(Protocol):
-    """Resolves an intent object to a Widget or Route."""
+    """Resolves an intent object to the widget the overlay presents."""
 
-    def resolve(self, intent: Any) -> Widget | Route: ...
+    def resolve(self, intent: Any) -> Widget: ...

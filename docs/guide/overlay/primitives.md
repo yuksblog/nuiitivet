@@ -22,7 +22,7 @@ result = await handle   # OverlayResult[Any]
 
 | Parameter | Type | Default | Description |
 | --------- | ---- | ------- | ----------- |
-| `content` | `Widget \| Route` | required | Widget or route to display |
+| `content` | `Widget` | required | Widget to display |
 | `passthrough` | `bool` | `False` | Whether input reaches the content behind the overlay |
 | `dismiss_on_outside_tap` | `bool` | `False` | Dismiss when a tap lands outside the content |
 | `passthrough_rect` | rect provider `\| None` | `None` | A window rect the blocking layer leaves alone — a tap there reaches the app behind and never dismisses |

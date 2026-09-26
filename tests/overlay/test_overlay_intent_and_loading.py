@@ -8,10 +8,11 @@ from dataclasses import dataclass
 import pytest
 
 from nuiitivet.material.dialogs import BasicDialog
+from nuiitivet.material.loading_indicator import LoadingIndicator
 from nuiitivet.material.overlay import MaterialOverlay
+from nuiitivet.material.transition_spec import MaterialTransitions
 from nuiitivet.overlay.intents import LoadingDialogIntent
 from nuiitivet.overlay.dialogs import PlainLoadingDialog
-from nuiitivet.overlay.overlay_route import OverlayRoute
 from nuiitivet.navigation.transition_spec import EmptyTransitionSpec
 
 
@@ -34,19 +35,6 @@ def test_overlay_dialog_intent_resolves_to_widget() -> None:
     assert not isinstance(route.transition_spec, EmptyTransitionSpec)
 
 
-def test_overlay_dialog_intent_resolves_to_route() -> None:
-    from nuiitivet.navigation.route import Route
-
-    overlay = MaterialOverlay(
-        intents={
-            _ConfirmIntent: lambda i: Route(builder=lambda: BasicDialog(title=i.message)),
-        }
-    )
-
-    overlay.dialog(_ConfirmIntent("Confirm"), dismiss_on_outside_tap=False)
-    assert overlay.has_entries() is True
-
-
 def test_overlay_dialog_unknown_intent_raises() -> None:
     overlay = MaterialOverlay(intents={})
 
@@ -54,26 +42,36 @@ def test_overlay_dialog_unknown_intent_raises() -> None:
         overlay.dialog(_ConfirmIntent("x"), dismiss_on_outside_tap=False)
 
 
-def test_material_overlay_dialog_accepts_widget_without_manual_dialog_route() -> None:
+def test_material_overlay_dialog_shows_widget_with_dialog_transition() -> None:
     overlay = MaterialOverlay(intents={})
     widget = BasicDialog(title="Widget dialog")
 
-    route = overlay._normalize_dialog_to_route(widget)
-
-    assert isinstance(route, OverlayRoute)
-
     overlay.dialog(widget, dismiss_on_outside_tap=False)
-    assert overlay.has_entries() is True
+
+    route = next(iter(overlay._entry_to_route.values()))
+    assert route._content_widget is widget
+    assert not isinstance(route.transition_spec, EmptyTransitionSpec)
 
 
-def test_material_overlay_dialog_rejects_directly_passed_route() -> None:
-    """dialog() no longer accepts a Route directly; a Route is treated as an
-    unknown intent. Callers needing a custom Route should use show()."""
+def test_material_overlay_default_loading_has_no_transition() -> None:
+    overlay = MaterialOverlay()
+
+    overlay.loading()
+
+    route = next(iter(overlay._entry_to_route.values()))
+    assert isinstance(route._content_widget, LoadingIndicator)
+    assert isinstance(route.transition_spec, EmptyTransitionSpec)
+
+
+def test_overlay_show_transition_does_not_carry_to_next_show() -> None:
     overlay = MaterialOverlay(intents={})
-    route = OverlayRoute(builder=lambda: BasicDialog(title="Custom route"))
 
-    with pytest.raises(RuntimeError, match=r"No overlay intent is registered: OverlayRoute"):
-        overlay.dialog(route, dismiss_on_outside_tap=False)
+    overlay.show(BasicDialog(title="First"), transition_spec=MaterialTransitions.dialog())
+    overlay.show(BasicDialog(title="Second"))
+
+    first, second = overlay._entry_to_route.values()
+    assert not isinstance(first.transition_spec, EmptyTransitionSpec)
+    assert isinstance(second.transition_spec, EmptyTransitionSpec)
 
 
 def test_overlay_loading_returns_handle() -> None:

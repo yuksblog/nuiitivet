@@ -173,8 +173,7 @@ class CounterDialog(nv.ComposableWidget, nv.OverlayAware[int]):
   it before the widget has been shown raises `RuntimeError`.
 - `OverlayAware` works with **all** overlay show APIs, including
   `show`, `dialog`, `side_sheet`, `bottom_sheet`, and `loading`, regardless of
-  which axes were passed. It also works when the widget is wrapped in a
-  `Route` (e.g. `OverlayRoute(builder=lambda: CounterDialog())`).
+  which axes were passed.
 - Attempting to display the same `OverlayAware` widget instance while its
   previous handle is still active raises `RuntimeError`. Re-displaying after
   the previous handle has completed is allowed.
@@ -299,7 +298,7 @@ Below, we show how to implement the same "Counter Card" logic using Intents.
    app = nv.App(
        nv.Window(
            content=HomeView,
-           overlay_routes={
+           overlay_intents={
                CounterIntent: create_counter_dialog
            },
        ),

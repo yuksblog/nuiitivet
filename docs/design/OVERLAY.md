@@ -63,8 +63,9 @@ Note: The `Overlay` core provides only `show()`, while scenario-specific APIs (d
 ### 2.2 Overlay Core provides only `show()`
 
 - `Overlay` provides only the generic `show()` and no scenario-specific APIs like `dialog`, `snackbar`, or `sheet`.
-- It accepts only `Widget | Route`.
-- Intent resolution (`Intent -> Widget/Route`) is not performed by `Overlay`.
+- It presents widgets only. The widget is the content; how it is presented, the transition included, is the keyword arguments.
+- Accepting a `Route` in `show()` was rejected. The overlay builds its content at once, so a route's lazy build and cache never take effect there. Its one remaining field, the transition, would be a second way to say what `transition_spec=` already says, and the two can disagree.
+- Intent resolution (`Intent -> Widget`) is not performed by `Overlay`.
 - Intent resolution is provided by subclasses (e.g., `MaterialOverlay`) using an `IntentResolver`.
 
 Presets are owned by **two** consumers, not one:
@@ -84,7 +85,7 @@ scenario name.
 ```python
 def show(
     self,
-    content: Widget | Route,
+    content: Widget,
     *,
     passthrough: bool = False,
     dismiss_on_outside_tap: bool = False,
@@ -179,12 +180,6 @@ Two consequences are worth stating explicitly:
   event, for **any** button — primary, secondary or middle.
 - If the content covers the entire viewport, outside-tap dismissal will not function.
 
-#### Route-level configuration
-
-A `Route` describes *content* only. Barrier / backdrop and dismissal are
-presentation concerns owned by the `show()` call that presents it, so the same
-route can be shown with or without a backdrop.
-
 ### 2.4 Positioning: `OverlayPosition`
 
 `OverlayPosition` is the single type describing placement. Instances are built
@@ -261,14 +256,15 @@ Scenario-specific APIs are moved to subclasses.
 
 #### Intent Resolution
 
-- `MaterialOverlay.dialog(...)` accepts `Widget | Route | Any`.
-  - `Widget | Route` is displayed as-is.
-  - Everything else is resolved to `Widget | Route` via `IntentResolver.resolve(intent)`.
+- `MaterialOverlay.dialog(...)` accepts `Widget | Any`.
+  - A `Widget` is displayed as-is.
+  - Everything else is resolved to a `Widget` via `IntentResolver.resolve(intent)`.
+  - Either way, `dialog()` supplies the MD3 dialog transition. An intent factory returns content only, so a registered intent cannot change how its dialog enters.
 - `MaterialOverlay` allows for `IntentResolver` injection.
-  - Alternatively, pass `intents: Mapping[type[Any], Callable[[Any], Widget | Route]]` (internally builds a mapping resolver).
+  - Alternatively, pass `intents: Mapping[type[Any], Callable[[Any], Widget]]` (internally builds a mapping resolver).
 - Register standard intents by default:
   - `BasicDialogIntent`
-  - `LoadingDialogIntent`
+  - `LoadingIntent`
 
 #### Provided APIs (v1)
 
@@ -278,9 +274,7 @@ Scenario-specific APIs are moved to subclasses.
     - Default is `False` for `LoadingDialogIntent`.
     - Default is `True` for others.
 - `MaterialOverlay.snackbar(message, *, duration=3.0)`
-  - `message` accepts `str`, `Snackbar`, or `OverlayRoute`.
-    - `str` / `Snackbar`: displayed using the default snackbar transition.
-    - `OverlayRoute`: used as-is (transition is specified inside the route).
+  - `message` accepts `str` or `Snackbar`, displayed with the default snackbar transition.
   - Background input remains interactive (`passthrough=True`).
   - Automatically dismisses after `timeout=duration`.
   - Default position: `OverlayPosition.aligned("bottom-center", offset=(0, -24))`.
@@ -317,7 +311,7 @@ app = MaterialApp(
 )
 ```
 
-In the Material implementation, `MaterialWindow` sets `overlay_factory` internally and passes `overlay_routes` to `MaterialOverlay(intents=...)` as needed.
+In the Material implementation, `MaterialWindow` sets `overlay_factory` internally and passes `overlay_intents` to `MaterialOverlay(intents=...)` as needed.
 
 ### 2.8 Note: Scope of core APIs
 

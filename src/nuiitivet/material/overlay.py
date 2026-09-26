@@ -10,8 +10,6 @@ from nuiitivet.material.buttons import Button
 from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.material.snackbar import Snackbar
-from nuiitivet.navigation.route import Route
-from nuiitivet.overlay.overlay_route import OverlayRoute
 from nuiitivet.overlay import Overlay
 from nuiitivet.overlay.intent_resolver import IntentResolver
 from nuiitivet.overlay.overlay_handle import OverlayHandle
@@ -42,10 +40,10 @@ def _find_descendant(widget: Widget, target: type[_T]) -> _T | None:
 
 
 class _MappingIntentResolver(IntentResolver):
-    def __init__(self, factories: Mapping[type[Any], Callable[[Any], Widget | Route]]) -> None:
+    def __init__(self, factories: Mapping[type[Any], Callable[[Any], Widget]]) -> None:
         self._factories = dict(factories)
 
-    def resolve(self, intent: Any) -> Widget | Route:
+    def resolve(self, intent: Any) -> Widget:
         factory = self._factories.get(type(intent))
         if factory is None:
             raise RuntimeError(f"No overlay intent is registered: {type(intent).__name__}")
@@ -106,7 +104,7 @@ class MaterialOverlay(Overlay):
         self,
         *,
         intent_resolver: IntentResolver | None = None,
-        intents: Mapping[type[Any], Callable[[Any], Widget | Route]] | None = None,
+        intents: Mapping[type[Any], Callable[[Any], Widget]] | None = None,
         key: str | None = None,
     ) -> None:
         super().__init__(layer_composer=MaterialOverlayLayerComposer(), key=key)
@@ -115,30 +113,24 @@ class MaterialOverlay(Overlay):
             raise ValueError("Specify only one of intent_resolver or intents")
 
         if intent_resolver is None:
-            defaults: dict[type[Any], Callable[[Any], Widget | Route]] = {
-                BasicDialogIntent: lambda i: OverlayRoute(
-                    builder=lambda: BasicDialog(
-                        title=i.title,
-                        message=i.message,
-                        icon=i.icon,
-                        actions=[
-                            Button(
-                                "OK",
-                                # This resolver belongs to the overlay hosting the
-                                # dialog, so close it directly rather than looking
-                                # one up.
-                                on_click=lambda: self.close(None),
-                                width=80,
-                                style=ButtonStyle.text(),
-                            )
-                        ],
-                    ),
-                    transition_spec=MaterialTransitions.dialog(),
+            defaults: dict[type[Any], Callable[[Any], Widget]] = {
+                BasicDialogIntent: lambda i: BasicDialog(
+                    title=i.title,
+                    message=i.message,
+                    icon=i.icon,
+                    actions=[
+                        Button(
+                            "OK",
+                            # This resolver belongs to the overlay hosting the
+                            # dialog, so close it directly rather than looking
+                            # one up.
+                            on_click=lambda: self.close(None),
+                            width=80,
+                            style=ButtonStyle.text(),
+                        )
+                    ],
                 ),
-                LoadingIntent: lambda _: OverlayRoute(
-                    builder=lambda: LoadingIndicator(),
-                    transition_spec=None,
-                ),
+                LoadingIntent: lambda _: LoadingIndicator(),
             }
             if intents:
                 defaults.update(intents)
@@ -157,44 +149,25 @@ class MaterialOverlay(Overlay):
         Args:
             dialog: A :class:`Widget` to display as the dialog, or an intent
                 resolved by the overlay's intent resolver (e.g.
-                :class:`BasicDialogIntent`). To present a fully custom
-                :class:`Route`, call :meth:`show` directly.
+                :class:`BasicDialogIntent`). For a transition other than the
+                MD3 dialog one, call :meth:`show` directly.
             dismiss_on_outside_tap: Whether tapping the scrim dismisses the
                 dialog. Defaults to ``True``.
 
         Returns:
             An :class:`OverlayHandle` for manual dismissal.
         """
-        route = self._normalize_dialog_to_route(dialog)
-
         return self.show(
-            route,
+            self._resolve(dialog),
             backdrop=True,
             dismiss_on_outside_tap=dismiss_on_outside_tap,
-        )
-
-    def _normalize_dialog_to_route(self, dialog: Widget | Any) -> Route:
-        """Normalize dialog input to a Route.
-
-        This is the single boundary adapter for `dialog(...)` input polymorphism.
-        A :class:`Widget` is presented directly; any other value is resolved
-        through the intent resolver, which may yield a :class:`Widget` or a
-        :class:`Route`.
-        """
-        resolved: Widget | Route
-        if isinstance(dialog, Widget):
-            resolved = dialog
-        else:
-            resolved = self._intent_resolver.resolve(dialog)
-
-        if isinstance(resolved, Route):
-            return resolved
-
-        widget = resolved
-        return OverlayRoute(
-            builder=lambda: widget,
             transition_spec=MaterialTransitions.dialog(),
         )
+
+    def _resolve(self, content: Widget | Any) -> Widget:
+        if isinstance(content, Widget):
+            return content
+        return self._intent_resolver.resolve(content)
 
     def snackbar(
         self,
@@ -230,19 +203,13 @@ class MaterialOverlay(Overlay):
             indicator: Widget or intent to display as the loading indicator.
                 Defaults to the built-in :class:`LoadingIndicator`, resolved
                 through the :class:`LoadingIntent` (overridable via the app's
-                ``overlay_routes``).
+                ``overlay_intents``).
 
         Returns:
             An :class:`OverlayHandle` that can be closed via ``handle.close(None)``.
         """
-        if indicator is None:
-            resolved: Widget | Route = self._intent_resolver.resolve(LoadingIntent())
-        elif isinstance(indicator, Widget):
-            resolved = indicator
-        else:
-            resolved = self._intent_resolver.resolve(indicator)
         return self.show(
-            resolved,
+            self._resolve(LoadingIntent() if indicator is None else indicator),
             passthrough=True,
             timeout=None,
             position=OverlayPosition.aligned("center"),
@@ -308,16 +275,12 @@ class MaterialOverlay(Overlay):
         presented = sheet.modifier(corner_radius(radius))
         alignment = "top-right" if side == "right" else "top-left"
 
-        route = OverlayRoute(
-            builder=lambda: presented,
-            transition_spec=MaterialTransitions.side_sheet(side=side),
-        )
-
         return self.show(
-            route,
+            presented,
             backdrop=True,
             dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
             position=OverlayPosition.aligned(alignment),
+            transition_spec=MaterialTransitions.side_sheet(side=side),
         )
 
     def bottom_sheet(
@@ -340,14 +303,10 @@ class MaterialOverlay(Overlay):
         """
         if _find_descendant(sheet, BottomSheet) is None:
             raise TypeError("bottom_sheet() requires a BottomSheet widget (possibly wrapped by modifiers)")
-        route = OverlayRoute(
-            builder=lambda: sheet,
-            transition_spec=MaterialTransitions.bottom_sheet(),
-        )
-
         return self.show(
-            route,
+            sheet,
             backdrop=True,
             dismiss_on_outside_tap=bool(dismiss_on_outside_tap),
             position=OverlayPosition.aligned("bottom-center"),
+            transition_spec=MaterialTransitions.bottom_sheet(),
         )

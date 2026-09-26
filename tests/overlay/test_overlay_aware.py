@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from nuiitivet.layout.container import Container
-from nuiitivet.overlay import OverlayRoute, Overlay, OverlayAware, OverlayHandle
+from nuiitivet.overlay import Overlay, OverlayAware, OverlayHandle
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 
@@ -37,16 +37,6 @@ def test_overlay_aware_injected_on_outside_tap_dismissible_show() -> None:
     dialog = _AwareDialog()
 
     handle = overlay.show(dialog, dismiss_on_outside_tap=True)
-
-    assert dialog.overlay_handle is handle
-
-
-def test_overlay_aware_injected_when_passed_via_route() -> None:
-    overlay = Overlay()
-    dialog = _AwareDialog()
-    route = OverlayRoute(builder=lambda: dialog)
-
-    handle = overlay.show(route, backdrop=True)
 
     assert dialog.overlay_handle is handle
 

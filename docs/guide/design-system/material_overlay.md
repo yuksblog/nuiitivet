@@ -43,10 +43,10 @@ lookup rules.
 
 | Shortcut | `show()` call | Scrim |
 | -------- | ------------- | ----- |
-| `dialog()` | `show(route, backdrop=True, dismiss_on_outside_tap=...)` | Fade |
+| `dialog()` | `show(dialog, backdrop=True, dismiss_on_outside_tap=...)` | Fade |
 | `snackbar()` | `show(widget, passthrough=True, timeout=...)` | None |
-| `side_sheet()` | `show(route, backdrop=True, dismiss_on_outside_tap=...)` | Fade |
-| `bottom_sheet()` | `show(route, backdrop=True, dismiss_on_outside_tap=...)` | Fade |
+| `side_sheet()` | `show(sheet, backdrop=True, dismiss_on_outside_tap=...)` | Fade |
+| `bottom_sheet()` | `show(sheet, backdrop=True, dismiss_on_outside_tap=...)` | Fade |
 | `loading()` | `show(widget, passthrough=True)` | None |
 
 Every shortcut returns an `OverlayHandle`. You can await it to receive the result after the overlay closes:
@@ -84,7 +84,7 @@ overlay.dialog(
 | `dialog` | `Widget \| Any` | required | Dialog widget, or an intent resolved by the overlay |
 | `dismiss_on_outside_tap` | `bool` | `True` | Dismiss when tapping the scrim |
 
-For a fully custom `Route` (non-standard transition or backdrop), call `show()` directly. Dialogs do not auto-dismiss, so there is no `timeout` parameter.
+For a non-standard transition or backdrop, call `show()` directly. Dialogs do not auto-dismiss, so there is no `timeout` parameter.
 
 ## Snackbar
 
@@ -135,7 +135,7 @@ overlay.side_sheet(
 
 ## Bottom Sheet
 
-Displays a modal sheet that slides up from the bottom edge. The same principle as `side_sheet()` applies: the transition direction (slide from bottom), screen-edge position (bottom-center), and corner radii (top two corners rounded, bottom edge flush) must all stay consistent. Because all three are determined solely by the fact that it is a bottom sheet, `bottom_sheet()` accepts only a `BottomSheet` widget rather than an arbitrary `OverlayRoute`.
+Displays a modal sheet that slides up from the bottom edge. The same principle as `side_sheet()` applies: the transition direction (slide from bottom), screen-edge position (bottom-center), and corner radii (top two corners rounded, bottom edge flush) must all stay consistent. Because all three are determined solely by the fact that it is a bottom sheet, `bottom_sheet()` accepts only a `BottomSheet` widget.
 
 ```python
 import nuiitivet.material as nv
@@ -197,13 +197,13 @@ Each shortcut applies a pre-configured MD3 transition automatically. All transit
 | `side_sheet` | Slide in from side edge | Slide out to side edge | Fades with content |
 | `loading` | Instant | Instant | None |
 
-These shortcuts accept only their typed arguments — a `Widget` (or intent) for `dialog()`/`loading()`, `str`/`Snackbar` for `snackbar()`, and the corresponding sheet widget for `bottom_sheet()`/`side_sheet()`. They do not accept a free-form `Route`/`OverlayRoute`, because each shortcut owns the MD3 transition, screen-edge position, and (for sheets) corner radii, and accepting an arbitrary route would break that consistency. `bottom_sheet()` derives everything from the fact that it is a bottom sheet; `side_sheet()` derives it from its `side` argument.
+These shortcuts accept only their typed arguments — a `Widget` (or intent) for `dialog()`/`loading()`, `str`/`Snackbar` for `snackbar()`, and the corresponding sheet widget for `bottom_sheet()`/`side_sheet()`. None of them takes a transition or a position: each shortcut owns the MD3 transition, screen-edge position, and (for sheets) corner radii, so they stay consistent. `bottom_sheet()` derives everything from the fact that it is a bottom sheet; `side_sheet()` derives it from its `side` argument.
 
 To display fully custom overlay content with a non-standard transition or backdrop, call `show()` directly.
 
 ## Intent System
 
-Intents let view models request overlays without importing widget classes. Pass a plain data object to a shortcut; `Overlay` resolves it to the correct widget via the registered `overlay_routes`.
+Intents let view models request overlays without importing widget classes. Pass a plain data object to a shortcut; `Overlay` resolves it to the correct widget via the window's `overlay_intents`.
 
 ### Built-in Intents
 
@@ -220,7 +220,7 @@ overlay.dialog(nv.BasicDialogIntent(title="Error", message="Something went wrong
 
 ### Custom Intents
 
-Register a mapping from intent type to widget factory in `App`:
+Register a mapping from intent type to widget factory on the `Window`:
 
 ```python
 from dataclasses import dataclass
@@ -235,7 +235,7 @@ class ConfirmIntent:
 nv.App(
     nv.Window(
         content=HomeScreen,
-        overlay_routes={
+        overlay_intents={
             ConfirmIntent: lambda intent: nv.BasicDialog(
                 title="Confirm",
                 message=intent.message,

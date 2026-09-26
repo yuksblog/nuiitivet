@@ -20,8 +20,8 @@ Internally, the `Navigator` acts as a stack managing `Route` objects, while the 
 │  ┌───────────────────────────────┐  │
 │  │ Overlay (Physical Layer)       │  │ ← Always on top
 │  │  Internal: _modal_navigator   │  │
-│  │    ├─ OverlayRoute            │  │
-│  │    └─ SnackbarRoute           │  │
+│  │    ├─ Route (dialog)          │  │
+│  │    └─ Route (snackbar)        │  │
 │  └───────────────────────────────┘  │
 │                                      │
 │  ┌───────────────────────────────┐  │

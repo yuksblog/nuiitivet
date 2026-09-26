@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
-from nuiitivet.navigation.route import Route
 from nuiitivet.widgeting.widget import Widget
 
 
@@ -20,12 +19,12 @@ class OverlayProtocol(Protocol):
     extends this one.
     """
 
-    def close(self, value: Any = None, target: Widget | Route | None = None) -> None:
+    def close(self, value: Any = None, target: Widget | None = None) -> None:
         """Close an overlay entry, optionally with a result value.
 
         Args:
             value: Result delivered to the awaiting caller.
-            target: Entry to close, identified by its route or a widget inside
-                it. Defaults to the topmost entry.
+            target: A widget inside the entry to close. Defaults to the
+                topmost entry.
         """
         ...

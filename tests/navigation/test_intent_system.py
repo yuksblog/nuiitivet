@@ -97,7 +97,7 @@ def test_overlay_dialog_intent_raises_when_unregistered() -> None:
         overlay.dialog(_DialogIntent(label="x"))
 
 
-def test_overlay_dialog_route_disposes_route_on_remove() -> None:
+def test_overlay_show_unmounts_widget_once_on_double_close() -> None:
     overlay = Overlay()
 
     class _UnmountCountWidget(Widget):
@@ -112,44 +112,21 @@ def test_overlay_dialog_route_disposes_route_on_remove() -> None:
         def build(self) -> Widget:
             return self
 
-    route_widget = _UnmountCountWidget()
-    route: Route = Route(builder=lambda: route_widget)
+    widget = _UnmountCountWidget()
 
-    handle = overlay.show(route, backdrop=True)
-
-    # Route widget is created eagerly by Overlay.dialog().
-    assert route._widget is not None  # type: ignore[attr-defined]
+    handle = overlay.show(widget, backdrop=True)
 
     handle.close()
     handle.close()
 
-    assert route._widget is None  # type: ignore[attr-defined]
-    assert route_widget.unmount_count == 1
+    assert widget.unmount_count == 1
 
 
-def test_overlay_normalize_to_route_passes_route_through() -> None:
-    overlay = Overlay()
-    route = Route(builder=_FlagWidget)
-
-    normalized = overlay._normalize_to_route(route)
-
-    assert normalized is route
-
-
-def test_overlay_normalize_to_route_wraps_widget() -> None:
-    overlay = Overlay()
-    widget = _FlagWidget(label="overlay")
-
-    normalized = overlay._normalize_to_route(widget)
-
-    assert isinstance(normalized, Route)
-    assert normalized is not widget
-    assert normalized.build_widget() is widget
-
-
-def test_material_overlay_dialog_normalize_to_route_resolves_intent() -> None:
+def test_material_overlay_dialog_resolves_intent_to_widget() -> None:
     overlay = MaterialOverlay(intents={_DialogIntent: lambda i: _FlagWidget(label=i.label)})
 
-    route = overlay._normalize_dialog_to_route(_DialogIntent(label="intent"))
+    overlay.dialog(_DialogIntent(label="intent"))
 
-    assert isinstance(route, Route)
+    route = next(iter(overlay._entry_to_route.values()))
+    assert isinstance(route._content_widget, _FlagWidget)
+    assert route._content_widget.label == "intent"

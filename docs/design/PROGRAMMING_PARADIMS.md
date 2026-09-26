@@ -59,7 +59,7 @@ The `Overlay` is defined as a layer independent of the root content and is passe
 The framework provides standard dialog Widgets (e.g., `BasicDialog`) and makes standard Dialog Intents available by default.
 
 A ViewModel does not create Widgets directly but issues Intents to an abstract interface, `nv.OverlayProtocol`.
-The actual Widget creation is delegated to the View layer (via `dialogs` configuration), allowing for the reuse of dialogs with a standard look and feel.
+The actual Widget creation is delegated to the View layer (via the `overlay_intents` registration), allowing for the reuse of dialogs with a standard look and feel.
 
 ```python
 import nuiitivet.material as nv
@@ -74,42 +74,32 @@ class MyViewModel:
 
 ##### 2. Using Custom Dialogs
 
-To display a dialog with a unique layout, define a custom Intent and register it with the `Overlay`.
+To display a dialog with a unique layout, define a custom Intent and register it on the `Window`.
 
 ```python
-from nuiitivet.material import ButtonStyle
 # 1. Custom Intent (Data class)
 @dataclass
 class ConfirmIntent:
     title: str
     message: str
 
-# 2. App Initialization (Overlay Setup)
-if __name__ == "__main__":
-    # Define Overlay layer
-    overlay = Overlay(
-        # Register Intent (standard intents available by default)
-        dialogs={
-            ConfirmIntent: lambda intent: OverlayRoute(
-                builder=lambda: BasicDialog(
-                    title=Text(intent.title),
-                    content=Text(intent.message),
-                    actions=[
-                        Button("OK", on_click=lambda: overlay.close(True), style=ButtonStyle.text()),
-                        Button("Cancel", on_click=lambda: overlay.close(False), style=ButtonStyle.text())
-                    ]
-                ),
-            )
-        }
-    )
-    # ... App startup logic ...
+# 2. Registration: the factory returns the widget; dialog() adds the transition
+app = App(
+    Window(
+        content=HomeScreen,
+        overlay_intents={
+            ConfirmIntent: lambda intent: ConfirmDialog(intent.title, intent.message),
+        },
+    ),
+)
 
 # 3. ViewModel Usage
 class MyViewModel:
     # ...
-    async def on_delete(self):
+    async def on_delete(self, overlay: OverlayProtocol):
         # Use custom intent
-        if await self.overlay.dialog(ConfirmIntent("Confirmation", "Are you sure you want to delete this?")):
+        result = await overlay.dialog(ConfirmIntent("Confirmation", "Are you sure you want to delete this?"))
+        if result.value is True:
             self.delete_item()
 ```
 
