@@ -21,6 +21,7 @@ from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.material.symbols import Symbols
 from nuiitivet.material.text import Text
 from nuiitivet.observable import runtime
+from nuiitivet.overlay.overlay import Overlay
 from nuiitivet.overlay.overlay_position import OverlayPosition
 from nuiitivet.material.theme.elevation import elevation_shadows
 from nuiitivet.rendering.sizing import Sizing
@@ -521,8 +522,6 @@ class SubMenuItem(MenuItem):
         if self._rect_provider() is None:
             return
 
-        from nuiitivet.overlay.overlay import Overlay
-
         try:
             overlay = Overlay.of(self, root=True)
         except RuntimeError:
@@ -734,8 +733,6 @@ class Menu(InteractiveWidget):
         Only a popup takes focus when it appears: an inline menu is just part of
         the page, and stealing focus at startup would be wrong.
         """
-        from nuiitivet.overlay.overlay import Overlay
-
         return self.find_ancestor(Overlay) is not None
 
     def focus_first_item(self) -> bool:

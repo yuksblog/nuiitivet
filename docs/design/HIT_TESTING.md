@@ -35,8 +35,7 @@ surfaced. The pass-behind (`translucent`) B axis remains a separate follow-up.
 ## Public opt-in modifiers
 
 Four intent-named modifiers let a widget deviate from the `auto` default. All
-route through one shared wrapper, `HitParticipationBox`
-(`src/nuiitivet/modifiers/_hit_participation.py`), configured by two booleans:
+route through one shared wrapper, `HitParticipationBox`, configured by two booleans:
 
 - `descend_children` — the **C** axis. When set, the box descends into the
   *wrapped widget's own children* (`child._hit_test_children`), so the wrapped
@@ -57,6 +56,11 @@ backs the `visible()` composition. Each modifier accepts a `bool` /
 `Observable[bool]`; the condition is read and validated at construction / mount,
 never deferred to the first click. While the condition is falsy the box falls
 back to the `auto` default.
+
+The box lives in `nuiitivet.widgeting`, below the modifiers. The overlay builds
+its blocking and click-through layers from it directly. Borrowing the modifiers
+instead would close an import cycle: `popup`, `tooltip` and `context_menu` are
+overlay clients, so the modifiers already sit above the overlay.
 
 ### Stacking precedence
 

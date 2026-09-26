@@ -1,6 +1,8 @@
-"""Shared hit-participation wrapper box for the pointer-modifier family.
+"""Hit-participation wrapper box: whether a subtree takes part in hit testing.
 
-One mechanism, several intent-named entry points. The public modifiers
+Taking part in hit testing is independent of painting, so the box lives here
+rather than with the modifiers: the overlay builds its blocking and
+click-through layers from it directly. The public modifiers
 (:func:`passthrough_pointer`, :func:`defer_pointer`, :func:`block_pointer`,
 :func:`absorb_pointer`) all wrap their child in a
 :class:`HitParticipationBox` configured with two boolean axes:
@@ -91,6 +93,11 @@ class HitParticipationBox(Widget):
         super().on_mount()
         if isinstance(self._condition, ObservableBase):
             self.observe(self._condition, self._set_active)
+
+    @property
+    def is_inert(self) -> bool:
+        """Whether the whole subtree takes no hit right now: active with both axes off."""
+        return self._active and not self._descend_children and not self._self_opaque
 
     def _set_active(self, value: bool) -> None:
         next_active = bool(value)

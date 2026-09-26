@@ -4,8 +4,7 @@ from nuiitivet.layout.stack import Stack
 from nuiitivet.input.codes import BUTTON_MIDDLE, BUTTON_RIGHT
 from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.material.dialogs import BasicDialog
-from nuiitivet.modifiers._hit_participation import HitParticipationBox
-from nuiitivet.modifiers.passthrough_pointer import PassthroughPointerBox
+from nuiitivet.widgeting.hit_participation import HitParticipationBox
 from nuiitivet.overlay import Overlay
 from nuiitivet.overlay.result import OverlayDismissReason
 from nuiitivet.layout.container import Container
@@ -76,7 +75,7 @@ def test_overlay_show_stacks_backdrop_then_blocker_then_content() -> None:
     assert isinstance(built, Stack)
     layers = built.children_snapshot()
     assert len(layers) == 3
-    assert isinstance(layers[0], PassthroughPointerBox)
+    assert isinstance(layers[0], HitParticipationBox) and layers[0].is_inert
 
     current = layers[-1]
     found_dialog = False
@@ -105,7 +104,7 @@ def test_overlay_show_without_backdrop_has_no_painted_layer() -> None:
     layers = built.children_snapshot()
     # Blocker + content only; nothing painted.
     assert len(layers) == 2
-    assert not any(isinstance(layer, PassthroughPointerBox) for layer in layers)
+    assert not any(isinstance(layer, HitParticipationBox) and layer.is_inert for layer in layers)
     assert _find_descendant_box(layers[0]) is not None
 
 
@@ -151,12 +150,11 @@ def test_overlay_content_is_last_child_so_it_is_hit_tested_first() -> None:
 
 
 def test_overlay_blocker_interaction_region_is_outside_the_hit_participation_box() -> None:
-    """Ordering regression: ``block_pointer()`` must sit inside ``clickable()``.
+    """Ordering regression: the interaction region must wrap the hit box.
 
-    ``clickable`` does not wrap — it returns ``ensure_interaction_region(widget)``
-    — and pointer bubbling walks parents only. So the region has to be an
-    *ancestor* of the ``HitParticipationBox`` that is the actual hit target.
-    Reversed, the region would be the box's child and would never see the event.
+    Pointer bubbling walks parents only, so the region has to be an *ancestor*
+    of the ``HitParticipationBox`` that is the actual hit target. Reversed, the
+    region would be the box's child and would never see the event.
     """
     overlay = Overlay()
     overlay.show(BasicDialog(title="Title"), dismiss_on_outside_tap=True)

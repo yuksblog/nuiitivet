@@ -9,11 +9,11 @@ from __future__ import annotations
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
-from nuiitivet.modifiers.clickable import clickable
 from nuiitivet.overlay.intents import PlainDialogIntent, LoadingDialogIntent
 from nuiitivet.overlay.overlay import Overlay
 from nuiitivet.theme.plain_theme import PlainColorRole
 from nuiitivet.widgets.box import Box
+from nuiitivet.widgets.interaction import ensure_interaction_region
 from nuiitivet.widgets.text import TextBase as Text
 from nuiitivet.widgets.text_style import TextStyle
 from nuiitivet.theme.type_scale import TypeScaleToken
@@ -53,22 +53,18 @@ class PlainDialog(ComposableWidget):
                         ),
                         Row(
                             main_alignment="end",
-                            children=[
-                                Box(
-                                    padding=8,
-                                    child=Text(
-                                        "OK",
-                                        style=TextStyle(
-                                            color=PlainColorRole.ON_SURFACE,
-                                        ),
-                                    ),
-                                ).modifier(clickable(on_click=lambda: Overlay.of(self).close()))
-                            ],
+                            children=[self._ok_button()],
                         ),
                     ],
                 ),
             ),
         )
+
+    def _ok_button(self) -> Widget:
+        label = Box(padding=8, child=Text("OK", style=TextStyle(color=PlainColorRole.ON_SURFACE)))
+        region = ensure_interaction_region(label)
+        region.enable_click(on_click=lambda: Overlay.of(self).close())
+        return region
 
 
 class PlainLoadingDialog(ComposableWidget):
