@@ -68,6 +68,9 @@ class ButtonStyle:
     border_color: Optional[ColorSpec] = None
     border_width: float = 0.0
     corner_radius: int = 20
+    #: Corner radius the container morphs to while pressed; ``None`` keeps
+    #: ``corner_radius`` under the pointer.
+    pressed_corner_radius: Optional[int] = None
 
     # Sizing
     container_height: int = 40
@@ -141,6 +144,7 @@ class ButtonStyle:
             foreground=ColorRole.ON_PRIMARY,
             border_width=0.0,
             corner_radius=t["corner_radius"],
+            pressed_corner_radius=t["pressed_corner_radius"],
             container_height=t["container_height"],
             content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
@@ -163,6 +167,7 @@ class ButtonStyle:
             border_color=ColorRole.OUTLINE_VARIANT,
             border_width=t["outline_width"],
             corner_radius=t["corner_radius"],
+            pressed_corner_radius=t["pressed_corner_radius"],
             container_height=t["container_height"],
             content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
@@ -184,6 +189,7 @@ class ButtonStyle:
             foreground=ColorRole.PRIMARY,
             border_width=0.0,
             corner_radius=t["corner_radius"],
+            pressed_corner_radius=t["pressed_corner_radius"],
             container_height=t["container_height"],
             content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
@@ -205,6 +211,7 @@ class ButtonStyle:
             foreground=ColorRole.PRIMARY,
             border_width=0.0,
             corner_radius=t["corner_radius"],
+            pressed_corner_radius=t["pressed_corner_radius"],
             container_height=t["container_height"],
             content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
@@ -226,6 +233,7 @@ class ButtonStyle:
             foreground=ColorRole.ON_SECONDARY_CONTAINER,
             border_width=0.0,
             corner_radius=t["corner_radius"],
+            pressed_corner_radius=t["pressed_corner_radius"],
             container_height=t["container_height"],
             content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
@@ -254,6 +262,7 @@ class IconButtonStyle:
         h = t["container_height"]
         return dict(
             corner_radius=t["corner_radius"],
+            pressed_corner_radius=t["pressed_corner_radius"],
             container_height=h,
             content_insets=0,
             min_width=max(48, h),
@@ -373,9 +382,17 @@ class IconButtonStyle:
         )
 
 
+def _icon_selected_shape(style: ButtonStyle, size: ButtonSize) -> ButtonStyle:
+    """Return ``style`` with the selected (square) container shape of ``size``."""
+    return style.copy_with(corner_radius=ICON_BUTTON_SIZE_TOKENS[size]["square_corner_radius"])
+
+
 @dataclass(frozen=True)
 class IconToggleButtonStyle:
     """State-paired style for icon toggle button widgets.
+
+    The unselected style keeps the round container, the selected style the
+    square one; the widget morphs between them.
 
     Presets: :meth:`standard`, :meth:`filled`, :meth:`outlined`, :meth:`tonal`.
     """
@@ -388,14 +405,17 @@ class IconToggleButtonStyle:
         """Return styles for the standard icon-toggle button variant."""
         base = IconButtonStyle._base(size)
         return cls(
-            selected=ButtonStyle(
-                background=ColorRole.SECONDARY_CONTAINER,
-                foreground=ColorRole.ON_SECONDARY_CONTAINER,
-                border_width=0.0,
-                elevation=0,
-                overlay_color=ColorRole.ON_SECONDARY_CONTAINER,
-                overlay_alpha=0.12,
-                **base,
+            selected=_icon_selected_shape(
+                ButtonStyle(
+                    background=ColorRole.SECONDARY_CONTAINER,
+                    foreground=ColorRole.ON_SECONDARY_CONTAINER,
+                    border_width=0.0,
+                    elevation=0,
+                    overlay_color=ColorRole.ON_SECONDARY_CONTAINER,
+                    overlay_alpha=0.12,
+                    **base,
+                ),
+                size,
             ),
             unselected=IconButtonStyle.standard(size),
         )
@@ -405,7 +425,7 @@ class IconToggleButtonStyle:
         """Return styles for the filled icon-toggle button variant."""
         base = IconButtonStyle._base(size)
         return cls(
-            selected=IconButtonStyle.filled(size),
+            selected=_icon_selected_shape(IconButtonStyle.filled(size), size),
             unselected=ButtonStyle(
                 background=ColorRole.SURFACE_CONTAINER_HIGHEST,
                 foreground=ColorRole.ON_SURFACE_VARIANT,
@@ -423,15 +443,18 @@ class IconToggleButtonStyle:
         t = ICON_BUTTON_SIZE_TOKENS[size]
         base = IconButtonStyle._base(size)
         return cls(
-            selected=ButtonStyle(
-                background=ColorRole.INVERSE_SURFACE,
-                foreground=ColorRole.INVERSE_ON_SURFACE,
-                border_color=ColorRole.INVERSE_SURFACE,
-                border_width=t["outline_width"],
-                elevation=0,
-                overlay_color=ColorRole.INVERSE_ON_SURFACE,
-                overlay_alpha=0.12,
-                **base,
+            selected=_icon_selected_shape(
+                ButtonStyle(
+                    background=ColorRole.INVERSE_SURFACE,
+                    foreground=ColorRole.INVERSE_ON_SURFACE,
+                    border_color=ColorRole.INVERSE_SURFACE,
+                    border_width=t["outline_width"],
+                    elevation=0,
+                    overlay_color=ColorRole.INVERSE_ON_SURFACE,
+                    overlay_alpha=0.12,
+                    **base,
+                ),
+                size,
             ),
             unselected=IconButtonStyle.outlined(size),
         )
@@ -441,14 +464,17 @@ class IconToggleButtonStyle:
         """Return styles for the tonal icon-toggle button variant."""
         base = IconButtonStyle._base(size)
         return cls(
-            selected=ButtonStyle(
-                background=ColorRole.TERTIARY_CONTAINER,
-                foreground=ColorRole.ON_TERTIARY_CONTAINER,
-                border_width=0.0,
-                elevation=0,
-                overlay_color=ColorRole.ON_TERTIARY_CONTAINER,
-                overlay_alpha=0.12,
-                **base,
+            selected=_icon_selected_shape(
+                ButtonStyle(
+                    background=ColorRole.TERTIARY_CONTAINER,
+                    foreground=ColorRole.ON_TERTIARY_CONTAINER,
+                    border_width=0.0,
+                    elevation=0,
+                    overlay_color=ColorRole.ON_TERTIARY_CONTAINER,
+                    overlay_alpha=0.12,
+                    **base,
+                ),
+                size,
             ),
             unselected=ButtonStyle(
                 background=ColorRole.SECONDARY_CONTAINER,

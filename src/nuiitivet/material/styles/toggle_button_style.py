@@ -29,17 +29,22 @@ if TYPE_CHECKING:
 class ToggleButtonStyle:
     """Immutable style for :class:`ToggleButton` (M3-compliant).
 
-    Stores a single flat set of shape/size tokens plus two paired colour
-    groups: ``unselected_*`` and ``selected_*``.  The :meth:`for_selected`
-    helper projects the style into a :class:`ButtonStyle` for the active
-    state, so the widget internals can reuse the normal Button machinery.
+    Stores a single flat set of size tokens, the corner radius of each shape
+    the container takes, and two paired colour groups: ``unselected_*`` and
+    ``selected_*``.  The :meth:`for_selected` helper projects the style into a
+    :class:`ButtonStyle` for the active state, so the widget internals can
+    reuse the normal Button machinery.
 
     Presets: :meth:`filled`, :meth:`outlined`, :meth:`elevated`, :meth:`tonal`.
     """
 
-    # Shape / size (shared across states)
+    # Size (shared across states)
     container_height: int = 40
+    # Shape: round while unselected, square while selected, and the pressed
+    # shape under the pointer in either state.
     corner_radius: int = 20
+    selected_corner_radius: int = 12
+    pressed_corner_radius: Optional[int] = 8
     content_insets: PaddingLike = (16, 0, 16, 0)
     spacing: int = 8
     min_width: int = 64
@@ -80,7 +85,8 @@ class ToggleButtonStyle:
                 foreground=self.selected_foreground,
                 border_color=self.selected_border_color,
                 border_width=self.border_width,
-                corner_radius=self.corner_radius,
+                corner_radius=self.selected_corner_radius,
+                pressed_corner_radius=self.pressed_corner_radius,
                 container_height=self.container_height,
                 content_insets=self.content_insets,
                 spacing=self.spacing,
@@ -98,6 +104,7 @@ class ToggleButtonStyle:
             border_color=self.unselected_border_color,
             border_width=self.border_width,
             corner_radius=self.corner_radius,
+            pressed_corner_radius=self.pressed_corner_radius,
             container_height=self.container_height,
             content_insets=self.content_insets,
             spacing=self.spacing,
@@ -119,6 +126,8 @@ class ToggleButtonStyle:
         return cls(
             container_height=t["container_height"],
             corner_radius=t["corner_radius"],
+            selected_corner_radius=t["square_corner_radius"],
+            pressed_corner_radius=t["pressed_corner_radius"],
             content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
@@ -146,6 +155,8 @@ class ToggleButtonStyle:
         return cls(
             container_height=t["container_height"],
             corner_radius=t["corner_radius"],
+            selected_corner_radius=t["square_corner_radius"],
+            pressed_corner_radius=t["pressed_corner_radius"],
             content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
@@ -173,6 +184,8 @@ class ToggleButtonStyle:
         return cls(
             container_height=t["container_height"],
             corner_radius=t["corner_radius"],
+            selected_corner_radius=t["square_corner_radius"],
+            pressed_corner_radius=t["pressed_corner_radius"],
             content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
@@ -200,6 +213,8 @@ class ToggleButtonStyle:
         return cls(
             container_height=t["container_height"],
             corner_radius=t["corner_radius"],
+            selected_corner_radius=t["square_corner_radius"],
+            pressed_corner_radius=t["pressed_corner_radius"],
             content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),

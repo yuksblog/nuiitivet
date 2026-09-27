@@ -22,7 +22,11 @@ from nuiitivet.common.logging_once import debug_once, exception_once
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.widgeting.callbacks import invoke_event_handler, VoidCallback, BoolCallback
 from nuiitivet.animation import Animatable, LinearMotion, RgbaTupleConverter
-from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL, EXPRESSIVE_FAST_SPATIAL
+from nuiitivet.material.motion import (
+    EXPRESSIVE_DEFAULT_SPATIAL,
+    EXPRESSIVE_FAST_SPATIAL,
+    SPRING_STANDARD_FAST_SPATIAL,
+)
 from nuiitivet.material.styles.button_style import ButtonStyle, IconButtonStyle, IconToggleButtonStyle
 from nuiitivet.material.styles.button_size import EXTENDED_FAB_SIZE_TOKENS, FabSize
 from nuiitivet.material.styles.fab_style import FabStyle
@@ -48,6 +52,8 @@ logger = logging.getLogger(__name__)
 
 _STATE_LAYER_MOTION = LinearMotion(0.1)
 _COLOR_MOTION = LinearMotion(0.15)
+# MD3 button shape morph: md.sys.motion.spring.fast.spatial.
+_CORNER_MOTION = SPRING_STANDARD_FAST_SPATIAL
 
 _Symbol: Optional[Type["Symbol"]] = None
 _Widget: Optional[Type["Widget"]] = None
@@ -225,6 +231,7 @@ def resolve_button_style_params(
     # Style defaults
     bg = None
     cr = None
+    pressed_cr = None
     bc = None
     bw = 0.0
     fg = None
@@ -234,6 +241,7 @@ def resolve_button_style_params(
         bg = style.background
         insets = style.content_insets
         cr = style.corner_radius
+        pressed_cr = style.pressed_corner_radius
         bc = getattr(style, "border_color", None)
         bw = getattr(style, "border_width", 0.0) or 0.0
         fg = getattr(style, "foreground", None)
@@ -276,6 +284,7 @@ def resolve_button_style_params(
         "padding": pad,
         "content_insets": insets,
         "corner_radius": cr,
+        "pressed_corner_radius": pressed_cr,
         "border_color": bc,
         "border_width": bw,
         "shadows": shadows,
@@ -318,6 +327,7 @@ class MaterialButtonBase(InteractiveWidget):
         border_color: ColorSpec = None,
         border_width: float = 0.0,
         corner_radius: Union[float, Tuple[float, float, float, float]] = 0.0,
+        pressed_corner_radius: Optional[float] = None,
         # Overlay / Feedback configuration
         state_layer_color: ColorSpec = None,
         overlay_color: ColorSpec = None,  # Backward compatibility
@@ -342,6 +352,8 @@ class MaterialButtonBase(InteractiveWidget):
             border_color: Border color for outlined buttons.
             border_width: Border width for outlined buttons.
             corner_radius: Corner radius for the button container.
+            pressed_corner_radius: Corner radius the container morphs to
+                while pressed. ``None`` keeps ``corner_radius``.
             state_layer_color: Color of the state layer (overlay).
             hover_opacity: Opacity of the overlay when hovered.
             pressed_opacity: Opacity of the overlay when pressed.
@@ -380,6 +392,15 @@ class MaterialButtonBase(InteractiveWidget):
         self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=_STATE_LAYER_MOTION)
         self.bind(self._state_layer_anim.subscribe(lambda _: self.invalidate()))
 
+        self._resting_corner_radius: Union[float, Tuple[float, float, float, float]] = corner_radius
+        self._pressed_corner_radius: Optional[float] = pressed_corner_radius
+        # Per-corner radii come from a caller's tuple, not from a style, and
+        # only a scalar radius morphs; the tuple is drawn as given.
+        self._corner_anim: Optional[Animatable[float]] = None
+        if not isinstance(corner_radius, (list, tuple)):
+            self._corner_anim = Animatable(float(corner_radius), motion=_CORNER_MOTION)
+            self.bind(self._corner_anim.subscribe(lambda r: setattr(self, "corner_radius", r)))
+
         self._foreground_targets: list[Widget] = []
         self._bg_color_anim: Optional[Animatable[Tuple[int, int, int, int]]] = None
         self._border_color_anim: Optional[Animatable[Tuple[int, int, int, int]]] = None
@@ -397,6 +418,8 @@ class MaterialButtonBase(InteractiveWidget):
 
     def on_unmount(self) -> None:
         self._dispose_color_animations()
+        if self._corner_anim is not None:
+            self._corner_anim.stop()
         super().on_unmount()
 
     def _sync_theme_style(self) -> None:
@@ -425,7 +448,7 @@ class MaterialButtonBase(InteractiveWidget):
         if first:
             # Nothing to animate from on the first resolve: the preset the
             # constructor used was never shown.
-            self._snap_color_animations()
+            self._snap_style_animations()
 
     def _on_theme_change(self, theme) -> None:
         raise NotImplementedError
@@ -528,31 +551,25 @@ class MaterialButtonBase(InteractiveWidget):
         if self._foreground_color_anim is not None:
             self._foreground_color_anim = None
 
-    def _snap_color_animations(self) -> None:
-        """Snap colour animations to their current targets without animating.
+    def _snap_style_animations(self) -> None:
+        """Snap the colour and shape animations to their targets.
 
-        Called once at mount time so the button renders immediately with the
-        correct theme colours instead of fading in from the transparent
-        ``(0, 0, 0, 0)`` value that was resolved at construction time
-        (before the app's ThemeManager was reachable).
+        Runs once, on the first theme resolve, so the button renders with the
+        theme's colours instead of fading in from the values the constructor
+        resolved before the app's ThemeManager was reachable.
         """
         for anim in (self._bg_color_anim, self._border_color_anim, self._foreground_color_anim):
-            if anim is None:
-                continue
-            target = anim._target
-            anim._stop_ticking()
-            if anim._state is not None:
-                vec = anim._converter.to_vector(target)
-                anim._state.value = vec.copy()
-                anim._state.start = vec.copy()
-                anim._state.target = vec.copy()
-                anim._state.done = True
-            anim._value.value = target
+            if anim is not None:
+                anim.snap_to(anim.target)
+        if self._corner_anim is not None:
+            self._corner_anim.snap_to(self._corner_anim.target)
 
     def _apply_style_params(self, params: dict[str, Any], theme=None) -> None:
         self.padding = params["padding"]
         self._content_insets = parse_padding(params["content_insets"])
-        self.corner_radius = params["corner_radius"]
+        self._resting_corner_radius = params["corner_radius"]
+        self._pressed_corner_radius = params["pressed_corner_radius"]
+        self._sync_corner_target()
         self.border_width = params["border_width"]
         self.shadows = params["shadows"]
 
@@ -567,8 +584,22 @@ class MaterialButtonBase(InteractiveWidget):
             foreground_color=params["foreground_color"],
             theme=theme,
         )
-        self._snap_color_animations()
         self.invalidate()
+
+    def _corner_target(self) -> Union[float, Tuple[float, float, float, float]]:
+        """Return the corner radius the container is heading for."""
+        if self._pressed_corner_radius is not None and self.state.pressed and not self.disabled:
+            return self._pressed_corner_radius
+        return self._resting_corner_radius
+
+    def _sync_corner_target(self) -> None:
+        """Point the shape animation at the current state's corner radius."""
+        target = self._corner_target()
+        if self._corner_anim is None or isinstance(target, (list, tuple)):
+            self.corner_radius = target
+            return
+        if abs(self._corner_anim.target - float(target)) > 1e-6:
+            self._corner_anim.target = float(target)
 
     def _get_state_layer_target_opacity(self) -> float:
         state = self.state
@@ -653,6 +684,9 @@ class MaterialButtonBase(InteractiveWidget):
 
     # The draw hooks receive the content rect; the container is centred in it.
     def draw_background(self, canvas, x: int, y: int, width: int, height: int):
+        # The pressed state has no hook of its own, so the shape retargets
+        # where the state layer does: on the paint the state change requested.
+        self._sync_corner_target()
         return super().draw_background(canvas, *self._container_in(x, y, width, height))
 
     def draw_border(self, canvas, x: int, y: int, width: int, height: int):
