@@ -717,7 +717,7 @@ def test_constructing_and_mounting_never_looks_up_the_theme_too_early(
     assert premature == [], f"{name} reached Theme.of before it could resolve: {premature}"
 
 
-def test_button_follows_a_theme_mutated_in_place_and_reinstalled() -> None:
+def test_button_follows_a_theme_mutated_in_place_and_reinstalled(nuiitivet_clock) -> None:
     """A button resolves its colour endpoints to concrete RGBA, so it is the one
     widget whose held value cannot self-correct on the next read. Its freshness
     check must therefore survive a change that arrives on the *same* ``Theme``
@@ -733,5 +733,10 @@ def test_button_follows_a_theme_mutated_in_place_and_reinstalled() -> None:
     roles[ColorRole.PRIMARY] = "#101010"
     manager.set_theme(shared)  # same object, mutated contents
     button.preferred_size()
+
+    # The colour cross-fades, so step its ticker to the end before reading.
+    for pending in nuiitivet_clock.pending():
+        if pending.is_interval:
+            pending.fn(1.0)
 
     assert button.bgcolor != before

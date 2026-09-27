@@ -10,9 +10,10 @@ All values follow the M3 component specs:
 - https://m3.material.io/components/icon-buttons/specs
 - https://m3.material.io/components/floating-action-button/specs
 
-The tables intentionally model the *round* shape variant only (circular
-corner radius).  Shape morphing and square variants are out of scope for
-the initial style-driven refactor.
+``corner_radius`` is the resting *round* shape (circular).
+``square_corner_radius`` is the *square* shape a toggle takes when selected,
+and ``pressed_corner_radius`` is the shape every button morphs to while
+pressed.
 """
 
 from __future__ import annotations
@@ -34,6 +35,8 @@ class ButtonSizeTokens(TypedDict):
     label_font_size: int
     outline_width: float
     corner_radius: int
+    square_corner_radius: int
+    pressed_corner_radius: int
 
 
 BUTTON_SIZE_TOKENS: dict[ButtonSize, ButtonSizeTokens] = {
@@ -46,6 +49,8 @@ BUTTON_SIZE_TOKENS: dict[ButtonSize, ButtonSizeTokens] = {
         "label_font_size": 14,
         "outline_width": 1.0,
         "corner_radius": 16,
+        "square_corner_radius": 12,
+        "pressed_corner_radius": 8,
     },
     "s": {
         "container_height": 40,
@@ -56,6 +61,8 @@ BUTTON_SIZE_TOKENS: dict[ButtonSize, ButtonSizeTokens] = {
         "label_font_size": 14,
         "outline_width": 1.0,
         "corner_radius": 20,
+        "square_corner_radius": 12,
+        "pressed_corner_radius": 8,
     },
     "m": {
         "container_height": 56,
@@ -66,6 +73,8 @@ BUTTON_SIZE_TOKENS: dict[ButtonSize, ButtonSizeTokens] = {
         "label_font_size": 16,
         "outline_width": 1.0,
         "corner_radius": 28,
+        "square_corner_radius": 16,
+        "pressed_corner_radius": 12,
     },
     "l": {
         "container_height": 96,
@@ -76,6 +85,8 @@ BUTTON_SIZE_TOKENS: dict[ButtonSize, ButtonSizeTokens] = {
         "label_font_size": 24,
         "outline_width": 2.0,
         "corner_radius": 48,
+        "square_corner_radius": 28,
+        "pressed_corner_radius": 16,
     },
     "xl": {
         "container_height": 136,
@@ -86,6 +97,8 @@ BUTTON_SIZE_TOKENS: dict[ButtonSize, ButtonSizeTokens] = {
         "label_font_size": 32,
         "outline_width": 3.0,
         "corner_radius": 68,
+        "square_corner_radius": 28,
+        "pressed_corner_radius": 16,
     },
 }
 
@@ -112,6 +125,8 @@ class IconButtonSizeTokens(TypedDict):
     leading_space: int
     trailing_space: int
     corner_radius: int
+    square_corner_radius: int
+    pressed_corner_radius: int
     outline_width: float
 
 
@@ -124,6 +139,8 @@ ICON_BUTTON_SIZE_TOKENS: dict[ButtonSize, IconButtonSizeTokens] = {
         "leading_space": 6,
         "trailing_space": 6,
         "corner_radius": 16,
+        "square_corner_radius": 12,
+        "pressed_corner_radius": 8,
         "outline_width": 1.0,
     },
     "s": {
@@ -132,6 +149,8 @@ ICON_BUTTON_SIZE_TOKENS: dict[ButtonSize, IconButtonSizeTokens] = {
         "leading_space": 8,
         "trailing_space": 8,
         "corner_radius": 20,
+        "square_corner_radius": 12,
+        "pressed_corner_radius": 8,
         "outline_width": 1.0,
     },
     "m": {
@@ -140,6 +159,8 @@ ICON_BUTTON_SIZE_TOKENS: dict[ButtonSize, IconButtonSizeTokens] = {
         "leading_space": 16,
         "trailing_space": 16,
         "corner_radius": 28,
+        "square_corner_radius": 16,
+        "pressed_corner_radius": 12,
         "outline_width": 1.0,
     },
     "l": {
@@ -148,6 +169,8 @@ ICON_BUTTON_SIZE_TOKENS: dict[ButtonSize, IconButtonSizeTokens] = {
         "leading_space": 32,
         "trailing_space": 32,
         "corner_radius": 48,
+        "square_corner_radius": 28,
+        "pressed_corner_radius": 16,
         "outline_width": 2.0,
     },
     "xl": {
@@ -156,6 +179,8 @@ ICON_BUTTON_SIZE_TOKENS: dict[ButtonSize, IconButtonSizeTokens] = {
         "leading_space": 48,
         "trailing_space": 48,
         "corner_radius": 68,
+        "square_corner_radius": 28,
+        "pressed_corner_radius": 16,
         "outline_width": 3.0,
     },
 }
