@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from typing import Callable
+
+import pytest
+
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
-from nuiitivet.material.buttons import Fab, IconButton
+from nuiitivet.material.buttons import Button, Fab, IconButton, IconToggleButton
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.toolbar import (
     DockedToolbar,
@@ -152,3 +156,84 @@ def test_toolbar_fab_style_elevation_follows_the_size() -> None:
     assert small.container_height == FabStyle.secondary("s").container_height
     assert (medium.elevation, medium.hovered_elevation) == (2, 3)
     assert medium.container_height == FabStyle.secondary("m").container_height
+
+
+def test_toolbar_button_styles_follow_the_colour_scheme() -> None:
+    standard = ToolbarStyle.standard()
+    vibrant = ToolbarStyle.vibrant()
+
+    assert standard.icon_button_style().foreground == ColorRole.ON_SURFACE_VARIANT
+    assert standard.icon_button_style().background is None
+    assert standard.icon_toggle_button_style().selected.background == ColorRole.SECONDARY_CONTAINER
+    assert vibrant.icon_button_style().foreground == ColorRole.ON_PRIMARY_CONTAINER
+    assert vibrant.icon_toggle_button_style().selected.background == ColorRole.SURFACE_CONTAINER
+    assert vibrant.icon_toggle_button_style().selected.foreground == ColorRole.ON_SURFACE
+    assert vibrant.button_style().foreground == ColorRole.ON_PRIMARY_CONTAINER
+    assert vibrant.toggle_button_style().selected_foreground == ColorRole.ON_SURFACE
+
+
+_TOOLBARS: list[tuple[str, Callable[..., Box]]] = [
+    ("DockedToolbar", lambda buttons, style: DockedToolbar(buttons, style=style)),
+    ("HorizontalFloatingToolbar", lambda buttons, style: HorizontalFloatingToolbar(buttons, style=style)),
+    ("VerticalFloatingToolbar", lambda buttons, style: VerticalFloatingToolbar(buttons, style=style)),
+]
+
+
+@pytest.mark.parametrize("name,factory", _TOOLBARS, ids=[name for name, _ in _TOOLBARS])
+def test_toolbar_pushes_its_scheme_onto_an_unstyled_icon_button(name, factory) -> None:
+    button = IconButton("add")
+    toolbar = factory([button], ToolbarStyle.vibrant())
+    toolbar.mount(None)
+    toolbar.preferred_size()
+
+    assert button.style == ToolbarStyle.vibrant().icon_button_style()
+    assert button.state_layer_color == ColorRole.ON_PRIMARY_CONTAINER
+
+
+def test_toolbar_leaves_an_explicitly_styled_button_alone() -> None:
+    explicit = IconButtonStyle.filled()
+    button = IconButton("add", style=explicit)
+    toolbar = DockedToolbar([button], style=ToolbarStyle.vibrant())
+    toolbar.mount(None)
+    toolbar.preferred_size()
+
+    assert button.style == explicit
+
+
+def test_toolbar_pushes_selected_and_unselected_colours_onto_an_icon_toggle() -> None:
+    off = IconToggleButton("star")
+    on = IconToggleButton("star", selected=True)
+    toolbar = DockedToolbar([off, on], style=ToolbarStyle.vibrant())
+    toolbar.mount(None)
+    toolbar.preferred_size()
+
+    assert off.style == ToolbarStyle.vibrant().icon_toggle_button_style().unselected
+    assert on.style == ToolbarStyle.vibrant().icon_toggle_button_style().selected
+    assert on.state_layer_color == ColorRole.ON_SURFACE
+
+
+def test_toolbar_pushes_its_scheme_onto_a_text_button() -> None:
+    button = Button("Undo")
+    toolbar = DockedToolbar([button], style=ToolbarStyle.standard())
+    toolbar.mount(None)
+    toolbar.preferred_size()
+
+    assert button.style == ToolbarStyle.standard().button_style()
+
+
+def test_toolbar_reaches_a_button_through_its_tooltip() -> None:
+    button = IconButton("add")
+    toolbar = HorizontalFloatingToolbar([button.modifier(tooltip(Text("Add")))], style=ToolbarStyle.vibrant())
+    toolbar.mount(None)
+    toolbar.preferred_size()
+
+    assert button.style == ToolbarStyle.vibrant().icon_button_style()
+
+
+def test_toolbar_leaves_a_non_button_child_alone() -> None:
+    text = Text("Title")
+    toolbar = DockedToolbar([text, IconButton("add")], style=ToolbarStyle.vibrant())
+    toolbar.mount(None)
+    toolbar.preferred_size()
+
+    assert not hasattr(text, "_host_style")
