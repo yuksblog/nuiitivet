@@ -93,6 +93,7 @@ agent's instruction.
 - [ ] Comments explain intent, not behaviour
 - [ ] Docstrings: every sentence carries an observable fact, current behaviour only, no mechanism dumps
 - [ ] Comments and docstrings: short sentences, one fact each, dense throughout
+- [ ] Each comment and docstring sentence checked against `docs/design/` and the code, both open beside the draft; what either already says is deleted
 - [ ] Docstrings: `Args:` on the callable, no parameter list on the class
 
 ### Structure
