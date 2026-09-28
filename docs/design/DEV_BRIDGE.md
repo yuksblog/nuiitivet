@@ -185,11 +185,16 @@ Answers "what did the app emit?". When an agent-driven action triggers a
 callback that raises, the framework swallows the exception to keep the app
 alive and logs it — to a console the agent cannot read. The next
 `describe_tree` then shows an unchanged tree: *that* nothing happened, not
-*why*. A capture installs a `logging` handler (WARNING and above, any thread;
+*why*. A capture wraps the log record factory (WARNING and above, any thread;
 asyncio reports an unretrieved task exception by logging it, so those land
 here too) and the thread and interpreter exception hooks, which Python does not
-route through `logging`; both chain to the previous hook so console output is
+route through `logging`. Each chains to the previous one, so console output is
 unchanged.
+
+A handler on the root logger was rejected. Python writes a record to stderr
+only while no handler exists, and `logging.basicConfig` does nothing once one
+does. A journal handler would silence an unconfigured app's tracebacks and
+drop the app's own logging setup.
 
 De-duplication is not the journal's: it lives at the emit sites, which already
 log each distinct failure once, and the callback boundary keys by distinct

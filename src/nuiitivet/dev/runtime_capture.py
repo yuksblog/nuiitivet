@@ -4,10 +4,10 @@ The runtime journal (:mod:`nuiitivet.dev.runtime_journal`) is only as useful as
 what reaches it. This module installs the three taps that route the running
 app's output and failures into it, covering every thread a dev session touches:
 
-* a **``logging.Handler``** on the root logger (WARNING and above) -- captures
-  framework and app log records from *any* thread. This is the primary net: the
-  framework swallows callback exceptions and re-emits them through ``logging``
-  (see :func:`nuiitivet.widgeting.callbacks.invoke_event_handler`), and asyncio
+* a **log record factory** (WARNING and above) -- captures framework and app
+  log records from *any* thread. This is the primary net: the framework
+  swallows callback exceptions and re-emits them through ``logging`` (see
+  :func:`nuiitivet.widgeting.callbacks.invoke_event_handler`), and asyncio
   reports an unretrieved task exception by *logging* it at ERROR on the
   ``asyncio`` logger -- so both land here without any asyncio-specific hook;
 * **``threading.excepthook``** -- a background thread that dies on an uncaught
@@ -15,8 +15,9 @@ app's output and failures into it, covering every thread a dev session touches:
 * **``sys.excepthook``** -- the same, for an uncaught exception on the main
   thread.
 
-All three chain to the previous hook, so the human's console output is
-unchanged; capture is purely additive.
+All three chain to the previous factory or hook. The root logger keeps its
+handlers, so console output, ``logging.basicConfig`` and the app's own handlers
+behave as in a plain run; capture is purely additive.
 
 **Verbose mode.** De-duplication of repeated failures lives at the emit sites
 (``logging_once``): a record suppressed there never reaches the handler, so by
@@ -32,7 +33,7 @@ import logging
 import sys
 import threading
 import traceback
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from nuiitivet.common.logging_once import is_log_once_enabled, set_log_once_enabled
 
@@ -45,14 +46,21 @@ logger = logging.getLogger(__name__)
 _IGNORED_EXC_TYPES = (KeyboardInterrupt, SystemExit)
 
 
-class _JournalHandler(logging.Handler):
-    """A ``logging.Handler`` that mirrors each record into a :class:`RuntimeJournal`."""
+class _JournalRecordFactory:
+    """A log record factory that mirrors each record at ``level`` or above into a journal."""
 
-    def __init__(self, journal: RuntimeJournal, level: int) -> None:
-        super().__init__(level)
+    def __init__(self, journal: RuntimeJournal, level: int, previous: Callable[..., logging.LogRecord]) -> None:
         self._journal = journal
+        self._level = level
+        self.previous = previous
 
-    def emit(self, record: logging.LogRecord) -> None:
+    def __call__(self, *args: Any, **kwargs: Any) -> logging.LogRecord:
+        record = self.previous(*args, **kwargs)
+        if record.levelno >= self._level:
+            self._record(record)
+        return record
+
+    def _record(self, record: logging.LogRecord) -> None:
         try:
             exc_type: Optional[str] = None
             tb_text: Optional[str] = None
@@ -70,7 +78,7 @@ class _JournalHandler(logging.Handler):
             )
         except Exception:
             # Never let capture break the logging call that triggered it.
-            self.handleError(record)
+            logger.debug("runtime capture: failed to record log record", exc_info=True)
 
 
 class RuntimeLogCapture:
@@ -84,7 +92,7 @@ class RuntimeLogCapture:
     def __init__(self, journal: RuntimeJournal, *, level: int = logging.WARNING) -> None:
         self._journal = journal
         self._level = level
-        self._handler: Optional[_JournalHandler] = None
+        self._factory: Optional[_JournalRecordFactory] = None
         self._prev_threading_hook: Any = None
         self._prev_sys_hook: Any = None
         # The bound hooks we install, kept so :meth:`shutdown` can identity-check
@@ -95,13 +103,13 @@ class RuntimeLogCapture:
         self._installed = False
 
     def install(self) -> None:
-        """Attach the logging handler and the thread/main excepthooks."""
+        """Attach the log record factory and the thread/main excepthooks."""
         if self._installed:
             return
         self._installed = True
 
-        self._handler = _JournalHandler(self._journal, self._level)
-        logging.getLogger().addHandler(self._handler)
+        self._factory = _JournalRecordFactory(self._journal, self._level, logging.getLogRecordFactory())
+        logging.setLogRecordFactory(self._factory)
 
         self._prev_threading_hook = threading.excepthook
         self._threading_hook = self._on_thread_exception
@@ -112,17 +120,17 @@ class RuntimeLogCapture:
         sys.excepthook = self._sys_hook
 
     def shutdown(self) -> None:
-        """Detach the handler, restore the excepthooks, and re-enable de-dup."""
+        """Restore the log record factory and the excepthooks, and re-enable de-dup."""
         if not self._installed:
             return
         self._installed = False
 
-        if self._handler is not None:
-            logging.getLogger().removeHandler(self._handler)
-            self._handler = None
+        # Only restore if we are still the installed factory or hook, so we do
+        # not clobber one another component set after us.
+        if self._factory is not None and logging.getLogRecordFactory() is self._factory:
+            logging.setLogRecordFactory(self._factory.previous)
+        self._factory = None
 
-        # Only restore if we are still the installed hook, so we do not clobber a
-        # hook another component set after us.
         if self._prev_threading_hook is not None and threading.excepthook is self._threading_hook:
             threading.excepthook = self._prev_threading_hook
         self._prev_threading_hook = None
