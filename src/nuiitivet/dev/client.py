@@ -5,7 +5,8 @@ The CLI subcommands (``python -m nuiitivet.dev screenshot`` /
 running bridge by reading the discovery file the app wrote
 (``<project_root>/.nuiitivet/dev-bridge.json``), then issue plain HTTP GETs.
 Kept dependency-free (``urllib``) so the CLI has no runtime requirements beyond
-the standard library.
+the standard library. The client speaks plain HTTP to the loopback address only,
+so it opens requests through its own handler set and never builds a TLS context.
 
 A crashed app exits without running :meth:`DevBridge.shutdown`, leaving a stale
 discovery file behind. Clients defend against this two ways: the file records
@@ -23,7 +24,15 @@ from pathlib import Path
 from typing import Any, Optional, Sequence
 from urllib.error import URLError
 from urllib.parse import urlencode
-from urllib.request import Request, urlopen
+from urllib.request import (
+    HTTPDefaultErrorHandler,
+    HTTPErrorProcessor,
+    HTTPHandler,
+    HTTPRedirectHandler,
+    OpenerDirector,
+    Request,
+    UnknownHandler,
+)
 
 from .bridge import (
     DISCOVERY_DIRNAME,
@@ -129,6 +138,30 @@ def _unlink_quietly(path: Optional[Path]) -> None:
         pass
 
 
+def _build_opener() -> OpenerDirector:
+    """Return an opener that speaks plain HTTP and nothing else.
+
+    ``urlopen`` and ``build_opener`` both add an ``HTTPSHandler``, whose
+    constructor builds a default SSL context. That context honours
+    ``SSLKEYLOGFILE``, so an unwritable value there would break every bridge
+    call before it reached the socket. ``ProxyHandler`` is left out too: an
+    environment proxy must never sit between the CLI and a loopback bridge.
+    """
+    opener = OpenerDirector()
+    for handler in (
+        HTTPHandler(),
+        HTTPDefaultErrorHandler(),
+        HTTPRedirectHandler(),
+        HTTPErrorProcessor(),
+        UnknownHandler(),
+    ):
+        opener.add_handler(handler)
+    return opener
+
+
+_OPENER = _build_opener()
+
+
 def _extract_error(exc: URLError) -> str:
     """Pull the server's ``{"error": ...}`` message out of a failed response.
 
@@ -203,7 +236,7 @@ class BridgeClient:
         surface as a bare "HTTP Error 404".
         """
         try:
-            with urlopen(f"{self._base}{endpoint}", timeout=self._timeout) as response:
+            with _OPENER.open(f"{self._base}{endpoint}", timeout=self._timeout) as response:
                 content_type = response.headers.get("Content-Type", "")
                 return response.read(), content_type
         except URLError as exc:
@@ -234,7 +267,7 @@ class BridgeClient:
             method="POST",
         )
         try:
-            with urlopen(request, timeout=timeout or self._timeout) as response:
+            with _OPENER.open(request, timeout=timeout or self._timeout) as response:
                 return json.loads(response.read().decode("utf-8"))
         except URLError as exc:
             if isinstance(exc.reason, ConnectionError):
