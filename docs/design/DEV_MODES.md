@@ -265,6 +265,16 @@ that deliberately has none.
   as silence on the first click, and a successful jump names the file, which
   is the only evidence the click was received — what makes "nothing happened"
   readable as an editor problem.
+- **The editor boots from a cleaned environment.** Variables that change how
+  an Electron binary boots or what it logs are removed before the URL is
+  handed over. An editor's extension host sets `ELECTRON_RUN_AS_NODE`, and on Windows the
+  scheme handler is a relaunch of the editor binary: every app a coding agent
+  started would boot that handler as Node, which exits while the jump reports
+  success. `ShellExecute` takes no child environment, so on Windows the
+  variables leave the app's own environment for the duration of the call.
+  Spawning the handler through `subprocess` with an explicit environment was
+  rejected: it adds a process start to every jump, and `cmd /c start` splits
+  a template's `&` into a second command.
 
 None of this is checkable in CI, which is headless where the question is where
 the cursor landed; each platform's opener was confirmed against a real editor.
