@@ -147,7 +147,7 @@ catalog below), not a job for `Container` — its box is layout-only.
 | --- | --- | --- |
 | Content surface | `Card` | `nv.Card(child, ...)` |
 | Left-hand app navigation | `NavigationRail` | `nv.NavigationRail([nv.RailItem("home", "Home"), ...], index=sel_obs)` |
-| Toolbar | `HorizontalFloatingToolbar` / `VerticalFloatingToolbar` | `nv.HorizontalFloatingToolbar([...])` |
+| Toolbar | `HorizontalFloatingToolbar` / `VerticalFloatingToolbar` | `nv.HorizontalFloatingToolbar([...], fab=nv.Fab("edit"))` |
 | Screen-to-screen navigation | `Navigator` | `nv.Navigator.of(self).push(DetailScreen())` |
 
 **Overlays** — shown over the window's content

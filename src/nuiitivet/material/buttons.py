@@ -1205,14 +1205,17 @@ class _FabBase(MaterialButtonBase):
     press-scale animation so the public widgets do not duplicate it.
     """
 
-    #: The style the caller passed, or ``None`` to follow the theme.
+    #: The style the caller passed, or ``None`` to follow the host or the theme.
     _user_style: Optional[FabStyle]
+    #: The style a hosting widget derived for this FAB, or ``None`` to follow
+    #: the theme. Set through :meth:`_set_host_style`.
+    _host_style: Optional[FabStyle] = None
     _user_padding: PaddingLike
     _user_height: Union[int, float]
 
     @property
     def style(self) -> FabStyle:
-        """Return the FAB style in effect, pulled from the theme.
+        """Return the FAB style in effect: the caller's, else the host's, else the theme's.
 
         A FAB has no ``build()``, so it reads the theme where the style is
         consumed -- :meth:`preferred_size` via ``_sync_theme_style``, and
@@ -1222,8 +1225,28 @@ class _FabBase(MaterialButtonBase):
         """
         base = self._user_style
         if base is None:
+            base = self._host_style
+        if base is None:
             base = FabStyle.from_theme(Theme.of(self))
         return self._adapt_style(base)
+
+    def _set_host_style(self, style: Optional[FabStyle]) -> None:
+        """Take the style a hosting widget derives for this FAB.
+
+        A floating toolbar pushes the style its colour scheme prescribes for
+        the FAB beside it. A style the caller passed still wins. Before the
+        first measure the value waits for that measure; afterwards the colour
+        targets are re-derived at once, so a scheme change animates the way a
+        theme change does.
+
+        Args:
+            style: The derived style, or ``None`` to follow the theme again.
+        """
+        if style == self._host_style:
+            return
+        self._host_style = style
+        if self._applied_theme_generation is not None:
+            self._on_theme_change(Theme.of(self))
 
     def _adapt_style(self, style: FabStyle) -> FabStyle:
         """Project a resolved base style onto this FAB's container tokens.

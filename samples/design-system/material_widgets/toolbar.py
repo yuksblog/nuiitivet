@@ -24,6 +24,14 @@ def build_root() -> nv.Widget:
         style=nv.ToolbarStyle.standard(),
     )
 
+    # The FAB takes the toolbar's colour scheme; pass a style to override it.
+    with_fab = nv.HorizontalFloatingToolbar(
+        _actions(),
+        fab=nv.Fab("edit"),
+        padding=(12, 8, 12, 8),
+        style=nv.ToolbarStyle.vibrant(),
+    )
+
     content = nv.Container(
         padding=24,
         child=nv.Column(
@@ -34,6 +42,8 @@ def build_root() -> nv.Widget:
                 docked,
                 nv.Text("FloatingToolbar"),
                 floating,
+                nv.Text("FloatingToolbar with FAB"),
+                with_fab,
             ],
         ),
     )
@@ -41,7 +51,7 @@ def build_root() -> nv.Widget:
 
 
 def main(png_path: str = "") -> None:
-    app = nv.App(nv.Window(content=build_root, title="Toolbar", width=560, height=300))
+    app = nv.App(nv.Window(content=build_root, title="Toolbar", width=560, height=420))
     if png_path:
         app.render_to_png(png_path)
     else:

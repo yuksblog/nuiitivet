@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
-from nuiitivet.material.buttons import IconButton
+from nuiitivet.material.buttons import Fab, IconButton
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.toolbar import (
     DockedToolbar,
@@ -10,6 +10,8 @@ from nuiitivet.material.toolbar import (
     VerticalFloatingToolbar,
 )
 from nuiitivet.material.styles.button_style import IconButtonStyle
+from nuiitivet.material.styles.fab_style import FabStyle
+from nuiitivet.material.styles.toolbar_style import ToolbarStyle
 from nuiitivet.material.text import Text
 from nuiitivet.modifiers.tooltip import TooltipBox, tooltip
 from nuiitivet.widgets.box import Box
@@ -97,3 +99,56 @@ def test_toolbar_accepts_tooltip_wrapped_button() -> None:
     assert isinstance(row, Row)
     assert len(row.children) == 1
     assert isinstance(row.children[0], TooltipBox)
+
+
+def test_horizontal_floating_toolbar_places_the_fab_to_the_right() -> None:
+    fab = Fab("edit")
+    toolbar = HorizontalFloatingToolbar([IconButton("add")], fab=fab)
+
+    pair = toolbar.children[0]
+
+    assert isinstance(pair, Row)
+    assert pair.gap == ToolbarStyle.standard().fab_gap
+    assert isinstance(pair.children[0], Box)
+    assert pair.children[0].corner_radius == 9999
+    assert pair.children[1] is fab
+
+
+def test_vertical_floating_toolbar_places_the_fab_below() -> None:
+    fab = Fab("edit")
+    toolbar = VerticalFloatingToolbar([IconButton("add")], fab=fab)
+
+    pair = toolbar.children[0]
+
+    assert isinstance(pair, Column)
+    assert pair.gap == ToolbarStyle.standard().fab_gap
+    assert isinstance(pair.children[0], Box)
+    assert pair.children[1] is fab
+
+
+def test_floating_toolbar_padding_wraps_the_fab_too() -> None:
+    toolbar = HorizontalFloatingToolbar([IconButton("add")], fab=Fab("edit"), padding=(12, 8, 12, 8))
+
+    assert toolbar.padding == (12, 8, 12, 8)
+    assert len(toolbar.children) == 1
+    assert isinstance(toolbar.children[0], Row)
+
+
+def test_toolbar_fab_style_follows_the_colour_scheme() -> None:
+    standard = ToolbarStyle.standard().fab_style()
+    vibrant = ToolbarStyle.vibrant().fab_style()
+
+    assert standard.background == ColorRole.SECONDARY_CONTAINER
+    assert standard.foreground == ColorRole.ON_SECONDARY_CONTAINER
+    assert vibrant.background == ColorRole.TERTIARY_CONTAINER
+    assert vibrant.foreground == ColorRole.ON_TERTIARY_CONTAINER
+
+
+def test_toolbar_fab_style_elevation_follows_the_size() -> None:
+    small = ToolbarStyle.standard().fab_style("s")
+    medium = ToolbarStyle.standard().fab_style("m")
+
+    assert (small.elevation, small.hovered_elevation) == (1, 2)
+    assert small.container_height == FabStyle.secondary("s").container_height
+    assert (medium.elevation, medium.hovered_elevation) == (2, 3)
+    assert medium.container_height == FabStyle.secondary("m").container_height
