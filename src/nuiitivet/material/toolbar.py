@@ -6,6 +6,7 @@ from typing import Literal, Optional, Sequence, Tuple, Union
 
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
+from nuiitivet.material.buttons import Fab
 from nuiitivet.material.styles.toolbar_style import ToolbarStyle
 from nuiitivet.rendering.padding import PaddingLike, parse_padding
 from nuiitivet.rendering.sizing import Sizing, SizingLike
@@ -162,13 +163,15 @@ class _FloatingToolbarBase(_ToolbarBase):
 
     Floating toolbar exposes external padding to place the floating container
     away from edges. Orientation is fixed by the concrete subclass, which
-    selects a Row or Column layout for the action buttons.
+    selects a Row or Column layout for the action buttons. An optional FAB
+    sits trailing, after the container along the same axis.
     """
 
     def __init__(
         self,
         buttons: Sequence[Widget],
         *,
+        fab: Optional[Fab] = None,
         orientation: _ToolbarOrientation,
         padding: PaddingLike = 0,
         style: Optional[ToolbarStyle] = None,
@@ -181,8 +184,12 @@ class _FloatingToolbarBase(_ToolbarBase):
                 ``IconButton``; other widgets (including tooltip-wrapped buttons)
                 are laid out as-is, but the edge-inset heuristic assumes
                 button-sized children and degrades gracefully for larger ones.
+            fab: FAB placed trailing, ``fab_gap`` of the style away from the
+                container. A FAB without an explicit style takes the colour
+                and elevation the toolbar's colour scheme prescribes; a FAB
+                with one keeps it.
             orientation: Layout orientation for action buttons, fixed by the subclass.
-            padding: External padding around the floating toolbar.
+            padding: External padding around the floating toolbar and its FAB.
             style: Optional toolbar style. Defaults to the theme's toolbar
                 style, which itself falls back to ``ToolbarStyle.standard()``.
             key: Stable widget identity for dev-bridge targeting and hot reload.
@@ -190,6 +197,7 @@ class _FloatingToolbarBase(_ToolbarBase):
         self._user_style = style
         self._applied_style = None
         self.orientation = orientation
+        self._fab = fab
         # Read the preset directly rather than through ``self.style``: the theme
         # is unreachable until the widget is attached. The preset is what
         # ``ToolbarStyle.from_theme`` falls back to, so an unthemed app sees no
@@ -231,8 +239,18 @@ class _FloatingToolbarBase(_ToolbarBase):
             alignment="center",
         )
 
+        outer_child: Widget = self._inner_container
+        self._fab_layout: Optional[Union[Row, Column]] = None
+        if fab is not None:
+            pair: list[Widget] = [self._inner_container, fab]
+            if orientation == "horizontal":
+                self._fab_layout = Row(pair, gap=effective_style.fab_gap, cross_alignment="center")
+            else:
+                self._fab_layout = Column(pair, gap=effective_style.fab_gap, cross_alignment="center")
+            outer_child = self._fab_layout
+
         super().__init__(
-            child=self._inner_container,
+            child=outer_child,
             padding=padding,
             background_color=None,
             border_width=0.0,
@@ -260,6 +278,10 @@ class _FloatingToolbarBase(_ToolbarBase):
             style,
             self._layout_content.children_snapshot(),
         )
+        if self._fab_layout is not None:
+            self._fab_layout.gap = style.fab_gap
+        if self._fab is not None:
+            self._fab._set_host_style(style.fab_style())
         self.invalidate()
 
 
@@ -267,12 +289,14 @@ class HorizontalFloatingToolbar(_FloatingToolbarBase):
     """Material Design 3 horizontal floating toolbar.
 
     Lays out action buttons in a row inside a fully rounded floating container.
+    An optional FAB sits to the right of the container.
     """
 
     def __init__(
         self,
         buttons: Sequence[Widget],
         *,
+        fab: Optional[Fab] = None,
         padding: PaddingLike = 0,
         style: Optional[ToolbarStyle] = None,
         key: Optional[str] = None,
@@ -284,23 +308,29 @@ class HorizontalFloatingToolbar(_FloatingToolbarBase):
                 ``IconButton``; other widgets (including tooltip-wrapped buttons)
                 are laid out as-is, but the edge-inset heuristic assumes
                 button-sized children and degrades gracefully for larger ones.
-            padding: External padding around the floating toolbar.
+            fab: FAB placed to the right of the container, ``fab_gap`` of the
+                style away. A FAB without an explicit style takes the colour
+                and elevation the toolbar's colour scheme prescribes; a FAB
+                with one keeps it.
+            padding: External padding around the floating toolbar and its FAB.
             style: Optional toolbar style. Defaults to ``ToolbarStyle.standard()``.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(buttons, orientation="horizontal", padding=padding, style=style, key=key)
+        super().__init__(buttons, fab=fab, orientation="horizontal", padding=padding, style=style, key=key)
 
 
 class VerticalFloatingToolbar(_FloatingToolbarBase):
     """Material Design 3 vertical floating toolbar.
 
     Lays out action buttons in a column inside a fully rounded floating container.
+    An optional FAB sits below the container.
     """
 
     def __init__(
         self,
         buttons: Sequence[Widget],
         *,
+        fab: Optional[Fab] = None,
         padding: PaddingLike = 0,
         style: Optional[ToolbarStyle] = None,
         key: Optional[str] = None,
@@ -312,11 +342,15 @@ class VerticalFloatingToolbar(_FloatingToolbarBase):
                 ``IconButton``; other widgets (including tooltip-wrapped buttons)
                 are laid out as-is, but the edge-inset heuristic assumes
                 button-sized children and degrades gracefully for larger ones.
-            padding: External padding around the floating toolbar.
+            fab: FAB placed below the container, ``fab_gap`` of the style
+                away. A FAB without an explicit style takes the colour and
+                elevation the toolbar's colour scheme prescribes; a FAB with
+                one keeps it.
+            padding: External padding around the floating toolbar and its FAB.
             style: Optional toolbar style. Defaults to ``ToolbarStyle.standard()``.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        super().__init__(buttons, orientation="vertical", padding=padding, style=style, key=key)
+        super().__init__(buttons, fab=fab, orientation="vertical", padding=padding, style=style, key=key)
 
 
 __all__ = ["DockedToolbar", "HorizontalFloatingToolbar", "VerticalFloatingToolbar"]

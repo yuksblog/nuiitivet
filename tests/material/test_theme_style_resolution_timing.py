@@ -498,6 +498,41 @@ def test_toolbar_follows_a_later_theme_change() -> None:
     assert toolbar.bgcolor == ColorRole.TERTIARY_CONTAINER
 
 
+def test_toolbar_fab_takes_the_style_the_toolbar_derives() -> None:
+    fab = Fab("edit")
+    toolbar = HorizontalFloatingToolbar([IconButton("add")], fab=fab)
+    _mount(toolbar, _theme_with())
+    toolbar.preferred_size()
+
+    assert fab.style == ToolbarStyle.standard().fab_style()
+    assert fab.state_layer_color == ColorRole.ON_SECONDARY_CONTAINER
+
+
+def test_toolbar_fab_follows_the_toolbar_scheme_across_a_theme_change() -> None:
+    fab = Fab("edit")
+    toolbar = VerticalFloatingToolbar([IconButton("add")], fab=fab)
+    manager = _mount(toolbar, _theme_with())
+    toolbar.preferred_size()
+    assert fab.style == ToolbarStyle.standard().fab_style()
+
+    manager.set_theme(_theme_with(_toolbar_style=ToolbarStyle.vibrant()))
+    toolbar.preferred_size()
+
+    assert fab.style == ToolbarStyle.vibrant().fab_style()
+    assert fab.state_layer_color == ColorRole.ON_TERTIARY_CONTAINER
+
+
+def test_toolbar_fab_explicit_style_wins_over_the_toolbar() -> None:
+    explicit = FabStyle.primary()
+    fab = Fab("edit", style=explicit)
+    toolbar = HorizontalFloatingToolbar([IconButton("add")], fab=fab)
+    _mount(toolbar, _theme_with(_toolbar_style=ToolbarStyle.vibrant()))
+    toolbar.preferred_size()
+
+    assert fab.style == explicit
+    assert fab.state_layer_color == ColorRole.ON_PRIMARY_CONTAINER
+
+
 # --- Menu -------------------------------------------------------------------
 
 _CUSTOM_MENU_STYLE = MenuStyle.standard().copy_with(

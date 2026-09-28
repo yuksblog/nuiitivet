@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import Literal, Optional, TYPE_CHECKING
 
+from nuiitivet.material.styles.button_size import FabSize
+from nuiitivet.material.styles.fab_style import FabStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.theme.types import ColorSpec
 
@@ -27,6 +29,7 @@ class ToolbarStyle:
         container_height: Visual container height in pixels.
         content_insets: Internal content insets.
         item_gap: Gap between action buttons.
+        fab_gap: Gap between a floating toolbar and the FAB beside it.
         corner_radius: Container corner radius in pixels.
         border_color: Optional border color.
         border_width: Border width in pixels.
@@ -39,6 +42,7 @@ class ToolbarStyle:
     container_height: int = 64
     content_insets: tuple[int, int, int, int] = (16, 0, 16, 0)
     item_gap: int = 8
+    fab_gap: int = 8
     corner_radius: int = 0
     border_color: Optional[ColorSpec] = None
     border_width: float = 0.0
@@ -47,6 +51,30 @@ class ToolbarStyle:
     def copy_with(self, **changes) -> "ToolbarStyle":
         """Return a copy of this style with changed fields."""
         return replace(self, **changes)
+
+    def fab_style(self, size: FabSize = "s") -> FabStyle:
+        """Return the style of a FAB placed beside a floating toolbar of this scheme.
+
+        The colour follows :attr:`color_scheme`: secondary-container for
+        ``standard``, tertiary-container for ``vibrant``. The elevation is
+        level 1 at size ``"s"`` and level 2 otherwise, one level higher while
+        hovered.
+
+        Args:
+            size: FAB size. MD3 pairs a floating toolbar with ``"s"`` (56dp)
+                and ``"m"`` (80dp); ``"l"`` is styled like ``"m"``.
+
+        Returns:
+            The derived FAB style.
+        """
+        base = FabStyle.tertiary(size) if self.color_scheme == "vibrant" else FabStyle.secondary(size)
+        elevation = 1 if size == "s" else 2
+        return base.copy_with(
+            elevation=elevation,
+            focused_elevation=elevation,
+            hovered_elevation=elevation + 1,
+            pressed_elevation=elevation,
+        )
 
     @classmethod
     def standard(cls) -> "ToolbarStyle":
@@ -58,6 +86,7 @@ class ToolbarStyle:
             container_height=64,
             content_insets=(16, 0, 16, 0),
             item_gap=8,
+            fab_gap=8,
             corner_radius=0,
             border_color=None,
             border_width=0.0,
@@ -74,6 +103,7 @@ class ToolbarStyle:
             container_height=64,
             content_insets=(16, 0, 16, 0),
             item_gap=8,
+            fab_gap=8,
             corner_radius=0,
             border_color=None,
             border_width=0.0,
