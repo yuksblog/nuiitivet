@@ -209,6 +209,7 @@ reading order. Then fix the **Next Steps** of the page it now follows.
 - [ ] Opens with working code
 - [ ] Every snippet executed, including inline ones
 - [ ] Short sentences, one fact each, dense throughout; a fact repeated only where two places are far apart
+- [ ] Each sentence checked against `docs/design/` and the docstrings, both open beside the draft; what either already says is deleted
 - [ ] Each paragraph opens with the thing and its verb; every cut is a deletion, not a merge
 - [ ] Sample exists and runs; guide code blocks match it
 - [ ] Root is a module-level `build_root` passed uncalled — no lambda, no local factory

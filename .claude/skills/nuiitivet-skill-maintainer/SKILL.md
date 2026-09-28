@@ -150,6 +150,8 @@ Run each item; never assert it.
   after any change to the server instructions or a tool description.
 - [ ] Every changed sentence is procedure, judgement, or the idiom beside the
   habit it replaces (Guardrails); a parameter explained is a docstring copy.
+- [ ] Each sentence checked against the docstrings and the tool output, both
+  open beside the draft; what either already says is deleted.
 - [ ] Every prohibition has its replacement adjacent; no hedge in a rule
   (Wording).
 - [ ] Short sentences, one fact each, dense throughout; a fact repeated only

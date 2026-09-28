@@ -92,6 +92,7 @@ in `mkdocs serve` or the GitHub preview.
 - [ ] No link into `docs/guide/`, no issue number: `uv run pytest tests/test_design_docs_stand_alone.py`
 - [ ] Short sentences, one fact each, dense throughout; a fact repeated only where two places are far apart
 - [ ] Every sentence states a fact the caller cannot observe, or the alternative it rules out; what an argument does is the docstring's
+- [ ] Each sentence checked against the docstrings and `docs/guide/`, both open beside the draft; what either already says is deleted
 - [ ] Each paragraph opens with the thing and its verb; a reason only where a choice was made; every cut is a deletion, not a merge
 - [ ] Sibling headings divide their parent on one axis, no gap, no overlap — checked on the whole page, not only the section touched
 - [ ] Structure, flow and sequences drawn as `mermaid`; every new diagram rendered once
