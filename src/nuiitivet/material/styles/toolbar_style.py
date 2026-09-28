@@ -6,7 +6,9 @@ from dataclasses import dataclass, replace
 from typing import Literal, Optional, TYPE_CHECKING
 
 from nuiitivet.material.styles.button_size import FabSize
+from nuiitivet.material.styles.button_style import ButtonStyle, IconButtonStyle, IconToggleButtonStyle
 from nuiitivet.material.styles.fab_style import FabStyle
+from nuiitivet.material.styles.toggle_button_style import ToggleButtonStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.theme.types import ColorSpec
 
@@ -20,12 +22,15 @@ ToolbarColorScheme = Literal["standard", "vibrant"]
 class ToolbarStyle:
     """Immutable style for Material toolbar widgets.
 
-    Presets: :meth:`standard`, :meth:`vibrant`.
+    Presets: :meth:`standard`, :meth:`vibrant`. The ``*_style`` methods
+    derive the styles a toolbar pushes onto the buttons it hosts.
 
     Attributes:
         color_scheme: Toolbar color scheme variant.
         background: Toolbar container background color.
-        foreground: Recommended foreground color for icon actions.
+        foreground: Icon and label color of the toolbar's buttons.
+        selected_background: Container color of a selected toggle button.
+        selected_foreground: Icon and label color of a selected toggle button.
         container_height: Visual container height in pixels.
         content_insets: Internal content insets.
         item_gap: Gap between action buttons.
@@ -38,7 +43,9 @@ class ToolbarStyle:
 
     color_scheme: ToolbarColorScheme = "standard"
     background: ColorSpec = ColorRole.SURFACE_CONTAINER_HIGHEST
-    foreground: ColorSpec = ColorRole.ON_SURFACE
+    foreground: ColorSpec = ColorRole.ON_SURFACE_VARIANT
+    selected_background: ColorSpec = ColorRole.SECONDARY_CONTAINER
+    selected_foreground: ColorSpec = ColorRole.ON_SECONDARY_CONTAINER
     container_height: int = 64
     content_insets: tuple[int, int, int, int] = (16, 0, 16, 0)
     item_gap: int = 8
@@ -76,13 +83,79 @@ class ToolbarStyle:
             pressed_elevation=elevation,
         )
 
+    def icon_button_style(self) -> ButtonStyle:
+        """Return the style of an icon button hosted by a toolbar of this scheme.
+
+        The container shows the toolbar through; the icon and the state layer
+        take :attr:`foreground`.
+
+        Returns:
+            The derived icon button style at size ``"s"``.
+        """
+        return IconButtonStyle.standard().copy_with(
+            background=None,
+            foreground=self.foreground,
+            overlay_color=self.foreground,
+        )
+
+    def icon_toggle_button_style(self) -> IconToggleButtonStyle:
+        """Return the style pair of an icon toggle button hosted by a toolbar of this scheme.
+
+        Unselected is :meth:`icon_button_style`; selected takes
+        :attr:`selected_background` and :attr:`selected_foreground`.
+
+        Returns:
+            The derived icon toggle style at size ``"s"``.
+        """
+        selected = IconToggleButtonStyle.standard().selected.copy_with(
+            background=self.selected_background,
+            foreground=self.selected_foreground,
+            overlay_color=self.selected_foreground,
+        )
+        return IconToggleButtonStyle(selected=selected, unselected=self.icon_button_style())
+
+    def button_style(self) -> ButtonStyle:
+        """Return the style of a text button hosted by a toolbar of this scheme.
+
+        The container shows the toolbar through; the label, icon and state
+        layer take :attr:`foreground`.
+
+        Returns:
+            The derived button style at size ``"s"``.
+        """
+        return ButtonStyle.text().copy_with(
+            background=None,
+            foreground=self.foreground,
+            overlay_color=self.foreground,
+        )
+
+    def toggle_button_style(self) -> ToggleButtonStyle:
+        """Return the style of a text toggle button hosted by a toolbar of this scheme.
+
+        Unselected matches :meth:`button_style`; selected takes
+        :attr:`selected_background` and :attr:`selected_foreground`.
+
+        Returns:
+            The derived toggle button style at size ``"s"``.
+        """
+        return ToggleButtonStyle.filled().copy_with(
+            unselected_background=None,
+            unselected_foreground=self.foreground,
+            unselected_overlay_color=self.foreground,
+            selected_background=self.selected_background,
+            selected_foreground=self.selected_foreground,
+            selected_overlay_color=self.selected_foreground,
+        )
+
     @classmethod
     def standard(cls) -> "ToolbarStyle":
         """Return the standard toolbar style."""
         return cls(
             color_scheme="standard",
             background=ColorRole.SURFACE_CONTAINER_HIGHEST,
-            foreground=ColorRole.ON_SURFACE,
+            foreground=ColorRole.ON_SURFACE_VARIANT,
+            selected_background=ColorRole.SECONDARY_CONTAINER,
+            selected_foreground=ColorRole.ON_SECONDARY_CONTAINER,
             container_height=64,
             content_insets=(16, 0, 16, 0),
             item_gap=8,
@@ -100,6 +173,8 @@ class ToolbarStyle:
             color_scheme="vibrant",
             background=ColorRole.PRIMARY_CONTAINER,
             foreground=ColorRole.ON_PRIMARY_CONTAINER,
+            selected_background=ColorRole.SURFACE_CONTAINER,
+            selected_foreground=ColorRole.ON_SURFACE,
             container_height=64,
             content_insets=(16, 0, 16, 0),
             item_gap=8,

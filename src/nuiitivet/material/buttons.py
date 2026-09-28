@@ -304,13 +304,38 @@ class MaterialButtonBase(InteractiveWidget):
     Uses InteractiveWidget for state layer handling.
     """
 
+    #: The style a hosting widget derived for this button, or ``None`` to
+    #: resolve without one. Set through :meth:`_set_host_style`; each button
+    #: class reads it only when it is the style type that class takes.
+    _host_style: Optional[object] = None
+
     @property
     def style(self) -> ButtonStyle:
+        """Return the style in effect: the caller's, else the host's, else the filled preset."""
         if hasattr(self, "_user_style") and self._user_style is not None:
             return self._user_style
-
-        # Default fallback (no user style, no explicit variant resolution).
+        host = self._host_style
+        if isinstance(host, ButtonStyle):
+            return host
         return ButtonStyle.filled("s")
+
+    def _set_host_style(self, style: Optional[object]) -> None:
+        """Take the style a hosting widget derives for this button.
+
+        A toolbar pushes the style its colour scheme prescribes for each
+        button it hosts. A style the caller passed still wins. Before the
+        first measure the value waits for that measure; afterwards the colour
+        targets are re-derived at once, so a scheme change animates the way a
+        theme change does.
+
+        Args:
+            style: The derived style, or ``None`` to resolve without a host.
+        """
+        if style == self._host_style:
+            return
+        self._host_style = style
+        if self._applied_theme_generation is not None:
+            self._on_theme_change(Theme.of(self))
 
     def __init__(
         self,
@@ -799,7 +824,8 @@ class Button(MaterialButtonBase):
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         effective_style = style if style is not None else ButtonStyle.filled("s")
-        self._user_style = effective_style
+        #: The style the caller passed, or ``None`` to follow the host or the preset.
+        self._user_style: Optional[ButtonStyle] = style
         self._user_padding = padding
         self._user_height = None
 
@@ -862,7 +888,8 @@ class IconButton(MaterialButtonBase):
         """
         effective_style = style if style is not None else IconButtonStyle.standard()
 
-        self._user_style = effective_style
+        #: The style the caller passed, or ``None`` to follow the host or the preset.
+        self._user_style: Optional[ButtonStyle] = style
         self._user_padding = padding
         # The container is MD3-fixed, so the fixed sizing carries the padding
         # band as well: allocated = container + padding.
@@ -887,6 +914,16 @@ class IconButton(MaterialButtonBase):
             key=key,
             **params,
         )
+
+    @property
+    def style(self) -> ButtonStyle:
+        """Return the style in effect: the caller's, else the host's, else the standard preset."""
+        if self._user_style is not None:
+            return self._user_style
+        host = self._host_style
+        if isinstance(host, ButtonStyle):
+            return host
+        return IconButtonStyle.standard()
 
     def _on_theme_change(self, theme) -> None:
         params = resolve_button_style_params(
@@ -1118,9 +1155,12 @@ class ToggleButton(ToggleButtonBase):
         )
 
     def _toggle_style(self) -> ToggleButtonStyle:
-        """Return the toggle style in effect, pulled from the theme."""
+        """Return the toggle style in effect: the caller's, else the host's, else the theme's."""
         if self._user_toggle_style is not None:
             return self._user_toggle_style
+        host = self._host_style
+        if isinstance(host, ToggleButtonStyle):
+            return host
         return ToggleButtonStyle.from_theme(Theme.of(self))
 
     def _resolve_style_for_selected(self, selected: bool) -> ButtonStyle:
@@ -1184,9 +1224,12 @@ class IconToggleButton(ToggleButtonBase):
         )
 
     def _icon_toggle_style(self) -> IconToggleButtonStyle:
-        """Return the icon-toggle style in effect, pulled from the theme."""
+        """Return the icon-toggle style in effect: the caller's, else the host's, else the theme's."""
         if self._user_toggle_style is not None:
             return self._user_toggle_style
+        host = self._host_style
+        if isinstance(host, IconToggleButtonStyle):
+            return host
         return IconToggleButtonStyle.from_theme(Theme.of(self))
 
     def _resolve_style_for_selected(self, selected: bool) -> ButtonStyle:
@@ -1207,9 +1250,6 @@ class _FabBase(MaterialButtonBase):
 
     #: The style the caller passed, or ``None`` to follow the host or the theme.
     _user_style: Optional[FabStyle]
-    #: The style a hosting widget derived for this FAB, or ``None`` to follow
-    #: the theme. Set through :meth:`_set_host_style`.
-    _host_style: Optional[FabStyle] = None
     _user_padding: PaddingLike
     _user_height: Union[int, float]
 
@@ -1224,29 +1264,12 @@ class _FabBase(MaterialButtonBase):
         lands back here with the new value.
         """
         base = self._user_style
-        if base is None:
-            base = self._host_style
+        host = self._host_style
+        if base is None and isinstance(host, FabStyle):
+            base = host
         if base is None:
             base = FabStyle.from_theme(Theme.of(self))
         return self._adapt_style(base)
-
-    def _set_host_style(self, style: Optional[FabStyle]) -> None:
-        """Take the style a hosting widget derives for this FAB.
-
-        A floating toolbar pushes the style its colour scheme prescribes for
-        the FAB beside it. A style the caller passed still wins. Before the
-        first measure the value waits for that measure; afterwards the colour
-        targets are re-derived at once, so a scheme change animates the way a
-        theme change does.
-
-        Args:
-            style: The derived style, or ``None`` to follow the theme again.
-        """
-        if style == self._host_style:
-            return
-        self._host_style = style
-        if self._applied_theme_generation is not None:
-            self._on_theme_change(Theme.of(self))
 
     def _adapt_style(self, style: FabStyle) -> FabStyle:
         """Project a resolved base style onto this FAB's container tokens.

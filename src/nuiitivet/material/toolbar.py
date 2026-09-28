@@ -6,8 +6,9 @@ from typing import Literal, Optional, Sequence, Tuple, Union
 
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.row import Row
-from nuiitivet.material.buttons import Fab
+from nuiitivet.material.buttons import Button, Fab, IconButton, IconToggleButton, ToggleButton
 from nuiitivet.material.styles.toolbar_style import ToolbarStyle
+from nuiitivet.modifiers.tooltip import TooltipBox
 from nuiitivet.rendering.padding import PaddingLike, parse_padding
 from nuiitivet.rendering.sizing import Sizing, SizingLike
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
@@ -16,6 +17,29 @@ from nuiitivet.widgets.box import Box
 from nuiitivet.widgeting.widget import Widget
 
 _ToolbarOrientation = Literal["horizontal", "vertical"]
+
+
+def _push_button_styles(style: ToolbarStyle, children: Sequence[Widget]) -> None:
+    """Push the scheme's button styles onto the Material buttons among ``children``.
+
+    A tooltip-wrapped button is reached through its wrapper, since icon-only
+    toolbar buttons need tooltips. Any other widget is left alone.
+    """
+    for child in children:
+        target = child
+        if isinstance(target, TooltipBox):
+            wrapped = target.children_snapshot()
+            target = wrapped[0] if wrapped else target
+        if isinstance(target, Fab):
+            target._set_host_style(style.fab_style())
+        elif isinstance(target, IconToggleButton):
+            target._set_host_style(style.icon_toggle_button_style())
+        elif isinstance(target, ToggleButton):
+            target._set_host_style(style.toggle_button_style())
+        elif isinstance(target, IconButton):
+            target._set_host_style(style.icon_button_style())
+        elif isinstance(target, Button):
+            target._set_host_style(style.button_style())
 
 
 def _resolve_content_insets(
@@ -109,6 +133,9 @@ class DockedToolbar(_ToolbarBase):
                 ``IconButton``; other widgets (including tooltip-wrapped buttons)
                 are laid out as-is, but the edge-inset heuristic assumes
                 button-sized children and degrades gracefully for larger ones.
+                A Material button without an explicit style, tooltip-wrapped
+                or not, takes the colours the toolbar's colour scheme
+                prescribes; a button with one keeps it.
             style: Optional toolbar style. Defaults to the theme's toolbar
                 style, which itself falls back to ``ToolbarStyle.standard()``.
             padding: Insets from the allocated rect to the toolbar.
@@ -155,6 +182,7 @@ class DockedToolbar(_ToolbarBase):
         self.corner_radius = style.corner_radius
         self._content.gap = style.item_gap
         self._content.padding = style.content_insets
+        _push_button_styles(style, self._content.children_snapshot())
         self.invalidate()
 
 
@@ -184,6 +212,9 @@ class _FloatingToolbarBase(_ToolbarBase):
                 ``IconButton``; other widgets (including tooltip-wrapped buttons)
                 are laid out as-is, but the edge-inset heuristic assumes
                 button-sized children and degrades gracefully for larger ones.
+                A Material button without an explicit style, tooltip-wrapped
+                or not, takes the colours the toolbar's colour scheme
+                prescribes; a button with one keeps it.
             fab: FAB placed trailing, ``fab_gap`` of the style away from the
                 container. A FAB without an explicit style takes the colour
                 and elevation the toolbar's colour scheme prescribes; a FAB
@@ -274,10 +305,11 @@ class _FloatingToolbarBase(_ToolbarBase):
         if self.orientation == "horizontal":
             self._inner_container.height_sizing = Sizing.fixed(int(style.container_height))
         self._layout_content.gap = style.item_gap
-        self._layout_content.padding = _resolve_content_insets(
-            style,
-            self._layout_content.children_snapshot(),
-        )
+        # Styles go on before the inset is measured, so the buttons are
+        # measured once, in their toolbar colours.
+        buttons = self._layout_content.children_snapshot()
+        _push_button_styles(style, buttons)
+        self._layout_content.padding = _resolve_content_insets(style, buttons)
         if self._fab_layout is not None:
             self._fab_layout.gap = style.fab_gap
         if self._fab is not None:
@@ -308,6 +340,9 @@ class HorizontalFloatingToolbar(_FloatingToolbarBase):
                 ``IconButton``; other widgets (including tooltip-wrapped buttons)
                 are laid out as-is, but the edge-inset heuristic assumes
                 button-sized children and degrades gracefully for larger ones.
+                A Material button without an explicit style, tooltip-wrapped
+                or not, takes the colours the toolbar's colour scheme
+                prescribes; a button with one keeps it.
             fab: FAB placed to the right of the container, ``fab_gap`` of the
                 style away. A FAB without an explicit style takes the colour
                 and elevation the toolbar's colour scheme prescribes; a FAB
@@ -342,6 +377,9 @@ class VerticalFloatingToolbar(_FloatingToolbarBase):
                 ``IconButton``; other widgets (including tooltip-wrapped buttons)
                 are laid out as-is, but the edge-inset heuristic assumes
                 button-sized children and degrades gracefully for larger ones.
+                A Material button without an explicit style, tooltip-wrapped
+                or not, takes the colours the toolbar's colour scheme
+                prescribes; a button with one keeps it.
             fab: FAB placed below the container, ``fab_gap`` of the style
                 away. A FAB without an explicit style takes the colour and
                 elevation the toolbar's colour scheme prescribes; a FAB with

@@ -5,12 +5,13 @@ from __future__ import annotations
 import nuiitivet.material as nv
 
 
-def _actions() -> list[nv.IconButton]:
+def _actions() -> list[nv.Widget]:
+    # Buttons without a style take the toolbar's colour scheme; the filled one keeps its own.
     return [
-        nv.IconButton("menu", style=nv.IconButtonStyle.standard()),
-        nv.IconButton("search", style=nv.IconButtonStyle.standard()),
+        nv.IconButton("menu"),
+        nv.IconButton("search"),
         nv.IconButton("favorite", style=nv.IconButtonStyle.filled()),
-        nv.IconButton("more_vert", style=nv.IconButtonStyle.outlined()),
+        nv.IconToggleButton("bookmark", selected=True),
     ]
 
 

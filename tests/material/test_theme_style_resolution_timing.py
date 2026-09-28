@@ -42,7 +42,7 @@ from nuiitivet.material.styles.button_group_style import (
     ConnectedButtonGroupStyle,
     StandardButtonGroupStyle,
 )
-from nuiitivet.material.styles.button_style import IconToggleButtonStyle
+from nuiitivet.material.styles.button_style import IconButtonStyle, IconToggleButtonStyle
 from nuiitivet.material.styles.card_style import CardStyle
 from nuiitivet.material.styles.chip_style import ChipStyle
 from nuiitivet.material.styles.fab_style import FabStyle
@@ -531,6 +531,35 @@ def test_toolbar_fab_explicit_style_wins_over_the_toolbar() -> None:
 
     assert fab.style == explicit
     assert fab.state_layer_color == ColorRole.ON_PRIMARY_CONTAINER
+
+
+def test_toolbar_button_follows_the_toolbar_scheme_across_a_theme_change() -> None:
+    button = IconButton("add")
+    toggle = IconToggleButton("star", selected=True)
+    toolbar = DockedToolbar([button, toggle])
+    manager = _mount(toolbar, _theme_with())
+    toolbar.preferred_size()
+    assert button.style == ToolbarStyle.standard().icon_button_style()
+    assert toggle.style == ToolbarStyle.standard().icon_toggle_button_style().selected
+
+    manager.set_theme(_theme_with(_toolbar_style=ToolbarStyle.vibrant()))
+    toolbar.preferred_size()
+
+    assert button.style == ToolbarStyle.vibrant().icon_button_style()
+    assert button.state_layer_color == ColorRole.ON_PRIMARY_CONTAINER
+    assert toggle.style == ToolbarStyle.vibrant().icon_toggle_button_style().selected
+    assert toggle.state_layer_color == ColorRole.ON_SURFACE
+
+
+def test_toolbar_button_explicit_style_wins_over_the_toolbar() -> None:
+    explicit = IconButtonStyle.filled()
+    button = IconButton("add", style=explicit)
+    toolbar = HorizontalFloatingToolbar([button])
+    _mount(toolbar, _theme_with(_toolbar_style=ToolbarStyle.vibrant()))
+    toolbar.preferred_size()
+
+    assert button.style == explicit
+    assert button.state_layer_color == ColorRole.ON_PRIMARY
 
 
 # --- Menu -------------------------------------------------------------------
