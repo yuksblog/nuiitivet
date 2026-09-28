@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import socket
 import subprocess
 import sys
 import threading
@@ -13,6 +14,7 @@ from typing import Any, Iterator
 import pytest
 
 from nuiitivet.dev import bridge as bridge_mod
+from nuiitivet.dev import client as client_mod
 from nuiitivet.dev import session as dev_session
 from nuiitivet.dev.bridge import DISCOVERY_DIRNAME, DISCOVERY_FILENAME, DevBridge
 from nuiitivet.dev.client import BridgeClient, BridgeNotFoundError, find_discovery_file
@@ -170,6 +172,55 @@ def test_bridge_health_and_discovery(tmp_path: Path, dev_run: None) -> None:
     finally:
         bridge.shutdown()
     assert not (tmp_path / DISCOVERY_DIRNAME / DISCOVERY_FILENAME).exists()
+
+
+def test_client_opener_speaks_no_https() -> None:
+    """The opener has no HTTPS handler, so it never builds a TLS context."""
+    from urllib.error import URLError
+
+    with pytest.raises(URLError, match="unknown url type: https"):
+        client_mod._build_opener().open("https://127.0.0.1:1/health", timeout=0.2)
+
+
+def test_client_ignores_an_environment_proxy(
+    tmp_path: Path, dev_run: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A proxy from the environment never sits between the CLI and a loopback bridge."""
+    monkeypatch.setenv("http_proxy", "http://127.0.0.1:1")
+    monkeypatch.delenv("no_proxy", raising=False)
+    bridge = DevBridge(_fake_app(), tmp_path)
+    bridge.start()
+    try:
+        body, _ = BridgeClient("127.0.0.1", _port_of(bridge))._get("/health")
+        assert b"ok" in body
+    finally:
+        bridge.shutdown()
+
+
+def test_client_reaches_the_bridge_with_an_unwritable_sslkeylogfile(
+    tmp_path: Path, dev_run: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An unwritable SSLKEYLOGFILE must not stop a call that never uses TLS.
+
+    Python 3.13+ builds an SSL context inside ``HTTPSHandler.__init__``, so the
+    module-level ``urlopen`` fails before the socket. The client's own opener
+    reaches the bridge, and a closed port still reports the bridge as gone.
+    """
+    monkeypatch.setenv("SSLKEYLOGFILE", str(tmp_path / "missing" / "keys.log"))
+    bridge = DevBridge(_fake_app(), tmp_path)
+    bridge.start()
+    try:
+        client = BridgeClient("127.0.0.1", _port_of(bridge))
+        body, _ = client._get("/health")
+        assert b"ok" in body
+    finally:
+        bridge.shutdown()
+
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        closed_port = probe.getsockname()[1]
+    with pytest.raises(BridgeNotFoundError):
+        BridgeClient("127.0.0.1", closed_port)._get("/health")
 
 
 def test_bridge_describe_tree_and_screenshot(tmp_path: Path, dev_run: None) -> None:
