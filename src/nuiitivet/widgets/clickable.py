@@ -85,7 +85,16 @@ class Clickable(InteractionHostMixin, FocusTraversalBlocker, Box):
         self._traversable = bool(traversable)
 
         if not initial_disabled and focusable:
-            self.add_node(FocusNode(traversable=self._traversable))
+            self.add_node(self._create_focus_node())
+
+    def _create_focus_node(self) -> FocusNode:
+        """Build the FocusNode this widget holds while enabled.
+
+        The node is built here and only here: at construction for a widget born
+        enabled, and on the first enable for one born disabled. A subclass that
+        wires callbacks into the node overrides this, so both paths carry them.
+        """
+        return FocusNode(traversable=self._traversable)
 
     def set_traversable(self, traversable: bool) -> None:
         """Set whether the global Tab sequence stops on this widget.
@@ -131,7 +140,7 @@ class Clickable(InteractionHostMixin, FocusTraversalBlocker, Box):
         else:
             # Lazily add focus support when re-enabled.
             if self._focusable and self.get_node(FocusNode) is None:
-                self.add_node(FocusNode(traversable=self._traversable))
+                self.add_node(self._create_focus_node())
 
         self.invalidate()
 

@@ -78,11 +78,12 @@ class InteractiveWidget(Clickable):
         self.state_layer_color = state_layer_color
         self._focus_from_pointer = False
 
-        # Attach key event handler to the FocusNode (Standard Accessibility)
-        node = self.get_node(FocusNode)
-        if node and isinstance(node, FocusNode):
-            node._on_key = self.on_key_event
-            node._on_focus_change = self._handle_focus_change
+    def _create_focus_node(self) -> FocusNode:
+        return FocusNode(
+            traversable=self._traversable,
+            on_focus_change=self._handle_focus_change,
+            on_key=self.on_key_event,
+        )
 
     def on_key_event(self, key: str, modifier_keys: int = 0) -> bool:
         """Handle key events (Space/Enter to click)."""
