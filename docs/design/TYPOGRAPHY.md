@@ -1,166 +1,72 @@
 # Typography
 
-This document defines how text typography is modeled in nuiitivet: the MD3
-type-scale token system and the three-layer separation of concerns across
-`TypeScaleToken`, the `Text` widget, and `TextStyle`.
+Text is described by three objects that never overlap: a `TypeScaleToken` for
+the MD3 metrics, the `Text` widget for layout inside its box, and a
+`TextStyle` for the reusable look. Why `Icon` stays a numeric `size` and is
+not coupled to the type scale is in [SIZE_POLICY.md](SIZE_POLICY.md).
 
-See also: [SIZE_POLICY.md](SIZE_POLICY.md) (why `Icon` stays a numeric `size`
-axis and is *not* coupled to the text type-scale).
+## The Three Layers
 
-## 0. The three-layer model
+Every property lands in exactly one layer, by one test:
 
-Every property that used to live loosely on "the text style" is assigned to
-exactly one of three layers by a single litmus:
-
-> 1. Is it an **MD3 type-scale metric**? → `TypeScaleToken`.
-> 2. Does it affect **layout / wrapping inside the box**? → the `Text` widget.
-> 3. Otherwise, is it a **reusable visual property**? → `TextStyle`.
+> 1. An **MD3 type-scale metric** → `TypeScaleToken`.
+> 2. Affects **layout or wrapping inside the box** → the `Text` widget.
+> 3. Otherwise a **reusable visual property** → `TextStyle`.
 
 | Layer | Owns | Examples |
 | :--- | :--- | :--- |
-| **`TypeScaleToken`** | MD3 metrics that vary *per type-scale role* | `font_size`, `line_height`, `weight`, `tracking` |
-| **`Text` (widget)** | Layout / flow behavior | `alignment`, `max_lines`, `overflow`, `truncation`, `soft_wrap`, `padding`, `width`, `height` |
-| **`TextStyle`** | Reusable visual look, orthogonal to role & layout | `color`, `font_family` (+ future, see §4) |
+| `TypeScaleToken` | Metrics that vary per type-scale role | `font_size`, `line_height`, `weight`, `tracking` |
+| `Text` | Layout and flow | `alignment`, `max_lines`, `overflow`, `truncation`, `soft_wrap`, `padding`, `width`, `height` |
+| `TextStyle` | Look, orthogonal to role and layout | `color`, `font_family` |
 
-The three layers are **orthogonal**: a `TypeScaleToken` is never expanded into
-`TextStyle`, and `TextStyle` never carries typography or alignment. Because
-their fields never overlap, there is no precedence question when both a
-`type_scale` and a `style` are supplied to a `Text` — they simply describe
-different things.
+Because the fields never overlap there is no precedence question when a `Text`
+receives both a `type_scale` and a `style`; they describe different things, and
+at paint time `Text` reads typography from one and colour from the other with
+no merged object in between. A `TypeScaleToken` is never expanded into a
+`TextStyle`, and a `TextStyle` never carries typography or alignment.
 
-```python
-Text("Heading",
-     type_scale=TypeScale.TITLE_MEDIUM,     # typography
-     style=TextStyle(color=ColorRole.ERROR), # visual look
-     alignment="center", max_lines=2)         # layout / flow
-```
+Two boundary cases fixed by the test: italic goes to `TextStyle`, because no
+MD3 role defines it; `word_spacing` would go to `TextStyle` while `tracking`
+is on the token, because tracking is role-defined and word spacing is not.
 
-At paint time `Text` reads typography from `type_scale` and color from `style`;
-no merged object is constructed.
+## The Token Is a Struct
 
-## 1. `TypeScaleToken`
+A type-scale role is a structured value, four metrics, not a bare font size.
+`Text` needs the whole bundle, and the struct blocks a collision at the type
+level: a token does not satisfy `Icon(size=...)`, whose `SizingLike` is
+`int | "auto" | "wt"`, so a text role cannot leak into icon sizing. MD3
+defines no mapping from a type-scale role to an icon size, and a role's font
+size (16) is not an icon optical size (20/24/40/48).
 
-A type-scale role is a *structured value*, not a bare number:
+`TypeScale` exposes the MD3 baseline roles as static tokens, and a `Text`
+without a `type_scale` uses `BODY_MEDIUM`. A size that comes from a widget's
+`*Style` config rather than a role is wrapped by `TypeScaleToken.from_size`,
+which still yields a full token, so the `Icon(size=...)` guard holds there
+too. All four metrics reach the Skia text path; `tracking` is applied in width
+and ink measurement as well as paint, so wrapping and ellipsis agree with what
+is drawn.
 
-```python
-@dataclass(frozen=True)
-class TypeScaleToken:
-    font_size: float
-    line_height: float   # absolute px (faithful to MD3), affects multi-line only
-    weight: int          # 100-900; MD3 uses 400 (Regular) / 500 (Medium)
-    tracking: float      # letter-spacing px; may be negative
-```
+## Why Not Ambient Inheritance
 
-Why structured and not a plain `int`:
+An ambient icon theme, a Flutter `IconTheme`-style scope through which an
+`Icon` sizes itself to the adjacent text, was rejected as the primary model.
+The framework's first-class model is explicit parent-to-child passing;
+ambient inheritance is reserved for coarse, stable, cross-cutting values
+(theme, locale, text direction). A per-subtree type-scale scope is
+fine-grained and changes often, so it carries the cost of implicit context
+without the payoff. And "icon matches adjacent text" almost always happens
+inside a composite widget, a list item, a chip, a button, a rail label, where
+the common parent takes one type scale and hands explicit sizes to its `Text`
+and `Icon` children with no sibling coupling.
 
-* A role carries more than a size (line height / weight / tracking); `Text`
-  needs the whole bundle.
-* Being a struct means a token does **not** satisfy `Icon(size=...)` (a
-  `SizingLike` of `int | "auto" | "wt"`). The collision that would let a text
-  role leak into icon sizing is blocked *at the type level*. MD3 defines no
-  type-scale → icon-size mapping, and a role's font size (e.g. 16) is not an
-  icon optical size (20/24/40/48).
+`Icon` therefore exposes no type-scale parameter and keeps its numeric `size`.
 
-### Overrides
+## Composite Widgets
 
-Single-metric tweaks live on the token:
-
-```python
-TypeScale.TITLE_MEDIUM.copy_with(weight=700)
-```
-
-### Raw sizes without a role
-
-When a size comes from a widget's `*Style` config (a numeric `label_font_size`,
-etc.) rather than a semantic role, build a token from the size:
-
-```python
-TypeScaleToken.from_size(18)   # line_height defaults to size * 1.25
-```
-
-`from_size` still yields a full, four-field token, so the `Icon(size=...)`
-guard above continues to hold.
-
-### The 15 baseline roles
-
-`TypeScale` exposes the MD3 2021 baseline scale as static tokens:
-`(font_size, line_height, weight, tracking)`.
-
-| Role | size | line height | weight | tracking |
-| :--- | ---: | ---: | ---: | ---: |
-| `DISPLAY_LARGE` | 57 | 64 | 400 | -0.25 |
-| `DISPLAY_MEDIUM` | 45 | 52 | 400 | 0 |
-| `DISPLAY_SMALL` | 36 | 44 | 400 | 0 |
-| `HEADLINE_LARGE` | 32 | 40 | 400 | 0 |
-| `HEADLINE_MEDIUM` | 28 | 36 | 400 | 0 |
-| `HEADLINE_SMALL` | 24 | 32 | 400 | 0 |
-| `TITLE_LARGE` | 22 | 28 | 400 | 0 |
-| `TITLE_MEDIUM` | 16 | 24 | 500 | 0.15 |
-| `TITLE_SMALL` | 14 | 20 | 500 | 0.1 |
-| `BODY_LARGE` | 16 | 24 | 400 | 0.5 |
-| `BODY_MEDIUM` | 14 | 20 | 400 | 0.25 |
-| `BODY_SMALL` | 12 | 16 | 400 | 0.4 |
-| `LABEL_LARGE` | 14 | 20 | 500 | 0.1 |
-| `LABEL_MEDIUM` | 12 | 16 | 500 | 0.5 |
-| `LABEL_SMALL` | 11 | 16 | 500 | 0.5 |
-
-`DEFAULT_TYPE_SCALE` is `BODY_MEDIUM`; a `Text` created without an explicit
-`type_scale` uses it.
-
-> **Rendering status:** all four metrics are wired into the Skia text path.
-> `font_size` and `line_height` drive layout and paint; `weight` is threaded into
-> typeface resolution (`FontStyle`, with the platform font manager selecting the
-> nearest available weight as a graceful fallback); and `tracking` (letter
-> spacing, may be negative) is applied consistently in both width/ink
-> measurement and paint, so wrapping and ellipsis stay correct.
-
-## 2. Why not ambient inheritance
-
-An earlier proposal ("ambient icon theme") would have let an `Icon`
-auto-size to adjacent text via a Flutter-`IconTheme`-style scope inherited
-through the widget tree. We rejected this as the primary model:
-
-* The framework's first-class model is **explicit parent → child** prop passing.
-  Ambient inheritance (action-at-a-distance) is reserved for coarse, stable,
-  cross-cutting concerns (theme, locale, text direction), e.g. `Theme.of()`.
-* A *per-subtree, frequently-changing* type-scale scope is fine-grained and
-  dynamic — it carries the cognitive cost of implicit context without enough
-  payoff.
-* "Icon matches adjacent text" is almost always inside a **composite widget**
-  (list item, chip, button, nav-rail label). The natural solution is: the
-  common parent takes one type-scale and hands explicit sizes to its `Text` and
-  `Icon` children. Pure parent → child, no ambient scope, no sibling coupling.
-
-Consequently `Icon` exposes **no** type-scale parameter; it keeps its numeric
-`size`. Composite widgets pick the appropriate optical size internally.
-
-## 3. Composite widgets
-
-Material components that pair text and icon own their typography internally:
-
-* Semantic roles are used where MD3 fixes them, e.g. dialog title →
-  `HEADLINE_SMALL`, dialog content → `BODY_MEDIUM`, nav-rail collapsed label →
-  `LABEL_MEDIUM`, expanded label → `LABEL_LARGE`.
-* Config-driven numeric sizes (a `*Style.label_font_size`, etc.) use
-  `TypeScaleToken.from_size(...)`.
-
-Their `*Style` dataclasses keep only visual overrides (`color`, `font_family`)
-in the `TextStyle` fields they expose; typography roles are fixed by the
-component.
-
-## 4. Future `TextStyle` growth
-
-`TextStyle` is intentionally thin today (`color`, `font_family`) but will grow
-with reusable visual properties that are neither type-scale metrics nor layout:
-
-* `decoration` / `decoration_color` / `decoration_style` / `decoration_thickness`
-* `shadows`, `background_color`, gradient/`foreground` fill
-* `font_style` (italic), `font_features`, `font_variations`
-* `word_spacing`, `text_baseline`, `locale`
-
-Boundary cases fixed by the litmus in §0:
-
-* **italic (`font_style`) → `TextStyle`** — MD3 roles do not define italic; it is
-  orthogonal to role.
-* **`word_spacing` → `TextStyle`**, but **`tracking` → `TypeScaleToken`** —
-  tracking is role-defined, word-spacing is not.
+A Material component that pairs text and icon owns its typography. Where MD3
+fixes the role it uses the role: a dialog title is `HEADLINE_SMALL`, dialog
+content `BODY_MEDIUM`, a collapsed rail label `LABEL_MEDIUM` and an expanded
+one `LABEL_LARGE`. A config-driven numeric size (`*Style.label_font_size`)
+goes through `TypeScaleToken.from_size`. The `TextStyle` fields a `*Style`
+exposes carry visual overrides only, `color` and `font_family`; the role is
+fixed by the component.
