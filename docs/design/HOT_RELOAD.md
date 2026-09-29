@@ -350,7 +350,7 @@ runner's argv back would break the next save. `pdb` and `cProfile` do the same.
 
 ## 9. Threading
 
-Widget-tree mutation is main-thread-only (`docs/design/THREADING_MODEL.md`). The
+Widget-tree mutation is main-thread-only (`docs/design/CONCURRENCY_MODEL.md`). The
 file watcher runs on a background thread and only *signals* that a file changed;
 it never touches the tree. A `pyglet.clock` callback on the UI thread drains the
 signal and performs the reload. A useful consequence: a save made while stopped

@@ -1,137 +1,61 @@
-# Error handling
+# Error Handling
 
-## Error handling policy
+An exception is never silenced by `try/except: pass`. It is caught once, at a
+boundary, logged with its stack trace, and the framework continues or fails
+fast; inside the boundary it propagates. This keeps a root cause findable and
+keeps one failure from flooding the log.
 
-Avoid states where exceptions occurring throughout the framework are silenced by `try/except: pass`, making root cause tracking difficult.
+## Boundary and Internal
 
-- Reduce "silent failures"
-- Enable consistent handling of exceptions
-- Preserve stack traces while preventing log flooding
+A **boundary** is an entry point from the OS or the backend into the
+framework: it finalises the treatment of an exception, to log and continue,
+to fail fast, or to raise. **Internal** code, everything the boundary calls
+(rendering, layout, tree operations, subscriptions), propagates an exception
+to its boundary. An internal catch that is needed adds context, by wrapping
+or by message, and re-raises.
 
-### Boundary vs internal
+Boundaries in the repository: the app run entry (`App.run` and the frame
+driving around `Window._render_frame`), the backend's `@window.event`
+handlers in `backends.pyglet.runner.run_app` (`on_draw`, `on_mouse_*`,
+`on_key_*`), the event loop (`ResponsiveEventLoop.run` / `_perform_draw`) and
+input delivery (`runtime.app_events.dispatch_*`). Internal: `widgeting`,
+`layout`, `scrolling`, `rendering`, `animation`, `theme`, `colors`,
+`observable` and `widgets`, except where a widget calls a user-provided
+callback, which is a boundary of the callback kind below.
 
-This document divides exception handling into two roles: "Boundary" and "Internal".
+## By Kind of Work
 
-- **Boundary** (Perimeter)
-  - Entry points from the OS/backend into the framework interior.
-  - Finalizes the treatment of exceptions.
-    - Convert to log + continue / fail fast
-    - raise
-- **Internal** (Implementation details)
-  - Core processing called from boundaries, such as rendering, layout, tree operations, and subscriptions.
-  - Propagates exceptions to boundaries without silencing them.
+| Work | Policy |
+| --- | --- |
+| Startup: app start, backend initialisation, an essential resource | Raise; failing to start means the app cannot continue. An auxiliary feature that fails to initialise logs and falls back. |
+| Event input: a click, a key, navigation, focus delivered from the OS | Catch at the delivery boundary, log, continue to the next event. |
+| Rebuild: a state update, a recomposition | Catch at the boundary, log, skip the affected subtree or unit of work where possible, continue. |
+| The frame hot path: draw, layout, animation, once per frame | Catch at the frame boundary, log once per occurrence, drop the frame, continue to the next. |
+| Calling external code: a user callback, a subscription notification, an async task completion | Catch at the caller, log, keep the subscription alive. An explicit cancellation (`CancelledError`) is ignored or logged at DEBUG. |
 
-## Processing categories
+A synchronous handler that raises is reported and the frame continues: it is
+on the frame's own call stack, where unwinding would abandon the rest of the
+dispatch. The task of an async handler can re-raise, because the task is the
+harness's to await.
 
-### Startup / initialization
+## Logging
 
-Sections where "failure to start means inability to continue," such as app startup, backend initialization, and essential resource resolution.
+`logger.exception(...)` preserves the stack trace and is called only at a
+boundary, where the exception is converted to a continuation; an internal
+catch never calls it, so a trace appears once.
 
-- Principle: raise (fail fast)
-- Exception: If an auxiliary feature fails to initialize but the app can still continue, log and fallback.
+The `*_once` helpers (`debug_once`, `warning_once`, `exception_once`,
+`exception_once_per_exc` in `common.logging_once`) emit a record once per
+process per key, so a failure that recurs every frame is logged once. The key
+is a string the call site chooses, a category and site such as
+`"modifier_box_cross_align_copy_exc"`, never the message; up to 1024 keys are
+kept under a lock and the oldest are evicted. `exception_once_per_exc` keys
+on the exception as well, so a new failure at the same site after a hot
+reload is logged again. The dev runner switches the de-duplication off for
+its verbose runtime log, because a suppressed record never reaches the
+handler that captures it.
 
-### Event input
-
-The section that delivers inputs arriving from the OS/backend (clicks, keys, navigation, focus, etc.) to the application.
-
-- Principle: Catch at the boundary (outer perimeter of input delivery), log it, and continue to the next event.
-
-### Rebuild (State update / Composition)
-
-The section that updates state in response to events/timers and rebuilds or reflects differences in the UI tree.
-
-- Principle: Catch at the boundary and log; if possible, skip the affected subtree or unit of work and continue.
-
-### Rendering / frame update hot path
-
-The section that repeats on a per-frame basis to perform drawing, layout, and animation updates.
-
-- Principle: Catch at the frame boundary and log (only once for the same occurrence).
-- Safely drop the current frame and proceed to the next frame.
-
-### Subscriptions / callbacks
-
-Sections that "call external code," such as user-provided callbacks, subscription notifications, and async task completion notifications.
-
-- Principle: Catch at the caller (outer perimeter of subscription notification/callback execution) and log; do not stop the subscription.
-- Exception: Explicit cancellation/termination (equivalent to `CancelledError`) should be ignored or logged as DEBUG.
-
-### Repository mapping examples
-
-Examples of **boundaries** (perimeters):
-
-- Entry point: `src/__main__.py`
-- App execution boundary: `nuiitivet.runtime.app.App.run` and its frame driving surroundings (e.g., `_render_frame`)
-- Backend boundary: `@window.event` handlers in `nuiitivet.backends.pyglet.runner.run_app` (`on_draw`, `on_mouse_*`, `on_key_*`, etc.)
-- Event loop boundary: `nuiitivet.backends.pyglet.event_loop.ResponsiveEventLoop.run` / `_perform_draw`
-- Input delivery perimeter: `nuiitivet.runtime.app_events.dispatch_*`
-
-Examples of **internal** implementation details:
-
-- Tree / Composition: `nuiitivet.widgeting.*`
-- Layout / Scrolling: `nuiitivet.layout.*` / `nuiitivet.scrolling.*`
-- Rendering: `nuiitivet.rendering.*`
-- Animation: `nuiitivet.animation.*`
-- Theme / Colors: `nuiitivet.theme.*` / `nuiitivet.colors.*`
-- Observation / Subscription: `nuiitivet.observable.*`
-- Widget implementation: `nuiitivet.widgets.*` (places calling user-provided callbacks fall under "Subscriptions / callbacks")
-
-## Logging policy
-
-### Exception logging
-
-- Use `logger.exception(...)` to preserve stack traces.
-- `logger.exception(...)` should only be called at "boundaries" where exceptions are caught and converted to continuations.
-
-### Avoid duplicate stack traces
-
-- Internally, avoid calling `logger.exception(...)`.
-- if an internal catch is necessary, provide context (message formatting, exception wrapping, etc.) and re-raise.
-
-### debug_once / exception_once
-
-To prevent log flooding, introduce a mechanism to emit the same event only once.
-
-- **Key design**
-  - `category` (e.g., render/event/subscription) + `site` (e.g., function name or logical trigger point) + Exception type name.
-  - Do not include the full message in the key.
-- **Capacity**
-  - Default to N items (e.g., 1024).
-  - Use LRU or similar to discard old keys when capacity is exceeded.
-- **Thread-safety**
-  - Ensure internal state updates are thread-safe if called from outside the UI thread.
-
-### Default logger behavior
-
-- The framework uses `logging.getLogger("nuiitivet")` (or sub-loggers).
-- Logging configuration is left to the user, with recommended settings provided in the documentation.
-  - The framework does not perform logging configuration (no `basicConfig` or handler additions).
-  - The recommended level for the `nuiitivet` logger is `WARNING`.
-
-Example: `logging.yaml`
-
-```yaml
-version: 1
-disable_existing_loggers: false
-
-formatters:
-  standard:
-    format: "%(asctime)s %(levelname)s %(name)s: %(message)s"
-
-handlers:
-  stderr:
-    class: logging.StreamHandler
-    level: WARNING
-    formatter: standard
-    stream: ext://sys.stderr
-
-loggers:
-  nuiitivet:
-    level: WARNING
-    handlers: [stderr]
-    propagate: false
-
-root:
-  level: WARNING
-  handlers: [stderr]
-```
+The framework logs to `logging.getLogger("nuiitivet")` and its sub-loggers
+and configures nothing: no `basicConfig`, no handler. Configuration is the
+application's, and `WARNING` is the recommended level for the `nuiitivet`
+logger.

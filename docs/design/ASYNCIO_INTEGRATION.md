@@ -1,111 +1,63 @@
 # Asyncio Integration
 
-This document focuses on the framework-owned async runtime and event loop integration.
-For the overall concurrency entry point, see [CONCURRENCY_MODEL.md](CONCURRENCY_MODEL.md).
+The framework owns the asyncio runtime, so application code writes `await`
+without managing an event loop. Concurrency is single-threaded: an async task
+or handler runs on the UI thread, and the thread rules of
+[CONCURRENCY_MODEL.md](CONCURRENCY_MODEL.md) apply to it unchanged.
 
-## Relationship to the threading model
+## The Event Loop
 
-- Async tasks and async event handlers execute on the UI thread.
-- The threading model still applies: widgets must only be touched on the UI thread.
-- Use worker threads for CPU-heavy or blocking work, and publish results by writing an observable value; the marshal onto the UI thread is automatic.
+The pyglet backend's `ResponsiveEventLoop` is the integration point.
+`run()` calls `asyncio.run(self.run_async())`, and `run_async()` pumps pyglet
+while yielding to asyncio: it dispatches platform events, draws a frame when
+one is due or requested, and sleeps in short `await asyncio.sleep(...)` slices
+of at most 16 ms so other tasks run between frames. That is what makes an
+awaited sleep or I/O cooperative with rendering.
 
-## Concurrency Model
+```mermaid
+flowchart LR
+    A["asyncio loop"] --> R["run_async()"]
+    R --> E["dispatch platform events"]
+    E --> D["draw if pending"]
+    D --> S["await asyncio.sleep(≤ 16 ms)"]
+    S --> R
+    S -.-> T["other tasks: async handlers, awaited I/O"]
+```
 
-- Single-threaded concurrency.
-- The framework owns the async runtime.
-- UI callbacks may be sync or async. Async callbacks are scheduled as tasks on the active asyncio loop.
+A synchronous loop remains as a fallback, forced by `NUIITIVET_PYGLET_SYNC=1`
+or taken when an asyncio loop is already running in the process. Under it,
+anything that needs a running loop, awaiting an overlay handle above all, is
+unavailable. `NUIITIVET_PYGLET_MAX_STEP` caps the blocking step time of that
+loop.
 
-## Runtime Ownership
+## Async Handlers
 
-The framework owns the runtime so application code can use `await` naturally without managing an event loop.
+A UI event handler may be sync or async. `widgeting.callbacks.invoke_event_handler`
+calls it; a returned awaitable is wrapped and scheduled with
+`loop.create_task(...)`. The wrapper detaches the current observable batch
+context (`detach_batch()`), because the batch belongs to the synchronous
+dispatch that started the task, and a task that outlives it must not flush
+someone else's batch. An exception in the task is caught and logged; it does
+not stop the loop. Callers that need to cancel the handler later, on unmount,
+keep the returned task.
 
-Notes:
+With no loop running, during shutdown or in a test without the harness, an
+async handler is not scheduled. Under the test harness that case raises
+`UnschedulableAsyncWork` instead of being logged once and lost, since a
+de-duplicated log line is exactly the silence the harness exists to break.
 
-- The default desktop runner starts an asyncio event loop internally.
-- If an asyncio loop is already running, the pyglet runner may fall back to the synchronous loop. In that case, features that require a running asyncio loop (e.g. awaiting overlay handles) are not available.
+## Awaiting an Overlay
 
-## Event Loop Integration (Pyglet)
+`Overlay.show(...)` returns an `OverlayHandle`, awaitable through an asyncio
+future per entry, so a dialog reads as `result = await overlay.dialog(...)`.
+Awaiting requires a running loop. Closing, dismissing or disposing the entry
+completes the future with an `OverlayResult`, and the await never hangs: an
+entry removed without an explicit close, by navigation or unmount, completes
+with `OverlayDismissReason.DISPOSED`. A caller branches on `result.reason`
+rather than on cancellation.
 
-The pyglet backend uses a custom event loop, `ResponsiveEventLoop`, as the integration point.
-
-- Default mode: asyncio-driven loop (`ResponsiveEventLoop.run()` calls `asyncio.run(self.run_async())`).
-- Fallback mode: synchronous loop, used when forced or when an asyncio loop is already running.
-
-### Async-driven loop
-
-`ResponsiveEventLoop.run_async()` pumps pyglet while yielding control back to asyncio:
-
-- Dispatches pyglet events via `platform_loop.step(0.0)` and `window.dispatch_events()`.
-- Renders frames based on a draw cadence and explicit invalidation.
-- Uses short `await asyncio.sleep(...)` slices (up to 16ms) to keep UI responsive and allow other tasks to run.
-
-This makes `await asyncio.sleep(...)` and other awaited I/O operations cooperative with UI rendering.
-
-### Configuration knobs
-
-- `NUIITIVET_PYGLET_SYNC=1`: force the synchronous pyglet loop.
-- `NUIITIVET_PYGLET_MAX_STEP`: caps blocking step time in the synchronous loop.
-
-## Async Event Handlers
-
-UI event handlers may return an awaitable.
-
-- Invocation is centralized in `nuiitivet.widgeting.callbacks.invoke_event_handler`.
-- If the handler returns an awaitable, it is wrapped and scheduled with `loop.create_task(...)`.
-- The wrapper detaches the current observable batch context via `detach_batch()`.
-- Exceptions in async handlers are caught and logged (they do not crash the UI loop).
-
-If no asyncio loop is running (e.g. during some tests or shutdown), async handlers are not scheduled.
-
-## Overlay Awaiting
-
-Overlay APIs are awaitable by using an internal asyncio future per entry.
-
-- `Overlay.show(...)` returns an `OverlayHandle`.
-- Awaiting the handle requires a running asyncio loop (`asyncio.get_running_loop()`).
-- Closing/dismissing/disposal completes the future with an `OverlayResult`.
-
-### Cancellation and disposal
-
-- If an overlay entry is disposed (e.g. navigation/unmount), the future resolves with reason `DISPOSED`.
-- Callers should handle `OverlayResult.reason` rather than relying on cancellation.
-
-## Lifecycle Considerations
-
-### Await guarantees
-
-`await handle` must not hang.
-
-- Removing an entry (without an explicit close) completes the awaitable with `OverlayDismissReason.DISPOSED`.
-- Call sites should branch on `OverlayResult.reason`.
-
-### Widget disposal
-
-Dispose ordering and timing should be compatible with async flows:
-
-- Dispose should occur after any exit animation finishes.
-- Dispose order is parent  child.
-
-### Observable subscriptions
-
-Async handlers and awaited workflows tend to outlive synchronous scopes.
-
-- Prefer framework helpers (e.g. `bind(...)`) for lifecycle-managed subscriptions.
-- Direct `subscribe()` requires explicit disposal by the caller.
-
-## Sample
-
-See `samples/state-management/thread_safety.py` for an end-to-end demonstration:
-
-- `async with MaterialOverlay.of(self).while_loading(...)` while awaiting work.
-- Awaiting `MaterialOverlay.of(self).dialog(...)`.
-- Updating `Observable` values from async code, which runs on the UI thread and so applies inline.
-
-## Testing
-
-- Tests should prefer running code under the framework-driven async runtime.
-- When unit tests run without an active asyncio loop, async handler scheduling may be skipped by design.
-
-## Related
-
-- Archived task document: `docs/design/archive/TASK_ASYNCIO_AWAIT_INTEGRATION.md`
+Widget disposal fits the same flow: a widget is disposed after its exit
+animation finishes, parent before child. A subscription made from an awaited
+workflow tends to outlive the synchronous scope that made it, so it goes
+through `bind(...)`, which the host disposes, rather than a bare
+`subscribe()`, which the caller must dispose.

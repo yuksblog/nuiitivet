@@ -1,40 +1,65 @@
-# Concurrency & Execution Model
+# Concurrency Model
 
-This document is the entry point for concurrency in nuiitivet.
+The UI runs on one thread. Widget construction, tree mutation, layout and
+paint happen there; a worker thread never touches a widget; and every value
+that crosses from a worker to the UI crosses through an `Observable`. Async
+code is UI-thread code too: an `async` handler runs on the UI thread and must
+not block. The event loop that makes `await` possible is in
+[ASYNCIO_INTEGRATION.md](ASYNCIO_INTEGRATION.md).
 
-See also:
+## One UI Thread
 
-- [THREADING_MODEL.md](THREADING_MODEL.md)
-- [ASYNCIO_INTEGRATION.md](ASYNCIO_INTEGRATION.md)
-- [OBSERVABLE.md](OBSERVABLE.md)
+The UI thread is the thread that runs the frame loop, the main thread unless
+a backend registers another (`runtime.threading.set_ui_thread`, called by the
+pyglet backend when it installs its clock). `is_ui_thread()` compares thread
+idents as integers rather than `current_thread() is main_thread()`, because
+it runs on the hot path of every observable write and `current_thread()`
+costs a dict lookup.
 
-## Terminology
+In debug mode `assert_ui_thread()` guards `Widget.mount()` / `unmount()`,
+`layout()` and `paint()` and raises `RuntimeError` from a worker; `python -O`
+strips the checks.
 
-- **UI thread**: The main thread. All UI operations must run here.
-- **Worker thread**: Background threads used for CPU-heavy or blocking work.
-- **Async task**: An `asyncio` task running on the framework-owned event loop.
+## The Observable Is the Bridge
 
-## Core rules
+An `Observable` written from a worker thread marshals the notification onto
+the UI thread, so subscribers run where widgets may be touched whichever
+thread set the value. The write is deferred to the next tick and rapid writes
+are coalesced: subscribers see the latest value per tick. A write already on
+the UI thread applies inline. The semantics, and the `dispatch=False` opt-out
+for a value no widget binds, are defined in [OBSERVABLE.md](OBSERVABLE.md).
 
-1. **Single UI thread**: Widget tree manipulation, layout, and paint must run on the UI thread.
-2. **No cross-thread UI callbacks**: Worker threads must not touch widgets directly.
-3. **State bridge**: Cross-thread communication goes through an observable value, which marshals a write from any non-UI thread onto the UI thread by default.
-4. **Async is still UI-thread code**: Async handlers/tasks run on the UI thread and must not block.
+A generic `run_on_ui(callback)` is not offered. It invites imperative code
+that races the state it updates; routing every cross-thread value through an
+observable keeps the UI a reflection of application state.
 
-## Choosing a concurrency tool
+Coalescing exists because a tight loop on a worker updating a progress bar
+would otherwise flood the event loop queue and starve input.
 
-- **A value derived asynchronously from another value**: Use `switch_map`. It runs the transform on a worker thread per source change and publishes only the newest run's result; superseded runs are discarded rather than raced.
-- **CPU-bound work**: Use a worker thread, then publish results through an observable (`self.progress.value = ...`); the marshal is automatic. This is the answer whenever the job needs progress, an explicit start or an explicit cancel — none of which `switch_map` expresses.
-- **I/O-bound work**: Use `asyncio` (`await` network / file I/O), keeping the UI responsive.
-- **High-frequency updates**: The default marshal already coalesces (last-write-wins per tick). Pass `dispatch=False` only where every intermediate value is needed and no widget is bound.
+## Which Tool
 
-## Interaction: threads × asyncio
+- A value derived asynchronously from another value: `switch_map`. It runs
+  the transform on a worker per source change and publishes only the newest
+  run's result; a superseded run is discarded, never raced.
+- CPU-bound work that needs progress, an explicit start or an explicit cancel,
+  none of which `switch_map` expresses: a worker thread that writes
+  observables.
+- Short work the screen waits for: an `async` handler that awaits it, on a
+  thread the runtime owns (`asyncio.to_thread`); the line after the `await`
+  is back on the UI thread.
+- I/O: an `async` handler that awaits it.
+- High-frequency values: the default marshal already coalesces. `dispatch=False`
+  only where every intermediate value is needed and no widget is bound.
 
-- Async code can update observables directly because it runs on the UI thread.
-- Worker threads may write to any observable bound to the UI; do not opt such an observable out with `dispatch=False`.
-- If an async handler offloads work to a thread, the thread must communicate back via observables (not UI calls).
+A worker that a handler starts communicates back through observables, never
+through UI calls, and a worker outlives the widget that started it: the
+framework did not create the thread and cannot know whether its work still
+matters, so stopping it is the application's decision.
 
-## Testing notes
+## Testing
 
-- For cross-thread writes, tests pump the harness clock (`settle()`), or patch the clock used by the observable runtime and flush scheduled events.
-- For async handlers, behavior depends on whether the framework async runtime is active; tests without a running loop may intentionally skip scheduling.
+A test body under the pytest plugin runs on the UI thread, so its writes
+apply inline. A write from a worker is queued on the clock and `settle()`
+pumps it; outside the harness the clock used by the observable runtime is
+patched and its scheduled events flushed. An `async` handler needs a running
+loop, so a test without one may skip scheduling by design.

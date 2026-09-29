@@ -5,7 +5,6 @@ This document summarizes the internal design of the Observable and reactive syst
 See also:
 
 - [CONCURRENCY_MODEL.md](CONCURRENCY_MODEL.md)
-- [THREADING_MODEL.md](THREADING_MODEL.md)
 - [PROGRAMMING_PARADIMS.md](PROGRAMMING_PARADIMS.md)
 
 **How this document is arranged.** §1–§2 are the core model and its threading
