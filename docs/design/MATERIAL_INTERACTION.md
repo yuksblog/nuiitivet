@@ -1,102 +1,51 @@
-# Material Design Interaction & State Layers
+# Material Design Interaction and State Layers
 
-This document outlines the implementation standards for Material Design 3 interactive components in this framework.
+Every interactive Material widget (`Button`, `Checkbox`, `RadioButton`,
+`Switch`, ...) inherits from `InteractiveWidget`, which brings
+`InteractionHostMixin`, the state layer, the focus ring and the Space/Enter
+key binding in one place. The nodes underneath are in
+[INTERACTION_ARCHITECTURE.md](INTERACTION_ARCHITECTURE.md).
 
-## 1. Inheritance Strategy
+## Logical Focus and the Visual Ring
 
-All interactive Material widgets (Button, Checkbox, Radio, Switch, etc.) **must** inherit from `InteractiveWidget`.
+`state.focused` says the widget is the input target, whether it got there by
+click or by Tab, and it alone routes input (the Space key). The ring is a
+separate question, `should_show_focus_ring`: true for keyboard and
+programmatic focus, false for pointer focus, so a clicked button does not keep
+a ring. The ring tracks the latest `FocusSource`, not only the last focus
+change, because the source can change without focus moving (dragging a
+Tab-focused slider, then Tab-ing between its handles).
 
-```python
-from nuiitivet.material.interactive_widget import InteractiveWidget
+## State Layer Priority
 
-class MyMaterialWidget(InteractiveWidget):
-    """
-    Inheriting from InteractiveWidget automatically provides:
-    - InteractionHostMixin (Pointer/Focus handling)
-    - State Layer drawing logic
-    - Focus Ring management
-    - Standard Keyboard bindings (Space/Enter -> Click)
-    """
-    ...
-```
+`_get_active_state_layer_opacity` resolves the overlay in one order: drag,
+then press, then hover. Keyboard focus draws no layer by default; MD3 prefers
+the ring alone.
 
-## 2. Interaction Logic
+A widget that roves focus with the arrow keys inside a `FocusScope`, a
+`MenuItem`, does layer focus, overriding the resolution to fall back to the
+focus opacity while `should_show_focus_ring`. The roved item must read as
+focused, and that is focus, not selection: `selected` stays reserved for a
+genuinely selected entry. This is not automatic for every roving widget.
+`NavigationRail` items rove too and stay ring-only, because their focus shape
+is the active-indicator pill; a layer there fills the whole pill and reads as
+selection or hover. A menu item's full-width row has no such ambiguity.
 
-### Key Concepts
+## Focus Ring Placement
 
-`InteractiveWidget` centralizes the logic for "Visual State" vs "Logical State" to satisfy Material Design 3 specifications.
+The default ring (`draw_focus_indicator`) is drawn outside the widget bounds,
+a 3dp stroke at a 2dp offset. Where an outer ring cannot fit, a widget
+overrides `draw_focus_indicator` to draw the same ring inset, just inside the
+shape that indicates the focus, mirroring the 2dp gap inward.
 
-1. **Logical Focus (`state.focused`)**:
-    * Indicates the widget is the current input target.
-    * `True` whether clicked by mouse or navigated by keyboard.
-    * **Always** used for input routing (e.g. Space key).
-
-2. **Visual Focus Ring (`should_show_focus_ring`)**:
-    * Indicates the widget should display the visual focus indicator (Ring).
-    * `True` **only** when focused via Keyboard (Tab) or Programmatic means.
-    * `False` when focused via Pointer (Click), preventing "sticky focus" visuals.
-    * The source can change **without focus moving** — dragging a slider that Tab focused, Tab-ing between the handles of that slider afterwards — so it tracks the latest `FocusSource`, not just the last focus change (`FocusNode.notify_focus_source`; see `INTERACTION_ARCHITECTURE.md`).
-
-### State Layer Hierarchy
-
-Visual overlays (State Layers) are resolved with the following priority in `_get_active_state_layer_opacity`:
-
-1. **Drag** (`state.dragging`): Highest priority.
-2. **Press** (`state.pressed`): While pointer is held down.
-3. **Hover** (`state.hovered`): While pointer is within bounds.
-4. **Key Focus**: (Note: Modern MD3 style often disables the colored State Layer for Focus, preferring just the Ring. Our implementation follows this by default).
-    * Widgets that rove focus with the arrow keys inside a `FocusScope` (e.g. `MenuItem`) **do** layer focus, by overriding `_get_active_state_layer_opacity` to fall back to `_FOCUS_OPACITY` when `should_show_focus_ring`. The roved item must read as focused — and that is focus, not selection: `selected` stays reserved for a genuinely selected entry.
-    * This is not automatic for every roving widget: `NavigationRail` items rove too but stay ring-only, because their focus shape is the active-indicator pill — a layer there fills the whole pill and reads as a selection or hover state rather than focus. A menu item's full-width row does not have that ambiguity.
-
-### Focus Ring Placement
-
-The default ring (`draw_focus_indicator`) is drawn **outside** the widget bounds: 3dp stroke, 2dp offset. Where an outer ring cannot fit, a widget overrides `draw_focus_indicator` to draw the same ring **inset** — just inside the shape that indicates the focus, mirroring the 2dp gap inward.
-
-`NavigationRail` items are the case that settled this. MD3's component imagery shows no focus ring on rail items, which could be read as "rail items are not focusable" — but the token set says otherwise: the rail defines a full `focused` state family (state layer, icon and label colors, for active and inactive items alike), so the items are focusable, and dropping them from the Tab sequence would fail WCAG 2.1.1 (Keyboard). What the imagery reflects is geometry: the items are packed so closely that a ring offset *outside* one active indicator would overlap the neighbouring indicators. Jetpack Compose's current Material 3 ripple resolves the same conflict with an **inset focus ring** drawn inside the indicator shape. The rail follows Compose: the inset ring alone, painted on the active-indicator shape — legible even on the filled selected indicator, and identical in color and stroke to the standard ring, differing only in sitting inside the shape instead of outside.
-
-## 3. Implementation Guide
-
-### Drawing the State Layer
-
-In your `paint` method, you generally delegate the state rendering to `InteractiveWidget`.
-
-```python
-def paint(self, canvas, x, y, w, h):
-    # 1. Draw your widget background/content
-    draw_background(...)
-
-    # 2. Draw standard State Layer (Hover/Press)
-    # This automatically checks state priorities and opacity constants.
-    self.draw_state_layer(canvas, x, y, w, h)
-
-    # 3. Draw Focus Ring
-    # This only draws if should_show_focus_ring is True.
-    # Note: paint_outsets() should also be overridden if the ring extends outside.
-    if self.should_show_focus_ring:
-        self.draw_focus_indicator(canvas, x, y, w, h)
-```
-
-### Handling Opacity
-
-Do not manually calculate opacities in your widget unless you have custom requirements. Use `_get_active_state_layer_opacity()` which respects the priority rules.
-
-```python
-# GOOD: Reusing standardized logic
-opacity = self._get_active_state_layer_opacity()
-
-# BAD: Reimplementing logic locally
-if self.state.pressed:
-    opacity = 0.12
-elif self.state.hovered: ...
-```
-
-## 4. Default Constants (MD3)
-
-`InteractiveWidget` defines standard opacities:
-
-* `_HOVER_OPACITY`: 0.08
-* `_FOCUS_OPACITY`: 0.12
-* `_PRESS_OPACITY`: 0.12
-* `_DRAG_OPACITY`: 0.16
-
-These can be overridden per-instance if necessary, but consistent use is recommended.
+`NavigationRail` items settled this. MD3's component imagery shows no ring on
+rail items, which could be read as "rail items are not focusable", but the
+token set says otherwise: the rail defines a full `focused` state family
+(state layer, icon and label colours, for active and inactive items alike), so
+the items are focusable, and dropping them from the Tab sequence would fail
+WCAG 2.1.1. What the imagery reflects is geometry: the items are packed so
+closely that a ring offset outside one active indicator would overlap the
+neighbouring indicators. Jetpack Compose's Material 3 ripple resolves the same
+conflict with an inset ring, and the rail follows it: the inset ring alone,
+painted on the active-indicator shape, identical in colour and stroke to the
+standard ring and differing only in sitting inside.

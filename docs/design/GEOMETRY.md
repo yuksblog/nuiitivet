@@ -1,332 +1,188 @@
-# Geometry: Container-Scoped Measured Geometry
+# Geometry: Container-Scoped Measured Size
 
-Status: **Accepted — implemented**
+An adaptive layout sometimes reacts to the size of one container, not the
+window: a panel that reflows on its own width, a local breakpoint. A widget's
+measured size is stored by `WidgetKernel.set_layout_rect` as a layout result,
+and a widget cannot read its own size in `build()`, because the parent decides
+it afterwards.
 
-## 1. Motivation
+`Geometry` is a widget that measures its own box and publishes the result to
+its subtree, read reactively through `Geometry.of(context)`. The window is the
+root `Geometry` provider, so one read path serves the window and any nested
+container.
 
-Some adaptive layouts must react to the size of a **specific container**, not the
-whole window — reflow inside one panel regardless of window size, local
-breakpoints, etc. Today a widget's measured size is set via
-`WidgetKernel.set_layout_rect` (see [widget_kernel.py](https://github.com/yuksblog/nuiitivet/blob/main/src/nuiitivet/widgeting/widget_kernel.py))
-but never delivered reactively, and there is no supported way to rebuild a
-subtree based on the space available to it.
+## Why Not an Environment Value
 
-`Geometry` is a widget that measures **its own box** and publishes the result to
-its subtree, read reactively via the `Geometry.of(context)` convention. The
-window is simply the **root `Geometry` provider**, so the same read path serves
-both the window and any nested container (see §7).
-
-## 2. Background: why this is *not* just another environment value
-
-nuiitivet already has an ancestor-lookup convention — `X.of(context)` backed by
-`Widget.find_ancestor` — used by [Navigator](NAVIGATION.md) and
-[Theme](STYLE_THEME.md). It is tempting to treat "measured size" as one more
-value flowing down that mechanism. It is not. Environment values fall into three
-families by **where the value comes from**:
+The `.of(context)` convention, backed by `Widget.find_ancestor`, already
+carries [Navigator](NAVIGATION.md) and [Theme](STYLE_THEME.md). A measured
+size cannot ride the same kind of mechanism, because environment values differ
+by where the value comes from:
 
 | Source | Examples | Nature |
 | :--- | :--- | :--- |
-| **(A) Author-set** | theme, directionality (LTR/RTL), locale, text style | A literal the author supplies. Set once, inherited down, overridable per subtree. |
-| **(B) System-provided at root** | density (DPI), color scheme, safe-area, orientation, text scale | Read-only, but produced **once at the window/root** and inherited unchanged. Behaves like (A). |
-| **(C) Layout-derived per node** | **resolved size**, constraints / available space | Produced by the **layout of the specific node itself**. Re-derived at every nesting level, and only known **after** the layout phase (two-phase). |
+| **(A) Author-set** | theme, directionality, locale, text style | A literal the author supplies. Set once, inherited down, overridable per subtree. |
+| **(B) System-provided at root** | density, colour scheme, safe area, orientation, text scale | Read-only, produced once at the window and inherited unchanged. Behaves like (A). |
+| **(C) Layout-derived per node** | resolved size, available space | Produced by the layout of the node itself. Re-derived at every nesting level, and known only after the layout phase. |
 
-A generic environment mechanism (SwiftUI `Environment`, Compose
-`CompositionLocal`, Flutter `InheritedWidget`) cleanly carries (A) and (B): the
-author or the runtime pushes a value in and descendants read it. **(C) cannot be
-folded into that**, because:
+A generic environment (SwiftUI `Environment`, Compose `CompositionLocal`,
+Flutter `InheritedWidget`) carries (A) and (B): a value is pushed in at one
+place and read below. (C) has no single value to inherit, since each
+`Geometry` re-measures its own box, and it exists only after build. So size
+gets a dedicated provider while theme, locale and density do not. Families (A)
+and (B) belong to a general environment mechanism, a separate decision that
+affects whether `Theme` migrates onto it. `Geometry` is built on the
+`.of(context)` convention so that such a mechanism, if it comes, can surface
+geometry through the same read path without an API break.
 
-1. The value differs at every node — each `Geometry` re-measures its own box;
-   there is no single root value to inherit.
-2. The value is produced by layout, so it exists only in the second phase
-   (after build), not when the tree is constructed.
+## The Publish Waits for the Next Frame
 
-`Geometry` is the **single dedicated provider for family (C)**. Everything in
-(A)/(B) belongs to a future general-purpose environment mechanism (see §8), not
-here. This is why size gets a bespoke widget while theme/locale/density do not.
+A frame is build, then layout, then paint, and the build flush (bindings,
+scope recompositions) runs before layout. A container's size is known only
+during layout, where an `Observable` write is forbidden
+([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)). So `layout()` queues the
+measurement on the post-layout queue (`widgeting.widget_size_change`), and the
+app drains that queue at the start of the next frame, before that frame's
+build flush.
 
-## 3. Frame model: why this is safe without re-entrancy
-
-nuiitivet's frame pipeline is strictly **build → layout → paint**, and build
-(scope recomposition) is flushed *before* layout within a frame:
-
-- [app.py](https://github.com/yuksblog/nuiitivet/blob/main/src/nuiitivet/runtime/app.py) `_render_frame`: `flush_binding_invalidations()` / `flush_scope_recompositions()` run first,
-- then `on_draw` performs `root.layout(w, h)`,
-- then paint.
-
-A container's measured size is known only during the layout phase. `Geometry`
-does not write its `Observable` there — the Layout Protocol forbids a
-layout-phase `Observable` write ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)
-§2). Instead, `layout()` **queues** the measurement on the post-layout queue
-(`widgeting.widget_size_change`), and the app flushes that queue at the start of
-the next frame, before that frame's build flush. The write, and everything it
-triggers, happens between frames:
-
-```text
-frame N   : layout → Geometry measures → size changed → queued + frame requested
-frame N+1 : flush queue (Observable.set) → flush bindings/scopes (rebuild
-            dependents) → layout → paint
+```mermaid
+sequenceDiagram
+    participant L as layout (frame N)
+    participant Q as size-change queue
+    participant F as frame N+1
+    L->>Q: Geometry measured a changed size
+    L->>F: invalidate() requests the frame
+    F->>Q: drain: Observable.set
+    F->>F: flush bindings and scopes, rebuild dependents
+    F->>F: layout, paint
 ```
 
-This is the key result: **the publish and the layout pass are serialized across
-frames, so nothing a consumer can observe changes mid-pass.** A rebuild driven
-from layout is naturally deferred — sidestepping the layout-time re-entrancy
-hazard a synchronous, build-during-layout `LayoutBuilder` would expose to
-callers — and a lazily-read binding (a mapped `Text` label) resolves one
-consistent value for a whole frame: measurement and paint agree.
+The publish and the layout pass are serialised across frames, so nothing a
+consumer can observe changes mid-pass. A rebuild driven from layout is
+deferred by construction, which sidesteps the re-entrancy a synchronous
+build-during-layout `LayoutBuilder` exposes to callers.
 
-### 3.1 The write defers, not only the recomposition
-
-Deferring recomposition alone is not enough. A write that propagates
+Deferring only the recomposition would not be enough. A write that propagates
 synchronously runs every `bind_to` setter at once, and a lazy reader such as
-`Text`'s label resolution picks up the new value the moment it is asked. Within
-one layout pass a widget measured *before* the publishing `Geometry` would see
-the old value and a widget measured after it the new one — a `Text` bound to the
-size and laid out ahead of the `Geometry` in the same `Column` paints one torn
-frame. So the write itself waits for the between-frames flush, and no consumer —
-synchronous, lazy, or recomposing — can observe a mid-pass change.
+`Text`'s label resolution picks up the new value the moment it is asked. A
+`Text` bound to the size and laid out ahead of the `Geometry` in the same
+`Column` would see the old value, a widget after it the new one, and the frame
+would paint torn. So the write itself waits for the between-frames flush.
 
-The same holds for `ScrollViewport`, with one refinement: scroll
-metrics are additionally *recorded* in plain synchronous fields during layout,
-which paint, hit-testing, and offset clamping read within the same frame — the
-pipeline's scrollbar-visibility and hit-testing guarantees are unchanged. Only
-the `Observable` publish defers. The accepted cost is latency: a reactive
-consumer sees a measurement one frame after the layout that produced it.
+`ScrollViewport` publishes its metrics through the same queue, with one
+refinement: the metrics are also recorded in plain synchronous fields during
+layout, which paint, hit testing and offset clamping read within the same
+frame. Only the `Observable` publish defers. The accepted cost is latency: a
+reactive consumer sees a measurement one frame after the layout that produced
+it, which is imperceptible.
 
-## 4. API
+## The Widget
 
-A widget that wraps a single child, is transparent to layout (it passes its
-incoming size straight to the child), and publishes its own resolved geometry to
-descendants via the `.of(context)` convention.
+`Geometry` wraps a single child and is transparent to layout: the child
+receives the size `Geometry` receives. Descendants bind
+`Geometry.of(context).size`, an `Observable[Size]`, mapping it into a value
+widget or a `Deck` index; a `.value` read at build time is a snapshot that
+never updates. The nearest provider wins, so a `Geometry` around a panel makes
+its descendants react to the panel, not the window.
 
-```python
-class Geometry(Widget):
-    """Publishes this widget's own measured geometry to its subtree.
+It is a widget, not a modifier: scope boundaries in nuiitivet are widgets
+(`Navigator`, `Overlay`), and `.of(context)` needs a real ancestor node. It is
+named `Geometry`, not `GeometryScope`: it measures its own box, and "scope"
+over-claims. `Geometry.of` parallels `Theme.of` and `Navigator.of`, and
+nesting overrides the same way.
 
-    Transparent to layout: the child receives the same size this widget
-    receives. Descendants read the measured size reactively via
-    ``Geometry.of(context)``.
-    """
+## What It Publishes
 
-    def __init__(self, child: Widget) -> None: ...
+`size` is one atomic `Observable[Size]`. Separate `width` and `height`
+observables were rejected: a consumer could read a new width with an old
+height. A reaction to one axis is a `computed` derived from `size`.
 
-    @property
-    def size(self) -> Observable[Size]:
-        """This widget's resolved (width, height), published between frames.
+Constraints (min and max available space) are not published. nuiitivet has no
+`BoxConstraints`-style model: a parent assigns a concrete allocated rect, and
+the only bound in the pipeline is the one-way `max_width` / `max_height` hint
+that `preferred_size(...)` receives during measurement. Exposing constraints
+would add a concept the layout has nowhere else, a layout-model extension
+rather than a small addition, and the resolved `size` already answers "how
+much space do I have" for the filling case.
 
-        A single atomic ``Observable[Size]`` — width and height update
-        together so consumers never read a torn (new width, old height) pair.
-        """
+A context-free `App.window_size` for code outside the tree (a view model that
+cannot call `.of(context)`) is left out until there is demand.
 
-    @classmethod
-    def of(cls, context: Widget) -> "Geometry":
-        """Return the nearest ancestor Geometry (nearest provider wins)."""
-```
+## Oscillation
 
-Consumption follows nuiitivet's reactivity rule: **bind the `size` Observable,
-do not read `.value` at build time.** `Geometry.of(context).size` is an
-`Observable[Size]`; map it into a widget so the widget re-binds when the size
-changes. Reading `.value` inside `build()` takes a one-time snapshot that never
-updates (build is not re-run on a tracked read — that is not how nuiitivet
-reactivity works).
+Rebuilding a subtree can change the size the `Geometry` measures, which would
+re-fire the update across frames. `Geometry` writes `size` only when the
+measured value changed, so an equal size triggers no recomposition; the guard
+is the framework's, not the caller's. A `Geometry` whose size is imposed by
+its parent, such as one filling a panel, cannot feed back at all: rebuilding
+its child does not change it. That is safer than a Flutter `LayoutBuilder`,
+where the builder's output is what gets measured.
 
-- **Value binding** (labels, colours, thresholds) — map into a value-accepting
-  widget:
+## The Window Is the Root Provider
 
-  ```python
-  Text(Geometry.of(self).size.map(lambda s: f"{s.width}px"))
-  ```
+The app wraps the content root in a `Geometry` (`Window._wrap_with_chrome_and_scope`),
+so `Geometry.of(context).size` with no nearer provider is the window size. The
+root provider needs no resize plumbing: it measures the window through the
+normal layout pass, which a resize already triggers via `invalidate`.
 
-- **Structural switch** (choose between prebuilt layouts) — drive a `Deck` index
-  from the mapped size. `Deck` mounts each variant and shows one by index:
+An `App.of(context).size` was rejected because a second read path fragments
+the first. An MD3 window size class is not provided: it would be a thin
+wrapper over this read, and `Geometry` is already the container-scoped read
+that a window size class is the coarser predecessor of.
 
-  ```python
-  size = Geometry.of(self).size
-  Deck(
-      children=[_NarrowLayout(...), _WideLayout(...)],
-      index=size.map(lambda s: 1 if s.width >= 600 else 0),
-  )
-  ```
+## `on_size_changed`: the Push Counterpart
 
-  (`Deck` accepts any read-observable index, including a derived `.map(...)`.)
-
-Because **the nearest provider wins**, "local reflow independent of window size"
-falls out for free: put a `Geometry` around a panel and its descendants react to
-the panel, not the window. If there is no nearer provider they fall back to an
-outer one — ultimately the root `Geometry` installed by the window (§7).
-
-## 5. Value model
-
-- **This issue ships `size` only** — a single `Observable[Size]`.
-- **Do not** expose `width` and `height` as separate scalar `Observable`s. A
-  coherent `Observable[Size]` updated atomically prevents torn reads. Callers who
-  want to react to one axis only can derive a `computed` from `size`.
-- Constraints / available space are **future** (§9). Note that nuiitivet's
-  layout has **no `BoxConstraints`-style min/max model**: a parent assigns a
-  concrete allocated rect, and the only bound in the pipeline is the one-way
-  `max_width` / `max_height` hint passed through `preferred_size(...)` during the
-  measure phase (see [container.py](https://github.com/yuksblog/nuiitivet/blob/main/src/nuiitivet/layout/container.py),
-  [column.py](https://github.com/yuksblog/nuiitivet/blob/main/src/nuiitivet/layout/column.py)). Exposing "constraints"
-  therefore introduces a concept the framework does not otherwise have — it is a
-  layout-model extension, not a small add — so it is deliberately out of scope
-  here. In practice the resolved `size` already answers "how much space do I
-  have" for the common (weight/fill) case.
-
-## 6. Oscillation
-
-Rebuilding a subtree can change the geometry the widget measures, which can
-re-fire the update — a feedback loop across frames. Handling:
-
-1. **De-dupe guard (framework-owned).** `Geometry` only writes `size` when the
-   measured value actually changed. Equal size ⇒ no write ⇒ no dependent
-   recomposition. This satisfies "oscillation behavior is defined" without
-   pushing the guard onto callers.
-2. **Structurally safe usage (documented).** When the widget's own size is
-   imposed by its parent (e.g. it fills a panel), rebuilding its child cannot
-   change that size, so no feedback exists. This is the recommended pattern and
-   is naturally safer than a Flutter-style `LayoutBuilder`, where the builder's
-   output *is* what gets measured (a tighter loop).
-
-## 7. Relationship to the window size — one unified read path
-
-The window case and this container case resolve to a **single
-in-tree read API**:
-
-- **In-tree read (window and container, unified):** `Geometry.of(context).size`.
-  The app installs the **root `Geometry` provider** by wrapping the content root
-  in `App._wrap_with_chrome_and_scope` (see
-  [runtime/app.py](https://github.com/yuksblog/nuiitivet/blob/main/src/nuiitivet/runtime/app.py)). It needs no bespoke
-  resize plumbing: the root `Geometry` measures the window through the normal
-  layout pass, which the resize path (`_update_app_size_from_window` in
-  [backends/pyglet/runner.py](https://github.com/yuksblog/nuiitivet/blob/main/src/nuiitivet/backends/pyglet/runner.py))
-  already triggers via `invalidate` → relayout. Nearest provider wins, so a
-  nested `Geometry` transparently overrides the window for its subtree; with no
-  nested provider, reads fall back to the window.
-- **No MD3 window size class.** A size class would be a thin wrapper over this
-  read path, and it is left out: `Geometry` is itself a container-scoped read,
-  the concept a window size class is the coarser predecessor of.
-- **No `App.of(context).size`.** Introducing a parallel App-level read API is
-  rejected — it fragments the read path. The root `Geometry` provider is the
-  single mechanism.
-
-## 8. Relationship to a future general environment mechanism
-
-Families (A)/(B) — theme, directionality, locale, density, color scheme,
-text scale, safe-area — are the natural contents of a generic, typed, composable
-scope mechanism (SwiftUI `Environment` / Compose `CompositionLocal`). That is a
-larger architectural decision (it affects whether `Theme` migrates onto it) and
-belongs in its own design issue, **not** here.
-
-`Geometry` is deliberately built on the existing `.of(context)` convention so
-that, if such a mechanism arrives, geometry can be surfaced through the same read
-path without an API break. `Geometry` remains the special (C) provider that
-*feeds* geometry in; it is never a plain author-set value in that mechanism.
-
-## 9. Scope
-
-**Provided:**
-
-- `Geometry` widget publishing `Observable[Size]` (resolved size), read via
-  `Geometry.of(context)`.
-- De-dupe guard; documented structurally-safe usage.
-- Root `Geometry` provider installed at the window, so a top-level read falls
-  back to the window size (the unified read path in §7).
-- `on_size_changed`, the push counterpart for a widget reading its own size
-  (§11).
-
-**Left out until there is demand:**
-
-- `constraints` (min/max) on the same `Geometry` — a layout-model extension, not
-  additive-only (§5).
-- `App.window_size` context-free `Observable` for code outside the widget tree
-  (e.g. view-models that cannot call `.of(context)`).
-- General-purpose environment mechanism for families (A)/(B) — see §8.
-
-## 10. Design decisions summary
-
-- **Named `Geometry`, not `GeometryScope`.** The widget measures its *own* box;
-  "Scope" over-claims. `Geometry.of(context)` parallels `Theme.of` /
-  `Navigator.of`, and nested override works the same way `Theme` override does.
-- **Widget, not modifier, for the provider.** Scope boundaries are widgets in
-  nuiitivet (Navigator, Overlay); `.of(context)` requires a real ancestor node.
-  A modifier that creates a scope would break that convention.
-- **Raw geometry only; no MD3 size class.** Core stays MD3-independent and every
-  app uses raw size. There is no size-class layer (§7) — `Geometry` is already
-  the container-scoped read that supersedes it.
-- **Atomic `Observable[Size]`.** Prevents torn reads; per-axis reactions via
-  `computed`.
-- **Window = root `Geometry` provider.** Installed at the window, so one
-  unified read path (`Geometry.of(context).size`) serves both window and
-  container; no separate `App.of().size`. The root provider needs no bespoke
-  resize plumbing — it measures the window through the normal layout pass.
-- **One-frame-deferred reactivity is acceptable.** Imperceptible, and it is what
-  keeps the layout pass free of `Observable` writes — the publish rides the
-  post-layout queue (§3).
-
-## 11. `on_size_changed`: the push counterpart
-
-The declarative read covers reacting to a size by rebuilding. It fits badly when
-the size is consumed *imperatively* — a ViewModel input, or a plain `Observable`
-the widget owns: `Geometry.of()`'s pull semantics buy nothing there while still
-charging the `on_mount` timing rule, the subscription disposal, and the
+The declarative read fits a subtree that rebuilds on a size. It fits badly
+where the size is consumed imperatively, by a view model or a plain
+`Observable` the widget owns: pull semantics buy nothing there, while still
+charging the `on_mount` timing rule, the subscription disposal and the
 provider-scope concept.
 
-`on_size_changed(callback)` reports a widget's own measured `Size` back to that
-widget. Division of labour:
+`on_size_changed(callback)` reports a widget's own measured `Size` to that
+widget:
 
 | | Use for |
 | --- | --- |
-| `on_size_changed` | **Push / self.** Measurer and consumer are the same widget. |
-| `Geometry` | **Pull / scope.** Descendants at arbitrary depth read an ancestor's size without the widgets in between knowing. |
+| `on_size_changed` | Push, to itself. Measurer and consumer are the same widget. |
+| `Geometry` | Pull, from a scope. Descendants at any depth read an ancestor's size without the widgets between knowing. |
 
-`Geometry` therefore stays the mechanism for the provider-shaped problem — many
-widgets at arbitrary depth reading one scoped value, which push cannot express.
-The docs invert the emphasis: the layout guide gives `on_size_changed` as the
-default answer, and `Geometry` sits under the advanced pages. That split follows
-the demand, and is part of why no size-class layer is needed (§7).
+`Geometry` stays the mechanism for the provider-shaped problem, which push
+cannot express. That split is part of why no size-class layer is needed.
 
-**It is not a provider**, so §10's "widget, not modifier, for the provider"
-decision still holds: it creates no scope and is not resolvable via `.of()`. Like
-`on_mount` / `on_unmount` it does not wrap the target — the callback is
+It is not a provider: it creates no scope and is not resolvable via `.of()`.
+Like `on_mount` / `on_unmount` it does not wrap the target; the callback is
 registered on the widget itself and no node is added to the tree.
 
-**Dispatch is between frames, not during layout.** A size callback is
-arbitrary user code that may mutate the tree, so `set_layout_rect` does two
-things only: it stores `_layout_rect` — a layout result, which
-[RENDERING_PIPELINE.md](RENDERING_PIPELINE.md) §2 explicitly allows — and appends
-the measurement to a framework-internal queue
-(`widgeting/widget_size_change.py`). Nothing in the tree is mutated and no
-`Observable` is written during layout. `App._render_frame` drains the queue at
-the start of the next frame, before the build flush, and the effect lands one
-frame after the measurement. `Geometry` and the scroll metrics publish through
-the same queue (§3.1).
+Dispatch is between frames, never during layout. A size callback is arbitrary
+user code that may mutate the tree, so `set_layout_rect` does two things only:
+it stores `_layout_rect`, a layout result, and appends the measurement to the
+framework-internal queue (`widgeting/widget_size_change.py`). Nothing in the
+tree is mutated and no `Observable` is written during layout. `Window._render_frame`
+drains the queue at the start of the next frame, before the build flush, so
+the effect lands one frame after the measurement. `Geometry` and the scroll
+metrics publish through the same queue.
 
-The one side effect the layout pass does keep is a frame request: queuing calls
+The one side effect the layout pass keeps is a frame request: queuing calls
 `invalidate()`, because a draw-on-demand app would otherwise never reach the
-flush and the callback would never run. That schedules a frame without altering
-any measurement, and `mark_needs_layout()` already does the same from inside
-layout.
+flush and the callback would never run. `mark_needs_layout()` already does
+the same from inside layout.
 
-An in-frame dispatch (after layout, before paint) was implemented and rejected.
-It removed the latency and made a one-shot `render_to_png` correct, but it
-created a frame phase the framework does not otherwise have — recomposition and
-mounting on an already-laid-out tree — to serve a tooling concern. Snapshots
-instead settle explicitly at the entry point
-(`App._settle_pending_size_changes`, capped by `_MAX_SNAPSHOT_SETTLE_PASSES`),
-which simulates the frames an interactive app would have drawn. `Geometry`
-samples rely on the same settle, since their publishes ride the same queue.
+An in-frame dispatch, after layout and before paint, was implemented and
+rejected. It removed the latency and made a one-shot `render_to_png` correct,
+but it created a frame phase the framework does not otherwise have,
+recomposition and mounting on an already-laid-out tree, to serve a tooling
+concern. Snapshots instead settle explicitly at the entry point
+(`Window._settle_pending_size_changes`, capped by
+`_MAX_SNAPSHOT_SETTLE_PASSES`), which simulates the frames an interactive app
+would have drawn. `Geometry` samples rely on the same settle.
 
-Contract details: the queue is keyed by widget and holds the *latest*
-measurement, so several layout passes in one frame report once; the report
-carries size only, so a widget that merely moves is silent; an equal size is
-de-duped (§6's de-dupe guard, per widget rather than per Observable); and the callback
-fires once with the first measurement, so it alone can seed the state it drives.
+The queue is keyed by widget and holds the latest measurement, so several
+layout passes in one frame report once; the report carries size only, so a
+widget that merely moves is silent; an equal size is de-duped per widget, the
+oscillation guard restated for the push path; and the callback fires once
+with the first measurement, so it alone can seed the state it drives.
 
-Because that first call lands *after* the first paint, an `Observable` seeded
-with a value the initial size does not imply produces one transition on startup
-(the de-dupe absorbs it when the seed matches). This is documented rather than
-special-cased: an eager first dispatch would mean two dispatch rules for one
-feature, and the mitigation is a sensible initial value in app code.
-
-Oscillation is bounded by the frame: a callback that resizes what it measures
-advances one step per frame rather than spinning, which is the §6 guarantee
-restated for the push path.
+That first call lands after the first paint, so an `Observable` seeded with a
+value the initial size does not imply produces one transition on startup; the
+de-dupe absorbs it when the seed matches. An eager first dispatch was
+rejected: it would mean two dispatch rules for one feature, where the
+mitigation is a sensible initial value in app code.

@@ -1,420 +1,155 @@
-# App / Window Separation Design
+# App and Window
 
-## 1. Purpose and Scope
+`App` is the process: the event loop, the theme source and the registry of
+windows, owning no pixels. `Window` is one OS window with its widget tree,
+overlay, navigator, focus state and menu bar. `App(Window(content=...))` is
+the only shape: `App` takes its main window plus the app-level options
+(`theme`, `exit_policy`), and every window-flavoured keyword (`title`,
+`width`, `chrome`, `menu`, `parent`, ...) lives on `Window`. A forwarding
+constructor on `App` was rejected because it would have to mirror every
+future `Window` parameter forever; the signature is the scope split made
+visible.
 
-This document defines the separation of "the application" from "a window":
-`Window` as a public type, opening and closing secondary windows from a
-running app, parent/child relationships, the application exit policy, and
-what every formerly window-scoped concept on `App` means once there can be
-more than one window.
+## A Window Is Imperative
 
-### In scope
+Windows are opened and closed by verbs on objects, like
+`Navigator.of(context).push(...)` and overlay handles, not declared as a
+function of state as SwiftUI and Compose scenes are. A window cannot be a
+child in a layout tree, so a widget-tree API could not be truthful.
 
-- The `App` / `Window` split and the `App(Window(content=...))` shape
-- The `Window` lifecycle: construct → `open()` → `close()`
-- Parent/child windows and framework-level modality
-- The exit policy (`ExitPolicy`)
-- The command surface: App and Window operations as plain methods, typed
-  for ViewModels by `AppProtocol` / `WindowProtocol`
-- Per-window resolution of `.of(context)` services: `Overlay`, `Navigator`,
-  focus, shortcuts, IME, menu bar
-- Hot reload and dev-bridge addressing across windows
+One object is one window lifetime. The constructor builds a model with no OS
+window; `open()` realises it, builds and mounts the tree and registers it
+with the app; `close()` unmounts, destroys the OS window and unregisters. A
+closed `Window` is finished, and showing the same content again means
+constructing a new one. State that must outlive a window lives in app-layer
+`Observable`s passed into the content, the framework's ordinary state idiom.
+This is the Electron, WPF and WinForms semantics; Qt's close-hides is the
+outlier. Hiding is a separate axis on an open window, `hide()` / `show()`,
+defined in [TRAY_ICON.md](TRAY_ICON.md). Lifecycle state only moves forward,
+created to open to closed, and `open()` before `app.run()` is allowed: such
+windows are realised when the loop starts.
 
-### Out of scope (deliberate future seats)
+`accepts_first_mouse` is macOS-only. By default the click that activates an
+inactive window is also delivered, matching Windows and Linux, through a
+Cocoa `acceptsFirstMouse:` patch on the pyglet view; `False` restores
+activate-only for a window where an accidental first click could commit
+something.
 
-- `hide()` / `show()` visibility toggling — `close()` destroys; a
-  hide/show verb pair can be added later without changing `close()`
-- Per-window theme override (`Window(theme=...)`) — the parameter's
-  semantics are defined here (Section 8.5) but not implemented initially
-- Close-request veto (e.g. "unsaved changes" interception)
-- OS-native modality and OS-native parent/child stacking (Section 6.3)
-- Opening several windows from one `Window` object (one object is one
-  window; construct another `Window` for another window)
+## Parent, Child and Modality
 
-## 2. Terminology
+`Window(parent=..., modal=True)` declares the relation at construction, as
+Qt, Electron and Tk do. A child stacks above its parent and follows it in
+minimise and restore, best-effort per platform; closing a parent closes its
+children first, transitively. `modal=True` blocks pointer and keyboard input
+to the parent chain while the child is open, window-modal rather than
+app-modal, so sibling top-level windows stay interactive.
 
-- **App**: The process-wide runtime — the event loop (`run()`), the theme
-  source, and the registry of windows. Owns no pixels of its own.
-- **Window**: A public object representing exactly one OS window and its
-  widget tree, overlay, navigator, focus state, and menu bar.
-- **main window**: The window that defines the app's identity for the
-  `MAIN_WINDOW_CLOSED` exit policy: the one passed to the `App`
-  constructor.
-- **parent / child**: A structural relation declared at `Window`
-  construction. Closing a parent closes its children.
-- **framework modal**: Modality implemented by nuiitivet (input to the
-  parent chain is blocked while a modal child is open), as opposed to OS
-  modality, which the backend does not provide (Section 6.3).
+pyglet supports several windows but exposes no parent-child stacking,
+modality or keep-above, so modality is enforced by nuiitivet: the gates sit
+in the window's `_dispatch_*` methods, below every OS event path, where a
+blocked window consumes keyboard input and drops pointer input. The OS may
+still raise the parent above its modal child, and the framework re-raises
+the child on parent activation, best-effort. A synthetic action from the
+dev bridge does not rely on the silent gates; it raises, naming the blocking
+window.
 
-## 3. Design Decisions
+## Exit Policy
 
-1. **`Window` is imperative, not declarative.** Windows are opened and
-   closed by verbs on objects, like `Navigator.of(context).push(...)` and
-   overlay handles — not declared as a function of state (SwiftUI /
-   Compose scenes). Windows cannot be children in a layout tree, so a
-   widget-tree API could not be truthful.
-2. **One object, one window lifetime.** The constructor builds a model
-   (no OS window yet); `open()` realizes it; `close()` destroys it. A
-   closed `Window` is finished — to show the same content again,
-   construct a new `Window`. State that must survive a window lives in
-   app-layer `Observable`s passed into the content, which is the
-   framework's existing state idiom. This is the mainstream semantics
-   (Electron, WPF, WinForms); Qt's close-hides is the outlier.
-3. **`App` takes its main window; there is no sugar constructor.**
-   `App(Window(content=...))` is the only shape: `App` accepts a
-   ready-made `Window` plus the app-level options (`theme`,
-   `exit_policy`), and every window-flavored keyword lives on `Window`
-   (Section 5.1). `App` itself keeps only `run()`, `theme`,
-   `exit_policy`, and the app-scoped operations (Section 7).
-4. **Parent and modality are construction-time options** —
-   `Window(parent=..., modal=True)`, following Qt / Electron / Tk. Modality
-   is framework modal (Section 6.3).
-5. **Exit is a three-valued policy**, `ExitPolicy`, defaulting to
-   `LAST_WINDOW_CLOSED` (Section 6.4).
-6. **The menu bar moves to `Window`.** Its rendering is already
-   per-window (`docs/design/MENU_BAR.md`); `Window(menu=...)` declares
-   it, on the main window like any other.
-7. **Operations are methods, not intents.** An intent names the *what* —
-   the content the Overlay/Navigator path presents — while the method
-   names the verb. App and window operations carry no content, so they
-   are plain methods on the object: `Window.of(context).close()`,
-   `App.of(context).exit()`. ViewModels depend on the narrow typed
-   surfaces `AppProtocol` / `WindowProtocol` instead of the full objects
-   (Section 7).
-8. **The theme is app-wide.** `App(..., theme=...)` supplies every
-   window. `Window(theme=...)` is the reserved override seat
-   (Section 8.5).
-9. **`.of(context)` resolves through the window the context belongs to.**
-   Each window's root is wrapped in a window scope; `Overlay.of` /
-   `Navigator.of` (including their fallback for contexts whose tree lookup
-   fails) resolve to the services of that window, never to a process-wide
-   default (Section 8.1).
+`ExitPolicy` has three values. `LAST_WINDOW_CLOSED`, the default, returns
+from `run()` when no window remains; `MAIN_WINDOW_CLOSED` closes every
+window when the main window closes; `EXPLICIT` returns only on
+`app.exit()`, so an app with zero open windows keeps running, the policy for
+a tray-resident app, which must keep some way to reopen a window from
+app-held state. Under every policy `app.exit()` closes all windows, children
+before parents. Unregistration on close is where the policy fires. A hidden
+window still counts as open.
 
-## 4. The `Window` Type
+## Operations Are Methods, Typed by Protocols
 
-### 4.1 Construction
+An intent names the *what*, the content that `Overlay` and `Navigator`
+present; a method names the verb. App and window operations carry no
+content, so they are plain methods: `Window.of(context).close()`,
+`App.of(context).exit()`. A wrapping intent would only restate the method
+name as a class, so there are no window- or app-scoped intents and no
+`dispatch` entry points. Menu-bar standard items call these same methods on
+the window that owns the menu, so window management and exit stay on one
+code path.
 
-```python
-palette = nv.Window(
-    content=ToolPalette,            # Widget or zero-arg root factory
-    width=280, height=480,          # WindowSizingLike, "auto" supported
-    title="Tools",                  # str | Observable, as on App today
-    chrome=nv.OSChrome(),
-    background=...,
-    resizable=True,
-    accepts_first_mouse=True,       # macOS: first click into an inactive window acts
-    window_position=None,
-    overlay=None,                   # Overlay | factory, same rule as content
-    menu=None,                      # MenuBar model (Section 8.4)
-    parent=None,                    # Window | None
-    modal=False,                    # requires parent
-)
+The ViewModel boundary is typed by `AppProtocol` and `WindowProtocol`
+(`runtime/protocols.py`), exported on the public root beside
+`NavigatorProtocol` and `OverlayProtocol`. `App.of` returns the app itself
+declared as `AppProtocol`; `Window.of` returns the full `Window` for the
+View layer, and a ViewModel narrows it by annotating its parameter. There is
+no proxy object, and a ViewModel written against the protocols runs against
+hand-written fakes with no tree and no app. An operation addresses the object
+it was resolved through, so `Window.of(context)` pins the target to the
+context's own window.
+
+`App.render_to_png(path)` is the one window-flavoured operation kept on
+`App`, delegating to the main window: it is the headless counterpart of
+`run()`, and the operation every sample's docs harness performs.
+
+## Everything Resolves per Window
+
+```mermaid
+flowchart TB
+    A["AppScope: theme"] --> W1["WindowScope: overlay, navigator, focus, shortcuts, IME, menu"]
+    A --> W2["WindowScope"]
+    W1 --> R1["root"]
+    W2 --> R2["root"]
 ```
 
-Construction builds a model only: no OS window, no mounted tree, no
-registration. Every window-flavored keyword formerly on `App` moves here
-with unchanged meaning; `content` keeps the App contract (a `Widget`
-instance or a root factory; the factory form is what enables hot reload,
-Section 9.1), and `overlay` takes the same two forms under the same rule. `modal=True` without `parent` raises at construction.
+Every open window's tree is `AppScope > WindowScope > root`. A
+`.of(context)` lookup stops at the nearest matching scope, so an app-wide
+lookup succeeds from any window while a window-scoped one never crosses
+windows. `Overlay.of` and `Navigator.of` fall back to the context's window
+scope when the ancestor walk fails, since the overlay stack is a sibling of
+the content rather than an ancestor, never to a process-wide default, which
+would silently cross windows. The scopes are passive carriers: they make
+`App` and `Window` findable and do nothing else.
 
-`accepts_first_mouse` is macOS-only: by default the click that activates
-an inactive window is also delivered to the app (a Cocoa
-`acceptsFirstMouse:` patch on the pyglet view), matching Windows/Linux
-and today's platform norm. `False` restores activate-only behavior for
-windows where an accidental first click could commit something. Modality
-is unaffected: a window blocked by a modal child consumes the delivered
-input in its dispatch gates.
+Each window has one overlay stack and one root navigator, built by `open()`;
+dialogs, menus and tooltips are confined to their window, which is why
+secondary windows exist. Each window keeps its own focus state, and the OS
+decides which window key events enter. Shortcut bindings are tree-anchored
+([KEYBOARD_SHORTCUTS.md](KEYBOARD_SHORTCUTS.md)), so a `MOUNT` binding fires
+only for keys delivered to its own window; a command that must work from
+every window is registered in each window's tree or on each window's menu.
+IME state is per window: each `Window` owns an `IMEManager` holding its
+caret rect and geometry, so two windows never race each other's candidate
+placement ([TEXT_EDITING.md](TEXT_EDITING.md)).
 
-### 4.2 Lifecycle
+The menu bar is per window, `Window(menu=...)`. On Windows and Linux each
+window renders its own bar; on macOS the global bar follows the focused
+window, and a window with `menu=None` shows the main window's menu, so a
+single-menu app declares nothing per window ([MENU_BAR.md](MENU_BAR.md)).
 
-- `open() -> Window`: realizes the OS window, builds and mounts the tree
-  (root factory → implicit or explicit `Navigator` → overlay stack, the
-  same composition `App` performs today), and registers the window with
-  the running `App`. Returns `self`. Calling `open()` before `app.run()`
-  is allowed; such windows are realized when the loop starts. Opening an
-  already-open or already-closed window raises.
-- `close() -> None`: unmounts the tree, destroys the OS window, and
-  unregisters. Closing an unopened or already-closed window is a no-op.
-  Children close first (Section 6.2).
-- `closed`: an awaitable that resolves when the window has closed —
-  whether via `close()`, the OS close button, or a parent closing.
-- `is_open`: an `ObservableBase[bool]`.
+The theme is app-wide: `App(..., theme=...)` supplies every window, and
+`App` subscribes to the `ThemeManager` once and fans invalidation out to
+every open window; the scopes wire no callbacks. `Window(theme=...)` is a
+reserved seat: when implemented, a window-local theme shadows the app theme
+for that window's tree only, and `set_theme` stays app-scoped.
 
-The OS close button is equivalent to `close()`.
+## Tooling
 
-### 4.3 Operations
+Each `Window` holds its own root factory, and a hot reload rebuilds every
+open window's tree through it. A closed window stays closed; a reload never
+resurrects one. Window ids are process-monotonic and never reused, stable
+across reloads, so the dev bridge addresses a window by id: `status` lists
+the open windows, and the tree, state and action tools take `window=<id>`
+defaulting to the main window, a deterministic default since an
+agent-launched app does not reliably hold OS focus.
 
-The window-manipulation verbs are imperative methods: `maximize()`,
-`minimize()`, `restore()`, `full_screen()`, `center()`, `move_to(x, y)`,
-`resize(w, h)`, plus the `title` property (Observable-bindable) and `menu`
-property (wholesale replacement). Menu items and accelerators call these
-same methods; there is no second, declarative path.
+## Ownership
 
-### 4.4 `Window.of(context)`
-
-Returns the `Window` whose tree contains `context`, following the
-established `.of()` convention — including its timing rule: valid from
-`on_mount`, not from `__init__`. There is no proxy type; the returned
-object is the same `Window` the opener holds. A ViewModel narrows it by
-annotating its parameter as `WindowProtocol` (Section 7).
-
-## 5. The `App`
-
-### 5.1 Construction
-
-```python
-app = nv.App(
-    nv.Window(content=Home, title="Main", width=800, height=600, menu=...),
-    theme=...,
-    exit_policy=...,
-)
-```
-
-`App` takes its main `Window` as the first argument, plus the app-level
-options `theme` and `exit_policy` — nothing else. There is no sugar form
-that accepts window keywords on `App`: the signature is the scope split
-(Section 7) made visible, and a forwarding constructor would have to
-mirror every future `Window` parameter forever. Passing anything but a
-`Window` first raises with the wrapping hint. `run()` opens the main
-window (and any other windows on which `open()` was already called),
-runs the loop, and returns when the exit policy says so (Section 6.4).
-
-### 5.2 Surface
-
-`App` keeps: `run()`, `theme`, `exit_policy`, the operations `exit()` /
-`set_theme(...)` / `register_themes(...)`, `App.of(context)` — which
-returns the App itself, declared as `AppProtocol` so widget-tree callers
-see only the narrow surface (Section 7) — and gains `main_window` and
-`windows` (a snapshot tuple of currently open windows). Window-flavored properties
-on `App` (`title`, `menu`, `width`, ...) are removed — callers go through
-`app.main_window`. One deliberate exception: `App.render_to_png(path)`
-stays, delegating to the main window, because it is the headless
-counterpart of `run()` — "render the app" is an app-level sentence, and
-it is the operation every sample's docs harness performs. Breaking
-changes are acceptable per project policy.
-
-## 6. Windows at Runtime
-
-### 6.1 Opening from app code
-
-```python
-class Screen(nv.ComposableWidget):
-    def _open_palette(self) -> None:
-        self._palette = nv.Window(
-            content=ToolPalette,
-            title="Tools",
-            parent=nv.Window.of(self),
-        ).open()
-```
-
-Opening needs content and configuration, which is an imperative concern.
-A "New Window" menu item simply calls this from `on_select`.
-
-### 6.2 Parent / child
-
-- A child stacks above its parent and follows it in minimize/restore,
-  best-effort per platform (Section 6.3).
-- Closing a window closes its children first, transitively.
-- `modal=True`: while the child is open, the parent chain receives no
-  pointer or keyboard input — the same barrier idea as a modal overlay,
-  applied across windows. Sibling top-level windows are unaffected
-  (window-modal, not app-modal).
-
-### 6.3 Platform reality
-
-pyglet supports multiple windows natively, which is all that plain
-multi-window needs. It does **not** expose parent/child stacking,
-modality, or keep-above cross-platform. Therefore:
-
-- Modality is enforced by nuiitivet (input blocking in the event path),
-  not by the OS. The OS may still allow the parent to be raised above the
-  modal child; the framework re-raises the child on parent activation,
-  best-effort.
-- Stacking/minimize-follow uses per-platform code where available (the
-  IME precedent: platform-specific modules behind one interface), and
-  degrades gracefully where not.
-
-### 6.4 Exit policy
-
-```python
-class ExitPolicy(Enum):
-    LAST_WINDOW_CLOSED = ...   # default: run() returns when no window remains
-    MAIN_WINDOW_CLOSED = ...   # closing the main window closes all windows and exits
-    EXPLICIT = ...             # run() returns only on app.exit()
-```
-
-`App(..., exit_policy=...)`. Under every policy `app.exit()` closes all
-windows (children before parents) and exits with its `exit_code`. Under
-`EXPLICIT`, an app with zero open windows keeps running — the policy for
-tray-style or macOS-conventional apps; some window must be reopenable
-from app-held state (a menu callback, a timer, an outside event).
-
-## 7. Command Surface
-
-App and window operations are plain methods, split by what they address:
-
-| Scope | Entry | Operations |
-| --- | --- | --- |
-| App | `App.of(context)` — typed `AppProtocol` | `exit()`, `set_theme(...)`, `register_themes(...)` |
-| Window | `Window.of(context)` | `close()`, `hide()`, `show()`, `minimize()`, `maximize()`, `restore()`, `full_screen()`, `center()`, `move_to(x, y)`, `resize(w, h)` |
-
-- **Methods, not intents.** Intents exist where they name the *what* —
-  the content the Overlay/Navigator path presents
-  (`Overlay.of(context).dialog(intent)`,
-  `Navigator.of(context).push(intent)`) — while the method names the
-  verb. App and window operations carry no content; a wrapping intent
-  would only restate the method name as a class. There are no window- or
-  app-scoped intent classes and no `dispatch` entry points.
-- **The ViewModel boundary is typed by protocols.** `AppProtocol`
-  (`exit`, `set_theme`, `register_themes`) and `WindowProtocol` (the
-  window operations above plus `is_open`, `is_visible`, and the
-  awaitable `closed`) live in `runtime/protocols.py` and are exported on
-  the public root beside `NavigatorProtocol` / `OverlayProtocol`. A
-  ViewModel annotated with them runs against hand-written fakes — no
-  tree, no App — and a developer writing one needs to learn only the
-  protocol surface. `App.of` declares `AppProtocol` and returns the App
-  itself (there is no proxy object); `Window.of` returns the full
-  `Window` for the View layer, and the ViewModel narrows it by
-  annotation.
-- An operation addresses the object it was resolved through —
-  `Window.of(context)` pins the target to the context's own window.
-- Menu-bar standard items (`MenuEntry.quit()`,
-  `MenuEntry.close_window()`, ...) call these same methods; each menu
-  bar belongs to a window, so its controller calls window methods on
-  that window and `exit()` on the app.
-
-## 8. Window-Scoped Services
-
-### 8.1 `.of(context)` resolution
-
-Each window's root is wrapped in an internal window scope (the analogue
-of today's `AppScope`, which remains app-wide and carries the theme).
-`Overlay.of(context)` and `Navigator.of(context)` resolve within the
-context's window; their existing fallback (used because the overlay
-stack is a sibling of the content, not an ancestor) consults the
-context's window scope — not a process-wide App default, which would
-silently cross windows. The `on_mount` timing rule is unchanged.
-
-### 8.2 Overlay and Navigator
-
-One overlay stack and one root navigator per window, built by
-`Window.open()` exactly as `App.__init__` builds them today. Dialogs, menus, and tooltips are
-confined to their window, as before — that confinement is precisely why
-secondary windows exist.
-
-### 8.3 Focus, keyboard, shortcuts
-
-- Each window keeps its own focus state; the OS decides which window is
-  focused and key events enter that window's tree only.
-- Shortcut bindings are tree-anchored (`FOCUS` / `FOREGROUND` / `MOUNT`,
-  `docs/design/KEYBOARD_SHORTCUTS.md`), so they are naturally per-window:
-  a `MOUNT`-scoped binding fires only for key events delivered to its own
-  window. There is still no `APPLICATION` scope; a command that must work
-  from every window is registered in each window's tree (typically via a
-  shared content-root modifier), or is a menu accelerator on each
-  window's menu.
-
-### 8.4 Menu bar
-
-`menu=` moves to `Window`; the main window declares its menu the same
-way every window does. On Windows/Linux each window renders its own in-app bar —
-already per-window in the current design. On macOS the global bar
-follows the focused window (the AppKit convention): the `NSMenu` bridge
-installs the focused window's model, and a window with `menu=None` shows
-the main window's menu, so single-menu apps keep today's behavior
-without per-window declarations. The per-App `MenuBarFocusCoordinator`
-(`nuiitivet/menubar/focus.py`) owns the bridge and swaps it on OS focus
-changes, coalesced onto the clock tick; activation and accelerators
-act through the installed model's owning window. On macOS a
-secondary window's own menu never renders in-app — it waits for focus
-and then takes the global bar.
-
-### 8.5 Theme
-
-`App(..., theme=...)` is the single theme source; every window's tree reads
-it through the app-wide scope. `Window(theme=...)` is reserved: when
-implemented, a window-local theme shadows the app theme for that window's
-tree only, and `set_theme` / `register_themes` remain app-scoped.
-
-### 8.6 IME
-
-IME state is per window. Each `Window` owns an `IMEManager` (`Window.ime`)
-holding that window's cursor rect and screen geometry: the window's focused
-text field publishes the rect, the backend publishes the geometry, and the
-platform IME hook — installed per OS window — reads them back to position
-the candidate window, so two windows never race each other's geometry. The
-platform-module split (macOS / Windows / Linux behind one interface) is
-unchanged.
-
-On OS focus loss a pending composition is committed for that window — the
-provisional text stays, as in native fields — and the OS-side conversation
-is discarded, so the field is settled while another window types and
-refocusing starts a clean composition.
-
-## 9. Tooling
-
-### 9.1 Hot reload
-
-Each `Window` holds its own root factory. A module reload rebuilds the
-tree of every open window through its factory, under the existing
-rebuild/commit path. Closed windows stay closed — a reload never
-resurrects a window; the constructing code path must run again.
-
-### 9.2 Dev bridge
-
-The bridge tools currently assume one tree. They gain an optional window
-selector: `status` lists open windows (id, title, main/focused flags),
-and tree/state/action tools accept `window=<id>` defaulting to the main
-window — a deterministic default for agent use, since agent-launched
-apps do not reliably hold OS focus. Actions targeting a window blocked
-by a modal child fail loudly, consistent with the bridge's
-covered-target behavior.
-
-## 10. Internal Design
-
-### 10.1 Ownership
-
-- `runtime/window.py` — `Window` implements the entire host protocol
-  that widget trees mount against: layout, invalidation and redraw
-  scheduling, focus and interaction state, input dispatch, overlay and
-  navigator construction, menu bar, and lifecycle. `WindowScope` lives
-  beside it.
-- `runtime/app.py` — `App` owns the window registry, the
-  `ThemeManager`, `run()` (the event-loop handoff), `ExitPolicy`
-  evaluation, and the app-scoped operations. `AppScope` lives here;
-  `AppProtocol` and `WindowProtocol` live in `runtime/protocols.py`.
-- `backends/pyglet/runner.py` — `run_app(app)` owns process-wide setup
-  and the loop; `_realize_window(owner_app, win, ...)` turns one open
-  `Window` into an OS window (pyglet window, event wiring, per-window
-  GPU state, IME patch). Windows opened before `run()` are realized at
-  loop start; windows opened while running are realized through the
-  app's realize hook, which registration triggers.
-
-### 10.2 Structure and flow
-
-Every open window's mounted tree is
-`AppScope(app) > WindowScope(window) > root`; each `.of(context)`
-lookup stops at the nearest matching scope, so app-wide lookups succeed
-from any window while window-scoped ones never cross windows.
-
-`open()` builds and mounts the tree, then registers with the app.
-`close()` closes children first, unmounts, destroys the OS window, and
-unregisters; unregistration is where the exit policy fires.
-
-### 10.3 Invariants
-
-- Nothing below the host protocol knows which window hosts it. Widget
-  code is window-agnostic; multi-window concerns end at `Window`.
-- Scope widgets are passive carriers: they make `App` and `Window`
-  findable from a context and do nothing else.
-- Theme-change propagation is owned by `App`: it subscribes to the
-  `ThemeManager` once and fans out invalidation to every open window.
-  Scopes wire no callbacks.
-- A window blocked by a modal child consumes keyboard input and drops
-  pointer input; the gates sit in the window's `_dispatch_*` methods,
-  below every OS event path. Synthetic actions (dev bridge) do not rely
-  on the silent gates — they raise, naming the blocking window.
-- Window ids are process-monotonic and never reused; an id is stable
-  for the window's lifetime, including across hot reloads.
-- Lifecycle state only moves forward (created → open → closed); one
-  `Window` object corresponds to at most one OS window, ever.
+`runtime/window.py` holds `Window`, which implements the entire host
+protocol a tree mounts against (layout, invalidation, redraw scheduling,
+focus and interaction state, input dispatch, overlay and navigator
+construction, menu bar, lifecycle), and `WindowScope`. `runtime/app.py`
+holds `App` with the window registry, the `ThemeManager`, `run()`,
+`ExitPolicy` and `AppScope`. `backends/pyglet/runner.py` owns process-wide
+setup and the loop, and `_realize_window` turns one open `Window` into an OS
+window: pyglet window, event wiring, per-window GPU state, IME patch. A
+window opened while running is realised through the app's realise hook,
+which registration triggers. Nothing below the host protocol knows which
+window hosts it; multi-window concerns end at `Window`.
