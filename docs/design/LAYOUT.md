@@ -1,153 +1,88 @@
 # Layout System Design
 
-## Overview
+The layout is the widget tree itself. A widget's size, spacing and alignment
+are its own properties, and a container places its children by its own. There
+is no stylesheet and no constraint solver. The rect vocabulary (allocated
+rect, content rect, outsets) is defined in [BOX_MODEL.md](BOX_MODEL.md).
 
-See [BOX_MODEL.md](BOX_MODEL.md) for the single source of truth on rect terminology (allocated/content), hit testing rules, and visual overflow (outsets).
+## Spacing: Padding and Gap, No Margin
 
-The layout system of this framework is expressed by the Widget tree structure itself.
-It aims for intuitive control through properties and composition, rather than external stylesheets or complex constraint systems.
+`padding` is the inset from a widget's allocated rect to its content rect.
+`gap` is the interval a container inserts between its children. There is no
+`margin`.
 
-## Core Principles
+Leaving margin out does not forbid outer space. It means there is exactly one
+property for insets, so the reader never chooses between margin and padding.
+Space between siblings is the parent's `gap`; space around the whole group is
+the parent's `padding`; an adjustment to one element is that element's own
+`padding`. A widget that draws its own boundary draws it inside the padding,
+so its padding reads as outer space. This is the shape of SwiftUI's
+`.padding()`, which has no margin either.
 
-### 1. Spacing: Padding & Gap (No Margin)
+## Sizing
 
-Spacing control between Widgets is unified under `padding` and `gap`. `margin` (outer spacing) is not used.
+A widget asks for space on each axis with a `Sizing`: `fixed`, `auto` or
+`weight`. `weight` is a share of the space left over by the `fixed` and `auto`
+siblings, in the sense of WPF star sizing, not Flexbox `flex-grow`: there is
+no `flex-basis`, and the weight applies to the remainder alone. The share rules
+and the rejected percentage spelling are in [SIZE_POLICY.md](SIZE_POLICY.md).
 
-* **Padding (Inner Spacing)**
-  * All Widgets have a `padding` property.
-  * It is the inset from the allocated rect to the content rect (see [BOX_MODEL.md](BOX_MODEL.md)). A widget that draws its own boundary draws it inside the padding.
+A `weight` child measures as its content; the weight decides only how the
+parent's room is shared out. A parent sized by its content, such as a window
+with no height, thus fits the child's content. Measuring a `weight` child as
+zero was rejected: a grid of `"wt"` cards in such a window would come up empty.
 
-* **Gap (Spacing Between Children)**
-  * Containers with multiple children (`Row`, `Column`, etc.) have a `gap` property.
-  * It inserts a consistent interval between child Widgets.
+### Grid Allocates Room; the Child Fills It
 
-* **Flow 2-axis Gap**
-  * Multi-run layouts (`Flow`) have `main_gap` and `cross_gap` in anticipation of future `direction` additions.
-    * `main_gap`: Interval within a run (main direction).
-    * `cross_gap`: Interval between runs (cross direction).
-  * Equivalent to CSS `gap` / `row-gap` / `column-gap` or Flutter's `Wrap(spacing, runSpacing)`.
+`Grid` decides rows, columns, areas and the allocated rect of each cell.
+Whether the child fills that rect or keeps its intrinsic size is the child's
+own `width` / `height`. A cell is filled with `width="wt", height="wt"`, not by
+a `Grid` option.
 
-* **Grid row/column Gap**
-  * 2D layouts (`Grid`) have fixed axes, so they use `row_gap` and `column_gap`.
-    * `row_gap`: Interval between rows (Y direction).
-    * `column_gap`: Interval between columns (X direction).
-  * Shares the same intent as CSS `row-gap` / `column-gap`.
+### Which Dimensions Are Constructor Parameters
 
-* **Why No Margin?**
-  * This does not mean a child cannot have outer space. It means there is exactly **one** property for insets, `padding`, and no second property called `margin`.
-  * The goal is to never leave the reader choosing between margin and padding, not to forbid outer space.
-  * Space between siblings is the parent's `gap`; space inside the whole container is the parent's `padding`; an adjustment to one element is that element's own `padding`.
-  * This is the same shape as SwiftUI's `.padding()` (no margin concept; padding grows the frame), in line with the SwiftUI / Compose modifier lineage.
+Whether a size is a public constructor parameter is decided per axis by one
+rule: MD3 leaves the axis open, so it is a constructor parameter; MD3 fixes
+it, so it is style only. The rule and what follows from it are in
+[SIZE_POLICY.md](SIZE_POLICY.md).
 
-### 2. Sizing System
+## Alignment Is the Parent's
 
-Widget sizes are abstracted by the `Sizing` type and specified via `width` and `height` properties.
+Alignment belongs to the parent, not to the child. A single-child container
+takes `alignment`, one of nine points. A multi-child container takes
+`main_alignment` along its axis and `cross_alignment` across it.
 
-#### Sizing Types
+Alignment positions only; it never stretches. To fill the space the child
+takes `width="wt"` / `height="wt"`. CSS `align-*` lets alignment also absorb
+excess space (`stretch`); that meaning was left out so that alignment answers
+one question, where the child goes, and `Sizing` the other, how big it is.
 
-* **`fixed(value)`**: Fixed pixel value.
-* **`auto`**: Size determined by content (Intrinsic size).
-* **`weight(value=1.0)`**: Takes a share of the space left over by the `fixed` and `auto` siblings.
-  * This is WPF star (`*`) sizing, **not** Flexbox `flex-grow`: there is no `flex-basis`, and the weight applies to the remainder alone.
-  * If multiple `weight` elements exist, the remainder is distributed according to the `value` ratio; a lone one takes all of it.
-  * The string form is `"wt"` (weight 1) or `"wt<n>"` — `"wt2"` is `weight(2.0)`.
-    * Note: a weight is never a fraction of the parent. `"wt50"` beside a fixed child still takes the whole remainder, not half the axis. See [SIZE_POLICY.md §1.1](SIZE_POLICY.md).
-  * A `weight` child measures as its content; the weight decides only how the parent's room is shared out. A parent sized by its content, such as a window with no height, thus fits the child's content. Measuring a `weight` child as zero was rejected: a grid of `"wt"` cards in such a window would come up empty.
+## Overflow Is Visible
 
-#### Grid: Room Allocation and Fill
+A child larger than its allocated rect is painted as it is; nothing clips it.
+Visible was chosen over clip for three reasons:
 
-Note: The responsibility of `Grid` is "room allocation" (determining rows, columns, areas, and the allocated rect for each cell).
-How the allocated room is used (intrinsic or full fill) is decided by the child Widget's `width` / `height` (`Sizing`).
+- With `Sizing`, content does not overflow a correct layout. Overflow is a
+  layout bug, and a visible one is found; a clipped one is not.
+- Shadows, focus rings and popups overflow their widget by design.
+- Clipping (`saveLayer` / `clipRect`) is expensive. Paying it on every widget
+  for the few that want it was rejected.
 
-Example: To fill a cell, explicitly specify `Sizing.weight(1)`.
+Clipping and scrolling are added where wanted: `clip()` is a modifier, and
+scrolling is a viewport widget.
 
-```python
-cell = Card(
-    Text("Cell"),
-    width=Sizing.weight(1),
-    height=Sizing.weight(1),
-)
-```
+## Modifiers Do Not Lay Out
 
-#### Which Dimensions Are Constructor Parameters (Per-Axis Binary Rule)
+Size, spacing and alignment are widget properties. A modifier adds a
+capability or a visual effect and never changes layout; the reason is in
+[MODIFIER.md](MODIFIER.md).
 
-Whether a size dimension is a **public constructor parameter** is decided **per axis, not per widget**, by a single binary rule derived from MD3. See [SIZE_POLICY.md](SIZE_POLICY.md) Section 0 for the full policy and the authoritative classification table.
+## Window Size Is Not a Sizing
 
-* **MD3 leaves the axis open** → expose it on the constructor, named by its degree of freedom:
-  * independently variable single axis → **semantic name** (`width`, `length`);
-  * uniformly variable (1:1) → single **`size`** (e.g. `Icon`, `CircularProgressIndicator`).
-  * The parameter lives on the constructor, never inside `style`.
-* **MD3 fixes the axis** (spec token / size variant) → **not** a constructor parameter; customize via `style` only.
-  * Examples: `Button`/`ToggleButton`/chip **height** (size variant), `Checkbox`/`RadioButton`/`Switch` touch target (`*Style.default_touch_target`), `MenuItem` height (`MenuStyle.item_height`), `TextField` height, `Badge` dimensions.
+The window's `width` / `height` is a `WindowSizing`: a fixed pixel value or
+`"auto"`, the content's preferred size. It is a separate type because a window
+is resolved before layout and has no parent. `"wt"` has nothing to take a
+share of, so it is not accepted.
 
-* **API curation only, no runtime enforcement.** Curation applies to the public constructor surface. The base `WidgetKernel`'s `width_sizing` / `height_sizing` remain an unsupported **escape hatch** — no clamping or validation is added (see [SIZE_POLICY.md](SIZE_POLICY.md), *No Runtime Enforcement*).
-* **Uniform (1:1) widgets** (`Icon`, circular progress) still take a single `size`, internally setting both `width` and `height`, and do not accept separate `width` / `height` arguments.
-
-### 3. Alignment: Parent's Responsibility
-
-Alignment follows the principle that it is the "parent Widget's" responsibility, not the child Widget's.
-
-#### Single Child Container
-
-Widgets with a single child (`Container`, etc.) use the `alignment` property.
-
-* **Values**
-  * 9-point alignment:
-    * `top-left`, `top-center`, `top-right`
-    * `center-left`, `center`, `center-right`
-    * `bottom-left`, `bottom-center`, `bottom-right`
-
-Note: Alignment only determines the positioning. To fill the space, specify `width` / `height` (e.g., `Sizing.weight(...)`).
-
-Note: The term `alignment` can mean different things. CSS-related (`align-*` / `justify-*`) sometimes includes the concept of "stretch" (absorbing excess space), but this framework adopts a GUI-centric approach where alignment consistently means "positioning only."
-
-#### Multi Child Container
-
-Widgets with multiple children (`Row`, `Column`, etc.) use Flexbox-like alignment control.
-
-* **`main-alignment` (Main axis)**
-  * `start`, `center`, `end`
-  * `space-between`, `space-around`, `space-evenly`
-* **`cross-alignment` (Cross axis)**
-  * `start`, `center`, `end`
-
-### 4. Overflow Strategy
-
-**Overflow** occurs when a child Widget's painted content or layout size exceeds the area (bounds) allocated by its parent.
-While overflow control generally includes Visible, Clip, or Scroll, this framework defaults to **Visible** based on the following design philosophy.
-
-* **Default: Visible**
-  * By default, content is rendered as-is even if it overflows the bounds (not clipped).
-  * **Design Rationale**:
-    * **Web Standard Alignment**: Matches the CSS default `overflow: visible`.
-    * **Fail Loudly**: With the Sizing system, content shouldn't overflow under normal circumstances. Overflow indicates a layout design bug; keeping it visible makes bugs easier to notice and fix than silent clipping.
-    * **Design Freedom**: Visual effects like shadows or focus rings often naturally overflow parent boundaries.
-    * **Role of Modifiers**: `Clip` (visual effect) and `Scroll` (functional addition) are the responsibilities of Modifiers; default Widgets should render plainly.
-    * **Performance First**: Clipping operations (`saveLayer` / `clipRect`) are expensive. Defaulting to Visible maximizes framework performance.
-
-* **Handling Overflow**
-  * **Clipping**: Use the `Clip` Modifier when visual truncation is required.
-  * **Scrolling**: Use the `Scroll` Modifier when scrolling within a region is needed.
-
-### 5. Role of Modifiers in Layout
-
-**Modifiers** wrap existing Widgets to add capabilities or visual effects. See [MODIFIER.md](MODIFIER.md) for detailed design.
-
-* **Principle: Layout is Property-driven**
-  * Layout (size, spacing, alignment) is controlled via Widget-own properties (`width`, `height`, `padding`, `alignment`).
-  * Avoid directly changing layout size or alignment via Modifiers.
-
-## Window (App) Sizing / Positioning
-
-The `width` / `height` of the `App` (OS window) is distinct from Widget `Sizing`.
-
-* Window `width` / `height` is treated as `WindowSizing` (or `WindowSizingLike`).
-  * Accepts fixed **px** values or `"auto"` (preferred size).
-* `"wt"`-style specification is **not supported**: a window has no parent to take a share of, so a weight has nothing to mean here.
-
-Window positions are specified using 9-point Alignment vocabulary.
-
-* Specified like `WindowPosition.alignment("bottom-center", offset=(0, -24))`.
-* `offset` is applied after alignment.
-  * Units in px.
-  * Coordinate system matches the UI: $+x$ is right, $+y$ is down.
+A window position is a nine-point alignment on the screen plus a pixel
+offset, the same vocabulary as widget alignment.
