@@ -52,6 +52,7 @@ Widget sizes are abstracted by the `Sizing` type and specified via `width` and `
   * If multiple `weight` elements exist, the remainder is distributed according to the `value` ratio; a lone one takes all of it.
   * The string form is `"wt"` (weight 1) or `"wt<n>"` — `"wt2"` is `weight(2.0)`.
     * Note: a weight is never a fraction of the parent. `"wt50"` beside a fixed child still takes the whole remainder, not half the axis. See [SIZE_POLICY.md §1.1](SIZE_POLICY.md).
+  * A `weight` child measures as its content; the weight decides only how the parent's room is shared out. A parent sized by its content, such as a window with no height, thus fits the child's content. Measuring a `weight` child as zero was rejected: a grid of `"wt"` cards in such a window would come up empty.
 
 #### Grid: Room Allocation and Fill
 

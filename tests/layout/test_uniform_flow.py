@@ -1,14 +1,15 @@
 from nuiitivet.layout.uniform_flow import UniformFlow
+from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgeting.widget import Widget
 
 
 class DummyWidget(Widget):
-    def __init__(self, pref_w: int, pref_h: int):
-        super().__init__()
+    def __init__(self, pref_w: int, pref_h: int, *, width: SizingLike = None, height: SizingLike = None):
+        super().__init__(width=width, height=height)
         self._pref = (pref_w, pref_h)
         self.clear_last_rect()
 
-    def preferred_size(self):
+    def preferred_size(self, max_width=None, max_height=None):
         return self._pref
 
     def paint(self, canvas, x, y, w, h):
@@ -16,7 +17,7 @@ class DummyWidget(Widget):
 
 
 def test_uniform_fixed_column_layout():
-    children = [DummyWidget(20, 18) for _ in range(4)]
+    children = [DummyWidget(20, 18, width="wt") for _ in range(4)]
     layout = UniformFlow(children, columns=2, main_gap=4, cross_gap=6)
     layout.paint(None, 0, 0, 200, 120)
     assert children[0].last_rect == (0, 0, 98, 18)
@@ -32,7 +33,7 @@ def test_uniform_fixed_column_layout():
 
 
 def test_uniform_max_extent_infers_columns():
-    children = [DummyWidget(30, 12) for _ in range(3)]
+    children = [DummyWidget(30, 12, width="wt") for _ in range(3)]
     layout = UniformFlow(children, max_column_width=70, main_gap=10)
     layout.paint(None, 0, 0, 220, 100)
     c0 = children[0].last_rect
@@ -47,7 +48,7 @@ def test_uniform_max_extent_infers_columns():
 
 
 def test_uniform_applies_aspect_ratio():
-    children = [DummyWidget(10, 10) for _ in range(2)]
+    children = [DummyWidget(10, 10, width="wt", height="wt") for _ in range(2)]
     layout = UniformFlow(children, columns=2, aspect_ratio=2.0, main_gap=0)
     layout.paint(None, 0, 0, 200, 200)
     c0 = children[0].last_rect
@@ -57,6 +58,63 @@ def test_uniform_applies_aspect_ratio():
     assert c0[2] == 100
     assert c0[3] == 50
     assert c1[3] == 50
+
+
+def test_auto_child_keeps_its_size_and_sits_at_start_by_default():
+    children = [DummyWidget(20, 18), DummyWidget(20, 18)]
+    layout = UniformFlow(children, columns=2)
+    layout.paint(None, 0, 0, 200, 100)
+    assert children[0].last_rect == (0, 0, 20, 18)
+    assert children[1].last_rect == (100, 0, 20, 18)
+
+
+def test_item_alignment_positions_an_auto_child_in_its_cell():
+    children = [DummyWidget(20, 10), DummyWidget(20, 30)]
+    layout = UniformFlow(children, columns=2, item_alignment=("end", "center"))
+    layout.paint(None, 0, 0, 200, 100)
+    assert children[0].last_rect == (80, 10, 20, 10)
+    assert children[1].last_rect == (180, 0, 20, 30)
+
+
+def test_weight_child_fills_its_cell_whatever_the_alignment():
+    children = [DummyWidget(20, 10, width="wt", height="wt"), DummyWidget(20, 30)]
+    layout = UniformFlow(children, columns=2, item_alignment="center")
+    layout.paint(None, 0, 0, 200, 100)
+    assert children[0].last_rect == (0, 0, 100, 30)
+    assert children[1].last_rect == (140, 0, 20, 30)
+
+
+def test_fixed_height_child_keeps_its_height_in_a_taller_row():
+    short = DummyWidget(20, 10, width="wt", height=50)
+    tall = DummyWidget(20, 80, width="wt")
+    layout = UniformFlow([short, tall], columns=2, item_alignment="center")
+    layout.paint(None, 0, 0, 200, 200)
+    assert short.last_rect == (0, 15, 100, 50)
+    assert tall.last_rect == (100, 0, 100, 80)
+
+
+def test_a_row_is_as_tall_as_its_tallest_child_measures():
+    with_fixed = [DummyWidget(20, 90, width="wt", height="wt"), DummyWidget(20, 10, width="wt", height=40)]
+    layout = UniformFlow(with_fixed, columns=2)
+    assert layout.preferred_size(max_width=200) == (200, 90)
+    layout.paint(None, 0, 0, 200, 90)
+    assert with_fixed[0].last_rect == (0, 0, 100, 90)
+    assert with_fixed[1].last_rect == (100, 0, 100, 40)
+
+
+def test_rows_of_weight_heights_share_the_spare_height():
+    children = [DummyWidget(20, 90, width="wt", height="wt") for _ in range(4)]
+    layout = UniformFlow(children, columns=2, cross_gap=4)
+    assert layout.preferred_size(max_width=200) == (200, 184)
+    layout.paint(None, 0, 0, 200, 205)
+    assert children[0].last_rect == (0, 0, 100, 101)
+    assert children[2].last_rect == (0, 105, 100, 100)
+
+    mixed = [DummyWidget(20, 10, width="wt", height=40), DummyWidget(20, 10), DummyWidget(20, 90, height="wt")]
+    layout = UniformFlow(mixed, columns=2, cross_gap=4, item_alignment="center")
+    layout.paint(None, 0, 0, 200, 200)
+    assert mixed[0].last_rect == (0, 0, 100, 40)
+    assert mixed[2].last_rect == (40, 44, 20, 156)
 
 
 def test_uniform_flow_passes_column_constraint_to_children():

@@ -45,7 +45,7 @@ class Row(Widget):
             main_alignment: Horizontal alignment of children.
                 'start', 'center', 'end', 'space-between', 'space-around', 'space-evenly'.
             cross_alignment: Vertical alignment of children.
-                'start', 'center', 'end', 'stretch'.
+                'start', 'center' or 'end'.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         super().__init__(width=width, height=height, padding=padding, key=key)
@@ -98,7 +98,7 @@ class Row(Widget):
             main_alignment: Horizontal alignment of children.
                 'start', 'center', 'end', 'space-between', 'space-around', 'space-evenly'.
             cross_alignment: Vertical alignment of children.
-                'start', 'center', 'end', 'stretch'.
+                'start', 'center' or 'end'.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         provider = ForEach(items, builder)
@@ -231,7 +231,7 @@ class Row(Widget):
 
         Priority:
         1. fixed/auto elements get their base_size (minimum, non-shrinkable)
-        2. stretch elements share remaining space by weight
+        2. weight elements share remaining space by weight
         3. If not enough space, fixed/auto may overflow (spacing/padding are guaranteed)
         """
         n = len(base_sizes)

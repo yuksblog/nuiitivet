@@ -19,7 +19,9 @@ AlignValue = Union[str, Tuple[str, str]]
 class UniformFlow(Widget):
     """Layout children in a uniform grid.
 
-    This layout arranges children into columns with equal width.
+    This layout arranges children into columns with equal width. A row is as
+    tall as its tallest child measures; a row whose children all have a ``"wt"``
+    height also takes a share of the height the other rows leave.
 
     From a data collection, or an observable of one: :meth:`builder`.
     """
@@ -36,7 +38,7 @@ class UniformFlow(Widget):
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         main_alignment: str = "start",
         run_alignment: str = "start",
-        item_alignment: AlignValue = "stretch",
+        item_alignment: AlignValue = "start",
         width: SizingLike = None,
         height: SizingLike = None,
         key: Optional[str] = None,
@@ -58,9 +60,10 @@ class UniformFlow(Widget):
                 'end'.
             run_alignment: Vertical alignment of the grid: 'start', 'center' or
                 'end'.
-            item_alignment: Alignment of a child within its cell: one value for
-                both axes, or a ``(horizontal, vertical)`` pair of 'start',
-                'center', 'end' or 'stretch'.
+            item_alignment: Where a child sits in its cell: one value for both
+                axes, or a ``(horizontal, vertical)`` pair of 'start', 'center'
+                or 'end'. A child fills its cell on an axis by its own
+                ``width`` / ``height`` of ``"wt"``.
             width: UniformFlow width.
             height: UniformFlow height.
             key: Stable widget identity for dev-bridge targeting and hot reload.
@@ -105,7 +108,7 @@ class UniformFlow(Widget):
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         main_alignment: str = "start",
         run_alignment: str = "start",
-        item_alignment: AlignValue = "stretch",
+        item_alignment: AlignValue = "start",
         width: SizingLike = None,
         height: SizingLike = None,
         key: Optional[str] = None,
@@ -130,9 +133,10 @@ class UniformFlow(Widget):
                 'end'.
             run_alignment: Vertical alignment of the grid: 'start', 'center' or
                 'end'.
-            item_alignment: Alignment of a child within its cell: one value for
-                both axes, or a ``(horizontal, vertical)`` pair of 'start',
-                'center', 'end' or 'stretch'.
+            item_alignment: Where a child sits in its cell: one value for both
+                axes, or a ``(horizontal, vertical)`` pair of 'start', 'center'
+                or 'end'. A child fills its cell on an axis by its own
+                ``width`` / ``height`` of ``"wt"``.
             width: UniformFlow width.
             height: UniformFlow height.
             key: Stable widget identity for dev-bridge targeting and hot reload.
@@ -167,7 +171,7 @@ class UniformFlow(Widget):
             return (str(value[0]), str(value[1]))
         if isinstance(value, str):
             return (value, value)
-        return ("stretch", "stretch")
+        return ("start", "start")
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         children = expand_layout_children(self.children_snapshot())
@@ -218,9 +222,9 @@ class UniformFlow(Widget):
         max_w = 0
         max_h = 0
         for child in children:
-            pref_w, pref_h = measure_preferred_size(child, max_width=col_limit)
+            pref_w, _ = measure_preferred_size(child, max_width=col_limit)
             max_w = max(max_w, max(0, pref_w))
-            max_h = max(max_h, max(0, pref_h))
+            max_h = max(max_h, self._contributed_height(child, col_limit))
 
         # If we have a constrained column width, use it for aspect ratio and size calculation
         # This matches layout() logic where columns expand to fill available width
@@ -233,6 +237,15 @@ class UniformFlow(Widget):
         content_w = cols * max_w + max(0, cols - 1) * self.main_gap
         content_h = rows * max_h + max(0, rows - 1) * self.cross_gap
         return (int(content_w), int(content_h))
+
+    @staticmethod
+    def _contributed_height(child: Widget, max_width: Optional[int]) -> int:
+        """The height a child adds to its row: its fixed height, else its measured one."""
+        dim = child.height_sizing
+        if dim.kind == "fixed":
+            return max(0, int(dim.value))
+        _, pref_h = measure_preferred_size(child, max_width=max_width)
+        return max(0, pref_h)
 
     @staticmethod
     def _resolve_sizing(dim, fallback: int) -> int:
@@ -259,6 +272,7 @@ class UniformFlow(Widget):
 
         col_widths = self._resolve_column_widths(cols, inner_w, children)
         row_heights = self._resolve_row_heights(rows, col_widths, children)
+        row_heights = self._share_spare_height(row_heights, children, cols, inner_h)
 
         content_w = sum(col_widths) + max(0, cols - 1) * self.main_gap
         content_h = sum(row_heights) + max(0, rows - 1) * self.cross_gap
@@ -282,22 +296,23 @@ class UniformFlow(Widget):
             cell_y = start_y + row_offsets[r]
 
             pref_w, pref_h = measure_preferred_size(child, max_width=cell_w)
-
-            child_w = cell_w
-            child_h = cell_h
+            child_w = self._resolve_cell_size(child.width_sizing, pref_w, cell_w)
+            child_h = self._resolve_cell_size(child.height_sizing, pref_h, cell_h)
 
             align_x, align_y = self.item_alignment
-
-            if align_x != "stretch":
-                child_w = min(pref_w, cell_w)
-                cell_x += align_offset(cell_w, child_w, align_x)
-
-            if align_y != "stretch":
-                child_h = min(pref_h, cell_h)
-                cell_y += align_offset(cell_h, child_h, align_y)
+            cell_x += align_offset(cell_w, child_w, align_x)
+            cell_y += align_offset(cell_h, child_h, align_y)
 
             child.layout(child_w, child_h)
             child.set_layout_rect(int(cell_x), int(cell_y), int(child_w), int(child_h))
+
+    @staticmethod
+    def _resolve_cell_size(dim, pref: int, cell: int) -> int:
+        if dim.kind == "weight":
+            return max(0, cell)
+        if dim.kind == "fixed":
+            return min(max(0, int(dim.value)), max(0, cell))
+        return min(max(0, pref), max(0, cell))
 
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         children = expand_layout_children(self.children_snapshot())
@@ -354,18 +369,34 @@ class UniformFlow(Widget):
         for idx, child in enumerate(children):
             col = idx % cols
             cw = col_widths[col] if col < len(col_widths) else None
-            pref_w, pref_h = measure_preferred_size(child, max_width=cw)
             row = min(idx // cols, rows - 1)
             if self.aspect_ratio and col_widths:
-                # col is already defined above
                 tile_h = self._height_from_aspect(col_widths[col])
                 heights[row] = max(heights[row], tile_h)
             else:
-                heights[row] = max(heights[row], max(0, pref_h))
+                heights[row] = max(heights[row], self._contributed_height(child, cw))
         if self.aspect_ratio and col_widths:
             default_h = self._height_from_aspect(col_widths[0])
             heights = [h if h > 0 else default_h for h in heights]
         return heights
+
+    def _share_spare_height(self, heights: List[int], children: List[Widget], cols: int, inner_h: int) -> List[int]:
+        """Rows whose every child has a weight height split the height the other rows leave."""
+        if self.aspect_ratio:
+            return heights
+        weight_rows = [
+            r
+            for r in range(len(heights))
+            if all(child.height_sizing.kind == "weight" for child in children[r * cols : (r + 1) * cols])
+        ]
+        spare = inner_h - sum(heights) - max(0, len(heights) - 1) * self.cross_gap
+        if not weight_rows or spare <= 0:
+            return heights
+        share, rem = divmod(spare, len(weight_rows))
+        shared = list(heights)
+        for i, r in enumerate(weight_rows):
+            shared[r] += share + (1 if i < rem else 0)
+        return shared
 
     def _height_from_aspect(self, width: int) -> int:
         if not self.aspect_ratio or self.aspect_ratio <= 0:
