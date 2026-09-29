@@ -1,145 +1,159 @@
 # Text Editing Architecture
 
-This document describes the architecture for text input, selection, IME (Input Method Editor) integration, and clipboard handling in `nuiitivet`.
-
-## Overview
-
-Text editing is complex due to the need to synchronize state between the application, the OS text input system (IME), and the rendering engine. `nuiitivet` adopts a **unidirectional data flow** approach for state management and a **platform-patching** strategy for deep IME integration.
+Text editing synchronises three parties, the application, the OS text input
+system (the IME) and the renderer. State flows one way, through an immutable
+value, and the IME is reached by patching the platform window rather than
+through the backend's own text input, which cannot compose inline.
 
 ## Data Model
 
-The core of the text editing system is the `TextEditingValue` class, which is an immutable value object representing the state of a text field at a specific point in time.
+`TextEditingValue` is an immutable snapshot of a field: `text`, `selection`
+(a `TextRange`; `start == end` is the caret) and `composing`, the range the
+IME is still converting. A composing range is part of `text` but subject to
+change by the IME until it commits.
 
-### TextEditingValue
+## The Value Mirror
 
-- **`text`** (`str`): The current content of the text field.
-- **`selection`** (`TextRange`): The current selection range. If `start == end`, it represents the caret position.
-- **`composing`** (`TextRange`): The range of text currently being composed by the IME (underlined text). If valid, this range is part of `text` but is subject to change by the IME.
+`TextField` holds an internal `Observable[TextEditingValue]`. An observable
+passed as `value` is the field's value cell in the sense of
+[OBSERVABLE.md](OBSERVABLE.md): edits are written back to it, so the caller
+keeps no second copy of the text to fall out of sync with.
 
-### TextRange
+It is nonetheless the framework's one **mirror** rather than a true storage
+substitution, for a type mismatch. The internal cell holds text, selection and
+composing range; the bound observable holds a `str`. A `str` cell cannot carry
+the caret, so it cannot be adopted as the cell outright; the widget keeps its
+own `TextEditingValue` and reconciles the text half with the observable in
+both directions. Three rules make the mirror behave:
 
-A simple structure holding `start` and `end` indices. It provides helper methods for text manipulation (e.g., `text_before`, `text_inside`, `text_after`).
+- **Write-back is suppressed while a composition is active.** The provisional
+  text of a half-converted candidate is not a value the application should
+  see, and anything it wrote in response would fight the IME. The composition
+  commits through the normal text path, with the composing range cleared. The
+  guard compares against the observable's own value rather than the previous
+  text, so ending a composition reconciles even when that update left the
+  text alone.
+- **An incoming write keeps the caret, clamped into the new text.** Resetting
+  it to the end would be right only for a field nobody is editing: an
+  application that normalises on write-back (upper-casing, trimming,
+  reformatting) changes the text under an actively edited field, and a caret
+  jumping to the end on every keystroke makes such a field unusable.
+- **The loop terminates on equality.** A write-back delivers back into the
+  widget, which returns early once the text it is handed already matches.
 
-## Widget Architecture
+A read-only observable (a computed or mapped value) has nowhere to write, so
+it is displayed and not written to. Such a field is still editable, and the
+edits go only to the internal cell; `disabled=True` makes that visible.
 
-### TextField Architecture (M3)
+Accepting an `ObservableProtocol[TextEditingValue]` as `value`, a cell whose
+type matches the internal one, would make the field a plain storage
+substitution and leave the three rules nothing to reconcile. It is not
+offered: the only thing it buys is letting the application own the caret,
+and every caller who binds a `str` still needs the reconciliation. Reasons to
+revisit, none present today: an application that has to restore a caret
+position across navigation or a re-created field; a second widget editing the
+same text alongside the field; a caller who needs to drive the selection
+programmatically, which the widget's own `value` setter cannot express.
 
-The `TextField` widget follows the Material Design 3 specification and uses a single class driven by a `TextFieldStyle` preset to support multiple visual variants.
+## Input Filters
 
-- **Single Class (`TextField`)**:
-  - Handles all interaction logic (focus, keyboard, mouse, IME).
-  - Manages the internal state (`TextEditingValue`).
-  - Implements the full rendering pipeline.
-  - Visual variant (filled / outlined) is determined by `TextFieldStyle.mode`.
+An input filter is a rule applied to text between a keystroke and the value
+cell. The placement is forced: correcting text requires knowing where the
+caret was, what it was in and what it became, and the observable knows none
+of these, so a rule enforced there would return through the mirror on every
+keystroke and drag the caret with it. The widget is the only participant that
+holds all three; the control-character strip it already applied is the hook
+the filter generalises.
 
-- **Styling (`TextFieldStyle`)**:
-  - An immutable dataclass (`frozen=True`) defining all visual properties (colors, dimensions, fonts).
-  - `mode` field (`"filled"` | `"outlined"`) controls the visual variant.
-  - Provides factory methods `TextFieldStyle.filled()` and `TextFieldStyle.outlined()` for default M3 configurations.
+- **A filter defines what is typeable, not what is valid.** A decimal field
+  must let `"1."` be typed, or `.` can never be entered. Whether a finished
+  value is acceptable is `is_error` / `supporting_text`; reshaping a finished
+  value is `on_submit`.
+- **Filters run on insertion only**: typing, an IME commit, a paste. Running
+  them over deletions would let a whole-string rule reject the backspace that
+  breaks its pattern, leaving a field that cannot be erased.
+- **Filters do not touch values the application assigns.** The initial
+  `value` and a write to the bound observable pass through untouched; the
+  field does not rewrite what its owner put there.
+- **The internal contract carries the selection** (`apply(old, new)` on a
+  `TextEditingValue`), so the built-in filters move the caret exactly. The
+  public shorthand, a `Callable[[str], str]`, reports only the string and has
+  its caret inferred from the length change; widening it to the
+  selection-aware form later is additive.
 
-- **Rendering Pipeline**:
-  The `paint` method orchestrates the drawing order based on `style.mode`:
-  1. `_draw_container` (filled background or outlined border)
-  2. `_draw_label` (Floating label animation)
-  3. `_draw_text_and_cursor` (Content)
-  4. `_draw_icons` (Leading/Trailing icons)
-  5. `_draw_error` (Error message below the field)
+Filters compose with `|`, the modifier vocabulary. Masking, displaying
+`1,234,567` while storing `"1234567"`, is out of scope: it needs the
+displayed and the stored text to differ, and whatever a filter returns is the
+value.
 
-### State Management
+## Commit
 
-`TextField` holds an internal `Observable[TextEditingValue]`. When `value` is given as an observable, that observable is the field's value cell in the sense of [OBSERVABLE.md §6](OBSERVABLE.md): edits are written back to it, so no separate copy of the text is kept for the caller to fall out of sync with.
+`on_submit` fires on every Enter, a repeat on an unchanged value included, and
+never on focus loss: it reports the user asking for an action, not the value
+settling. Firing on focus loss too was rejected because an `on_submit` that
+runs a search or saves a record would fire every time the field is tabbed
+through. A "changed since the last commit" guard would make that safe and was
+rejected too: pressing Enter again on the same query means run it again, and
+only the caller knows whether repeating its work is wasteful. Work that
+belongs to leaving the field, finishing a half-typed `"1."` as `"1.0"`, goes
+to `on_focus_change`.
 
-It is nonetheless the framework's one **mirror** rather than a true storage substitution, and the reason is a type mismatch. The internal cell holds a `TextEditingValue` — text *and* selection *and* composing range — while the bound observable holds only a `str`. A `str` cell cannot carry the caret, so it cannot be adopted as the cell outright; the widget keeps its own `TextEditingValue` and reconciles the text half with the observable in both directions.
+Supplying `on_submit` is also what makes the field claim the Enter key
+([KEYBOARD_SHORTCUTS.md](KEYBOARD_SHORTCUTS.md)): a field with an action for
+Enter owns it, and one without lets it reach a shortcut. A field that only
+reacts to being left takes `on_focus_change` and leaves Enter alone.
 
-Three rules make that mirror behave:
+## Lines
 
-- **Write-back is suppressed while a composition is active.** The provisional text of a half-converted candidate is not a value the application should see, and anything it wrote in response would fight the IME. The composition commits through the normal text path, which lands with the composing range cleared. The guard compares against the observable's own value rather than the previous text, so ending a composition reconciles even when that particular update left the text alone.
-- **An incoming write keeps the caret, clamped into the new text.** Resetting it to the end would be correct only for a field nobody is editing: an application that normalizes on write-back (upper-casing, trimming, reformatting) changes the text under an actively edited field, and moving the caret to the end on every keystroke would make such a field unusable.
-- **The loop terminates on equality.** A write-back delivers back into the widget, which returns early once the text it is handed already matches.
+A multi-line field is the same widget in a second mode, reached by a named
+constructor, `TextField.multiline`. The mode changes what Enter does, how the
+text is laid out and how the field grows, and a name at the call site says so.
 
-A read-only observable (a computed or mapped value) has nowhere to write, so it is displayed and not written to. Such a field is still editable, and the edits go only to the internal cell; pair it with `disabled=True` to make that visible.
+Shift+Enter breaks the line. The break is inserted like typed text, so an
+input filter sees it. It does not come from the text the backend delivers: on
+macOS, Return arrives as `on_text('\r')` next to the key press whether Shift
+is held or not, so a break taken from there would also land on every submit.
+Enter means the same in both modes; a field claims it only when it has an
+action for it. Making Enter the line break was rejected because a multi-line
+field would then take Enter from the rest of the screen.
 
-**What would remove the mirror.** Accepting an `ObservableProtocol[TextEditingValue]` as `value` — a cell whose type matches the internal one — would make the field a plain storage substitution like every other input widget, and the three rules above would have nothing left to reconcile. It is not offered, because the only thing it buys is letting the application own the caret, and the reconciliation above is what a `str` cell needs anyway: every caller who wants to bind a string still needs it. Reasons to revisit, none of them present today: an application that has to restore a caret position (across navigation, or a re-created field); a second widget editing the same text alongside the field; or a caller who needs to drive the selection programmatically, which the widget's own `value` setter cannot express.
+## IME
 
-### Input Filters
+The backend's own text input leaves a floating candidate window and no inline
+composition on some platforms, so nuiitivet patches each platform window at
+runtime to intercept the IME before the OS handles it:
 
-An input filter is a rule applied to text between a keystroke and the value cell — `widgets/input_filter.py`, exposed as `input_filter`.
+- **macOS**: hooks `PygletTextView` (an `NSTextView`) through `ctypes` and the
+  Objective-C runtime, overriding `setMarkedText:selectedRange:replacementRange:`
+  for composition updates and `firstRectForCharacterRange:actualRange:` to
+  report the caret to the OS.
+- **Windows**: subclasses the window procedure to intercept
+  `WM_IME_COMPOSITION` and reads the composition and caret with
+  `ImmGetCompositionString`.
+- **Linux (X11)**: recreates the input context with `XIMPreeditCallbacks` and
+  receives `PreeditStart` / `PreeditDraw` / `PreeditDone` directly from the
+  input method.
 
-The placement is forced. Correcting text requires knowing where the caret was, what it was in, and what it became; the observable knows none of these, so a rule enforced there would return through the mirror on every keystroke and drag the caret with it. The widget is the only participant that holds all three. `_strip_control_chars` was already doing exactly this for control characters; the filter generalizes that hook.
+```mermaid
+sequenceDiagram
+    participant OS as OS input method
+    participant P as platform patch
+    participant W as Window
+    participant F as focused FocusNode / TextField
+    OS->>P: composition update
+    P->>W: on_ime_composition(text, start, length)
+    W->>F: dispatch to the focused node
+    F->>F: set composing range, request redraw
+    OS->>P: where is the caret?
+    P->>W: read IMEManager
+    W-->>OS: caret rect in screen coordinates
+```
 
-- **A filter defines what is *typeable*, not what is *valid*.** A decimal field has to let `"1."` be typed, because otherwise `.` can never be entered. Whether a finished value is acceptable is `is_error` / `supporting_text`; reshaping a finished value is `on_submit`.
-- **Filters run on insertion only** — typing, an IME commit, a paste. Running them over deletions as well would let a whole-string rule reject the backspace that breaks its pattern, leaving a field whose contents cannot be erased.
-- **Filters do not touch values the application assigns.** The initial `value`, and a write to the bound observable, pass through untouched: the field does not silently rewrite what its owner put there.
-- **The internal contract carries the selection** (`apply(old, new) -> TextEditingValue`), so the built-in filters move the caret exactly. The public shorthand is a `Callable[[str], str]`, which reports only the resulting string and therefore has its caret inferred from the length change. Widening the public escape hatch to the selection-aware form later is additive.
-
-Composition uses `|`, matching the modifier vocabulary. Masking — displaying `1,234,567` while storing `"1234567"` — is out of scope: it needs the displayed and the stored text to differ, and whatever a filter returns *is* the value.
-
-### Commit
-
-
-`on_submit` fires on every Enter, a repeat on an unchanged value included, and never on focus loss: it reports the user asking for an action, not the value settling. Firing on focus loss as well was rejected because an `on_submit` that runs a search or saves a record would then fire every time the field is tabbed through. A "changed since the last commit" guard would make that safe, and was rejected too: pressing Enter again on the same query means run it again, and only the caller knows whether repeating its work is wasteful. Work that belongs to leaving the field, finishing a half-typed `"1."` as `"1.0"`, goes to `on_focus_change`.
-
-Supplying `on_submit` is also what makes the field **claim the Enter key** (see [KEYBOARD_SHORTCUTS.md](KEYBOARD_SHORTCUTS.md)): a field with an action for Enter owns it, and one without lets it reach a shortcut. A field that only reacts to being left therefore takes `on_focus_change` and leaves Enter alone.
-
-### Lines
-
-A multi-line field is the same widget in a second mode, reached by a named constructor, `TextField.multiline`. The mode changes what Enter does, how the text is laid out and how the field grows, and a name at the call site says so.
-
-Shift+Enter breaks the line. The break is inserted like typed text, so an input filter sees it. It does not come from the text the backend delivers: on macOS, Return arrives as `on_text('\r')` next to the key press whether Shift is held or not, so a break taken from there would also land on every submit. Enter means the same in both modes: a field claims it only when it has an action for it (see Commit). Making Enter the line break was rejected because a multi-line field would then take Enter from the rest of the screen.
-
-### Interaction
-
-It uses `InteractionHostMixin` and attaches a `FocusNode` to handle input events.
-
-## IME Integration
-
-Standard `pyglet` text input support is limited, often resulting in a "floating" candidate window or lack of inline composition on some platforms. `nuiitivet` implements a custom solution to achieve native-quality inline IME support.
-
-### Platform Patching Strategy
-
-To intercept IME events before the OS handles them (or to force inline behavior), `nuiitivet` injects platform-specific patches at runtime.
-
-1. **macOS (Cocoa)**:
-    - Uses `ctypes` and `Objective-C Runtime` to hook into `PygletTextView` (the underlying `NSTextView`).
-    - Overrides `setMarkedText:selectedRange:replacementRange:` to capture composition updates.
-    - Overrides `firstRectForCharacterRange:actualRange:` to report the cursor position back to the OS for correct candidate window positioning.
-
-2. **Windows (Win32)**:
-    - Subclasses the window procedure (`WndProc`) to intercept `WM_IME_COMPOSITION`.
-    - Uses `ImmGetCompositionString` to retrieve the composition text and cursor position.
-
-3. **Linux (X11/XIM)**:
-    - Recreates the X11 Input Context (XIC) with `XIMPreeditCallbacks` style.
-    - Registers callbacks (`PreeditStart`, `PreeditDraw`, `PreeditDone`) to receive composition data directly from the X Input Method.
-
-### Event Flow
-
-1. **OS Event**: The user types via IME.
-2. **Patch Layer**: The platform patch intercepts the event.
-3. **Application Event**: The patch dispatches a custom `on_ime_composition` event to the `pyglet.Window`.
-4. **App Dispatch**: `App` receives the event and forwards it to the currently focused `FocusNode`.
-5. **Widget Handling**: `TextField` receives the event via its `FocusNode`, updates the `TextEditingValue` (setting the `composing` range), and requests a redraw.
-
-### Candidate Window Positioning
-
-To ensure the IME candidate window appears near the cursor:
-
-1. **IMEManager**: Per-window state (`Window.ime`) holding that window's geometry and the local cursor rectangle. See `APP_WINDOW.md` Section 8.6.
-2. **Update Loop**: `TextField` updates its window's `IMEManager` with the cursor position during its `paint` phase. The backend updates it with the window position during the draw loop.
-3. **OS Query**: When the OS asks for the cursor position (e.g., `firstRectForCharacterRange:` on macOS), the patch reads the queried window's `IMEManager` and returns the screen coordinates.
-4. **Focus Loss**: When a window loses the OS focus, a pending composition is committed on the focused field (its provisional text stays) and the OS-side conversation is discarded, so another window's typing starts clean.
-
-## Clipboard
-
-Clipboard operations are abstracted via the `Clipboard` protocol.
-
-- **`get_system_clipboard()`**: Returns the platform-specific clipboard implementation.
-- **Integration**: `TextField` handles standard shortcuts (Cmd+C, Cmd+V, etc.) to interact with the clipboard.
-
-## Key Handling
-
-Key events are routed through the `FocusNode`.
-
-- **`on_text`**: Handles committed character input.
-- **`on_text_motion`**: Handles navigation (Arrow keys, Home, End, Backspace, Delete). Up and Down reach a multi-line field only.
-- **`on_ime_composition`**: Handles active composition updates.
+The candidate window follows the caret through `IMEManager`, per-window state
+(`Window.ime`, in [APP_WINDOW.md](APP_WINDOW.md)) holding that window's
+geometry and the local caret rectangle. `TextField` updates it with the caret
+during paint, the backend with the window position during the draw loop, and
+the patch answers the OS's query from it. When a window loses OS focus, a
+pending composition is committed on the focused field, its provisional text
+stays, and the OS-side conversation is discarded, so another window's typing
+starts clean.
