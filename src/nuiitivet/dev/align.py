@@ -220,15 +220,14 @@ def moved(target: Target, container: Any, member: Any, alignment: Mapping[str, s
 def spell(target: Target, written: Optional[Spelled], value: Alignment) -> Spelled:
     """The value to write: a token for one axis; a nine-point name, a token, or a pair for two.
 
-    The pair keeps the axes the drag left alone. A tuple stays a tuple, a
-    single token stays one when both axes agree, and ``stretch`` -- which no
-    nine-point name spells -- forces a tuple.
+    The pair keeps the axes the drag left alone. A tuple stays a tuple, and a
+    single token stays one when both axes agree.
     """
     merged = {**current(target), **value}
     if len(target.axes) == 1:
         return merged[target.axes[0]]
     pair = (merged["x"], merged["y"])
-    if isinstance(written, tuple) or "stretch" in pair:
+    if isinstance(written, tuple):
         return pair
     if pair[0] == pair[1] and isinstance(written, str) and written not in NINE_POINT_ALIGNMENTS:
         return pair[0]

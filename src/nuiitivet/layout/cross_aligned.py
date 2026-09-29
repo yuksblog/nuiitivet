@@ -34,7 +34,7 @@ class CrossAligned(Widget):
         Args:
             child: The child widget to wrap.
             alignment: The cross-axis alignment to apply to this child.
-                Common values: "start", "center", "end", "stretch".
+                One of "start", "center" or "end".
             padding: Insets from the allocated rect to the child.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """

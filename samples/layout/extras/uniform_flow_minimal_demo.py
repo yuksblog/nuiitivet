@@ -11,7 +11,7 @@ def build_root() -> nv.Widget:
         padding=12,
         aspect_ratio=1.0,
         children=[
-            nv.Card(nv.Text(t), alignment="center", padding=12) for t in tiles
+            nv.Card(nv.Text(t), alignment="center", padding=12, width="wt", height="wt") for t in tiles
         ],
         width=320,
     )

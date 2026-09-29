@@ -118,7 +118,9 @@ class CalendarApp(nv.ComposableWidget):
         return nv.UniformFlow(
             columns=7,
             cross_gap=6,
-            children=[nv.Text(name, alignment="center", type_scale=nv.TypeScale.LABEL_SMALL) for name in WEEKDAYS],
+            children=[
+                nv.Text(name, width="wt", alignment="center", type_scale=nv.TypeScale.LABEL_SMALL) for name in WEEKDAYS
+            ],
         )
 
     def _build_grid(self) -> nv.Widget:

@@ -153,7 +153,7 @@ nv.UniformFlow(
     padding=8,
     aspect_ratio=1.0,
     children=[
-        nv.Card(nv.Text(t), alignment="center", padding=12)
+        nv.Card(nv.Text(t), alignment="center", padding=12, width="wt", height="wt")
         for t in tiles
     ],
 )
@@ -243,7 +243,7 @@ nv.Collapsible(
 ### visible() vs Collapsible
 
 | | `visible()` modifier | `Collapsible` |
-|---|---|---|
+| --- | --- | --- |
 | Layout space | Always occupied | Shrinks to zero when closed |
 | Animation | Opacity / scale fade | Smooth expand/collapse with layout reflow |
 | Use case | Fade in/out without shifting siblings | Accordion panels, side sheets |
