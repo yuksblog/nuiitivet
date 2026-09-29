@@ -1,361 +1,168 @@
 # Menu Bar Design
 
-## 1. Purpose and Scope
+The menu is a declarative model registered on `Window`, `Window(menu=...)`
+beside `title=` and `chrome=`, not a widget in the tree. On macOS the menu
+lives outside the window, in the global bar, so a widget-tree API could not
+be truthful on both platforms. One model feeds three surfaces:
 
-This document defines the design of the application menu bar: the declarative
-menu model registered on `Window`, its rendering on Windows/Linux as an in-app
-widget, and its bridging to the global menu bar (`NSMenu`) on macOS.
-
-### In scope
-
-- The menu model (`MenuBar`, `MenuEntry`) and its reactivity contract
-- Registration on `Window` and the activation path
-- Placement rules, including free placement inside a `CustomChrome`
-- Platform split: in-app rendering vs. the macOS `NSMenu` bridge
-- Integration with the keyboard-shortcut system
-  (`docs/design/KEYBOARD_SHORTCUTS.md`)
-- Styling: the theme-extension palette and per-instance style (Section 8)
-
-### Out of scope
-
-- Context menus and dropdown menus attached to widgets — those are the
-  existing MD3 `Menu` / `MenuItem` widgets (`src/nuiitivet/material/menu.py`)
-- Tray icons and other desktop integration — the tray reuses this menu
-  model; see `docs/design/TRAY_ICON.md`
-- A general user-extensible command/intent system
-
-## 2. Terminology
-
-- **menu model**: The plain declarative data tree (`MenuBar` and its items)
-  registered on `Window`. Not widgets.
-- **in-app bar**: The Nuiitivet-drawn horizontal bar rendering the menu model
-  on Windows/Linux.
-- **global menu bar**: The macOS system menu bar at the top of the screen,
-  driven through `NSMenu`.
-- **standard item**: A prebuilt `MenuEntry` factory (e.g. `quit()`) whose
-  behavior and per-platform placement the framework owns.
-- **accelerator**: The keyboard shortcut displayed next to an item and able to
-  activate it while the menu is closed.
-
-## 3. Design Decisions
-
-1. **The menu is a model registered on `Window`, not a widget in the tree.**
-   On macOS the menu lives outside the window, so a widget-tree API cannot be
-   truthful on both platforms. `Window(menu=...)` sits beside `title=` and
-   `chrome=`.
-2. **One activation path: `on_select` callbacks.** Built-in commands are
-   covered by standard items (Section 4.4); there is no `intent=` parameter.
-3. **Item properties are `Observable`-bindable**, following the `title=`
-   precedent on `Window`. Structural changes are wholesale replacement, not
-   diffing (Section 4.3).
-4. **Accelerators are declared on the item and registered by the menu
-   system.** One definition drives display, activation, and per-platform
-   presentation (`⌘S` vs `Ctrl+S`). Declaring the same shortcut both on a
-   menu item and via `key_shortcut()` is an authoring error.
-5. **Platform split**: Windows/Linux render an in-app bar whose popups reuse
-   the MD3 `Menu` machinery; macOS bridges the same model to `NSMenu` via
-   pyglet's bundled `cocoapy` (ctypes Objective-C bridge) — no new
-   dependency.
-6. **Styling follows the scrollbar precedent**: the menu bar is a generic
-   (non-Material) widget, so an app-wide `MenuBarThemeData` is registered
-   through the `ThemeExtension` seam by each design system, with a
-   per-instance `MenuBarStyle` for geometry and overrides — and the palette
-   drives the popups too, not only the bar (Section 8).
-7. **No focused-value/command indirection; the active pane is app state.**
-   One shared entry acting on whichever pane is focused ("Save" over N open
-   documents) is wired in the app: an app-owned Observable
-   (`active_document` or equivalent) updated on focus/selection change, and
-   read by the shared entry's `on_select`. SwiftUI (`@FocusedValue`) and WPF
-   (`RoutedCommand`) solve this with a framework primitive through which the
-   focused subtree publishes an action; nuiitivet adds no such primitive —
-   the app-level Observable matches the ViewModel convention and keeps the
-   wiring visible in app code. Revisit only if an app makes this wiring
-   genuinely awkward, e.g. deep pane nesting where tracking the active pane
-   ends up duplicating focus logic the framework already has.
-
-## 4. The Menu Model
-
-### 4.1 Types
-
-The model consists of two public types, re-exported through the public
-surface. `MenuEntry` is surface-neutral data shared with the tray icon and
-lives in the `nuiitivet/menus/` package; `MenuBar` is genuinely bar-specific and lives
-in the framework-common `nuiitivet/menubar/` package (Section 8.1):
-
-- `MenuBar(items: Sequence[MenuEntry], *, style: MenuBarStyle | None)` —
-  the root.
-- `MenuEntry` — a single entry. One type covers all roles:
-  - **Action**: `MenuEntry(label, on_select=..., shortcut=..., enabled=...,
-    checked=...)`
-  - **Submenu**: `MenuEntry(label, submenu=[...])` — top-level bar entries
-    ("File", "Edit") are simply items with a `submenu`. Nesting is unlimited.
-  - **Separator**: `MenuEntry.separator()`.
-
-Construction-time validation: a non-separator item must have exactly one of
-`on_select`, `submenu`, or a standard-item role, and `submenu` is mutually
-exclusive with `shortcut` / `checked`. Violations raise immediately, not at
-render time.
-
-The names avoid colliding with the MD3 widgets `Menu` / `MenuItem`
-(`src/nuiitivet/material/menu.py`), which remain the popup/context-menu
-widgets.
-
-These are plain data classes, not `Widget` subclasses. This is what makes the
-macOS bridge possible: `NSMenu` renders labels, accelerators, and check
-marks — not arbitrary widget subtrees.
-
-### 4.2 Item properties
-
-| Property | Type | Notes |
-| --- | --- | --- |
-| `label` | `str \| ObservableBase[str]` | |
-| `on_select` | `VoidCallback` | Zero-argument, sync or async — same contract as `key_shortcut(on_trigger=...)`. |
-| `shortcut` | `ShortcutLike \| None` | A spec string (`"Accel+S"`) or `Shortcut`; parsed via `to_shortcut()`. |
-| `enabled` | `bool \| ObservableBase[bool]` | Default `True`. |
-| `checked` | `Observable[bool] \| None` | Presence makes the item checkable. Must be writable: activation toggles it (Section 5.2). |
-| `submenu` | `Sequence[MenuEntry] \| None` | |
-
-### 4.3 Reactivity contract
-
-- `label`, `enabled`, and `checked` updates propagate live to whichever
-  surface is rendering the model — repaint for the in-app bar, `setTitle:` /
-  `setEnabled:` / `setState:` calls for `NSMenu`.
-- **Structure is not observable.** Adding or removing items (e.g. "Open
-  Recent") is done by assigning a new model to `window.menu`, which rebuilds the
-  rendered surface wholesale.
-
-### 4.4 Standard items
-
-Prebuilt factories on `MenuEntry` carrying a role
-(`MenuRole`); activation calls the mapped App/Window method
-(`nuiitivet/menubar/controller.py`) on every platform, so window management
-and app exit stay on the one code path:
-
-- `MenuEntry.quit()` → `app.exit()`
-- `MenuEntry.close_window()` → `window.close()`
-- `MenuEntry.minimize()` → `window.minimize()`
-- `MenuEntry.maximize()` → `window.maximize()`
-- `MenuEntry.restore()` → `window.restore()` — the way back from
-  `full_screen()` / `maximize()` / `minimize()`; `full_screen()` itself
-  only enters full screen
-- `MenuEntry.full_screen()` → `window.full_screen()`
-
-Standard items absorb platform conventions: labels ("Exit" vs "Quit",
-"Maximize" vs "Zoom"), default accelerators (⌘Q / ⌘W / ⌘M on macOS), and
-placement (on macOS, `quit()` relocates to the application menu — Section
-7.2). Labels, shortcuts, and `enabled` are overridable per factory call.
-
-## 5. Registration and Activation
-
-### 5.1 Registration
-
-```python
-app = nv.App(
-    nv.Window(
-        content=Home,
-        title="MyEditor",
-        menu=nv.MenuBar([
-            nv.MenuEntry("File", submenu=[
-                nv.MenuEntry("Open...", shortcut="Accel+O", on_select=open_file),
-                nv.MenuEntry("Save", shortcut="Accel+S",
-                               on_select=save, enabled=can_save),
-                nv.MenuEntry.separator(),
-                nv.MenuEntry.quit(),
-            ]),
-        ]),
-    ),
-)
+```mermaid
+flowchart LR
+    M["MenuBar, MenuEntry (data)"] --> B["in-app bar + MD3 Menu popups (Windows, Linux)"]
+    M --> N["NSMenu bridge: global menu bar (macOS)"]
+    E["MenuEntry (shared)"] --> T["tray menu, native everywhere"]
+    M --- E
 ```
 
-`Window` takes a `menu: MenuBar | None = None` keyword and a settable
-`window.menu` property for wholesale replacement (Section 4.3). Per
-window, a `MenuBarController` (`nuiitivet/menubar/controller.py`) owns the
-registered model, the rendering surfaces, and the shared activation path.
+Context and dropdown menus attached to widgets are the MD3 `Menu` /
+`MenuItem` widgets, a different thing; the tray icon reuses `MenuEntry` and
+is [TRAY_ICON.md](TRAY_ICON.md).
 
-Callbacks needing the window or the app (e.g. an operation not covered
-by a standard item) reference the object through an ordinary
-late-binding closure: `on_select=lambda: window.center()` resolves
-`window` at activation time. The model is data outside the widget tree,
-so `.of(context)` does not apply.
+## The Model
 
-### 5.2 Activation
+`MenuBar(items, *, style)` is the root and `MenuEntry` the one item type:
+an action (`on_select`), a submenu (`submenu=[...]`, top-level titles
+included, nesting unlimited) or a separator. A non-separator has exactly one
+of `on_select`, `submenu` or a standard-item role, and `submenu` excludes
+`shortcut` and `checked`; a violation raises at construction, not at render.
+The names avoid the MD3 widgets `Menu` / `MenuItem`. `MenuEntry` is
+surface-neutral and lives in `nuiitivet/menus/`, shared with the tray;
+`MenuBar` is bar-specific and lives in `nuiitivet/menubar/`.
 
-Every route (click, keyboard navigation, accelerator, native macOS menu)
-funnels into `MenuBarController.activate(item)`:
+These are plain data classes, not widgets, and that is what makes the macOS
+bridge possible: `NSMenu` renders labels, accelerators and check marks, not
+widget subtrees.
 
-1. If the item is checkable, `checked` is toggled first.
-2. A standard item calls its role's mapped method; otherwise
-   `on_select` is invoked (zero arguments; async callbacks are scheduled the
-   same way `key_shortcut` handles them).
+There is one activation path, `on_select`; built-in commands are standard
+items, and there is no `intent=`. `label`, `enabled` and `checked` are
+`Observable`-bindable, following `title=` on `Window`, and their changes
+propagate live to whichever surface renders the model, a repaint for the
+in-app bar and `setTitle:` / `setEnabled:` / `setState:` for `NSMenu`.
+Structure is not observable: adding or removing items is wholesale
+replacement through `window.menu`, which rebuilds the surface, rather than
+diffing. `checked` must be writable, since activation toggles it.
 
-A disabled item never activates; the in-app bar renders it dimmed and skips
-it in traversal, and the bridge mirrors it via `setEnabled:`.
+A standard item is a `MenuEntry` factory carrying a `MenuRole`
+(`quit()`, `close_window()`, `minimize()`, `maximize()`, `restore()`,
+`full_screen()`), and activation calls the mapped `App` or `Window` method
+through `MenuBarController` on every platform, so window management and app
+exit stay on one code path. Standard items absorb the platform conventions:
+labels ("Exit" against "Quit", "Maximize" against "Zoom"), default
+accelerators, and placement, where on macOS `quit()` relocates to the
+application menu. A callback that needs the window or the app references it
+through an ordinary closure; the model is data outside the tree, so
+`.of(context)` does not apply.
 
-### 5.3 Accelerators and single-fire
+A shared entry acting on whichever pane is focused ("Save" over several
+documents) is wired in the app: an app-owned `Observable` of the active pane,
+written on focus change and read by the entry's `on_select`. SwiftUI's
+`@FocusedValue` and WPF's `RoutedCommand` solve this with a framework
+primitive through which the focused subtree publishes an action; nuiitivet
+adds none, because the app-level observable matches the ViewModel
+convention and keeps the wiring visible. Revisit only if deep pane nesting
+makes tracking the active pane duplicate focus logic the framework already
+has.
 
-The item's `shortcut` is the single source of truth. Per platform, exactly
-one mechanism fires:
+## Activation and Accelerators
 
-- **Windows/Linux**: the bar widget registers each shortcut with the
-  shortcut system (`ShortcutScope.MOUNT`, live while the bar is mounted),
-  bound to the item so `enabled` gates firing. The bar itself only
-  *displays* the accelerator (via `Shortcut.display`).
-- **macOS**: shortcuts become `NSMenuItem` key equivalents and the native
-  menu fires them. The in-app bar does not render there (Section 6.3), so
-  its bindings never register and no double-fire is possible.
+Every route, a click, keyboard navigation, an accelerator or the native
+macOS menu, funnels into `MenuBarController.activate(item)`: a checkable
+item toggles `checked` first, then a standard item calls its role's method
+and any other item its `on_select`, async callbacks scheduled as
+`key_shortcut` schedules them. A disabled item never activates.
 
-Registering the same combination independently via `key_shortcut()` is an
-authoring error; the shortcut system's existing conflict behavior applies.
-Display strings derive from the shared `Shortcut` model, so `MOD_ACCEL`
-renders as `⌘` on macOS and `Ctrl` elsewhere.
+The item's `shortcut` is the single source of truth for display and firing,
+and per platform exactly one mechanism fires. On Windows and Linux the bar
+registers each shortcut with the shortcut system at `ShortcutScope.MOUNT`,
+live while the bar is mounted and gated by `enabled`, and only displays the
+accelerator itself. On macOS the shortcuts become `NSMenuItem` key
+equivalents and the native menu fires them; the in-app bar does not render
+there, so its bindings never register and no double fire is possible.
+Declaring the same gesture with `key_shortcut()` as well is an authoring
+error, handled by the shortcut system's ambiguity rule. Display strings come
+from the shared `Shortcut` model, so `MOD_ACCEL` renders as `⌘` on macOS
+and `Ctrl` elsewhere.
 
-## 6. Placement
+## Placement
 
-### 6.1 Default
+With no explicit placement the window inserts the in-app bar at the top of
+the content area, below the chrome, for `OSChrome` and `CustomChrome` alike;
+the bar takes part in layout and the content shrinks. The slot is inserted
+only when a menu is registered at construction, so a menu-less window
+carries no extra widget.
 
-With no explicit placement, the `Window` inserts the in-app bar at the top of the
-content area, below the chrome — for both `OSChrome` and `CustomChrome`.
-The bar participates in normal layout; content shrinks accordingly. The
-default slot is inserted only when a menu is registered at `Window`
-construction; a menu-less window carries no extra widgets.
+`MenuBarArea` marks where the model should render instead, inside a
+`CustomChrome` header for instance. A mounted area suppresses the automatic
+insertion; with several, the first renders and the rest are inert, logged
+once, because raising would break the mount of an otherwise valid tree and
+hot reload with it. An area with no registered menu is zero-size, so a
+conditional menu is allowed. The model stays on `Window` in every case; the
+area moves only the pixels.
 
-### 6.2 Free placement: `MenuBarArea`
-
-`MenuBarArea` is a widget that marks where the registered menu model should
-render — e.g. inside a `CustomChrome` header row:
-
-- If a `MenuBarArea` is mounted, automatic insertion is suppressed and the
-  bar renders there instead.
-- With several mounted `MenuBarArea` widgets, the first renders and the
-  rest are inert (logged once); raising would break the mount of an
-  otherwise valid tree, and hot reload with it.
-- A `MenuBarArea` with no registered menu renders nothing (zero size), so
-  conditional menus are allowed.
-
-The model stays on `Window` in all cases; `MenuBarArea` moves only the pixels.
-Menu definitions, callbacks, and shortcuts are unaffected by placement.
-
-### 6.3 macOS
-
-On macOS neither placement applies: the model goes to the global menu bar,
-automatic insertion yields a zero-size slot, and a mounted `MenuBarArea`
-collapses to zero size. A `CustomChrome` header written around a
-`MenuBarArea` therefore degrades to a plain title bar on macOS with no
+On macOS neither placement applies: the model goes to the global bar, the
+automatic slot is zero-size and a mounted area collapses, so a header
+written around a `MenuBarArea` degrades to a plain title bar with no
 platform branching in app code.
 
-## 7. Platform Rendering
+## Windows and Linux: the In-App Bar
 
-### 7.1 Windows / Linux: in-app bar
+The bar (`menubar/bar.py`) renders the top-level items horizontally, and an
+open menu is a popup through the overlay's anchoring, reusing the MD3 `Menu`
+machinery for surfaces, keyboard traversal and submenus through an internal
+adapter from `MenuEntry` data. The MD3 widgets' API is unchanged; their
+colours come from the menu bar's own palette. Two contracts with the
+overlay: the popup treats an unmount as a dismissal only when its entry's
+result is settled (`OverlayHandle.done()`), since the overlay may remount
+live entries, and it restores its focused row across such remounts, which
+would otherwise drop the keyboard focus.
 
-- The bar is an internal widget (`nuiitivet/menubar/bar.py`) rendering the
-  model's top-level items horizontally; its colors come from
-  `MenuBarThemeData` (Section 8).
-- Open menus are popups going through the unified overlay anchoring, reusing
-  the MD3 `Menu` widget machinery (`src/nuiitivet/material/menu.py`) —
-  popup surfaces, keyboard traversal, submenu expansion — through an
-  internal adapter from `MenuEntry` data to those widgets. The MD3
-  widgets' public API is unchanged; their colors are supplied from the
-  menubar's own palette (Section 8.4).
-- Keyboard behavior: `Left`/`Right` move across top-level menus (wrapping),
-  `Up`/`Down` traverse items skipping separators and disabled items,
-  `Enter` activates, `Escape` closes one level. This follows the existing
-  interaction architecture (`docs/design/INTERACTION_ARCHITECTURE.md`).
-- Two contracts with the overlay: the popup treats an unmount as a
-  dismissal only when its entry's result is settled (`OverlayHandle.done()`)
-  — the overlay remounts live entries whenever its stack changes — and it
-  restores its focused row across such transient remounts, which would
-  otherwise drop the keyboard focus.
+## macOS: the `NSMenu` Bridge
 
-### 7.2 macOS: `NSMenu` bridge
+The bridge is built on pyglet's bundled `cocoapy` (`ObjCClass`,
+`ObjCSubclass`), imported lazily and only on macOS, so no dependency is
+added; pyobjc specifically is not. Two modules each split into pure
+translation and a Cocoa layer. `menus/nsmenu.py` holds the surface-neutral
+part shared with the tray: `key_equivalent` (`Shortcut` to key equivalent
+and modifier mask) and `NSMenuBuilder` (`MenuEntry` to `NSMenu` trees with
+live observable sync). `menubar/nsmenu.py` holds the bar-specific part:
+`plan_menus` (application-menu synthesis and arrangement) and `NSMenuBridge`
+(installing the model as the global bar).
 
-- Two modules, each in two halves of **pure translation** vs **Cocoa
-  layer** built on `pyglet.libs.darwin.cocoapy` (`ObjCClass`,
-  `ObjCSubclass`), imported lazily and only on macOS — no new dependency;
-  specifically, pyobjc is not added. `nuiitivet/menus/nsmenu.py` holds the
-  surface-neutral part shared with the tray icon: `key_equivalent`
-  (`Shortcut` → `NSMenuItem` key equivalent and modifier mask; imports and
-  tests on every platform) and `NSMenuBuilder` (`MenuEntry` → `NSMenu`
-  trees with live Observable sync). `nuiitivet/menubar/nsmenu.py` holds the
-  bar-specific part: `plan_menus` (application-menu synthesis and item
-  arrangement; every-platform) and `NSMenuBridge` (installs the model as
-  the global menu bar).
-- Every window attaches to the per-App `MenuBarFocusCoordinator`
-  (`nuiitivet/menubar/focus.py`) when its backend window exists
-  (`Window._on_window_created`, called by the pyglet runner). The
-  coordinator owns the one bridge and keeps the global bar on the
-  **focused** window's model — the main window's standing in for
-  `menu=None` windows — reinstalling on OS focus changes, model
-  replacement, and window close, coalesced onto the next clock tick (a
-  focus change that leaves the effective model unchanged reinstalls
-  nothing). The bridge binds the owning window's controller, so
-  activation and accelerators act through the installed model's
-  window. While a window is attached, `active_slot()` is `None` and
-  every in-app slot collapses — on macOS an unfocused window's menu
-  waits for focus rather than rendering in-app.
-- The bridge is a one-way translator: model → `NSMenu` tree on registration
-  or replacement; observable property changes → targeted setter calls
-  (Section 4.3), applied on the next clock tick so off-thread writes land
-  on the UI thread. Item activation calls
-  `MenuBarController.activate` (Section 5.2); Cocoa delivers menu actions
-  on the main thread, which is the UI thread, so no marshalling is needed.
-- **Application menu**: the first menu is always the application menu. A
-  `quit()` standard item found as a direct child of a top-level menu is
-  relocated into it (dangling separators are cleaned up); when the model
-  has none, one is synthesized. A top-level action item (no submenu)
-  degrades to a menu holding that single entry, since the global bar has no
-  direct-action titles.
+The per-app `MenuBarFocusCoordinator` (`menubar/focus.py`) owns the one
+bridge and keeps the global bar on the focused window's model, the main
+window's standing in for a `menu=None` window, reinstalling on OS focus
+change, model replacement and window close, coalesced onto the next clock
+tick; a focus change that leaves the effective model unchanged reinstalls
+nothing. Every window attaches when its backend window exists
+(`Window._on_window_created`). While a window is attached its in-app slot
+collapses, so on macOS an unfocused window's menu waits for focus rather
+than rendering in-app.
 
-## 8. Styling
+The bridge translates one way: model to `NSMenu` tree on registration or
+replacement, observable changes to targeted setter calls on the next clock
+tick so off-thread writes land on the UI thread, and item activation to
+`MenuBarController.activate`, which Cocoa delivers on the main thread with
+no marshalling. The first menu is always the application menu: a `quit()`
+found as a direct child of a top-level menu is relocated into it, one is
+synthesised when the model has none, and a top-level action item degrades to
+a menu holding that single entry, since the global bar has no direct-action
+titles.
 
-### 8.1 Placement in the layer model
+## Styling
 
-The menu bar is not a Material Design component — m3.material.io defines
-popup Menus, but no desktop menu bar. Like the scrollbar, it is a generic
-framework widget, so its styling follows the scrollbar precedent
-(`src/nuiitivet/scrolling/scrollbar_theme_data.py`): the bar model, style,
-and theme-data types live in a framework-common package
-(`nuiitivet/menubar/`), not under `material/` — the surface-neutral
-`MenuEntry` sits one level up in the `nuiitivet/menus/` package — and the palette
-arrives through the generic
-`ThemeExtension` seam rather than by reading Material color roles directly.
-
-### 8.2 `MenuBarThemeData` (app-wide palette)
-
-A `ThemeExtension` that each design system registers into its `Theme`
-(`material.theme` and `theme.plain_theme`, as with `ScrollbarThemeData`).
-Colors are `ColorSpec` tokens resolved at paint time, so light/dark
-switching works automatically. It covers **both surfaces** the menu system
-draws:
-
-- **Bar**: background, item foreground, hover/press state layer, the
-  highlight of the currently open top-level item, disabled foreground.
-- **Popup**: container background, item label, accelerator text, state
-  layer, disabled, divider.
-
-Defaults on a bare `MenuBarThemeData()` are neutral, design-system-agnostic
-literals, so the menu bar renders acceptably with no design system
-registered. The Material registration expresses its palette in MD3 role
-tokens (`SURFACE`, `ON_SURFACE`, ...), which is what makes menubar popups
-match MD3 `Menu` widgets under a Material theme.
-
-### 8.3 `MenuBarStyle` (per-instance)
-
-Geometry plus nullable per-instance color overrides, mirroring
-`ScrollbarStyle`: bar height, item padding, popup corner radius and
-minimum width, and `Optional[ColorSpec]` fields that fall back to the
-theme data when `None`. It attaches to the model root — `MenuBar(items,
-style=...)` — because the model is always present, whereas `MenuBarArea`
-is optional (a style on the area could not be expressed under default
-placement).
-
-On macOS neither type applies: the global menu bar is rendered by the OS.
-
-### 8.4 Popup styling flows through the theme data
-
-The in-app popups reuse the MD3 `Menu` widget machinery (Section 7.1), but
-their colors come from `MenuBarThemeData`, not from the MD3 menu defaults:
-`MenuStyle`'s color fields are plain `ColorSpec`, so the menubar adapter
-builds the internal `MenuStyle` from the theme data (and any
-`MenuBarStyle` overrides) and passes it in. The MD3 widgets are unchanged,
-and a non-Material design system gets popups in its own palette rather
-than Material's.
+The menu bar is not a Material component; m3.material.io defines popup menus
+and no desktop bar. Like the scrollbar it is a generic framework widget, so
+its model, style and theme data live in `nuiitivet/menubar/`, not under
+`material/`, and its palette arrives through the `ThemeExtension` seam of
+[STYLE_THEME.md](STYLE_THEME.md). `MenuBarThemeData` is registered by each
+design system with `ColorSpec` tokens resolved at paint, covering both the
+bar (background, item foreground, state layer, open-item highlight,
+disabled) and the popup (container, label, accelerator, state layer,
+disabled, divider); a bare `MenuBarThemeData()` is neutral literals, so the
+bar renders with no design system registered, and the Material registration
+uses MD3 role tokens, which is what makes the popups match MD3 `Menu`
+widgets under a Material theme. `MenuBarStyle` is per-instance geometry plus
+nullable colour overrides, attached to `MenuBar` because the model is always
+present where `MenuBarArea` is optional. The popups reuse the MD3 `Menu`
+widgets, but the adapter builds their `MenuStyle` from the theme data and
+any `MenuBarStyle` overrides, so a non-Material design system gets popups in
+its own palette. On macOS neither type applies; the OS renders the bar.
