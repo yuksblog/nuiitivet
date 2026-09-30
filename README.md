@@ -347,7 +347,8 @@ The unchecked items are tracked in
 - macOS / Windows / Linux
 
 Main libraries used for drawing and rendering: pyglet, PyOpenGL, skia-python,
-materialyoucolor. See [LICENSES/](LICENSES/) for third-party licenses.
+materialyoucolor. The tray icon on Windows and Linux uses pystray. See
+[LICENSES/](LICENSES/) for third-party licenses.
 
 ### 3.2 Installation
 
