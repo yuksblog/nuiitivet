@@ -405,9 +405,12 @@ class App:
 
                 - ``"auto"`` (default): try the GPU and silently fall back to
                   software (raster) rendering when it is unavailable.
-                - ``"gpu"``: require the GPU; raise ``RuntimeError`` if the GPU
-                  backend cannot be initialized or a GPU frame fails to render.
-                - ``"cpu"``: always render in software; the GPU is never touched.
+                - ``"gpu"``: require the GPU; raise :class:`RendererError` if
+                  the GPU backend cannot be initialized or a GPU frame fails to
+                  render.
+                - ``"cpu"``: always render in software; the GPU is never
+                  touched. A raster frame that cannot be presented raises
+                  :class:`RendererError`.
 
                 For GPU-less, software-GL, or remote environments (with a
                 display) prefer ``"cpu"``. Truly headless environments cannot

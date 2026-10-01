@@ -1,6 +1,9 @@
 import time
 
+import pytest
+
 from nuiitivet.backends.pyglet.event_loop import ResponsiveEventLoop
+from nuiitivet.runtime.renderer import RendererError
 
 
 class _DummyWindow:
@@ -29,6 +32,28 @@ def test_request_draw_inside_callback_is_preserved():
 
     assert recorded, "Draw callback should be invoked"
     assert loop._draw_pending is True, "request_draw() inside callback must schedule another frame"
+
+
+def test_perform_draw_lets_a_renderer_error_through():
+    def _draw(dt: float) -> None:
+        raise RendererError("renderer='gpu' was requested but GPU frame rendering failed.")
+
+    loop = ResponsiveEventLoop(_draw, draw_fps=None)
+    loop._draw_pending = True
+
+    with pytest.raises(RendererError):
+        loop._perform_draw(0.016, time.perf_counter())
+
+
+def test_perform_draw_swallows_other_exceptions():
+    def _draw(dt: float) -> None:
+        raise ValueError("transient")
+
+    loop = ResponsiveEventLoop(_draw, draw_fps=None)
+    loop._draw_pending = True
+
+    loop._perform_draw(0.016, time.perf_counter())  # logged once, loop goes on
+    assert loop._draw_pending is False
 
 
 def _noop_draw(dt: float) -> None:

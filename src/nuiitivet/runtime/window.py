@@ -24,6 +24,7 @@ from ..widgeting.callbacks import spawn_task
 from ..widgeting.context_lookup import find_provider, raise_if_premature_lookup
 from ..widgeting.widget import ComposableWidget, Widget
 from .pointer import PointerCaptureManager
+from .renderer import RendererError
 from nuiitivet.input.pointer import PointerEvent, PointerEventType, PointerType
 from ..widgeting.widget_binding import flush_binding_invalidations
 from ..widgeting.widget_builder import flush_scope_recompositions
@@ -2324,6 +2325,8 @@ class Window:
             window.switch_to()
             window.dispatch_event("on_draw")
             window.flip()
+        except RendererError:
+            raise
         except Exception:
             exception_once(logger, "app_window_draw_flip_exc", "Window draw/flip raised")
 
