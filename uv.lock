@@ -935,7 +935,7 @@ docs = [
 requires-dist = [
     { name = "materialyoucolor", specifier = ">=3.0.3" },
     { name = "mcp", marker = "extra == 'dev'", specifier = ">=1.2.0" },
-    { name = "pyglet", specifier = ">=2.1.14" },
+    { name = "pyglet", specifier = ">=2.1.14,<3" },
     { name = "pyopengl", specifier = ">=3.1.10" },
     { name = "pystray", marker = "sys_platform == 'linux' or sys_platform == 'win32'", specifier = ">=0.19.0" },
     { name = "skia-python", specifier = ">=138.0" },
