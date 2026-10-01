@@ -168,6 +168,24 @@ whenever `_draw_pending` is clear, whatever the cadence, and
 when nothing is pending; otherwise an idle app would spin at `draw_fps` doing
 nothing.
 
+### The OS Owns the Loop During a Drag
+
+While the user drags a window edge, the operating system runs its own loop
+and `ResponsiveEventLoop` stays blocked inside `platform_loop.step()` until
+the mouse is released. The only Python that runs is what pyglet calls back
+from that loop: `on_resize`, which invalidates, and `EventLoop.idle()`.
+Cocoa calls `idle()` from `PygletView.reshape`; Win32 arms a timer in
+`enter_blocking()` whose callback is `_blocking_timer()`. The loop overrides
+both so a pending frame passes the same `_should_draw()` gate as the main
+loop, and `idle()` returns `_compute_sleep_timeout()` so the Win32 timer
+re-arms for a throttled frame. The window repaints as it is dragged instead
+of the compositor stretching the last frame until the mouse is released.
+
+Leaving pyglet's own `_blocking_timer()` in place was rejected: it presents
+through `window.draw()`, which dispatches `on_draw` and flips outside the
+gate, so Windows would ignore `draw_fps` and the flip invariant below would
+rest on a second path.
+
 ### The Flip Invariant
 
 The GPU and raster backends both present through a double-buffered
