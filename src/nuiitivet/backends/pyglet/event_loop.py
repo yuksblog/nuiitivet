@@ -53,6 +53,7 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
         self._breadcrumb_failed: bool = False
 
         self._planned_wait_seconds: Optional[float] = None
+        self._in_idle_draw: bool = False
 
         self._freeze_backstop_reset: Optional[Callable[[], None]] = None
         self._freeze_backstop_last_reset: float = 0.0
@@ -216,6 +217,34 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
         self._draw_pending = True
         if immediate and self._draw_interval is not None:
             self._next_draw_deadline = time.perf_counter()
+
+    def idle(self) -> Optional[float]:
+        """Tick the clock and draw when a frame is pending.
+
+        Returns the seconds until the next wake, or ``None`` when nothing is
+        pending or scheduled.
+        """
+        # pyglet calls this from inside the OS-owned drag loop, where the main
+        # loop is blocked: the only point that can serve a frame mid-drag.
+        dt = self.clock.update_time()
+        self.clock.call_scheduled_functions(dt)
+        if not self._in_idle_draw and not self.has_exit:
+            self._in_idle_draw = True
+            try:
+                self._beat()
+                now = time.perf_counter()
+                if self._should_draw(now):
+                    self._enter_phase("idle-draw")
+                    self._perform_draw(dt, now)
+            finally:
+                self._in_idle_draw = False
+        return self._compute_sleep_timeout(time.perf_counter())
+
+    def _blocking_timer(self) -> None:
+        # pyglet's version presents through ``window.draw()``, outside the
+        # draw gate. ``None`` leaves the timer off, as pyglet's ``set_timer`` does.
+        timeout = self.idle()
+        pyglet.app.platform_event_loop.set_timer(self._blocking_timer, timeout)
 
     def run(self) -> None:
         """Run the event loop.
