@@ -173,7 +173,7 @@ from nuiitivet.runtime.window_sizing import (
 
 # Configuration
 from nuiitivet.rendering.fonts import Fonts
-from nuiitivet.runtime.renderer import RendererMode
+from nuiitivet.runtime.renderer import RendererError, RendererMode
 
 __all__: list[str] = [
     # Layout
@@ -317,5 +317,6 @@ __all__: list[str] = [
     "Border",
     # Configuration
     "Fonts",
+    "RendererError",
     "RendererMode",
 ]

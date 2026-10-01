@@ -41,7 +41,7 @@ from .gpu_frame import draw_gpu_frame
 from nuiitivet.observable.runtime import set_clock
 from nuiitivet.runtime.threading import set_ui_thread
 from nuiitivet.common.logging_once import debug_once, exception_once, warning_once
-from nuiitivet.runtime.renderer import RendererMode
+from nuiitivet.runtime.renderer import RendererError, RendererMode
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +135,8 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
             if callable(render):
                 try:
                     render(dt)
+                except RendererError:
+                    raise
                 except Exception:
                     exception_once(logger, "pyglet_draw_window_exc", "Window._render_frame raised")
 
@@ -841,7 +843,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
                     return
                 if renderer == "gpu":
                     logger.error("renderer='gpu': GPU frame rendering failed")
-                    raise RuntimeError("renderer='gpu' was requested but GPU frame rendering failed.")
+                    raise RendererError("renderer='gpu' was requested but GPU frame rendering failed.")
                 gpu_enabled = False
 
         if getattr(win, "_dirty", False) or getattr(win, "_last_image", None) is None:
@@ -854,12 +856,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         except Exception:
             exception_once(logger, "pyglet_on_draw_window_clear_exc", "window.clear raised")
 
-        img = getattr(win, "_last_image", None)
-        if img is not None:
-            try:
-                img.blit(0, 0)
-            except Exception:
-                exception_once(logger, "pyglet_on_draw_image_blit_exc", "image.blit raised")
+        _present_raster_frame(win, renderer)
 
     @window.event
     def on_show():
@@ -1339,6 +1336,27 @@ def _draw_raster_frame(app: Any, skia: Any) -> bool:
     except Exception:
         exception_once(logger, "pyglet_draw_raster_frame_exc", "Failed to draw raster frame")
         return False
+
+
+def _present_raster_frame(win: Any, renderer: RendererMode) -> None:
+    """Blit the raster frame held in ``win._last_image`` onto the window.
+
+    Does nothing when no frame has been drawn yet.
+
+    Raises:
+        RendererError: The blit raised. The original exception is chained.
+    """
+    img = getattr(win, "_last_image", None)
+    if img is None:
+        return
+    try:
+        img.blit(0, 0)
+    except Exception as exc:
+        # The raster path is the last renderer left when this runs, so a frame
+        # it cannot present leaves nothing to fall back to; a swallowed error
+        # here is a blank window that looks healthy.
+        logger.error("renderer=%r: the raster path could not present a frame (image.blit raised)", renderer)
+        raise RendererError(f"renderer={renderer!r}: the raster path could not present a frame.") from exc
 
 
 def _install_ime_patch(window: object, win: object) -> None:

@@ -12,6 +12,7 @@ from typing import Callable, Optional
 import pyglet
 
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.runtime.renderer import RendererError
 
 logger = logging.getLogger(__name__)
 
@@ -233,6 +234,8 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
 
         try:
             asyncio.run(self.run_async())
+        except RendererError:
+            raise
         except RuntimeError:
             logger.warning(
                 "Async event loop is already running. "
@@ -463,6 +466,8 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
         self._last_draw_ts = float(now)
         try:
             self._draw_callback(dt)
+        except RendererError:
+            raise
         except Exception:
             exception_once(logger, "pyglet_event_loop_draw_callback_exc", "Draw callback raised")
         finally:

@@ -1,7 +1,11 @@
+import logging
 import types
+
+import pytest
 
 
 from nuiitivet.runtime import app_events
+from nuiitivet.runtime.renderer import RendererError
 from nuiitivet.runtime.pointer import PointerCaptureManager
 from nuiitivet.backends.pyglet.gpu_frame import draw_gpu_frame
 from nuiitivet.input.pointer import PointerEvent, PointerEventType
@@ -353,6 +357,111 @@ def test_draw_raster_frame_failure(monkeypatch):
 
     ok = pyglet_runner._draw_raster_frame(app, skia=None)
     assert ok is False
+
+
+def test_present_raster_frame_blits_last_image():
+    from nuiitivet.backends.pyglet import runner as pyglet_runner
+
+    calls = []
+
+    class PresentableImage:
+        def blit(self, x, y):
+            calls.append((x, y))
+
+    app = DummyApp()
+    app._last_image = PresentableImage()
+
+    pyglet_runner._present_raster_frame(app, "cpu")
+    assert calls == [(0, 0)]
+
+
+def test_present_raster_frame_without_frame_is_a_no_op():
+    from nuiitivet.backends.pyglet import runner as pyglet_runner
+
+    app = DummyApp()
+    assert app._last_image is None
+
+    pyglet_runner._present_raster_frame(app, "auto")
+
+
+def test_present_raster_frame_raises_when_blit_fails(caplog):
+    from nuiitivet.backends.pyglet import runner as pyglet_runner
+
+    class BrokenImage:
+        def blit(self, x, y):
+            raise NotImplementedError("This is no longer supported.")
+
+    app = DummyApp()
+    app._last_image = BrokenImage()
+
+    with caplog.at_level(logging.ERROR, logger=pyglet_runner.logger.name):
+        with pytest.raises(RendererError, match="renderer='cpu'"):
+            pyglet_runner._present_raster_frame(app, "cpu")
+
+    # The failure is loud: an error record, and the blit's own exception chained.
+    assert any(r.levelno == logging.ERROR and "image.blit" in r.getMessage() for r in caplog.records)
+
+
+def test_present_raster_frame_chains_the_blit_exception():
+    from nuiitivet.backends.pyglet import runner as pyglet_runner
+
+    class BrokenImage:
+        def blit(self, x, y):
+            raise NotImplementedError("gone")
+
+    app = DummyApp()
+    app._last_image = BrokenImage()
+
+    with pytest.raises(RendererError) as info:
+        pyglet_runner._present_raster_frame(app, "auto")
+    assert isinstance(info.value.__cause__, NotImplementedError)
+
+
+def test_render_frame_lets_a_renderer_error_through():
+    from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.window import Window
+
+    class FatalPygletWindow:
+        has_exit = False
+
+        def switch_to(self):
+            return None
+
+        def dispatch_event(self, name):
+            raise RendererError("renderer='cpu': the raster path could not present a frame.")
+
+        def flip(self):
+            return None
+
+    win = App(Window(content=Widget(), title="t")).main_window
+    win._window = FatalPygletWindow()
+    win._visible_obs.value = True
+
+    with pytest.raises(RendererError):
+        win._render_frame(0.016)
+
+
+def test_render_frame_swallows_other_draw_exceptions():
+    from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.window import Window
+
+    class FlakyPygletWindow:
+        has_exit = False
+
+        def switch_to(self):
+            return None
+
+        def dispatch_event(self, name):
+            raise ValueError("transient")
+
+        def flip(self):
+            return None
+
+    win = App(Window(content=Widget(), title="t")).main_window
+    win._window = FlakyPygletWindow()
+    win._visible_obs.value = True
+
+    win._render_frame(0.016)  # logged once, loop goes on
 
 
 def test_enter_leave_sequence_and_hover_tracking():
