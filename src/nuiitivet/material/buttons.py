@@ -642,6 +642,9 @@ class MaterialButtonBase(InteractiveWidget):
             self._state_layer_anim.target = target
         return float(self._state_layer_anim.value)
 
+    # The container rect of the paint in progress, or None outside a paint.
+    _container_memo: Optional[tuple] = None
+
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         # Handle disabled state opacity (logic ported from ButtonBase)
         layer_count = 0
@@ -654,9 +657,12 @@ class MaterialButtonBase(InteractiveWidget):
             except Exception:
                 exception_once(logger, "button_apply_disabled_layer_exc", "Failed to apply disabled opacity layer")
 
+        # Armed for this paint only: the style that decides the container may change between paints.
+        self._container_memo = ()
         try:
             super().paint(canvas, x, y, width, height)
         finally:
+            self._container_memo = None
             if layer_count > 0:
                 try:
                     canvas.restore()
@@ -677,9 +683,16 @@ class MaterialButtonBase(InteractiveWidget):
 
     def _container_in(self, x: int, y: int, width: int, height: int) -> Tuple[int, int, int, int]:
         """Return the visual container for a content rect: centred to ``container_height``."""
+        memo = self._container_memo
+        content = (x, y, width, height)
+        if memo and memo[0] == content:
+            return memo[1]
         ch = self._container_height_pixels(height)
         cy = y + max(0, (int(height) - ch) // 2)
-        return (int(x), int(cy), int(width), int(ch))
+        container = (int(x), int(cy), int(width), int(ch))
+        if memo is not None:
+            self._container_memo = (content, container)
+        return container
 
     def _content_extra(self) -> Tuple[int, int]:
         """Return the (width, height) the container adds around its content."""
@@ -718,6 +731,8 @@ class MaterialButtonBase(InteractiveWidget):
         return super().draw_border(canvas, *self._container_in(x, y, width, height))
 
     def draw_state_layer(self, canvas, x: int, y: int, width: int, height: int):
+        if self._get_active_state_layer_opacity() <= 0:
+            return
         super().draw_state_layer(canvas, *self._container_in(x, y, width, height))
 
     def draw_focus_indicator(self, canvas, x: int, y: int, width: int, height: int):

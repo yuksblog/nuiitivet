@@ -29,7 +29,39 @@ class CachedPaintMixin:
         self._paint_cache_snapshot_size: Optional[Tuple[int, int]] = None
         self._paint_cache_snapshot_outsets: Optional[Tuple[int, int, int, int]] = None
         self._paint_cache_snapshot_scale: Optional[float] = None
+        self._paint_cache_snapshot_pixels: Optional[Tuple[int, int]] = None
         super().__init__(*args, **kwargs)
+
+    def replay_paint_cache(self, canvas: Any, x: int, y: int, width: int, height: int) -> bool:
+        """Draw the cached visuals for this rect when the cache still matches it.
+
+        Args:
+            canvas: The canvas to draw into.
+            x: Left edge of the widget's rect.
+            y: Top edge of the widget's rect.
+            width: Width of the widget's rect.
+            height: Height of the widget's rect.
+
+        Returns:
+            ``True`` when the cache was drawn. ``False`` when there is no cache
+            or it was recorded for another size, outset or device scale; the
+            caller then records through :meth:`paint_cache`.
+        """
+        snapshot = self._paint_cache_snapshot
+        if snapshot is None or canvas is None:
+            return False
+        w = max(0, int(width))
+        h = max(0, int(height))
+        origin_x, origin_y, extended_w, extended_h, outsets = self._resolve_paint_cache_bounds(x, y, w, h)
+        if self._paint_cache_snapshot_size != (extended_w, extended_h) or w == 0 or h == 0:
+            return False
+        if self._paint_cache_snapshot_outsets != outsets:
+            return False
+        if self._paint_cache_snapshot_scale != self._resolve_device_scale(canvas):
+            return False
+        return self._blit_cached_image(
+            canvas, snapshot, origin_x, origin_y, extended_w, extended_h, self._paint_cache_snapshot_pixels
+        )
 
     @contextmanager
     def paint_cache(self, canvas: Any, x: int, y: int, width: int, height: int):
@@ -88,6 +120,7 @@ class CachedPaintMixin:
         self._paint_cache_snapshot_size = None
         self._paint_cache_snapshot_outsets = None
         self._paint_cache_snapshot_scale = None
+        self._paint_cache_snapshot_pixels = None
         try:
             super()._invalidate_paint_cache()  # type: ignore[misc]
         except AttributeError:
@@ -249,7 +282,13 @@ class CachedPaintMixin:
         self._paint_cache_snapshot_size = (width, height)
         self._paint_cache_snapshot_outsets = outsets
         self._paint_cache_snapshot_scale = scale
-        self._blit_cached_image(canvas, snapshot, origin_x, origin_y, width, height)
+        try:
+            self._paint_cache_snapshot_pixels = (int(snapshot.width()), int(snapshot.height()))
+        except Exception:
+            self._paint_cache_snapshot_pixels = None
+        self._blit_cached_image(
+            canvas, snapshot, origin_x, origin_y, width, height, self._paint_cache_snapshot_pixels
+        )
 
     def _try_draw_paint_cache(
         self,
@@ -281,15 +320,19 @@ class CachedPaintMixin:
         y: int,
         logical_w: Optional[int] = None,
         logical_h: Optional[int] = None,
+        pixel_size: Optional[Tuple[int, int]] = None,
     ) -> bool:
         if canvas is None or image is None:
             return False
-        try:
-            img_w = int(image.width())
-            img_h = int(image.height())
-        except Exception:
-            img_w = int(logical_w) if logical_w is not None else 0
-            img_h = int(logical_h) if logical_h is not None else 0
+        if pixel_size is not None:
+            img_w, img_h = pixel_size
+        else:
+            try:
+                img_w = int(image.width())
+                img_h = int(image.height())
+            except Exception:
+                img_w = int(logical_w) if logical_w is not None else 0
+                img_h = int(logical_h) if logical_h is not None else 0
         dst_w = int(logical_w) if logical_w is not None else img_w
         dst_h = int(logical_h) if logical_h is not None else img_h
 
@@ -361,6 +404,17 @@ class CachedPaintMixin:
         except Exception:
             exception_once(_logger, "paint_cache_outsets_unpack_exc", "Failed to unpack paint outsets")
             return (0, 0, 0, 0)
+        if (
+            type(left) is int
+            and type(top) is int
+            and type(right) is int
+            and type(bottom) is int
+            and left >= 0
+            and top >= 0
+            and right >= 0
+            and bottom >= 0
+        ):
+            return (left, top, right, bottom)
 
         def _coerce(component: object) -> int:
             try:
