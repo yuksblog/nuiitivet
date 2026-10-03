@@ -287,10 +287,12 @@ class Image:
 
 
 class Matrix:
-    __slots__ = ("sx", "sy")
+    """A scale and a translation: what the framework puts on a canvas."""
 
-    def __init__(self, sx: float = 1.0, sy: float = 1.0) -> None:
-        self.sx, self.sy = sx, sy
+    __slots__ = ("sx", "sy", "tx", "ty")
+
+    def __init__(self, sx: float = 1.0, sy: float = 1.0, tx: float = 0.0, ty: float = 0.0) -> None:
+        self.sx, self.sy, self.tx, self.ty = float(sx), float(sy), float(tx), float(ty)
 
     def getScaleX(self) -> float:
         return self.sx
@@ -298,15 +300,39 @@ class Matrix:
     def getScaleY(self) -> float:
         return self.sy
 
+    def getSkewX(self) -> float:
+        return 0.0
+
+    def getSkewY(self) -> float:
+        return 0.0
+
+    def getTranslateX(self) -> float:
+        return self.tx
+
+    def getTranslateY(self) -> float:
+        return self.ty
+
+
+class Picture:
+    def __init__(self, handle: Any) -> None:
+        self._p = handle
+
+    def __del__(self) -> None:
+        H.release(self._p)
+
 
 class Canvas:
-    """Forwards draws to CanvasKit; tracks translate, scale and clip in Python."""
+    """Forwards draws to CanvasKit; tracks the matrix and the clip in Python.
 
-    def __init__(self, handle: Any, width: float, height: float) -> None:
+    The matrix is a scale and a translation, and the clip is kept in device
+    coordinates, so reading either back costs no crossing into JS.
+    """
+
+    def __init__(self, handle: Any, clip: tuple[float, float, float, float]) -> None:
         self._c = handle
         self._tx = self._ty = 0.0
         self._sx = self._sy = 1.0
-        self._clip = (0.0, 0.0, float(width), float(height))
+        self._clip = clip
         self._stack: list[tuple[float, float, float, float, tuple[float, float, float, float]]] = []
 
     def save(self) -> int:
@@ -320,29 +346,53 @@ class Canvas:
         self._c.restore()
 
     def translate(self, dx: float, dy: float) -> None:
-        l, t, r, b = self._clip
-        self._clip = (l - dx, t - dy, r - dx, b - dy)
         self._tx += dx * self._sx
         self._ty += dy * self._sy
         self._c.translate(dx, dy)
 
     def scale(self, sx: float, sy: float) -> None:
-        l, t, r, b = self._clip
-        self._clip = (l / sx, t / sy, r / sx, b / sy)
         self._sx *= sx
         self._sy *= sy
         self._c.scale(sx, sy)
 
+    def resetMatrix(self) -> None:
+        # CanvasKit has no resetMatrix: undo the tracked matrix instead.
+        if self._sx != 1.0 or self._sy != 1.0:
+            self._c.scale(1.0 / self._sx, 1.0 / self._sy)
+        if self._tx != 0.0 or self._ty != 0.0:
+            self._c.translate(-self._tx, -self._ty)
+        self._tx = self._ty = 0.0
+        self._sx = self._sy = 1.0
+
+    def setMatrix(self, matrix: Matrix) -> None:
+        self.resetMatrix()
+        if matrix.tx != 0.0 or matrix.ty != 0.0:
+            self._c.translate(matrix.tx, matrix.ty)
+        if matrix.sx != 1.0 or matrix.sy != 1.0:
+            self._c.scale(matrix.sx, matrix.sy)
+        self._sx, self._sy, self._tx, self._ty = matrix.sx, matrix.sy, matrix.tx, matrix.ty
+
     def clipRect(self, rect: Rect, *args: Any, **kwargs: Any) -> None:
-        l, t, r, b = self._clip
-        self._clip = (max(l, rect.fLeft), max(t, rect.fTop), min(r, rect.fRight), min(b, rect.fBottom))
+        left, top, right, bottom = self._clip
+        self._clip = (
+            max(left, rect.fLeft * self._sx + self._tx),
+            max(top, rect.fTop * self._sy + self._ty),
+            min(right, rect.fRight * self._sx + self._tx),
+            min(bottom, rect.fBottom * self._sy + self._ty),
+        )
         H.clipRect(self._c, rect.fLeft, rect.fTop, rect.fRight, rect.fBottom)
 
     def getLocalClipBounds(self) -> Rect:
-        return Rect(*self._clip)
+        left, top, right, bottom = self._clip
+        return Rect(
+            (left - self._tx) / self._sx,
+            (top - self._ty) / self._sy,
+            (right - self._tx) / self._sx,
+            (bottom - self._ty) / self._sy,
+        )
 
     def getTotalMatrix(self) -> Matrix:
-        return Matrix(self._sx, self._sy)
+        return Matrix(self._sx, self._sy, self._tx, self._ty)
 
     def clear(self, color: Any) -> None:
         if isinstance(color, Color4f):
@@ -381,12 +431,15 @@ class Canvas:
     def drawImage(self, image: Image, x: float, y: float, *args: Any) -> None:
         self._c.drawImage(image._i, x, y, None)
 
+    def drawPicture(self, picture: Picture) -> None:
+        self._c.drawPicture(picture._p)
+
 
 class Surface:
-    def __init__(self, width: int, height: int) -> None:
+    def __init__(self, width: int, height: int, handle: Any = None) -> None:
         self._w, self._h = int(width), int(height)
-        self._s = CK.MakeSurface(self._w, self._h)
-        self._canvas = Canvas(self._s.getCanvas(), self._w, self._h)
+        self._s = handle if handle is not None else CK.MakeSurface(self._w, self._h)
+        self._canvas = Canvas(self._s.getCanvas(), (0.0, 0.0, float(self._w), float(self._h)))
 
     def getCanvas(self) -> Canvas:
         return self._canvas
@@ -400,6 +453,9 @@ class Surface:
     def makeImageSnapshot(self) -> Image:
         return Image(self._s.makeImageSnapshot())
 
+    def flush(self) -> None:
+        self._s.flush()
+
 
 class PictureRecorder:
     def __init__(self) -> None:
@@ -407,7 +463,10 @@ class PictureRecorder:
 
     def beginRecording(self, bounds: Rect) -> Canvas:
         handle = self._r.beginRecording(CK.LTRBRect(bounds.fLeft, bounds.fTop, bounds.fRight, bounds.fBottom))
-        return Canvas(handle, bounds.width(), bounds.height())
+        return Canvas(handle, (bounds.fLeft, bounds.fTop, bounds.fRight, bounds.fBottom))
 
-    def finishRecordingAsPicture(self) -> Any:
-        return self._r.finishRecordingAsPicture()
+    def finishRecordingAsPicture(self) -> Picture:
+        return Picture(self._r.finishRecordingAsPicture())
+
+    def __del__(self) -> None:
+        H.release(self._r)
