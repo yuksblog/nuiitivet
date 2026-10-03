@@ -1,6 +1,6 @@
 """Tests for the pystray tray bridge, against a stub pystray module.
 
-pystray is installed only on Windows/Linux, and the real thing needs a
+pystray is installed only on Linux, and the real thing needs a
 desktop tray host to do anything, so the backend contract is tested against
 a stub on every platform: menu translation, the ``update_menu`` refresh on
 Observable changes, the ``HAS_MENU`` install refusal, the ``HAS_DEFAULT``
@@ -217,7 +217,7 @@ def _fake_glib(monkeypatch: pytest.MonkeyPatch, context: _FakeMainContext) -> No
 
 
 def test_glib_pump_skipped_for_threaded_backends(monkeypatch: pytest.MonkeyPatch) -> None:
-    """``xorg`` / ``win32`` run their own loop, so nothing is scheduled."""
+    """``xorg`` runs its own loop, so nothing is scheduled."""
     _fake_pystray(monkeypatch)
     clock = _RecordingClock()
     monkeypatch.setattr(runtime, "clock", clock)
