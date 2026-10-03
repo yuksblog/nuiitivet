@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from nuiitivet.widgeting.paint_replay import replay_safe
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, replace
 from enum import Enum
@@ -1508,6 +1509,7 @@ class InteractionRegion(InteractionHostMixin, Widget):
         ch = max(0, height - t - b)
         self.children[0].layout(cw, ch)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
 
         self.set_last_rect(x, y, width, height)
@@ -1516,8 +1518,7 @@ class InteractionRegion(InteractionHostMixin, Widget):
         cx, cy, cw, ch = self.content_rect(x, y, width, height)
         child = self.children[0]
         child.set_last_rect(cx, cy, cw, ch)
-        if self._take_inside_clip():
-            child._paint_inside_clip = True
+        self._pass_paint_hints(child)
         child.paint(canvas, cx, cy, cw, ch)
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from nuiitivet.widgeting.paint_replay import replay_safe
 from typing import Optional, Tuple, Type, TypeVar
 
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
@@ -136,6 +137,7 @@ class Geometry(Widget):
         # _publish_size between frames, de-duped against the last report.
         queue_size_change(self, Size(int(width), int(height)))
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Paint the child at this widget's own rect (transparent to paint)."""
         self.set_last_rect(x, y, width, height)
@@ -146,8 +148,7 @@ class Geometry(Widget):
             self.layout(width, height)
         rx, ry, rw, rh = child.layout_rect or self.content_rect(0, 0, width, height)
         child.set_last_rect(x + rx, y + ry, rw, rh)
-        if self._take_inside_clip():
-            child._paint_inside_clip = True
+        self._pass_paint_hints(child)
         child.paint(canvas, x + rx, y + ry, rw, rh)
 
 

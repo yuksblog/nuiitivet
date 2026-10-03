@@ -7,14 +7,15 @@ Python method-call overhead. That is what makes nuiitivet different from
 Compose, browsers and Core Animation, where the walk is compiled and the
 concern is GPU compositing. Every cache here exists to skip part of that walk.
 
-Three caches cover three scopes. The first two are implemented; the third is
-designed and verified in a prototype, and nothing designates a boundary today.
+Three caches cover three scopes. The first two are implemented. The third is
+implemented for the rows of a scroll viewport and designed for the other
+boundaries.
 
 | Scope | What it skips | State |
 | --- | --- | --- |
 | A widget's own visuals | Re-rasterising one widget's background and shadow | implemented (`CachedPaintMixin`) |
 | The whole frame | The walk, on a redraw whose content did not change | implemented (full-frame cache) |
-| A subtree | The walk of clean subtrees, on a content change that is local | designed, not implemented (repaint boundary) |
+| A subtree | The walk of clean subtrees, on a content change that is local | implemented for scroll rows; designed for the other boundaries |
 
 ## Own Visuals
 
@@ -62,10 +63,11 @@ A genuine content change still pays the full walk, however small the change.
 
 ## Subtree
 
-Not implemented: nothing designates a cache boundary today. A localised
-change, a hover, a caret, one animating widget, routes through
-`Widget.invalidate()` → `App.invalidate(content=True)` → `_paint_dirty`, and
-the next frame walks the whole tree. The goal is narrow:
+One boundary is implemented: the rows of a scroll viewport's content, under
+[Scroll Rows](#scroll-rows). Anywhere else a localised change, a hover, a
+caret, one animating widget, routes through `Widget.invalidate()` →
+`App.invalidate(content=True)` → `_paint_dirty`, and the next frame walks the
+whole tree. The goal is narrow:
 
 > **Skip re-running Python `paint()` for subtrees that did not change.**
 
@@ -204,8 +206,66 @@ An implementation re-audits this before trusting the cache.
 - On a 40×40-tile tree, invalidating one leaf per frame cost about 3 ms with
   row boundaries against about 28 ms for the full walk.
 
-An implementation starts from one narrow target, `Scrollable` transform-replay
-or the explicit `.repaint_boundary()` modifier, with the problem statement,
-acceptance criteria and scope pinned before code. Broad container coverage,
-a temporal enable rule and a bitmap primitive were each tried and replaced by
-the design above.
+Each further boundary starts from one narrow target, with the problem
+statement, acceptance criteria and scope pinned before code. Broad container
+coverage, a temporal enable rule and a bitmap primitive were each tried and
+replaced by the design above.
+
+### Scroll Rows
+
+A scroll moves content that did not change. The container a scroll viewport
+paints as its content keeps one picture per child, a row, and replays it
+while the row is clean. A scroll frame walks only the rows that enter.
+
+```mermaid
+flowchart TD
+    V["ScrollViewport"] -- "tells its content" --> C["content container"]
+    C --> Q{"row"}
+    Q -- "outside the clip" --> D["drop its picture"]
+    Q -- "clean, has a picture" --> R["replay, shifted"]
+    Q -- "changed, or new" --> S{"declared safe,<br/>fits the viewport,<br/>not changing every frame"}
+    S -- yes --> REC["record, then draw the picture"]
+    S -- no --> P["paint directly"]
+```
+
+The viewport does not move the canvas; it paints its content at a position
+with the scroll offset subtracted. A row is therefore recorded with the canvas
+matrix in place and replayed under the identity matrix, shifted by how far its
+device position has moved. Recording under the canvas matrix is what lets a
+widget inside the row rasterise its own cache at the device scale.
+
+The viewport tells its content that it is scroll content, and a wrapper
+between the viewport and the container hands that on under the rule the
+inside-clip hint follows in [RENDERING_PIPELINE.md](RENDERING_PIPELINE.md).
+
+A row is clean until something at or below it changes. `Widget.invalidate()`
+and `mark_needs_layout()` mark the widget and every ancestor; recording a row
+clears its mark. A pointer event that a widget handles marks that widget too,
+because the app repaints after a handled event whether or not the handler
+invalidated itself. Scrolling invalidates the `Scrollable`, which is above
+the rows, so it marks none of them.
+
+A row is replayed only when every widget in it declares its drawing safe to
+replay (`replay_safe`, on `paint` and the `draw_*` hooks). The declaration is
+on the function, so a subclass that overrides one is undeclared again. It
+exists because skipping `paint()` is not always harmless: a `Slider` stores
+the position of its track while painting and reads it while dragging, and a
+replayed row would leave that position where the last recording put it. A
+widget the framework does not know, an application's own, may do the same.
+Undeclared is the default, so such a row is painted on every frame, as before.
+Marking the unsafe widgets instead was rejected: an application's widget would
+then be replayed without anyone having checked it.
+
+Three more rows are painted directly: one larger than the viewport, since
+recording it would walk more than the clip shows; one that changed on more
+than two consecutive paints, since recording a row every frame costs more
+than not recording it; and one drawn on a canvas that is skewed or rotated.
+A row that leaves the clip gives its picture up, so the pictures held are
+those of the rows on screen.
+
+One picture for the whole content was rejected: recording it has no clip to
+cull against and walks every row. One picture for a window around the viewport
+was rejected too: the frame that leaves the window records several viewports
+of rows at once, a change in one row records the window again, and a lazy
+list, which builds rows at one edge and drops them at the other, would
+invalidate it on almost every frame.

@@ -1,5 +1,6 @@
 """Column layout: arrange children vertically."""
 
+from nuiitivet.widgeting.paint_replay import replay_safe
 from typing import List, Tuple, Optional, Union, Sequence
 
 from ..widgeting.widget import Widget
@@ -216,6 +217,7 @@ class Column(Widget):
             layout_child_if_needed(child, resolved_width, h)
             child.set_layout_rect(rel_x, rel_y, resolved_width, h)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         paint_laid_out_children(self, canvas, x, y, width, height)
 

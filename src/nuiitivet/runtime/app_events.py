@@ -64,6 +64,10 @@ def _deliver_pointer_event(app: Any, target: Any, event: PointerEvent) -> Option
         return None
     handler = _bubble_pointer_event(target, event)
     if handler is not None:
+        # The handler may have changed what it draws without invalidating itself.
+        mark = getattr(handler, "_mark_replay_dirty", None)
+        if callable(mark):
+            mark()
         # Request redraw for handled events. Scroll should bypass FPS throttle.
         try:
             if event.type is PointerEventType.SCROLL:

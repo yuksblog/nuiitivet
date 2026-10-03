@@ -7,6 +7,7 @@ handling the State Layer visualization (hover, focus, press states).
 
 from __future__ import annotations
 
+from nuiitivet.widgeting.paint_replay import replay_safe
 import logging
 from typing import Optional, Tuple, Union, Any, TYPE_CHECKING
 
@@ -139,6 +140,7 @@ class InteractiveWidget(Clickable):
             max(base[3], ring_outset),
         )
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         """Paint the container inside the padding, then the content on top.
 
@@ -183,6 +185,7 @@ class InteractiveWidget(Clickable):
             return self._HOVER_OPACITY
         return 0.0
 
+    @replay_safe
     def draw_state_layer(self, canvas, x: int, y: int, width: int, height: int):
         """Draws the MD3 State Layer based on current interaction state."""
         opacity = self._get_active_state_layer_opacity()
@@ -223,6 +226,7 @@ class InteractiveWidget(Clickable):
         except Exception:
             exception_once(logger, "interactive_widget_state_layer_exc", "Failed to draw state layer")
 
+    @replay_safe
     def draw_focus_indicator(self, canvas, x: int, y: int, width: int, height: int):
         """Draws the MD3 Focus Indicator (Ring) when focused."""
         self.draw_focus_ring(canvas, x, y, width, height, list(self.corner_radii_pixels(width, height)))

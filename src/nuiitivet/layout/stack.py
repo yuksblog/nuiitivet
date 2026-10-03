@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from nuiitivet.widgeting.paint_replay import replay_safe
 from typing import Optional, Sequence, Tuple, Union
 
 from ..widgeting.widget import Widget
@@ -169,8 +170,9 @@ class Stack(Widget):
             child.layout(target_w, target_h)
             child.set_layout_rect(l + x, t + y, target_w, target_h)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
-        inside_clip = self._take_inside_clip()
+        hints = self._take_paint_hints()
         children = expand_layout_children(self.children_snapshot())
         for child in children:
             rect = child.layout_rect
@@ -178,6 +180,6 @@ class Stack(Widget):
                 continue
 
             rx, ry, rw, rh = rect
-            if inside_clip:
-                child._paint_inside_clip = True
+            if hints:
+                child._give_paint_hints(hints)
             child.paint(canvas, x + rx, y + ry, rw, rh)

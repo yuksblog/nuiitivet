@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from nuiitivet.widgeting.paint_replay import replay_safe
 from typing import List, Optional, Sequence, Tuple, Union
 
 from ..widgeting.widget import Widget
@@ -215,6 +216,7 @@ class Flow(Widget):
 
         self._layout_flow(children, inner_x, inner_y, inner_w, inner_h)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         paint_laid_out_children(self, canvas, x, y, width, height)
 

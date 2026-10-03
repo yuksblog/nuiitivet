@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from nuiitivet.widgeting.paint_replay import replay_safe
 import math
 from typing import List, Optional, Sequence, Tuple, Union
 
@@ -315,6 +316,7 @@ class UniformFlow(Widget):
             return min(max(0, int(dim.value)), max(0, cell))
         return min(max(0, pref), max(0, cell))
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         paint_laid_out_children(self, canvas, x, y, width, height)
 

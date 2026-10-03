@@ -8,6 +8,7 @@ This module contains the implementation of Material Design 3 selection controls:
 
 from __future__ import annotations
 
+from nuiitivet.widgeting.paint_replay import replay_safe
 import logging
 from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional, Tuple, Union, cast
 
@@ -390,6 +391,7 @@ class Checkbox(Toggleable, InteractiveWidget):
             overlay_unchecked=roles.get(ColorRole.ON_SURFACE, "#000000"),
         )
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         """Paint checkbox with padding support (M3準拠)."""
         try:
@@ -503,6 +505,7 @@ class Checkbox(Toggleable, InteractiveWidget):
             exception_once(_logger, "checkbox_paint_exc", "Checkbox paint raised")
             return
 
+    @replay_safe
     def draw_focus_indicator(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Draw the standard focus ring around the state-layer circle."""
         content_x, content_y, content_w, content_h = self.content_rect(x, y, width, height)
@@ -1107,6 +1110,7 @@ class Switch(Toggleable, InteractiveWidget):
             overlay=roles.get(ColorRole.PRIMARY if checked else ColorRole.ON_SURFACE, "#000000"),
         )
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Paint switch with animated thumb and track."""
         try:
@@ -1179,6 +1183,7 @@ class Switch(Toggleable, InteractiveWidget):
         except Exception:
             exception_once(_logger, "switch_paint_exc", "Switch paint raised")
 
+    @replay_safe
     def draw_focus_indicator(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Draw the standard focus ring around the track.
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from nuiitivet.widgeting.paint_replay import replay_safe
 import inspect
 import itertools
 import logging
@@ -67,13 +68,14 @@ def _get_scoped_fragment_class():
                 return (0, 0)
             return measure_preferred_size(child, max_width=max_width, max_height=max_height)
 
+        @replay_safe
         def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
-            inside_clip = self._take_inside_clip()
+            hints = self._take_paint_hints()
             child = self._current_child()
             if child is None:
                 return
-            if inside_clip:
-                child._paint_inside_clip = True
+            if hints:
+                child._give_paint_hints(hints)
             child.paint(canvas, x, y, width, height)
 
         def hit_test(self, x: int, y: int):
@@ -548,10 +550,10 @@ class BuilderHostMixin:
             self._built.layout(cw, ch)
             self._built.set_layout_rect(cx, cy, cw, ch)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         if self._built:
-            if self._take_inside_clip():  # type: ignore[attr-defined]
-                self._built._paint_inside_clip = True
+            self._pass_paint_hints(self._built)  # type: ignore[attr-defined]
             self._built.paint(canvas, *self.content_rect(x, y, width, height))  # type: ignore[attr-defined]
         else:
             super().paint(canvas, x, y, width, height)  # type: ignore

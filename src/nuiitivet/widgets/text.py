@@ -3,6 +3,7 @@
 Displays a string or State-like value and invalidates when the value changes.
 """
 
+from nuiitivet.widgeting.paint_replay import replay_safe
 import logging
 import math
 from typing import Any, Callable, List, Literal, NamedTuple, Optional, Tuple, Union, TYPE_CHECKING
@@ -384,6 +385,7 @@ class TextBase(Widget):
 
         return (int(total_w), int(total_h))
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         """Paint text with padding, multi-line layout and overflow support."""
         cx, cy, cw, ch = self.content_rect(x, y, width, height)

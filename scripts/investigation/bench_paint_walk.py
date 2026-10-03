@@ -221,6 +221,41 @@ def measure(skia: Any, rows: int, frames: int, wrap: str = "none") -> dict[str, 
     return out
 
 
+def measure_scroll(skia: Any, rows: int, frames: int, viewport: int) -> dict[str, float]:
+    """Time one frame of a scroll: the list under a viewport, moved 7 px per frame."""
+    import nuiitivet.material as nv
+    from nuiitivet.scrolling import ScrollController, ScrollDirection
+    from nuiitivet.testing import mount
+
+    controller = ScrollController()
+    content = nv.Column(children=[_row(nv, i) for i in range(rows)])
+    tree = nv.VerticalScrollable(content, controller=controller, height=viewport)
+    limit = max(1, rows * ROW_HEIGHT - viewport)
+    out: dict[str, float] = {"visible_widgets": float(viewport // ROW_HEIGHT * 8)}
+
+    with mount(tree, theme=nv.ThemeFactory.light("#6750A4"), leak_check="off") as host:
+        host.layout(WIDTH, viewport)
+
+        def paint() -> None:
+            recorder = skia.PictureRecorder()
+            canvas = recorder.beginRecording(skia.Rect.MakeWH(WIDTH, viewport))
+            host.root.paint(canvas, 0, 0, WIDTH, viewport)
+            recorder.finishRecordingAsPicture()
+
+        paint()
+        offset = 0.0
+        samples = []
+        for _ in range(frames):
+            offset = (offset + 7.0) % limit
+            controller.scroll_to(offset, axis=ScrollDirection.VERTICAL)
+            start = time.perf_counter()
+            paint()
+            samples.append((time.perf_counter() - start) * 1000.0)
+        out["scroll_frame_ms"] = statistics.median(samples)
+        out["scroll_frame_max_ms"] = max(samples)
+    return out
+
+
 def report(result: dict[str, float]) -> str:
     return json.dumps({"python": sys.version.split()[0], **{k: round(v, 2) for k, v in result.items()}})
 
@@ -230,6 +265,7 @@ def main() -> int:
     parser.add_argument("--rows", type=int, default=100, help="rows in the list (8 widgets per row)")
     parser.add_argument("--frames", type=int, default=20, help="frames to time per case")
     parser.add_argument("--wrap", choices=WRAPPERS, default="none", help="wrapper between the list and its rows")
+    parser.add_argument("--scroll", type=int, metavar="PX", help="time a scroll frame under a viewport this tall")
     parser.add_argument("--profile", action="store_true", help="also print a cProfile of the run")
     args = parser.parse_args()
 
@@ -240,6 +276,10 @@ def main() -> int:
     if skia is None:
         print("skia unavailable; cannot run benchmark", file=sys.stderr)
         return 1
+
+    if args.scroll:
+        print(report(measure_scroll(skia, args.rows, args.frames, args.scroll)))
+        return 0
 
     print(report(measure(skia, args.rows, args.frames, args.wrap)))
 
