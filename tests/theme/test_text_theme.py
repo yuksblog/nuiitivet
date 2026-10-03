@@ -4,6 +4,7 @@ import nuiitivet.theme.theme as _theme_module
 from nuiitivet.theme import Theme
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.text import Text
+from nuiitivet.rendering.skia.font import _clear_typeface_caches_for_tests
 
 
 def _make_dummy_skia():
@@ -71,9 +72,12 @@ def _make_dummy_skia():
     return mod
 
 
-def test_text_uses_theme_color(monkeypatch):
+def test_text_uses_theme_color(monkeypatch, request):
     dummy = _make_dummy_skia()
-    sys.modules["skia"] = dummy
+    monkeypatch.setitem(sys.modules, "skia", dummy)
+    # Typefaces resolved against the dummy must not outlive it.
+    _clear_typeface_caches_for_tests()
+    request.addfinalizer(_clear_typeface_caches_for_tests)
     from nuiitivet.material.theme.theme_data import MaterialThemeData
 
     custom = Theme(name="t", mode="light", extensions=[MaterialThemeData(roles={ColorRole.ON_SURFACE: "#112233"})])
@@ -89,4 +93,3 @@ def test_text_uses_theme_color(monkeypatch):
     t.paint(canvas, 0, 0, 100, 20)
     assert hasattr(dummy, "_last_color"), "Paint.setColor was not called"
     assert dummy._last_color == (51, 255, 17, 34)
-    del sys.modules["skia"]

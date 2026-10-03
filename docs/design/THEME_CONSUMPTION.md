@@ -93,13 +93,15 @@ theme does not override is one shared frozen object.
 Most widgets need no theme code. `Box` resolves background, border and
 shadow at paint time, so anything built on it follows the theme; a widget
 with a colour or typeface of its own reads `Theme.of(self)` at the point of
-use, as `Text` does, resolving on every access and holding nothing.
+use, resolving on every access and holding nothing.
 
 ### When a Resolved Value Has to Rest on a Field
 
 Some values cannot be re-derived in a getter on every frame: `Card`'s style
 lands on `Box` properties, a chip's style also picks its content subtree, and
 a button's colours become concrete RGBA endpoints for running animations.
+`Text` is the widget a frame paints most, so it keeps its typeface and its
+Skia paint.
 These keep the derived visuals on fields, but the field is a cache of the
 pull, re-applied whenever a fresh read says the theme has moved, so rule 1
 holds. What "moved" means differs for a reason:
@@ -109,10 +111,15 @@ holds. What "moved" means differs for a reason:
 | `Card` | always; `build()` re-resolves, and rebuilding is the theme-change path |
 | The chips | the resolved `ChipStyle` differs from the applied one |
 | The buttons | `ThemeManager.generation` has advanced (`theme_generation(self)`) |
+| `Text` | the generation has advanced, or its style object was replaced |
 
 A button cannot compare the derived value the way a chip does, because
 re-targeting a colour animation on every measure would disturb one in
-flight. And no widget compares the `Theme` object: `Theme` is frozen, but its
+flight. `Text` cannot either: resolving the value is the cost its field
+avoids. A parent recolours a label by replacing the label's style object,
+which moves no generation, so `Text` compares that object by identity as
+well. A `Text` outside an `AppScope` keeps nothing, since no theme change
+reaches it. And no widget compares the `Theme` object: `Theme` is frozen, but its
 `extensions` list and a `MaterialThemeData`'s `roles` dict are not, so a theme
 mutated in place and re-installed is a real change arriving on the same
 object; the generation counter moves regardless. A chip's pushed visuals
