@@ -19,10 +19,10 @@ pytestmark = pytest.mark.skipif(get_skia(raise_if_missing=False) is None, reason
 _BUILDERS = (
     "get_typeface",
     "make_font",
-    "make_paint",
     "make_text_blob",
     "measure_text_width",
     "measure_text_ink_bounds",
+    "resolve_color_to_rgba",
 )
 
 
@@ -137,19 +137,21 @@ def test_font_default_change_rebuilds(nuiitivet_mount, builders) -> None:
     assert rebuilt == (second[0] is not first[0])
 
 
-def test_theme_change_rebuilds_the_paint(builders) -> None:
+def test_theme_change_resolves_the_colour_again(builders) -> None:
     widget = Text("Hello")
     with mount(widget, theme=PlainTheme.light()) as host:
         host.layout(200, 40)
         first = _skia_paint(widget)
         assert _skia_paint(widget) is first
+        resolved = builders["resolve_color_to_rgba"].call_count
 
         host.push_theme(PlainTheme.dark())
+        _skia_paint(widget)
 
-        assert _skia_paint(widget) is not first
+        assert builders["resolve_color_to_rgba"].call_count == resolved + 1
 
 
-def test_replaced_style_rebuilds_the_paint(nuiitivet_mount, builders) -> None:
+def test_replaced_style_changes_the_paint(nuiitivet_mount, builders) -> None:
     widget = Text("Hello", style=TextStyle(color="#112233"))
     nuiitivet_mount(widget)
     first = _skia_paint(widget)
@@ -163,10 +165,13 @@ def test_replaced_style_rebuilds_the_paint(nuiitivet_mount, builders) -> None:
     assert second.getColor() != first.getColor()
 
 
-def test_detached_text_keeps_no_paint(builders) -> None:
+def test_detached_text_resolves_on_every_paint(builders) -> None:
     widget = Text("Hello")
     with mount(widget, scope=False) as host:
         host.layout(200, 40)
-        first = _skia_paint(widget)
+        _skia_paint(widget)
+        resolved = builders["resolve_color_to_rgba"].call_count
 
-        assert _skia_paint(widget) is not first
+        _skia_paint(widget)
+
+        assert builders["resolve_color_to_rgba"].call_count == resolved + 1

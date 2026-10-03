@@ -7,6 +7,7 @@ from typing import Any
 from .skia_module import get_skia
 from .color import (
     make_paint,
+    shared_paint,
     make_opacity_paint,
     skcolor,
     rgba_to_skia_color,
@@ -59,6 +60,7 @@ __all__ = [
     "get_skia",
     "require_skia",
     "make_paint",
+    "shared_paint",
     "make_opacity_paint",
     "skcolor",
     "rgba_to_skia_color",

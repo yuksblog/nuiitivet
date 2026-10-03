@@ -15,13 +15,13 @@ from nuiitivet.rendering.skia import (
     get_typeface,
     get_default_font_fallbacks,
     make_font,
-    make_paint,
     make_text_blob,
     measure_text_ink_bounds,
     measure_text_width,
     rgba_to_skia_color,
+    shared_paint,
 )
-from nuiitivet.theme.dependency import theme_generation
+from nuiitivet.theme.dependency import ThemeKept
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.theme.type_scale import DEFAULT_TYPE_SCALE, TypeScaleToken
 from nuiitivet.rendering.sizing import SizingLike
@@ -55,13 +55,10 @@ class _PaintCache(NamedTuple):
 
 
 class _Look(NamedTuple):
-    """What the theme and the font settings decide: the typeface and the paint."""
+    """What the theme and the font settings decide: the typeface and the colour."""
 
-    generation: int
-    explicit_style: Optional[TextStyleProtocol]
-    fallbacks: Tuple[str, ...]
     typeface: Optional[object]
-    paint: Optional[object]
+    color: Any
 
 
 class TextBase(Widget):
@@ -92,7 +89,6 @@ class TextBase(Widget):
     _label_unsub: Optional["Disposable"] = None
 
     _paint_cache: Optional[_PaintCache] = None
-    _look: Optional[_Look] = None
 
     def __init__(
         self,
@@ -132,7 +128,7 @@ class TextBase(Widget):
         self._label_unsub = None
 
         self._paint_cache = None
-        self._look = None
+        self._look: ThemeKept[_Look] = ThemeKept()
 
     @staticmethod
     def _normalize_max_lines(value: Optional[int]) -> Optional[int]:
@@ -397,7 +393,8 @@ class TextBase(Widget):
         font_size = type_scale.font_size
         weight = type_scale.weight
         tracking = type_scale.tracking
-        look = self._resolve_look(weight)
+        # A parent recolours its label by replacing the style object.
+        look = self._look.get(self, (self._style, get_default_font_fallbacks()), self._resolve_look)
         tf = look.typeface
         alignment = self._alignment
 
@@ -423,8 +420,10 @@ class TextBase(Widget):
             self._paint_cache = cache
 
         runs = cache.runs
-        paint = look.paint
-        if not runs or canvas is None or paint is None:
+        if not runs or canvas is None:
+            return
+        paint = shared_paint(look.color)
+        if paint is None:
             return
 
         clip = self._overflow == "clip"
@@ -440,39 +439,21 @@ class TextBase(Widget):
         if clip:
             canvas.restore()
 
-    def _resolve_look(self, weight: int) -> _Look:
-        """Return the typeface and the paint, resolved again after a theme or font-default change."""
-        generation = theme_generation(self)
-        fallbacks = get_default_font_fallbacks()
-        # A parent recolours its label by replacing the style object.
-        explicit_style = self._style
-        look = self._look
-        # -1 is a detached widget: nothing reports a theme change to it, so nothing is kept.
-        if (
-            look is not None
-            and generation != -1
-            and look.generation == generation
-            and look.explicit_style is explicit_style
-            and look.fallbacks is fallbacks
-        ):
-            return look
-
+    def _resolve_look(self) -> _Look:
         from nuiitivet.theme.theme import Theme
 
         style = self.style
         family = style.font_family
+        fallbacks = get_default_font_fallbacks()
         typeface = get_typeface(
             candidate_files=None,
             family_candidates=(family,) + fallbacks if family else fallbacks,
             pkg_font_dir=None,
             fallback_to_default=True,
-            weight=weight,
+            weight=self.type_scale.weight,
         )
         rgba = resolve_color_to_rgba(style.color, default="#000000", theme=Theme.of(self))
-        paint = make_paint(color=rgba_to_skia_color(rgba), style="fill", aa=True)
-        look = _Look(generation, explicit_style, fallbacks, typeface, paint)
-        self._look = look
-        return look
+        return _Look(typeface, rgba_to_skia_color(rgba))
 
     def _build_paint_cache(
         self, key: tuple, tf: Optional[object], txt: str, avail_w: float, font_size: float, tracking: float
@@ -583,5 +564,5 @@ class TextBase(Widget):
             self._label_unsub = None
 
         self._paint_cache = None
-        self._look = None
+        self._look.clear()
         super().on_unmount()

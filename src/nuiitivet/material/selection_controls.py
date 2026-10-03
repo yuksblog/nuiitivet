@@ -9,13 +9,25 @@ This module contains the implementation of Material Design 3 selection controls:
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional, Tuple, Union, cast
 
 from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.animation import Animatable
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.container import Container
 from nuiitivet.observable import Observable, ObservableProtocol
+from nuiitivet.rendering.skia import (
+    draw_oval,
+    draw_round_rect,
+    make_path,
+    make_rect,
+    path_line_to,
+    path_move_to,
+    rgba_to_skia_color,
+    shared_paint,
+    skcolor,
+)
+from nuiitivet.theme.dependency import ThemeKept
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.interaction import FocusNode, FocusNodePolicy, FocusScope, InteractionHostMixin
 from nuiitivet.widgets.toggleable import Toggleable
@@ -38,6 +50,35 @@ def _scale_alpha(color: RGBA, factor: float) -> RGBA:
     """Return `color` with its alpha multiplied by `factor` (0.0..1.0)."""
     r, g, b, a = color
     return (r, g, b, max(0, min(255, int(round(a * factor)))))
+
+
+class _CheckboxLook(NamedTuple):
+    """What the theme, the style, the disabled flag and the size decide for a Checkbox."""
+
+    sizes: dict
+    outline: Any
+    container: RGBA
+    mark: RGBA
+    container_full: Any
+    mark_full: Any
+    overlay_checked: str
+    overlay_unchecked: str
+
+
+class _SwitchLook(NamedTuple):
+    """What the theme, the style, the disabled flag, the value and the size decide for a Switch."""
+
+    track_width: float
+    track_height: float
+    thumb_unselected: float
+    thumb_selected: float
+    thumb_pressed: float
+    outline_width: float
+    state_layer_size: float
+    track: Any
+    thumb: Any
+    outline: Optional[Any]
+    overlay: str
 
 
 class Checkbox(Toggleable, InteractiveWidget):
@@ -127,6 +168,7 @@ class Checkbox(Toggleable, InteractiveWidget):
         )
 
         self._touch_target_size = touch_target
+        self._look: ThemeKept[_CheckboxLook] = ThemeKept()
 
         initial_selection = 1.0 if self.value is True or self.value is None else 0.0
         self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_EFFECTS)
@@ -328,21 +370,29 @@ class Checkbox(Toggleable, InteractiveWidget):
             resolve_color_to_rgba(style.checked_foreground, theme=theme),
         )
 
+    def _resolve_look(self, touch_sz: int) -> _CheckboxLook:
+        from nuiitivet.theme.theme import Theme
+        from nuiitivet.material.theme.color_role import ColorRole
+        from nuiitivet.material.theme.theme_data import MaterialThemeData
+
+        theme = Theme.of(self)
+        mat = theme.extension(MaterialThemeData)
+        roles = mat.roles if mat is not None else {}
+        outline, container, mark = self._resolve_box_colors(theme)
+        return _CheckboxLook(
+            sizes=self.style.compute_sizes(touch_sz),
+            outline=rgba_to_skia_color(outline),
+            container=container,
+            mark=mark,
+            container_full=rgba_to_skia_color(container),
+            mark_full=rgba_to_skia_color(mark),
+            overlay_checked=roles.get(ColorRole.PRIMARY, "#000000"),
+            overlay_unchecked=roles.get(ColorRole.ON_SURFACE, "#000000"),
+        )
+
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         """Paint checkbox with padding support (M3準拠)."""
         try:
-            from nuiitivet.rendering.skia import (
-                draw_oval,
-                draw_round_rect,
-                make_paint,
-                make_path,
-                make_rect,
-                path_line_to,
-                path_move_to,
-                rgba_to_skia_color,
-                skcolor,
-            )
-
             content_x, content_y, content_w, content_h = self.content_rect(x, y, width, height)
             touch_sz = min(content_w, content_h)
             if touch_sz <= 0:
@@ -353,7 +403,9 @@ class Checkbox(Toggleable, InteractiveWidget):
 
             self.set_last_rect(x, y, width, height)
 
-            sizes = self.style.compute_sizes(touch_sz)
+            disabled = self.disabled
+            look = self._look.get(self, (self._style, disabled, touch_sz), lambda: self._resolve_look(touch_sz))
+            sizes = look.sizes
             icon_sz = sizes["icon_size"]
             corner = sizes["corner_radius"]
             stroke_w = sizes["stroke_width"]
@@ -362,26 +414,14 @@ class Checkbox(Toggleable, InteractiveWidget):
             icon_x = cx + (touch_sz - icon_sz) // 2
             icon_y = cy + (touch_sz - icon_sz) // 2
 
-            from nuiitivet.theme.theme import Theme
-            from nuiitivet.material.theme.color_role import ColorRole
-            from nuiitivet.material.theme.theme_data import MaterialThemeData
-
-            theme = Theme.of(self)
-            mat = theme.extension(MaterialThemeData)
-            roles = mat.roles if mat is not None else {}
-
-            outline_color, container_color, mark_color = self._resolve_box_colors(theme)
-
-            stroke_p = make_paint(
-                color=rgba_to_skia_color(outline_color), style="stroke", stroke_width=stroke_w, aa=True
-            )
+            stroke_p = shared_paint(look.outline, "stroke", stroke_w)
             rect = make_rect(icon_x, icon_y, icon_sz, icon_sz)
 
             # Check for keyboard focus (Ring visible)
             is_keyboard_focus = self.should_show_focus_ring
 
             # Determine State Layer opacity (a disabled checkbox has no state layer per M3)
-            overlay_alpha = 0.0 if self.disabled else self._get_active_state_layer_opacity()
+            overlay_alpha = 0.0 if disabled else self._get_active_state_layer_opacity()
 
             if overlay_alpha > 0.0:
                 cx_center = float(cx + touch_sz / 2.0)
@@ -390,11 +430,9 @@ class Checkbox(Toggleable, InteractiveWidget):
 
                 # State Layer color (Checked=Primary, Unchecked=OnSurface)
                 is_checked = self.value is True or self.value is None
-                base_color_role = ColorRole.PRIMARY if is_checked else ColorRole.ON_SURFACE
-                base_color = roles.get(base_color_role, "#000000")
+                base_color = look.overlay_checked if is_checked else look.overlay_unchecked
 
-                ov = skcolor(base_color, overlay_alpha)
-                p_ov = make_paint(color=ov, style="fill", aa=True)
+                p_ov = shared_paint(skcolor(base_color, overlay_alpha))
                 try:
                     canvas.drawCircle(cx_center, cy_center, r, p_ov)
                 except Exception:
@@ -403,16 +441,18 @@ class Checkbox(Toggleable, InteractiveWidget):
             if rect is not None and stroke_p is not None:
                 draw_round_rect(canvas, rect, corner, stroke_p)
 
-            if not self.disabled and is_keyboard_focus:
+            if not disabled and is_keyboard_focus:
                 self.draw_focus_indicator(canvas, x, y, width, height)
 
             val = self.value
             selection_progress = self._get_selection_progress()
+            # The colours at full selection are kept; a frame of the animation scales the alpha.
+            settled = selection_progress >= 1.0
             if selection_progress > 1e-6:
-                fill_p = make_paint(
-                    color=rgba_to_skia_color(_scale_alpha(container_color, selection_progress)),
-                    style="fill",
-                    aa=True,
+                fill_p = shared_paint(
+                    look.container_full
+                    if settled
+                    else rgba_to_skia_color(_scale_alpha(look.container, selection_progress))
                 )
                 if rect is not None and fill_p is not None:
                     draw_round_rect(canvas, rect, corner, fill_p)
@@ -423,19 +463,16 @@ class Checkbox(Toggleable, InteractiveWidget):
 
             if overlay_alpha_box and overlay_alpha_box > 0.0:
                 base = "#000000" if self.state.pressed else "#FFFFFF"
-                ov = skcolor(base, overlay_alpha_box)
-                p_ov = make_paint(color=ov, style="fill", aa=True)
+                p_ov = shared_paint(skcolor(base, overlay_alpha_box))
                 if rect is not None and p_ov is not None:
                     draw_round_rect(canvas, rect, corner, p_ov)
 
             if (val is True or val is None) and selection_progress > 1e-6:
                 mark_is_none = val is None
-                mark_style = "stroke" if not mark_is_none else "fill"
-                mark_p = make_paint(
-                    color=rgba_to_skia_color(_scale_alpha(mark_color, selection_progress)),
-                    style=mark_style,
-                    stroke_width=max(1.0, icon_sz * 0.12),
-                    aa=True,
+                mark_p = shared_paint(
+                    look.mark_full if settled else rgba_to_skia_color(_scale_alpha(look.mark, selection_progress)),
+                    "stroke" if not mark_is_none else "fill",
+                    max(1.0, icon_sz * 0.12),
                 )
                 if mark_p is None:
                     return
@@ -950,6 +987,7 @@ class Switch(Toggleable, InteractiveWidget):
         initial_selection = 1.0 if bool(self.value) else 0.0
         self._selection_anim: Animatable[float] = Animatable(initial_selection, motion=EXPRESSIVE_DEFAULT_SPATIAL)
         self.bind(self._selection_anim.subscribe(lambda _: self.invalidate()))
+        self._look: ThemeKept[_SwitchLook] = ThemeKept()
 
     @property
     def style(self) -> "SwitchStyle":
@@ -1026,14 +1064,52 @@ class Switch(Toggleable, InteractiveWidget):
         extra = int(math.ceil(track_overflow))
         return (base[0] + extra, base[1], base[2] + extra, base[3])
 
+    def _resolve_look(self, touch_sz: int, disabled: bool, checked: bool) -> _SwitchLook:
+        from nuiitivet.material.theme.color_role import ColorRole
+        from nuiitivet.material.theme.theme_data import MaterialThemeData
+        from nuiitivet.theme.theme import Theme
+
+        style = self.style
+        sizes = style.compute_sizes(touch_sz)
+        mat = Theme.of(self).extension(MaterialThemeData)
+        roles = mat.roles if mat is not None else {}
+
+        outline: Optional[Any] = None
+        if disabled and checked:
+            track = skcolor(roles.get(ColorRole.ON_SURFACE, "#000000"), style.disabled_checked_track_alpha)
+            thumb = skcolor(roles.get(ColorRole.SURFACE, "#FFFFFF"), style.disabled_checked_thumb_alpha)
+        elif disabled:
+            on_surface = roles.get(ColorRole.ON_SURFACE, "#000000")
+            track = skcolor(
+                roles.get(ColorRole.SURFACE_CONTAINER_HIGHEST, "#9E9E9E"), style.disabled_unchecked_track_alpha
+            )
+            thumb = skcolor(on_surface, style.disabled_unchecked_thumb_alpha)
+            outline = skcolor(on_surface, style.disabled_unchecked_track_outline_alpha)
+        elif checked:
+            track = skcolor(roles.get(ColorRole.PRIMARY, "#000000"), 1.0)
+            thumb = skcolor(roles.get(ColorRole.ON_PRIMARY, "#FFFFFF"), 1.0)
+        else:
+            track = skcolor(roles.get(ColorRole.SURFACE_CONTAINER_HIGHEST, "#9E9E9E"), 1.0)
+            thumb = skcolor(roles.get(ColorRole.OUTLINE, "#616161"), 1.0)
+            outline = skcolor(roles.get(ColorRole.OUTLINE, "#616161"), 1.0)
+
+        return _SwitchLook(
+            track_width=float(cast(float, sizes["track_width"])),
+            track_height=float(cast(float, sizes["track_height"])),
+            thumb_unselected=float(cast(float, sizes["thumb_diameter_unselected"])),
+            thumb_selected=float(cast(float, sizes["thumb_diameter_selected"])),
+            thumb_pressed=float(cast(float, sizes["thumb_diameter_pressed"])),
+            outline_width=float(cast(float, sizes["track_outline_width"])),
+            state_layer_size=float(cast(float, sizes["state_layer_size"])),
+            track=track,
+            thumb=thumb,
+            outline=outline,
+            overlay=roles.get(ColorRole.PRIMARY if checked else ColorRole.ON_SURFACE, "#000000"),
+        )
+
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Paint switch with animated thumb and track."""
         try:
-            from nuiitivet.material.theme.color_role import ColorRole
-            from nuiitivet.material.theme.theme_data import MaterialThemeData
-            from nuiitivet.rendering.skia import draw_oval, draw_round_rect, make_paint, make_rect, skcolor
-            from nuiitivet.theme.theme import Theme
-
             content_x, content_y, content_w, content_h = self.content_rect(x, y, width, height)
             touch_sz = min(content_w, content_h)
             if touch_sz <= 0:
@@ -1043,78 +1119,35 @@ class Switch(Toggleable, InteractiveWidget):
             cy = content_y + (content_h - touch_sz) // 2
             self.set_last_rect(x, y, width, height)
 
-            sizes = self.style.compute_sizes(touch_sz)
-            track_w = float(cast(float, sizes["track_width"]))
-            track_h = float(cast(float, sizes["track_height"]))
-            thumb_unselected_d = float(cast(float, sizes["thumb_diameter_unselected"]))
-            thumb_selected_d = float(cast(float, sizes["thumb_diameter_selected"]))
-            thumb_pressed_d = float(cast(float, sizes["thumb_diameter_pressed"]))
-            track_outline_w = float(cast(float, sizes["track_outline_width"]))
-            state_layer_size = float(cast(float, sizes["state_layer_size"]))
+            disabled = self.disabled
+            checked = bool(self.value)
+            look = self._look.get(
+                self,
+                (self._style, touch_sz, disabled, checked),
+                lambda: self._resolve_look(touch_sz, disabled, checked),
+            )
+            track_w = look.track_width
+            track_h = look.track_height
+            state_layer_size = look.state_layer_size
             track_radius = track_h / 2.0
 
             track_x = cx + (touch_sz - track_w) / 2.0
             track_y = cy + (touch_sz - track_h) / 2.0
 
-            mat = Theme.of(self).extension(MaterialThemeData)
-            roles = mat.roles if mat is not None else {}
-
             progress = self._get_selection_progress()
-            checked = bool(self.value)
-            pressed = bool(self.state.pressed or self.state.dragging)
-
-            if pressed:
-                thumb_d = thumb_pressed_d
+            state = self.state
+            if state.pressed or state.dragging:
+                thumb_d = look.thumb_pressed
             else:
-                thumb_d = thumb_selected_d if checked else thumb_unselected_d
+                thumb_d = look.thumb_selected if checked else look.thumb_unselected
 
-            unchecked_track_hex = roles.get(ColorRole.SURFACE_CONTAINER_HIGHEST, "#9E9E9E")
-            checked_track_hex = roles.get(ColorRole.PRIMARY, "#000000")
-            unchecked_outline_hex = roles.get(ColorRole.OUTLINE, "#616161")
-            unchecked_thumb_hex = roles.get(ColorRole.OUTLINE, "#616161")
-            checked_thumb_hex = roles.get(ColorRole.ON_PRIMARY, "#FFFFFF")
-
-            disabled_checked_track_hex = roles.get(ColorRole.ON_SURFACE, "#000000")
-            disabled_checked_thumb_hex = roles.get(ColorRole.SURFACE, "#FFFFFF")
-            disabled_unchecked_track_hex = roles.get(ColorRole.SURFACE_CONTAINER_HIGHEST, "#9E9E9E")
-            disabled_unchecked_outline_hex = roles.get(ColorRole.ON_SURFACE, "#000000")
-            disabled_unchecked_thumb_hex = roles.get(ColorRole.ON_SURFACE, "#000000")
-
-            if self.disabled:
-                if checked:
-                    track_hex = disabled_checked_track_hex
-                    track_alpha = self.style.disabled_checked_track_alpha
-                    thumb_hex = disabled_checked_thumb_hex
-                    thumb_alpha = self.style.disabled_checked_thumb_alpha
-                    outline_hex = None
-                    outline_alpha = 0.0
-                else:
-                    track_hex = disabled_unchecked_track_hex
-                    track_alpha = self.style.disabled_unchecked_track_alpha
-                    thumb_hex = disabled_unchecked_thumb_hex
-                    thumb_alpha = self.style.disabled_unchecked_thumb_alpha
-                    outline_hex = disabled_unchecked_outline_hex
-                    outline_alpha = self.style.disabled_unchecked_track_outline_alpha
-            else:
-                track_hex = checked_track_hex if checked else unchecked_track_hex
-                track_alpha = 1.0
-                thumb_hex = checked_thumb_hex if checked else unchecked_thumb_hex
-                thumb_alpha = 1.0
-                outline_hex = None if checked else unchecked_outline_hex
-                outline_alpha = 1.0
-
-            track_paint = make_paint(color=skcolor(track_hex, track_alpha), style="fill", aa=True)
+            track_paint = shared_paint(look.track)
             track_rect = make_rect(track_x, track_y, track_w, track_h)
             if track_rect is not None and track_paint is not None:
                 draw_round_rect(canvas, track_rect, track_radius, track_paint)
 
-            if outline_hex is not None:
-                outline_paint = make_paint(
-                    color=skcolor(outline_hex, outline_alpha),
-                    style="stroke",
-                    stroke_width=track_outline_w,
-                    aa=True,
-                )
+            if look.outline is not None:
+                outline_paint = shared_paint(look.outline, "stroke", look.outline_width)
                 if track_rect is not None and outline_paint is not None:
                     draw_round_rect(canvas, track_rect, track_radius, outline_paint)
 
@@ -1132,18 +1165,16 @@ class Switch(Toggleable, InteractiveWidget):
                     state_layer_size,
                     state_layer_size,
                 )
-                overlay_base_role = ColorRole.PRIMARY if checked else ColorRole.ON_SURFACE
-                overlay_color = roles.get(overlay_base_role, "#000000")
-                overlay_paint = make_paint(color=skcolor(overlay_color, overlay_alpha), style="fill", aa=True)
+                overlay_paint = shared_paint(skcolor(look.overlay, overlay_alpha))
                 if overlay_rect is not None and overlay_paint is not None:
                     draw_oval(canvas, overlay_rect, overlay_paint)
 
-            thumb_paint = make_paint(color=skcolor(thumb_hex, thumb_alpha), style="fill", aa=True)
+            thumb_paint = shared_paint(look.thumb)
             thumb_rect = make_rect(thumb_x, thumb_y, thumb_d, thumb_d)
             if thumb_rect is not None and thumb_paint is not None:
                 draw_oval(canvas, thumb_rect, thumb_paint)
 
-            if not self.disabled and self.should_show_focus_ring:
+            if not disabled and self.should_show_focus_ring:
                 self.draw_focus_indicator(canvas, x, y, width, height)
         except Exception:
             exception_once(_logger, "switch_paint_exc", "Switch paint raised")

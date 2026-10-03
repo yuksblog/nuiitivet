@@ -100,8 +100,8 @@ use, resolving on every access and holding nothing.
 Some values cannot be re-derived in a getter on every frame: `Card`'s style
 lands on `Box` properties, a chip's style also picks its content subtree, and
 a button's colours become concrete RGBA endpoints for running animations.
-`Text` is the widget a frame paints most, so it keeps its typeface and its
-Skia paint.
+`Text`, `Checkbox` and `Switch` are painted on every frame of a scroll, so
+they keep their colours, and `Text` its typeface.
 These keep the derived visuals on fields, but the field is a cache of the
 pull, re-applied whenever a fresh read says the theme has moved, so rule 1
 holds. What "moved" means differs for a reason:
@@ -111,15 +111,24 @@ holds. What "moved" means differs for a reason:
 | `Card` | always; `build()` re-resolves, and rebuilding is the theme-change path |
 | The chips | the resolved `ChipStyle` differs from the applied one |
 | The buttons | `ThemeManager.generation` has advanced (`theme_generation(self)`) |
-| `Text` | the generation has advanced, or its style object was replaced |
+| `Text`, `Checkbox`, `Switch` | the generation has advanced, or the key the value was resolved under differs (`ThemeKept`) |
 
 A button cannot compare the derived value the way a chip does, because
 re-targeting a colour animation on every measure would disturb one in
-flight. `Text` cannot either: resolving the value is the cost its field
-avoids. A parent recolours a label by replacing the label's style object,
-which moves no generation, so `Text` compares that object by identity as
-well. A `Text` outside an `AppScope` keeps nothing, since no theme change
-reaches it. And no widget compares the `Theme` object: `Theme` is frozen, but its
+flight. The painted leaves cannot either: resolving the value is the cost
+their field avoids. They hold it in a `ThemeKept`, whose key carries what
+decides the value besides the theme: the style object, which a parent
+replaces to recolour a label and which moves no generation, and for the
+selection controls the disabled flag and the value. A widget outside an
+`AppScope` keeps nothing, since no theme change reaches it.
+
+A `ThemeKept` holds colours, never a Skia paint. A paint held per widget has
+to be dropped on every path that changes a colour, and a frame of a colour
+animation changes it on every paint. `shared_paint` hands out one paint per
+distinct colour and stroke, so a paint is found by what it draws and no path
+can leave a stale one behind.
+
+And no widget compares the `Theme` object: `Theme` is frozen, but its
 `extensions` list and a `MaterialThemeData`'s `roles` dict are not, so a theme
 mutated in place and re-installed is a real change arriving on the same
 object; the generation counter moves regardless. A chip's pushed visuals
@@ -196,7 +205,7 @@ scoped to the theme because that is where the failures were observed.
 
 | Piece | Module |
 | --- | --- |
-| Reader marking, subtree invalidation, `theme_generation` | `theme/dependency.py` |
+| Reader marking, subtree invalidation, `theme_generation`, `ThemeKept` | `theme/dependency.py` |
 | The read and the `__init__` guard | `Theme.of` in `theme/theme.py` |
 | Attributing a read to the building host | `evaluate_build` in `widgeting/widget_builder.py` |
 | Turning a theme change into invalidation | `AppScope._on_theme_changed` in `runtime/app.py` |

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Tuple
+import sys
+from typing import Any, Optional, Tuple
 
 from nuiitivet.colors.utils import hex_to_rgba
 from nuiitivet.common.logging_once import exception_once
@@ -141,6 +142,50 @@ def make_paint(
         return None
 
 
+# Alpha has 256 steps, so an animated colour adds a bounded number of entries.
+_SHARED_PAINT_LIMIT = 4096
+_shared_paints: dict[tuple, Any] = {}
+
+
+def shared_paint(
+    color: int,
+    style: str = "fill",
+    stroke_width: float = 1.0,
+    aa: bool = True,
+    stroke_cap: Optional[str] = None,
+):
+    """Return a ``skia.Paint`` shared by every caller that asks for the same settings.
+
+    The paint must not be changed after it is returned: the next caller with
+    the same arguments receives the same object. Use :func:`make_paint` for a
+    paint that is configured further.
+
+    Args:
+        color: A skia colour, as :func:`rgba_to_skia_color` or :func:`skcolor`
+            returns it.
+        style: ``"fill"`` or ``"stroke"``.
+        stroke_width: Stroke width in pixels.
+        aa: Whether the paint is anti-aliased.
+        stroke_cap: ``"butt"``, ``"round"`` or ``"square"`` for a stroke.
+
+    Returns:
+        The paint, or ``None`` when skia is unavailable.
+    """
+    # The module is part of the key so that a test double never serves a real canvas.
+    key = (sys.modules.get("skia"), color, style, stroke_width, aa, stroke_cap)
+    try:
+        paint = _shared_paints.get(key)
+    except TypeError:
+        return make_paint(color=color, style=style, stroke_width=stroke_width, aa=aa, stroke_cap=stroke_cap)
+    if paint is None:
+        paint = make_paint(color=color, style=style, stroke_width=stroke_width, aa=aa, stroke_cap=stroke_cap)
+        if paint is not None:
+            if len(_shared_paints) >= _SHARED_PAINT_LIMIT:
+                _shared_paints.clear()
+            _shared_paints[key] = paint
+    return paint
+
+
 def make_opacity_paint(opacity: float):
     """Create a paint that applies uniform opacity to a saveLayer.
 
@@ -183,6 +228,7 @@ def make_opacity_paint(opacity: float):
 __all__ = [
     "skcolor",
     "make_paint",
+    "shared_paint",
     "rgba_to_skia_color",
     "make_opacity_paint",
 ]
