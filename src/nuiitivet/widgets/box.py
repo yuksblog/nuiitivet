@@ -257,6 +257,8 @@ class Box(CachedPaintMixin, Widget):
     def draw_background(self, canvas, x: int, y: int, width: int, height: int):
         if canvas is None:
             return
+        if self.replay_paint_cache(canvas, x, y, width, height):
+            return
         with self.paint_cache(canvas, x, y, width, height) as target:
             if target is self.PAINT_CACHE_SKIP or target is None:
                 return

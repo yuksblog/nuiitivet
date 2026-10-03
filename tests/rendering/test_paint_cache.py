@@ -184,3 +184,83 @@ def test_cached_paint_mixin_scale_change_forces_repaint(monkeypatch):
     # Same geometry but a different device scale must invalidate the snapshot.
     widget.paint(_FakeHiDPICanvas(scale=2.0), 0, 0, 40, 20)
     assert widget.render_count == 2
+
+
+def test_replay_without_a_cache_draws_nothing(monkeypatch):
+    monkeypatch.setitem(sys.modules, "skia", _install_fake_skia())
+    widget = _CachedDummy()
+    canvas = _FakeDestCanvas()
+
+    assert widget.replay_paint_cache(canvas, 10, 12, 40, 20) is False
+    assert canvas.draws == []
+
+
+def test_replay_draws_the_cached_image_and_records_nothing(monkeypatch):
+    fake_skia = _install_fake_skia()
+    monkeypatch.setitem(sys.modules, "skia", fake_skia)
+    widget = _CachedDummy()
+    canvas = _FakeDestCanvas()
+    widget.paint(canvas, 10, 12, 40, 20)
+    recorder = widget._paint_cache_surface.getCanvas()
+    saved = recorder.saved
+
+    assert widget.replay_paint_cache(canvas, 10, 12, 40, 20) is True
+
+    assert canvas.draws == [(40, 20, 10.0, 12.0)] * 2
+    assert fake_skia.created_sizes == [(40, 20)]
+    assert recorder.saved == saved
+    assert widget.render_count == 1
+
+
+def test_replay_follows_the_widget_when_it_moves(monkeypatch):
+    monkeypatch.setitem(sys.modules, "skia", _install_fake_skia())
+    widget = _CachedDummy()
+    canvas = _FakeDestCanvas()
+    widget.paint(canvas, 10, 12, 40, 20)
+
+    assert widget.replay_paint_cache(canvas, 30, 50, 40, 20) is True
+    assert canvas.draws[-1] == (40, 20, 30.0, 50.0)
+
+
+def test_replay_refuses_another_size(monkeypatch):
+    monkeypatch.setitem(sys.modules, "skia", _install_fake_skia())
+    widget = _CachedDummy()
+    canvas = _FakeDestCanvas()
+    widget.paint(canvas, 0, 0, 50, 30)
+
+    assert widget.replay_paint_cache(canvas, 0, 0, 80, 30) is False
+    assert len(canvas.draws) == 1
+
+
+def test_replay_refuses_another_device_scale(monkeypatch):
+    monkeypatch.setitem(sys.modules, "skia", _install_fake_skia())
+    widget = _CachedDummy()
+    widget.paint(_FakeHiDPICanvas(scale=1.0), 0, 0, 40, 20)
+    hidpi = _FakeHiDPICanvas(scale=2.0)
+
+    assert widget.replay_paint_cache(hidpi, 0, 0, 40, 20) is False
+    assert hidpi.rect_draws == []
+
+
+def test_replay_refuses_an_invalidated_cache(monkeypatch):
+    monkeypatch.setitem(sys.modules, "skia", _install_fake_skia())
+    widget = _CachedDummy()
+    canvas = _FakeDestCanvas()
+    widget.paint(canvas, 0, 0, 40, 20)
+    widget.invalidate_paint_cache()
+
+    assert widget.replay_paint_cache(canvas, 0, 0, 40, 20) is False
+    assert len(canvas.draws) == 1
+
+
+def test_replay_at_hidpi_maps_the_physical_image_onto_the_logical_rect(monkeypatch):
+    monkeypatch.setitem(sys.modules, "skia", _install_fake_skia())
+    widget = _CachedDummy()
+    canvas = _FakeHiDPICanvas(scale=2.0)
+    widget.paint(canvas, 10, 12, 40, 20)
+
+    assert widget.replay_paint_cache(canvas, 10, 12, 40, 20) is True
+
+    img_w, img_h, _rect_src, rect_dst = canvas.rect_draws[-1]
+    assert (img_w, img_h) == (80, 40)
+    assert rect_dst == (10.0, 12.0, 40.0, 20.0)
