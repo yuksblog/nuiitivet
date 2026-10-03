@@ -7,7 +7,7 @@ from typing import List, Optional, Sequence, Tuple, Union
 from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
 from .gap import normalize_gap
-from .layout_utils import expand_layout_children, paint_children_at_layout_rects
+from .layout_utils import expand_layout_children, paint_laid_out_children
 from .metrics import align_offset
 from .for_each import ForEach, ItemsLike, BuilderFn
 from .measure import preferred_size as measure_preferred_size
@@ -202,6 +202,7 @@ class Flow(Widget):
     def layout(self, width: int, height: int) -> None:
         super().layout(width, height)
         children = expand_layout_children(self.children_snapshot())
+        self._laid_out_children = children
         if not children:
             return
 
@@ -215,15 +216,7 @@ class Flow(Widget):
         self._layout_flow(children, inner_x, inner_y, inner_w, inner_h)
 
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
-        children = expand_layout_children(self.children_snapshot())
-        if not children:
-            return
-
-        # Auto-layout fallback for tests or direct paint calls
-        if any(c.layout_rect is None for c in children):
-            self.layout(width, height)
-
-        paint_children_at_layout_rects(children, canvas, x, y)
+        paint_laid_out_children(self, canvas, x, y, width, height)
 
     def _layout_flow(self, children: List[Widget], x: int, y: int, w: int, h: int) -> None:
         # Simple flow layout implementation

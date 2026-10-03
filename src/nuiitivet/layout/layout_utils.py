@@ -72,7 +72,33 @@ def layout_child_if_needed(child: "Widget", width: int, height: int) -> None:
 _CULL_SLACK = 32
 
 
-def paint_children_at_layout_rects(children: Sequence["Widget"], canvas: Any, x: int, y: int) -> None:
+def paint_laid_out_children(container: Any, canvas: Any, x: int, y: int, width: int, height: int) -> None:
+    """Paint a container's children at their layout rects.
+
+    The child list is the one the container's last ``layout()`` kept, for as
+    long as the container needs no layout: every change to its children marks
+    it. A container painted without a layout builds the list here and lays
+    itself out first.
+    """
+
+    inside_clip = container._paint_inside_clip
+    if inside_clip:
+        # The hint covers the paint it was set for and no later one.
+        container._paint_inside_clip = False
+
+    children = getattr(container, "_laid_out_children", None)
+    if children is None or container.needs_layout:
+        children = expand_layout_children(container.children_snapshot())
+        if any(c.layout_rect is None for c in children):
+            container.layout(width, height)
+
+    if children:
+        paint_children_at_layout_rects(children, canvas, x, y, inside_clip=inside_clip)
+
+
+def paint_children_at_layout_rects(
+    children: Sequence["Widget"], canvas: Any, x: int, y: int, *, inside_clip: bool = False
+) -> None:
     """Paint each laid-out child at ``(x, y)`` plus its layout rect.
 
     A child whose visual bounds (layout rect plus ``paint_outsets``) end more
@@ -82,18 +108,40 @@ def paint_children_at_layout_rects(children: Sequence["Widget"], canvas: Any, x:
     with what the parent placed. A child that draws outside its allocated rect
     must therefore report that through ``paint_outsets``. With no readable
     clip -- no canvas, or a stand-in -- every child is painted.
+
+    A child that lies wholly inside the clip is told so, and a container that
+    is told passes ``inside_clip``: nothing below it can be culled, so the clip
+    is not read and no child is tested. Painting a child that the clip would
+    have discarded is slower and never wrong, so a hint that is missing or out
+    of date costs time and no pixel.
     """
+
+    if inside_clip:
+        for child in children:
+            rect = child.layout_rect
+            if rect is None:
+                continue
+            rel_x, rel_y, w, h = rect
+            abs_x = x + rel_x
+            abs_y = y + rel_y
+            child.set_last_rect(abs_x, abs_y, w, h)
+            child._paint_inside_clip = True
+            child.paint(canvas, abs_x, abs_y, w, h)
+        return
 
     clip = local_clip_bounds(canvas)
     if clip is None:
         clip_left = clip_top = -math.inf
         clip_right = clip_bottom = math.inf
+        # Unknown clip: no child can be shown to lie inside it.
+        in_left = in_top = math.inf
+        in_right = in_bottom = -math.inf
     else:
-        clip_left, clip_top, clip_right, clip_bottom = clip
-        clip_left -= _CULL_SLACK
-        clip_top -= _CULL_SLACK
-        clip_right += _CULL_SLACK
-        clip_bottom += _CULL_SLACK
+        in_left, in_top, in_right, in_bottom = clip
+        clip_left = in_left - _CULL_SLACK
+        clip_top = in_top - _CULL_SLACK
+        clip_right = in_right + _CULL_SLACK
+        clip_bottom = in_bottom + _CULL_SLACK
 
     for child in children:
         rect = child.layout_rect
@@ -119,5 +167,7 @@ def paint_children_at_layout_rects(children: Sequence["Widget"], canvas: Any, x:
                 or abs_y + h + out_b <= clip_top
             ):
                 continue
+        elif abs_x >= in_left and abs_y >= in_top and abs_x + w <= in_right and abs_y + h <= in_bottom:
+            child._paint_inside_clip = True
 
         child.paint(canvas, abs_x, abs_y, w, h)
