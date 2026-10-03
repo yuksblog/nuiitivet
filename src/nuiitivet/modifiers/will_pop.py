@@ -111,8 +111,7 @@ class WillPopScope(Widget):
             self.layout(width, height)
         try:
             child.set_last_rect(x, y, width, height)
-            if self._take_inside_clip():
-                child._paint_inside_clip = True
+            self._pass_paint_hints(child)
             child.paint(canvas, x, y, width, height)
         except Exception:
             exception_once(_logger, "will_pop_child_paint_exc", "Child paint raised")

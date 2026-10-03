@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from nuiitivet.widgeting.paint_replay import replay_safe
 import logging
 from typing import Any, List, Optional, Tuple, TypeAlias, Union
 
@@ -86,16 +87,61 @@ class WidgetKernel:
     # for the paint that follows; a container reads it to skip culling.
     _paint_inside_clip: bool = False
 
-    def _take_inside_clip(self) -> bool:
-        """Return whether this paint was told it lies inside the clip, and forget it.
+    # Set by a scroll viewport on its content for the paint that follows; the
+    # first container below records one picture per child and replays it.
+    _paint_scroll_content: bool = False
 
-        A wrapper that neither clips nor moves its child hands the answer on by
-        setting ``_paint_inside_clip`` on the child it is about to paint.
-        """
+    # The recording a scroll content container keeps for this widget as one of
+    # its rows. ``_replay_dirty`` is set by every invalidation at or below the
+    # widget and cleared when the row is recorded.
+    _replay_dirty: bool = True
+    _replay_picture: Any = None
+    _replay_origin: Optional[Tuple[float, float]] = None
+    _replay_key: Optional[tuple] = None
+    _replay_misses: int = 0
+    _replay_skip: bool = False
+
+    def _take_inside_clip(self) -> bool:
+        """Return whether this paint was told it lies inside the clip, and forget it."""
         if self._paint_inside_clip:
             self._paint_inside_clip = False
             return True
         return False
+
+    def _take_paint_hints(self) -> int:
+        """Return the hints this paint was given, and forget them.
+
+        A wrapper that neither clips nor moves its child hands them on with
+        :meth:`_give_paint_hints` on the child it is about to paint.
+        """
+        hints = 0
+        if self._paint_inside_clip:
+            self._paint_inside_clip = False
+            hints = 1
+        if self._paint_scroll_content:
+            self._paint_scroll_content = False
+            hints |= 2
+        return hints
+
+    def _give_paint_hints(self, hints: int) -> None:
+        """Receive the hints a parent took for the paint that follows."""
+        if hints & 1:
+            self._paint_inside_clip = True
+        if hints & 2:
+            self._paint_scroll_content = True
+
+    def _pass_paint_hints(self, child: Any) -> None:
+        """Hand this paint's hints to ``child``, which is about to be painted in place."""
+        hints = self._take_paint_hints()
+        if hints:
+            child._give_paint_hints(hints)
+
+    def _mark_replay_dirty(self) -> None:
+        """Mark this widget and every ancestor as changed since it was recorded."""
+        node: Any = self
+        while node is not None:
+            node._replay_dirty = True
+            node = getattr(node, "_parent", None)
 
     @property
     def needs_layout(self) -> bool:
@@ -315,6 +361,7 @@ class WidgetKernel:
     def mark_needs_layout(self) -> None:
         """Mark this widget as needing layout and propagate up the tree."""
         self._needs_layout = True
+        self._replay_dirty = True
         self._measure_cache = None
         if self._parent:
             marker = getattr(self._parent, "mark_needs_layout", None)
@@ -455,15 +502,16 @@ class WidgetKernel:
         _, _, w, h = my_rect
         return 0 <= x < w and 0 <= y < h
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         """Render this widget; default implementation paints children."""
         if __debug__:
             assert_ui_thread()
 
-        inside_clip = self._take_inside_clip()
+        hints = self._take_paint_hints()
         for child in getattr(self, "children", tuple()):
-            if inside_clip:
-                child._paint_inside_clip = True
+            if hints:
+                child._give_paint_hints(hints)
             child.paint(canvas, x, y, width, height)
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:

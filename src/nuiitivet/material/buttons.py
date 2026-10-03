@@ -15,6 +15,7 @@ This module contains the unified Material Design 3 button widgets:
 
 from __future__ import annotations
 
+from nuiitivet.widgeting.paint_replay import replay_safe
 import logging
 from typing import Any, Optional, Tuple, Type, Union, TYPE_CHECKING, cast
 
@@ -645,6 +646,7 @@ class MaterialButtonBase(InteractiveWidget):
     # The container rect of the paint in progress, or None outside a paint.
     _container_memo: Optional[tuple] = None
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         # Handle disabled state opacity (logic ported from ButtonBase)
         layer_count = 0
@@ -721,20 +723,24 @@ class MaterialButtonBase(InteractiveWidget):
         child.set_layout_rect(gx, gy, child_w, child_h)
 
     # The draw hooks receive the content rect; the container is centred in it.
+    @replay_safe
     def draw_background(self, canvas, x: int, y: int, width: int, height: int):
         # The pressed state has no hook of its own, so the shape retargets
         # where the state layer does: on the paint the state change requested.
         self._sync_corner_target()
         return super().draw_background(canvas, *self._container_in(x, y, width, height))
 
+    @replay_safe
     def draw_border(self, canvas, x: int, y: int, width: int, height: int):
         return super().draw_border(canvas, *self._container_in(x, y, width, height))
 
+    @replay_safe
     def draw_state_layer(self, canvas, x: int, y: int, width: int, height: int):
         if self._get_active_state_layer_opacity() <= 0:
             return
         super().draw_state_layer(canvas, *self._container_in(x, y, width, height))
 
+    @replay_safe
     def draw_focus_indicator(self, canvas, x: int, y: int, width: int, height: int):
         super().draw_focus_indicator(canvas, *self._container_in(x, y, width, height))
 

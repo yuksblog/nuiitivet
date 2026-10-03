@@ -1,5 +1,6 @@
 """Deck layout: display only one child at a time."""
 
+from nuiitivet.widgeting.paint_replay import replay_safe
 from typing import List, Optional, Sequence, Tuple, Union
 
 from ..widgeting.widget import Widget
@@ -204,6 +205,7 @@ class Deck(Widget):
             selected_child = children[self._current_index]
             selected_child.set_layout_rect(pad_left, pad_top, available_w, available_h)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Paint only the selected child."""
         children = expand_layout_children(self.children_snapshot())
@@ -225,8 +227,7 @@ class Deck(Widget):
         abs_y = y + rel_y
 
         selected_child.set_last_rect(abs_x, abs_y, w, h)
-        if self._take_inside_clip():
-            selected_child._paint_inside_clip = True
+        self._pass_paint_hints(selected_child)
         selected_child.paint(canvas, abs_x, abs_y, w, h)
 
     def hit_test(self, x: int, y: int):

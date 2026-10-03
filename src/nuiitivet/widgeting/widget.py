@@ -75,6 +75,7 @@ class Widget(
         """Mark this widget as needing layout recalculation."""
         already_dirty = self._needs_layout
         self._needs_layout = True
+        self._replay_dirty = True
         self._measure_cache = None
         parent = getattr(self, "_parent", None)
         if isinstance(parent, Widget):
@@ -100,6 +101,7 @@ class Widget(
             self.invalidate()
 
     def invalidate(self, immediate: bool = False) -> None:
+        self._mark_replay_dirty()
         app = getattr(self, "_app", None)
         if app is None:
             return

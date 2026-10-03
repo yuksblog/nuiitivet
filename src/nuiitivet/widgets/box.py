@@ -1,3 +1,4 @@
+from nuiitivet.widgeting.paint_replay import replay_safe
 import inspect
 import math
 import logging
@@ -248,12 +249,14 @@ class Box(CachedPaintMixin, Widget):
         child.layout(child_w, child_h)
         child.set_layout_rect(cx, cy, child_w, child_h)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         self.set_last_rect(x, y, width, height)
         self.draw_background(canvas, x, y, width, height)
         self.draw_children(canvas, x, y, width, height)
         self.draw_border(canvas, x, y, width, height)
 
+    @replay_safe
     def draw_background(self, canvas, x: int, y: int, width: int, height: int):
         if canvas is None:
             return
@@ -264,18 +267,20 @@ class Box(CachedPaintMixin, Widget):
                 return
             self._renderer.paint_shadow_and_background(target, x, y, width, height)
 
+    @replay_safe
     def draw_border(self, canvas, x: int, y: int, width: int, height: int):
         if canvas is None:
             return
         self._renderer.paint_border(canvas, x, y, width, height)
 
+    @replay_safe
     def draw_children(self, canvas, x: int, y: int, width: int, height: int):
-        inside_clip = self._take_inside_clip()
+        hints = self._take_paint_hints()
         if self.children and not getattr(self, "_suppress_child_paint", False):
             child = self.children[0]
             # A box that clips its content narrows the clip; the child must cull against it.
-            if inside_clip and not self.clip_content:
-                child._paint_inside_clip = True
+            if hints and not self.clip_content:
+                child._give_paint_hints(hints)
 
             # Auto-layout fallback for tests or direct paint calls
             if child.layout_rect is None:

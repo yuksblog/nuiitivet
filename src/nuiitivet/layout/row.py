@@ -1,5 +1,6 @@
 """Row layout: arrange children horizontally."""
 
+from nuiitivet.widgeting.paint_replay import replay_safe
 from typing import List, Tuple, Optional, Union
 
 from ..widgeting.widget import Widget
@@ -215,6 +216,7 @@ class Row(Widget):
             layout_child_if_needed(child, w, resolved_height)
             child.set_layout_rect(rel_x, rel_y, w, resolved_height)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         paint_laid_out_children(self, canvas, x, y, width, height)
 

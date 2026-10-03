@@ -1,3 +1,4 @@
+from nuiitivet.widgeting.paint_replay import replay_safe
 import logging
 from typing import Optional, Tuple, Union
 
@@ -128,6 +129,7 @@ class Container(Widget):
         child.layout(child_w, child_h)
         child.set_layout_rect(cx, cy, child_w, child_h)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         # Minimal paint: update last rect and delegate to child paint.
         self.set_last_rect(x, y, width, height)
@@ -154,8 +156,7 @@ class Container(Widget):
         # Container does not clip; child is painted as-is.
         try:
             child.set_last_rect(cx, cy, child_w, child_h)
-            if self._take_inside_clip():
-                child._paint_inside_clip = True
+            self._pass_paint_hints(child)
             child.paint(canvas, cx, cy, child_w, child_h)
         except Exception:
             exception_once(_logger, "container_child_paint_exc", "Container child paint failed")

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from nuiitivet.widgeting.paint_replay import replay_safe
 import logging
 from typing import Optional, Tuple
 
@@ -71,6 +72,7 @@ class CrossAligned(Widget):
         child.layout(cw, ch)
         child.set_layout_rect(cx, cy, cw, ch)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
         if not self.children:
@@ -90,8 +92,7 @@ class CrossAligned(Widget):
 
         try:
             child.set_last_rect(abs_x, abs_y, child_w, child_h)
-            if self._take_inside_clip():
-                child._paint_inside_clip = True
+            self._pass_paint_hints(child)
             child.paint(canvas, abs_x, abs_y, child_w, child_h)
         except Exception:
             exception_once(_logger, "cross_aligned_child_paint_exc", "CrossAligned child paint failed")

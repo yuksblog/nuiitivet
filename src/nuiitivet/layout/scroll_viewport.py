@@ -268,6 +268,7 @@ class ScrollViewport(Widget):
             if clip is not None:
                 clip_rect(canvas, clip, anti_alias=True)
             content.set_last_rect(child_x, child_y, content_w, content_h)
+            content._paint_scroll_content = True
             content.paint(canvas, child_x, child_y, content_w, content_h)
         finally:
             try:
