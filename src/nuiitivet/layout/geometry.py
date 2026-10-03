@@ -146,6 +146,8 @@ class Geometry(Widget):
             self.layout(width, height)
         rx, ry, rw, rh = child.layout_rect or self.content_rect(0, 0, width, height)
         child.set_last_rect(x + rx, y + ry, rw, rh)
+        if self._take_inside_clip():
+            child._paint_inside_clip = True
         child.paint(canvas, x + rx, y + ry, rw, rh)
 
 

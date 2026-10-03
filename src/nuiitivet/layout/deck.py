@@ -225,6 +225,8 @@ class Deck(Widget):
         abs_y = y + rel_y
 
         selected_child.set_last_rect(abs_x, abs_y, w, h)
+        if self._take_inside_clip():
+            selected_child._paint_inside_clip = True
         selected_child.paint(canvas, abs_x, abs_y, w, h)
 
     def hit_test(self, x: int, y: int):

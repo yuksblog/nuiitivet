@@ -154,6 +154,8 @@ class Container(Widget):
         # Container does not clip; child is painted as-is.
         try:
             child.set_last_rect(cx, cy, child_w, child_h)
+            if self._take_inside_clip():
+                child._paint_inside_clip = True
             child.paint(canvas, cx, cy, child_w, child_h)
         except Exception:
             exception_once(_logger, "container_child_paint_exc", "Container child paint failed")

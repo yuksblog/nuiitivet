@@ -90,6 +90,8 @@ class CrossAligned(Widget):
 
         try:
             child.set_last_rect(abs_x, abs_y, child_w, child_h)
+            if self._take_inside_clip():
+                child._paint_inside_clip = True
             child.paint(canvas, abs_x, abs_y, child_w, child_h)
         except Exception:
             exception_once(_logger, "cross_aligned_child_paint_exc", "CrossAligned child paint failed")

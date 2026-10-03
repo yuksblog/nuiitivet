@@ -86,6 +86,17 @@ class WidgetKernel:
     # for the paint that follows; a container reads it to skip culling.
     _paint_inside_clip: bool = False
 
+    def _take_inside_clip(self) -> bool:
+        """Return whether this paint was told it lies inside the clip, and forget it.
+
+        A wrapper that neither clips nor moves its child hands the answer on by
+        setting ``_paint_inside_clip`` on the child it is about to paint.
+        """
+        if self._paint_inside_clip:
+            self._paint_inside_clip = False
+            return True
+        return False
+
     @property
     def needs_layout(self) -> bool:
         return bool(getattr(self, "_needs_layout", True))
@@ -449,7 +460,10 @@ class WidgetKernel:
         if __debug__:
             assert_ui_thread()
 
+        inside_clip = self._take_inside_clip()
         for child in getattr(self, "children", tuple()):
+            if inside_clip:
+                child._paint_inside_clip = True
             child.paint(canvas, x, y, width, height)
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
