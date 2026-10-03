@@ -1,6 +1,6 @@
 """Tests for the TrayIcon model: validation, install wiring, activation.
 
-Platform bridges (Cocoa, pystray) are substituted; what is under test is the
+Platform bridges (Cocoa, Win32, pystray) are substituted; what is under test is the
 model contract every platform shares — the ``installed`` observable, the
 never-crash install policy, and the activation path.
 """

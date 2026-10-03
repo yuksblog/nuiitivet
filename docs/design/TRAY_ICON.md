@@ -86,35 +86,45 @@ and accepted. pystray was rejected here: it wants to own `NSApplication`,
 and the direct route removes the one structural risk, handing part of the
 main loop to an outside library.
 
-**Windows and Linux** use pystray (`platform/tray_pystray.py`), a regular
-dependency platform-marked in `pyproject.toml` so macOS never installs it
-(it would drag `pyobjc-framework-Quartz` in for a backend not used there).
+**Windows** talks to Win32 directly (`platform/tray_win32.py`) through
+ctypes. A dedicated thread owns a hidden window and its message loop, and
+`Shell_NotifyIcon` hangs the icon on that window. The window is top-level and
+never shown, not message-only: a message-only window receives no broadcasts,
+and `TaskbarCreated`, which tells every icon to add itself again after
+Explorer restarts, is a broadcast. The menu is built from the model on every
+right click and destroyed when it closes; a menu kept between clicks was
+rejected because every observable in the tree would need a sync step. skia
+decodes the icon file, so the backend adds no imaging dependency. Every
+activation hops to the UI thread through the runtime clock before touching
+the model.
+
+A notification balloon needs an icon in the notification area to hang on.
+While a tray is installed the balloon attaches to the tray's icon; without
+one the notification backend adds a transient icon of its own. Letting the
+backend always add its own was rejected: an app with a tray would show two
+icons for the length of every notification.
+
+**Linux** uses pystray (`platform/tray_pystray.py`), a regular dependency
+platform-marked in `pyproject.toml` so macOS and Windows never install it.
 It is not an extra, because `TrayIcon` must work without the app author
-choosing anything, and the marker keeps the cost off the one platform with a
-dependency-free route. A direct implementation was rejected because every
-condition that made it cheap on macOS inverts: no bundled bridge covers Win32
-shell APIs or DBus, `NSMenuBuilder` has no HMENU or dbusmenu counterpart,
-and both platforms need a dedicated thread anyway, so a direct Win32 backend
-would reproduce pystray's structure in hundreds of lines of ctypes and a
-direct Linux one would hand-roll the StatusNotifierItem and dbusmenu
-protocols on a DBus library that is itself a new dependency. The bridge
-boundary keeps a future swap local.
+choosing anything. A direct backend would hand-roll the StatusNotifierItem
+and dbusmenu protocols on a DBus library that is itself a new dependency.
+The bridge boundary keeps a future swap local.
 
-The icon runs detached, but the backend families differ. `win32` and `xorg`
-spin their own thread, so their callbacks arrive off the UI thread.
-`appindicator` and `gtk` start no loop: they queue every icon operation,
-including the initial show that registers the item on DBus, onto the GLib
-main context and assume the host runs a GLib loop. nuiitivet runs only
-pyglet's, so the bridge iterates the default GLib context from a 60 Hz clock
-interval on the UI thread; without that pump nothing is dispatched and the
-icon never appears while `install()` returns cleanly, a silent failure that
-would strand the close-to-tray recipe with a hidden window and no icon to
-restore it. Every activation hops to the UI thread through the runtime clock
-before touching the model, and every observable in the menu tree also
-triggers `Icon.update_menu()`, since not every backend rebuilds the menu on
-display.
+The icon runs detached, but the backend families differ. `xorg` spins its
+own thread, so its callbacks arrive off the UI thread. `appindicator` and
+`gtk` start no loop: they queue every icon operation, including the initial
+show that registers the item on DBus, onto the GLib main context and assume
+the host runs a GLib loop. nuiitivet runs only pyglet's, so the bridge
+iterates the default GLib context from a 60 Hz clock interval on the UI
+thread; without that pump nothing is dispatched and the icon never appears
+while `install()` returns cleanly, a silent failure that would strand the
+close-to-tray recipe with a hidden window and no icon to restore it. Every
+activation hops to the UI thread through the runtime clock before touching
+the model, and every observable in the menu tree also triggers
+`Icon.update_menu()`, since not every backend rebuilds the menu on display.
 
-Linux is best-effort by contract: KDE and SNI hosts work, GNOME needs the
+The Linux tray is best-effort by contract: KDE and SNI hosts work, GNOME needs the
 AppIndicator extension, bare XOrg has no menu support and refuses install,
 and AppIndicator cannot deliver `on_activate`. The API always works,
 `installed` reports the truth, and the recipe degrades to a normal closing

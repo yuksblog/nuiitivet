@@ -67,7 +67,7 @@ class TrayIcon:
                 conventional way. Support varies: on macOS only without a
                 ``menu`` (a menu owns the click there); on Windows the gesture
                 is a double-click; a Linux AppIndicator host cannot deliver it
-                at all (a pystray limitation). Treat it as an optional shortcut
+                at all. Treat it as an optional shortcut
                 and keep an equivalent entry in ``menu``.
             dock_visibility: macOS Dock presence: ``"always"`` (default),
                 ``"auto"`` (in the Dock only while some window is visible — the
@@ -120,7 +120,7 @@ class TrayIcon:
         """Whether the icon is actually showing in the system tray.
 
         ``False`` until the backend installs it, and again after removal or
-        when the platform cannot host one (no pystray, no tray area). Apps
+        when the platform cannot host one (no tray area). Apps
         adapt through this — e.g. bind a window's ``close_action`` to it, or
         exit when a tray they depend on is unavailable.
         """
@@ -153,6 +153,10 @@ class TrayIcon:
             from .tray_cocoa import TrayCocoaBridge
 
             return TrayCocoaBridge(self)
+        if sys.platform == "win32":
+            from .tray_win32 import TrayWin32Bridge
+
+            return TrayWin32Bridge(self)
         from .tray_pystray import TrayPystrayBridge
 
         return TrayPystrayBridge(self)

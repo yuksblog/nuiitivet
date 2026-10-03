@@ -1,5 +1,5 @@
 # Minimal pystray stub for mypy: only the surface nuiitivet's tray bridge uses.
-# pystray ships no py.typed, and is installed only on Windows/Linux (platform
+# pystray ships no py.typed, and is installed only on Linux (platform
 # marker), so without this stub mypy's verdict would differ per platform.
 
 from typing import Any, Callable, Optional

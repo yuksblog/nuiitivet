@@ -1,20 +1,20 @@
-"""Windows/Linux tray icon: ``TrayIcon`` model → pystray.
+"""Linux tray icon: ``TrayIcon`` model → pystray.
 
-pystray is a regular dependency on these platforms (platform-marked in
-``pyproject.toml``; macOS goes through ``tray_cocoa`` instead and never
-installs it). The tray is started detached (``run_detached()``), but what
-that means splits by backend: ``win32`` and ``xorg`` spin their own thread,
-while the GTK-family backends (``appindicator`` / ``gtk``) start no loop and
-need nuiitivet to pump theirs
+pystray is a regular dependency on Linux only (platform-marked in
+``pyproject.toml``; macOS and Windows go through ``tray_cocoa`` and
+``tray_win32`` and never install it). The tray is started detached
+(``run_detached()``), but what that means splits by backend: ``xorg`` spins
+its own thread, while the GTK-family backends (``appindicator`` / ``gtk``)
+start no loop and need nuiitivet to pump theirs
 (:meth:`TrayPystrayBridge._start_glib_pump`). Either way callbacks are
 hopped onto the UI thread through the runtime clock before they touch the
 model, so checkable toggling, roles, and ``on_select`` behave exactly as on
 macOS.
 
-Best-effort by design, especially on Linux: whether an icon actually shows
-depends on the desktop (SNI/AppIndicator host, GNOME extension, Wayland).
-An install failure raises here and the ``TrayIcon`` model turns it into a
-logged no-op with ``installed`` staying ``False``.
+Best-effort by design: whether an icon actually shows depends on the desktop
+(SNI/AppIndicator host, GNOME extension, Wayland). An install failure raises
+here and the ``TrayIcon`` model turns it into a logged no-op with
+``installed`` staying ``False``.
 """
 
 from __future__ import annotations
@@ -110,8 +110,8 @@ class TrayPystrayBridge:
         so without this nothing is ever dispatched -- including the initial show
         that registers the icon on D-Bus, so no icon appears while ``install()``
         still returns cleanly. Iterating from a clock interval also keeps the
-        calls on the UI thread, where GTK wants them. ``xorg`` / ``win32`` spin
-        their own thread and need none of this.
+        calls on the UI thread, where GTK wants them. ``xorg`` spins its own
+        thread and needs none of this.
         """
         if type(icon).__module__ not in _GLIB_BACKENDS:
             return
@@ -169,7 +169,7 @@ class TrayPystrayBridge:
         if tray._on_activate is not None:
             if getattr(pystray.Icon, "HAS_DEFAULT", True):
                 # The invisible default item is pystray's idiom for the icon's
-                # activate gesture (double-click on Windows).
+                # activate gesture.
                 items.insert(
                     0,
                     pystray.MenuItem(

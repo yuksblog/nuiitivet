@@ -12,7 +12,8 @@ dedicated daemon thread owns a message-only window and runs the loop;
 ``notify`` posts into it and is therefore safe from any thread. The icon is
 added when a balloon is shown and removed again when the balloon closes
 (dismissed, timed out, or clicked), keeping the notification area clean
-between notifications.
+between notifications. While a tray icon is installed the balloon attaches to
+that icon and no transient one is added.
 """
 
 from __future__ import annotations
@@ -28,125 +29,20 @@ if sys.platform != "win32":  # pragma: no cover - guards Windows-only ctypes use
 
 from ctypes import wintypes
 
+from . import notify_icon_win32 as _w
 from .notification import NotificationBackend, NotificationError
+from .tray_win32 import active_bridge
 
 
 logger = logging.getLogger(__name__)
 
-_user32 = ctypes.WinDLL("user32", use_last_error=True)
-_shell32 = ctypes.WinDLL("shell32", use_last_error=True)
-_kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+_user32 = _w.user32
+_shell32 = _w.shell32
 
-_WM_APP = 0x8000
-_WM_SHOW_NOTIFICATION = _WM_APP + 1
-_WM_ICON_EVENT = _WM_APP + 2
+_WM_SHOW_NOTIFICATION = _w.WM_APP + 1
+_WM_ICON_EVENT = _w.WM_APP + 2
 
-_NIF_MESSAGE = 0x01
-_NIF_ICON = 0x02
-_NIF_TIP = 0x04
-_NIF_INFO = 0x10
-
-_NIM_ADD = 0x0
-_NIM_MODIFY = 0x1
-_NIM_DELETE = 0x2
-
-_NIIF_INFO = 0x1
-
-# Balloon lifecycle events delivered through uCallbackMessage (legacy,
-# pre-NOTIFYICON_VERSION_4 protocol: the event id arrives in lParam).
-_NIN_BALLOONHIDE = 0x0403
-_NIN_BALLOONTIMEOUT = 0x0404
-_NIN_BALLOONUSERCLICK = 0x0405
-
-_IDI_APPLICATION = 32512
 _HWND_MESSAGE = wintypes.HWND(-3)
-
-_LRESULT = ctypes.c_ssize_t
-_WNDPROC = ctypes.WINFUNCTYPE(
-    _LRESULT, wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM
-)
-
-
-class _WNDCLASSW(ctypes.Structure):
-    _fields_ = [
-        ("style", wintypes.UINT),
-        ("lpfnWndProc", _WNDPROC),
-        ("cbClsExtra", ctypes.c_int),
-        ("cbWndExtra", ctypes.c_int),
-        ("hInstance", wintypes.HINSTANCE),
-        ("hIcon", wintypes.HICON),
-        ("hCursor", ctypes.c_void_p),
-        ("hbrBackground", ctypes.c_void_p),
-        ("lpszMenuName", wintypes.LPCWSTR),
-        ("lpszClassName", wintypes.LPCWSTR),
-    ]
-
-
-class _NOTIFYICONDATAW(ctypes.Structure):
-    _fields_ = [
-        ("cbSize", wintypes.DWORD),
-        ("hWnd", wintypes.HWND),
-        ("uID", wintypes.UINT),
-        ("uFlags", wintypes.UINT),
-        ("uCallbackMessage", wintypes.UINT),
-        ("hIcon", wintypes.HICON),
-        ("szTip", ctypes.c_wchar * 128),
-        ("dwState", wintypes.DWORD),
-        ("dwStateMask", wintypes.DWORD),
-        ("szInfo", ctypes.c_wchar * 256),
-        ("uVersion", wintypes.UINT),  # union with uTimeout (deprecated)
-        ("szInfoTitle", ctypes.c_wchar * 64),
-        ("dwInfoFlags", wintypes.DWORD),
-        ("guidItem", ctypes.c_ubyte * 16),
-        ("hBalloonIcon", wintypes.HICON),
-    ]
-
-
-_user32.CreateWindowExW.restype = wintypes.HWND
-_user32.CreateWindowExW.argtypes = [
-    wintypes.DWORD,
-    wintypes.LPCWSTR,
-    wintypes.LPCWSTR,
-    wintypes.DWORD,
-    ctypes.c_int,
-    ctypes.c_int,
-    ctypes.c_int,
-    ctypes.c_int,
-    wintypes.HWND,
-    ctypes.c_void_p,
-    wintypes.HINSTANCE,
-    ctypes.c_void_p,
-]
-_user32.DefWindowProcW.restype = _LRESULT
-_user32.DefWindowProcW.argtypes = [
-    wintypes.HWND,
-    wintypes.UINT,
-    wintypes.WPARAM,
-    wintypes.LPARAM,
-]
-_user32.PostMessageW.restype = wintypes.BOOL
-_user32.PostMessageW.argtypes = [
-    wintypes.HWND,
-    wintypes.UINT,
-    wintypes.WPARAM,
-    wintypes.LPARAM,
-]
-_user32.GetMessageW.restype = ctypes.c_int
-_user32.GetMessageW.argtypes = [
-    ctypes.POINTER(wintypes.MSG),
-    wintypes.HWND,
-    wintypes.UINT,
-    wintypes.UINT,
-]
-_user32.LoadIconW.restype = wintypes.HICON
-_user32.LoadIconW.argtypes = [wintypes.HINSTANCE, wintypes.LPCWSTR]
-_kernel32.GetModuleHandleW.restype = wintypes.HMODULE
-_kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
-_shell32.Shell_NotifyIconW.restype = wintypes.BOOL
-_shell32.Shell_NotifyIconW.argtypes = [
-    wintypes.DWORD,
-    ctypes.POINTER(_NOTIFYICONDATAW),
-]
 
 _ICON_UID = 1
 
@@ -173,6 +69,9 @@ class Win32NotificationBackend(NotificationBackend):
     # --- NotificationBackend ----------------------------------------------
 
     def notify(self, title: str, body: str) -> None:
+        tray = active_bridge()
+        if tray is not None and tray.show_balloon(title, body):
+            return
         self._queue.put((title, body))
         if not _user32.PostMessageW(self._hwnd, _WM_SHOW_NOTIFICATION, 0, 0):
             raise NotificationError(
@@ -184,11 +83,11 @@ class Win32NotificationBackend(NotificationBackend):
 
     def _run(self) -> None:
         try:
-            hinstance = _kernel32.GetModuleHandleW(None)
+            hinstance = _w.kernel32.GetModuleHandleW(None)
             # Keep a reference: the window class holds this pointer for the
             # life of the process.
-            self._wndproc = _WNDPROC(self._on_message)
-            wndclass = _WNDCLASSW()
+            self._wndproc = _w.WNDPROC(self._on_message)
+            wndclass = _w.WNDCLASSW()
             wndclass.lpfnWndProc = self._wndproc
             wndclass.hInstance = hinstance
             wndclass.lpszClassName = "NuiitivetNotificationWindow"
@@ -196,7 +95,7 @@ class Win32NotificationBackend(NotificationBackend):
                 raise NotificationError(
                     f"RegisterClassW failed (error {ctypes.get_last_error()})"
                 )
-            self._hicon = _user32.LoadIconW(None, wintypes.LPCWSTR(_IDI_APPLICATION))
+            self._hicon = _user32.LoadIconW(None, wintypes.LPCWSTR(_w.IDI_APPLICATION))
             self._hwnd = _user32.CreateWindowExW(
                 0,
                 wndclass.lpszClassName,
@@ -221,10 +120,7 @@ class Win32NotificationBackend(NotificationBackend):
         finally:
             self._ready.set()
 
-        msg = wintypes.MSG()
-        while _user32.GetMessageW(ctypes.byref(msg), None, 0, 0) > 0:
-            _user32.TranslateMessage(ctypes.byref(msg))
-            _user32.DispatchMessageW(ctypes.byref(msg))
+        _w.run_message_loop()
 
     def _on_message(self, hwnd: int, message: int, wparam: int, lparam: int) -> int:
         if message == _WM_SHOW_NOTIFICATION:
@@ -238,21 +134,21 @@ class Win32NotificationBackend(NotificationBackend):
                 logger.exception("showing a notification balloon failed")
             return 0
         if message == _WM_ICON_EVENT:
-            if lparam in (_NIN_BALLOONHIDE, _NIN_BALLOONTIMEOUT, _NIN_BALLOONUSERCLICK):
+            if lparam in (_w.NIN_BALLOONHIDE, _w.NIN_BALLOONTIMEOUT, _w.NIN_BALLOONUSERCLICK):
                 self._remove_icon()
             return 0
         return _user32.DefWindowProcW(hwnd, message, wparam, lparam)
 
-    def _icon_data(self) -> _NOTIFYICONDATAW:
-        data = _NOTIFYICONDATAW()
-        data.cbSize = ctypes.sizeof(_NOTIFYICONDATAW)
+    def _icon_data(self) -> _w.NOTIFYICONDATAW:
+        data = _w.NOTIFYICONDATAW()
+        data.cbSize = ctypes.sizeof(_w.NOTIFYICONDATAW)
         data.hWnd = self._hwnd
         data.uID = _ICON_UID
         return data
 
     def _show_balloon(self, title: str, body: str) -> None:
         data = self._icon_data()
-        data.uFlags = _NIF_MESSAGE | _NIF_ICON | _NIF_TIP | _NIF_INFO
+        data.uFlags = _w.NIF_MESSAGE | _w.NIF_ICON | _w.NIF_TIP | _w.NIF_INFO
         data.uCallbackMessage = _WM_ICON_EVENT
         data.hIcon = self._hicon
         # The tooltip doubles as the toast's attribution line.
@@ -260,12 +156,12 @@ class Win32NotificationBackend(NotificationBackend):
         data.szInfoTitle = title[:63]
         # An empty szInfo means "remove the balloon", so never send one.
         data.szInfo = (body or title)[:255]
-        data.dwInfoFlags = _NIIF_INFO
-        message = _NIM_MODIFY if self._icon_added else _NIM_ADD
+        data.dwInfoFlags = _w.NIIF_INFO
+        message = _w.NIM_MODIFY if self._icon_added else _w.NIM_ADD
         if not _shell32.Shell_NotifyIconW(message, ctypes.byref(data)):
             # The icon and this flag can disagree after Explorer restarts;
             # retry once with the opposite operation.
-            fallback = _NIM_ADD if message == _NIM_MODIFY else _NIM_MODIFY
+            fallback = _w.NIM_ADD if message == _w.NIM_MODIFY else _w.NIM_MODIFY
             if not _shell32.Shell_NotifyIconW(fallback, ctypes.byref(data)):
                 raise NotificationError(
                     f"Shell_NotifyIconW failed (error {ctypes.get_last_error()})"
@@ -274,5 +170,5 @@ class Win32NotificationBackend(NotificationBackend):
 
     def _remove_icon(self) -> None:
         data = self._icon_data()
-        _shell32.Shell_NotifyIconW(_NIM_DELETE, ctypes.byref(data))
+        _shell32.Shell_NotifyIconW(_w.NIM_DELETE, ctypes.byref(data))
         self._icon_added = False
