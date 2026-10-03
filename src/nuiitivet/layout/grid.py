@@ -10,7 +10,7 @@ from ..widgeting.widget import Widget
 from ..rendering.sizing import Sizing, SizingLike, parse_sizing
 from .container import Container
 from .gap import normalize_gap
-from .layout_utils import expand_layout_children, paint_children_at_layout_rects
+from .layout_utils import expand_layout_children, paint_laid_out_children
 
 logger = logging.getLogger(__name__)
 
@@ -258,6 +258,7 @@ class Grid(Widget):
 
     def layout(self, width: int, height: int) -> None:
         super().layout(width, height)
+        self._laid_out_children = expand_layout_children(self.children_snapshot())
         placements, rows, columns = self._prepare_layout()
         self._row_tracks = []
         self._column_tracks = []
@@ -304,15 +305,7 @@ class Grid(Widget):
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         self.set_last_rect(x, y, width, height)
 
-        children = expand_layout_children(self.children_snapshot())
-        if not children:
-            return
-
-        # Auto-layout fallback for tests or direct paint calls
-        if any(c.layout_rect is None for c in children):
-            self.layout(width, height)
-
-        paint_children_at_layout_rects(children, canvas, x, y)
+        paint_laid_out_children(self, canvas, x, y, width, height)
 
     # --- helpers -------------------------------------------------
     def _prepare_layout(

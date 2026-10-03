@@ -82,6 +82,10 @@ class WidgetKernel:
     def parent(self) -> Optional["WidgetKernel"]:
         return self._parent
 
+    # Set by a parent container on a child that lies wholly inside the canvas clip,
+    # for the paint that follows; a container reads it to skip culling.
+    _paint_inside_clip: bool = False
+
     @property
     def needs_layout(self) -> bool:
         return bool(getattr(self, "_needs_layout", True))

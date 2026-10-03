@@ -278,14 +278,13 @@ def local_clip_bounds(canvas) -> Optional[tuple[float, float, float, float]]:
     read = getattr(canvas, "getLocalClipBounds", None)
     if read is None:
         return None
-    skia = get_skia(raise_if_missing=False)
-    if skia is None:
-        return None
     try:
         rect = read()
-        if not isinstance(rect, skia.Rect):
+        left = rect.fLeft
+        # A stand-in canvas answers with something that is not a rect of floats.
+        if type(left) is not float:
             return None
-        return (rect.fLeft, rect.fTop, rect.fRight, rect.fBottom)
+        return (left, rect.fTop, rect.fRight, rect.fBottom)
     except Exception:
         exception_once(logger, "skia_local_clip_bounds_exc", "canvas.getLocalClipBounds failed")
         return None

@@ -130,6 +130,16 @@ not run. Without a readable clip (no canvas, or a stand-in) every child is
 painted. What this asks of a widget that draws outside its rect is in
 [BOX_MODEL.md](BOX_MODEL.md).
 
+A child that lies wholly inside the clip is told so for the paint that
+follows. A container that is told reads no clip and tests no child, since
+nothing below it can be culled, and tells its own children the same. The hint
+passes from a container to a container that is its direct child; a wrapper
+between them, a modifier box or a composable, drops it, and the inner
+container reads the clip as before. Painting a child the clip would have
+discarded costs time and no pixel, so a hint that is dropped or out of date is
+never a wrong frame. Carrying the clip itself down the tree was rejected for
+that reason: a clip that is out of date culls what should be drawn.
+
 The Python walk of `paint()` is the frame's dominant cost. The caches that
 skip parts of it, a widget's own visuals, the whole frame, a subtree, are in
 [PAINT_CACHE.md](PAINT_CACHE.md).

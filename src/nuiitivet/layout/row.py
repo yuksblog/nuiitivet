@@ -7,7 +7,7 @@ from ..rendering.padding import PaddingLike
 from ..rendering.sizing import SizingLike
 from .gap import normalize_gap
 from .metrics import compute_aligned_offsets, align_offset
-from .layout_utils import expand_layout_children, layout_child_if_needed, paint_children_at_layout_rects
+from .layout_utils import expand_layout_children, layout_child_if_needed, paint_laid_out_children
 from .for_each import ForEach, ItemsLike, BuilderFn
 from .measure import preferred_size as measure_preferred_size
 from nuiitivet.observable.protocols import ObservableBase
@@ -160,6 +160,7 @@ class Row(Widget):
     def layout(self, width: int, height: int) -> None:
         super().layout(width, height)
         children = expand_layout_children(self.children_snapshot())
+        self._laid_out_children = children
         if not children:
             return
 
@@ -215,15 +216,7 @@ class Row(Widget):
             child.set_layout_rect(rel_x, rel_y, w, resolved_height)
 
     def paint(self, canvas, x: int, y: int, width: int, height: int):
-        children = expand_layout_children(self.children_snapshot())
-        if not children:
-            return
-
-        # Auto-layout fallback for tests or direct paint calls
-        if any(c.layout_rect is None for c in children):
-            self.layout(width, height)
-
-        paint_children_at_layout_rects(children, canvas, x, y)
+        paint_laid_out_children(self, canvas, x, y, width, height)
 
     @staticmethod
     def _allocate_main_sizes(base_sizes: List[int], weights: List[float], usable: int) -> List[int]:
