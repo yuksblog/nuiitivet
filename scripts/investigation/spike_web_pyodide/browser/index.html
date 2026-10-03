@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>nuiitivet web spike</title>
+    <style>
+      body { margin: 16px; font: 14px/1.5 system-ui, sans-serif; }
+      canvas { display: block; width: 900px; height: 800px; border: 1px solid #ccc; }
+      table { border-collapse: collapse; margin: 12px 0; }
+      th, td { border: 1px solid #ccc; padding: 4px 10px; text-align: right; }
+      th:first-child, td:first-child { text-align: left; }
+      pre { white-space: pre-wrap; color: #555; }
+    </style>
+  </head>
+  <body>
+    <h1>nuiitivet web spike</h1>
+    <p id="status">Loading…</p>
+    <table id="results" hidden>
+      <thead><tr><th>Case</th><th>Median frame</th><th>Worst frame</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <canvas id="stage" width="900" height="800"></canvas>
+    <pre id="log"></pre>
+    <script src="/canvaskit/canvaskit.js"></script>
+    <script type="module" src="/page.mjs"></script>
+  </body>
+</html>
