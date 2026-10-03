@@ -14,12 +14,13 @@ reader dies with the reader, so there is nothing to clean up.
 from __future__ import annotations
 
 import logging
-from typing import Any, Iterator, List, Optional
+from typing import Any, Callable, Generic, Iterator, List, Optional, TypeVar, cast
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.widgeting.context_lookup import find_app_scope
 
 __all__ = [
+    "ThemeKept",
     "current_theme_reader",
     "invalidate_theme_readers",
     "pop_theme_reader",
@@ -114,6 +115,55 @@ def theme_generation(context: Any) -> int:
             "Failed to read ThemeManager.generation",
         )
         return -1
+
+
+T = TypeVar("T")
+
+
+class ThemeKept(Generic[T]):
+    """A value a widget resolved from the theme, kept until the theme moves.
+
+    For a leaf that is painted too often to resolve its colours on every
+    frame. The value is resolved again when the theme above the widget has
+    changed or when ``key`` differs from the one it was resolved under.
+
+    A widget with no ``AppScope`` above it is told of no theme change, so
+    nothing is kept for it: every :meth:`get` resolves.
+    """
+
+    __slots__ = ("_generation", "_key", "_value")
+
+    def __init__(self) -> None:
+        self._generation = -1
+        self._key: Any = None
+        self._value: Optional[T] = None
+
+    def get(self, context: Any, key: Any, resolve: Callable[[], T]) -> T:
+        """Return the kept value, resolving it first when it is stale.
+
+        Args:
+            context: The widget the value belongs to.
+            key: Everything besides the theme that decides the value, compared
+                with ``==``. A style a parent may replace goes here.
+            resolve: Called with no arguments to produce the value.
+
+        Returns:
+            The value ``resolve`` returned, on this call or an earlier one.
+        """
+        generation = theme_generation(context)
+        if generation != -1 and generation == self._generation and key == self._key:
+            return cast(T, self._value)
+        value = resolve()
+        self._generation = generation
+        self._key = key
+        self._value = value
+        return value
+
+    def clear(self) -> None:
+        """Drop the kept value, so the next :meth:`get` resolves."""
+        self._generation = -1
+        self._key = None
+        self._value = None
 
 
 def _iter_subtree(root: Any) -> Iterator[Any]:
