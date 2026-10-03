@@ -270,8 +270,12 @@ class Box(CachedPaintMixin, Widget):
         self._renderer.paint_border(canvas, x, y, width, height)
 
     def draw_children(self, canvas, x: int, y: int, width: int, height: int):
+        inside_clip = self._take_inside_clip()
         if self.children and not getattr(self, "_suppress_child_paint", False):
             child = self.children[0]
+            # A box that clips its content narrows the clip; the child must cull against it.
+            if inside_clip and not self.clip_content:
+                child._paint_inside_clip = True
 
             # Auto-layout fallback for tests or direct paint calls
             if child.layout_rect is None:

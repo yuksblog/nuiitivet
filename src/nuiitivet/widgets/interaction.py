@@ -1516,6 +1516,8 @@ class InteractionRegion(InteractionHostMixin, Widget):
         cx, cy, cw, ch = self.content_rect(x, y, width, height)
         child = self.children[0]
         child.set_last_rect(cx, cy, cw, ch)
+        if self._take_inside_clip():
+            child._paint_inside_clip = True
         child.paint(canvas, cx, cy, cw, ch)
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:

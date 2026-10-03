@@ -235,6 +235,7 @@ class _AnimatedVisibleBox(Widget):
 
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
+        inside_clip = self._take_inside_clip()
         child = self._child()
         if child is None:
             return
@@ -243,6 +244,8 @@ class _AnimatedVisibleBox(Widget):
         if visuals is None or canvas is None or not _has_visual_effect(visuals):
             try:
                 child.set_last_rect(x, y, width, height)
+                if inside_clip:
+                    child._paint_inside_clip = True
                 child.paint(canvas, x, y, width, height)
             except Exception:
                 exception_once(

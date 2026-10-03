@@ -170,6 +170,7 @@ class Stack(Widget):
             child.set_layout_rect(l + x, t + y, target_w, target_h)
 
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
+        inside_clip = self._take_inside_clip()
         children = expand_layout_children(self.children_snapshot())
         for child in children:
             rect = child.layout_rect
@@ -177,4 +178,6 @@ class Stack(Widget):
                 continue
 
             rx, ry, rw, rh = rect
+            if inside_clip:
+                child._paint_inside_clip = True
             child.paint(canvas, x + rx, y + ry, rw, rh)

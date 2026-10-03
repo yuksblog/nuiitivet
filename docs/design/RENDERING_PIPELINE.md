@@ -132,13 +132,27 @@ painted. What this asks of a widget that draws outside its rect is in
 
 A child that lies wholly inside the clip is told so for the paint that
 follows. A container that is told reads no clip and tests no child, since
-nothing below it can be culled, and tells its own children the same. The hint
-passes from a container to a container that is its direct child; a wrapper
-between them, a modifier box or a composable, drops it, and the inner
-container reads the clip as before. Painting a child the clip would have
-discarded costs time and no pixel, so a hint that is dropped or out of date is
-never a wrong frame. Carrying the clip itself down the tree was rejected for
-that reason: a clip that is out of date culls what should be drawn.
+nothing below it can be culled, and tells its own children the same. Painting
+a child the clip would have discarded costs time and no pixel, so a hint that
+is dropped or out of date is never a wrong frame. Carrying the clip itself
+down the tree was rejected for that reason: a clip that is out of date culls
+what should be drawn.
+
+A wrapper between two containers hands the hint on when it neither narrows
+the clip nor moves its child:
+
+| Wrapper | Hint |
+| --- | --- |
+| `ComposableWidget`, `Container`, `Box` and what is built on it, `Stack`, `Deck`, `Geometry`, `CrossAligned` | passes |
+| A modifier box that draws its child in place: `clickable` and the other interaction modifiers, `will_pop`, `visible` and the transform modifiers while they apply no effect | passes |
+| `ScrollViewport`, a `Box` that clips its content (the `clip` modifier) | stops: the content is larger than what shows, and must be culled against the narrower clip |
+| A transform modifier that moves, scales, rotates or fades its child | stops: the child may land outside the clip |
+
+Any other widget that paints a child drops the hint. A wrapper that passes it
+in one state and stops it in another forgets it on every paint, so a later
+paint does not pass one that was meant for an earlier one. Passing the hint
+through a stopping wrapper would paint the whole of a scrolled list on every
+frame.
 
 The Python walk of `paint()` is the frame's dominant cost. The caches that
 skip parts of it, a widget's own visuals, the whole frame, a subtree, are in
