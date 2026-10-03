@@ -5,7 +5,7 @@ Displays a string or State-like value and invalidates when the value changes.
 
 import logging
 import math
-from typing import Any, Callable, List, Literal, Optional, Tuple, Union, TYPE_CHECKING
+from typing import Any, Callable, List, Literal, NamedTuple, Optional, Tuple, Union, TYPE_CHECKING
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.widgeting.widget import Widget
@@ -21,6 +21,7 @@ from nuiitivet.rendering.skia import (
     measure_text_width,
     rgba_to_skia_color,
 )
+from nuiitivet.theme.dependency import theme_generation
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.theme.type_scale import DEFAULT_TYPE_SCALE, TypeScaleToken
 from nuiitivet.rendering.sizing import SizingLike
@@ -31,6 +32,36 @@ if TYPE_CHECKING:
 
 
 _logger = logging.getLogger(__name__)
+
+
+class _Run(NamedTuple):
+    """One laid-out line: its text blob and its tight ink bounds."""
+
+    blob: Optional[object]
+    ink_left: float
+    ink_top: float
+    ink_right: float
+    ink_bottom: float
+
+
+class _PaintCache(NamedTuple):
+    """What a paint reuses while the text, the box and the font are unchanged."""
+
+    key: tuple
+    typeface: Optional[object]
+    runs: List[_Run]
+    ascent: float
+    descent: float
+
+
+class _Look(NamedTuple):
+    """What the theme and the font settings decide: the typeface and the paint."""
+
+    generation: int
+    explicit_style: Optional[TextStyleProtocol]
+    fallbacks: Tuple[str, ...]
+    typeface: Optional[object]
+    paint: Optional[object]
 
 
 class TextBase(Widget):
@@ -60,9 +91,8 @@ class TextBase(Widget):
     # instance Disposable returned from subscribing to a label Observable
     _label_unsub: Optional["Disposable"] = None
 
-    # Paint-time cache to avoid expensive repeated shaping/measurement.
-    _paint_cache_key: Optional[tuple] = None
-    _paint_cache_lines: Optional[List[str]] = None
+    _paint_cache: Optional[_PaintCache] = None
+    _look: Optional[_Look] = None
 
     def __init__(
         self,
@@ -101,8 +131,8 @@ class TextBase(Widget):
         # instance attribute tracking a Disposable returned by subscribe
         self._label_unsub = None
 
-        self._paint_cache_key = None
-        self._paint_cache_lines = None
+        self._paint_cache = None
+        self._look = None
 
     @staticmethod
     def _normalize_max_lines(value: Optional[int]) -> Optional[int]:
@@ -363,26 +393,16 @@ class TextBase(Widget):
         cx, cy, cw, ch = self.content_rect(x, y, width, height)
 
         txt = self._resolve_label()
-        font_size = self.type_scale.font_size
-        weight = self.type_scale.weight
-        tracking = self.type_scale.tracking
-        tf = get_typeface(
-            candidate_files=None,
-            family_candidates=self._resolve_font_candidates(),
-            pkg_font_dir=None,
-            fallback_to_default=True,
-            weight=weight,
-        )
-        font = make_font(tf, font_size)
-
-        def measure_text_w(text_value: str) -> float:
-            return float(measure_text_width(tf, font_size, str(text_value), tracking))
-
+        type_scale = self.type_scale
+        font_size = type_scale.font_size
+        weight = type_scale.weight
+        tracking = type_scale.tracking
+        look = self._resolve_look(weight)
+        tf = look.typeface
         alignment = self._alignment
-        avail_w = float(cw)
 
-        # Cache the resolved line list. The key must change when any factor
-        # affecting line breaking or truncation changes.
+        # The key holds every input of line breaking and truncation. The
+        # typeface is compared by identity beside it.
         cache_key = (
             txt,
             int(cw),
@@ -397,24 +417,14 @@ class TextBase(Widget):
             alignment,
             tuple(self.padding),
         )
-        if self._paint_cache_key == cache_key and self._paint_cache_lines is not None:
-            lines = self._paint_cache_lines
-        else:
-            laid, overflowed = self._layout_lines(txt, avail_w, measure_text_w)
-            lines = self._apply_ellipsis(laid, overflowed, avail_w, measure_text_w)
-            self._paint_cache_key = cache_key
-            self._paint_cache_lines = lines
+        cache = self._paint_cache
+        if cache is None or cache.key != cache_key or cache.typeface is not tf:
+            cache = self._build_paint_cache(cache_key, tf, txt, float(cw), font_size, tracking)
+            self._paint_cache = cache
 
-        if not lines or font is None or canvas is None:
-            return
-
-        # Resolve text color from the theme to an RGBA tuple and convert
-        # to a skia color when skia is available.
-        from nuiitivet.theme.theme import Theme
-
-        rgba = resolve_color_to_rgba(self.style.color, default="#000000", theme=Theme.of(self))
-        paint = make_paint(color=rgba_to_skia_color(rgba), style="fill", aa=True)
-        if paint is None:
+        runs = cache.runs
+        paint = look.paint
+        if not runs or canvas is None or paint is None:
             return
 
         clip = self._overflow == "clip"
@@ -422,64 +432,99 @@ class TextBase(Widget):
             canvas.save()
             canvas.clipRect((cx, cy, cx + cw, cy + ch))
 
-        if len(lines) == 1:
-            self._paint_single_line(
-                canvas, font, tf, font_size, tracking, lines[0], cx, cy, cw, ch, alignment, paint
-            )
+        if len(runs) == 1:
+            self._paint_single_line(canvas, runs[0], cx, cy, cw, ch, alignment, paint)
         else:
-            self._paint_multi_line(
-                canvas, font, tf, font_size, tracking, lines, cx, cy, cw, ch, alignment, paint
-            )
+            self._paint_multi_line(canvas, cache, cx, cy, cw, ch, alignment, paint)
 
         if clip:
             canvas.restore()
 
-    def _paint_single_line(
-        self, canvas, font, tf, font_size, tracking, text, cx, cy, cw, ch, alignment, paint
-    ) -> None:
-        """Draw one line using tight ink bounds for centering (parity path)."""
-        tp = make_text_blob(text, font, tracking)
-        if tp is None:
-            return
-        ink_left, ink_top, ink_right, ink_bottom = measure_text_ink_bounds(tf, font_size, text, tracking)
-        ink_w = max(0.0, float(ink_right) - float(ink_left))
-        ink_h = max(0.0, float(ink_bottom) - float(ink_top))
+    def _resolve_look(self, weight: int) -> _Look:
+        """Return the typeface and the paint, resolved again after a theme or font-default change."""
+        generation = theme_generation(self)
+        fallbacks = get_default_font_fallbacks()
+        # A parent recolours its label by replacing the style object.
+        explicit_style = self._style
+        look = self._look
+        # -1 is a detached widget: nothing reports a theme change to it, so nothing is kept.
+        if (
+            look is not None
+            and generation != -1
+            and look.generation == generation
+            and look.explicit_style is explicit_style
+            and look.fallbacks is fallbacks
+        ):
+            return look
 
+        from nuiitivet.theme.theme import Theme
+
+        style = self.style
+        family = style.font_family
+        typeface = get_typeface(
+            candidate_files=None,
+            family_candidates=(family,) + fallbacks if family else fallbacks,
+            pkg_font_dir=None,
+            fallback_to_default=True,
+            weight=weight,
+        )
+        rgba = resolve_color_to_rgba(style.color, default="#000000", theme=Theme.of(self))
+        paint = make_paint(color=rgba_to_skia_color(rgba), style="fill", aa=True)
+        look = _Look(generation, explicit_style, fallbacks, typeface, paint)
+        self._look = look
+        return look
+
+    def _build_paint_cache(
+        self, key: tuple, tf: Optional[object], txt: str, avail_w: float, font_size: float, tracking: float
+    ) -> _PaintCache:
+        """Break ``txt`` into lines and build one run per line."""
+
+        def measure_text_w(text_value: str) -> float:
+            return float(measure_text_width(tf, font_size, str(text_value), tracking))
+
+        laid, overflowed = self._layout_lines(txt, avail_w, measure_text_w)
+        lines = self._apply_ellipsis(laid, overflowed, avail_w, measure_text_w)
+        font = make_font(tf, font_size)
+        if not lines or font is None:
+            return _PaintCache(key, tf, [], 0.0, 0.0)
+
+        runs = [
+            _Run(make_text_blob(line, font, tracking), *measure_text_ink_bounds(tf, font_size, line, tracking))
+            for line in lines
+        ]
+        ascent, descent = self._font_vmetrics(font, font_size)
+        return _PaintCache(key, tf, runs, ascent, descent)
+
+    @staticmethod
+    def _aligned_x(run: _Run, cx: int, cw: int, alignment: str) -> float:
+        ink_w = max(0.0, run.ink_right - run.ink_left)
         if alignment == "center":
-            tx = float(cx) + (cw - ink_w) / 2 - float(ink_left)
-        elif alignment == "end":
-            tx = float(cx) + cw - ink_w - float(ink_left)
-        else:
-            tx = float(cx) - float(ink_left)
-        ty = float(cy) + (ch - ink_h) / 2 - float(ink_top)
-        canvas.drawTextBlob(tp, tx, ty, paint)
+            return float(cx) + (cw - ink_w) / 2 - run.ink_left
+        if alignment == "end":
+            return float(cx) + cw - ink_w - run.ink_left
+        return float(cx) - run.ink_left
 
-    def _paint_multi_line(
-        self, canvas, font, tf, font_size, tracking, lines, cx, cy, cw, ch, alignment, paint
-    ) -> None:
+    def _paint_single_line(self, canvas, run: _Run, cx, cy, cw, ch, alignment, paint) -> None:
+        """Draw one line using tight ink bounds for centering (parity path)."""
+        if run.blob is None:
+            return
+        ink_h = max(0.0, run.ink_bottom - run.ink_top)
+        ty = float(cy) + (ch - ink_h) / 2 - run.ink_top
+        canvas.drawTextBlob(run.blob, self._aligned_x(run, cx, cw, alignment), ty, paint)
+
+    def _paint_multi_line(self, canvas, cache: _PaintCache, cx, cy, cw, ch, alignment, paint) -> None:
         """Draw stacked lines on consistent baselines derived from font metrics."""
         line_h = float(self.type_scale.line_height)
-        ascent, descent = self._font_vmetrics(font, font_size)
-        n = len(lines)
-        block_h = line_h * n
+        block_h = line_h * len(cache.runs)
         top = float(cy) + (ch - block_h) / 2.0
         # Vertically center the glyph box within each line slot.
-        baseline_offset = (line_h - (ascent + descent)) / 2.0 + ascent
+        baseline_offset = (line_h - (cache.ascent + cache.descent)) / 2.0 + cache.ascent
 
-        for i, text in enumerate(lines):
-            tp = make_text_blob(text, font, tracking)
-            if tp is None:
+        for i, run in enumerate(cache.runs):
+            if run.blob is None:
                 continue
-            ink_left, _t, ink_right, _b = measure_text_ink_bounds(tf, font_size, text, tracking)
-            ink_w = max(0.0, float(ink_right) - float(ink_left))
-            if alignment == "center":
-                tx = float(cx) + (cw - ink_w) / 2 - float(ink_left)
-            elif alignment == "end":
-                tx = float(cx) + cw - ink_w - float(ink_left)
-            else:
-                tx = float(cx) - float(ink_left)
             ty = top + i * line_h + baseline_offset
-            canvas.drawTextBlob(tp, tx, ty, paint)
+            canvas.drawTextBlob(run.blob, self._aligned_x(run, cx, cw, alignment), ty, paint)
 
     def _resolve_label(self) -> str:
         lbl = self.label
@@ -502,8 +547,7 @@ class TextBase(Widget):
             def _cb(*_args, **_kwargs):
                 notify_binding_probe(self)
                 try:
-                    self._paint_cache_key = None
-                    self._paint_cache_lines = None
+                    self._paint_cache = None
                     # Label changes affect measured width/height, so request
                     # layout when possible and always schedule a redraw.
                     if self.needs_layout:
@@ -538,6 +582,6 @@ class TextBase(Widget):
                 exception_once(_logger, "text_label_unsub_dispose_exc", "Text label unsubscribe dispose failed")
             self._label_unsub = None
 
-        self._paint_cache_key = None
-        self._paint_cache_lines = None
+        self._paint_cache = None
+        self._look = None
         super().on_unmount()
