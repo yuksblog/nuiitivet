@@ -18,12 +18,12 @@ delegate behavior.
 from __future__ import annotations
 
 import logging
-import threading
 import time
 from typing import ClassVar, Optional, Tuple
 
 from nuiitivet.animation import Animatable, LinearMotion
 from nuiitivet.input.pointer import PointerEvent
+from nuiitivet.observable import runtime
 from nuiitivet.scrolling import ScrollbarBehavior, ScrollController, ScrollDirection, ScrollbarStyle, ScrollbarThemeData
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.colors.utils import apply_alpha_to_rgba
@@ -55,7 +55,7 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
     _direction: ClassVar[ScrollDirection]
 
     _offset_unsubscribe: Optional[object]
-    _hide_timer: Optional[threading.Timer]
+    _hide_armed: bool
     _visibility_unsubscribe: Optional[object]
 
     def __init__(
@@ -108,7 +108,7 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
         self._pressed = False
         self._last_interaction = 0.0
         self._offset_unsubscribe = None
-        self._hide_timer = None
+        self._hide_armed = False
         initial_visibility = 1.0
         motion = LinearMotion(duration=self.fade_duration) if self.fade_duration > 0.0 else None
         self._visibility = Animatable(initial_visibility, motion=motion)
@@ -156,20 +156,11 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
         try:
             now = time.time()
             self._last_interaction = now
-            try:
-                if self._hide_timer is not None:
-                    try:
-                        self._hide_timer.cancel()
-                    except Exception:
-                        exception_once(logger, "scrollbar_hide_timer_cancel_exc", "Hide timer cancel raised")
-                    self._hide_timer = None
-            except Exception:
-                exception_once(logger, "scrollbar_hide_timer_cleanup_exc", "Hide timer cleanup raised")
+            self._cancel_hide_timer()
 
             if self.auto_hide:
-                self._cancel_hide_timer()
                 self._visibility.target = 1.0
-                self._start_hide_fallback_timer()
+                self._start_hide_timer()
 
             if not skip_invalidate:
                 self.invalidate()
@@ -359,7 +350,8 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
         self._cancel_hide_timer()
         super().on_unmount()
 
-    def _on_hide_timer_thread(self) -> None:
+    def _on_hide_timer(self, dt: float) -> None:
+        self._hide_armed = False
         try:
             self._visibility.target = 0.0
             self.invalidate(immediate=True)
@@ -367,36 +359,24 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
             exception_once(
                 logger, "scrollbar_hide_timer_visibility_exc", "Scrollbar hide timer visibility update raised"
             )
-        try:
-            timer = getattr(self, "_hide_timer", None)
-            if timer is not None:
-                try:
-                    timer.cancel()
-                except Exception:
-                    exception_once(logger, "scrollbar_hide_timer_cancel_exc", "Hide timer cancel raised")
-                self._hide_timer = None
-        except Exception:
-            exception_once(logger, "scrollbar_hide_timer_cleanup_exc", "Hide timer cleanup raised")
 
-    def _start_hide_fallback_timer(self) -> None:
+    def _start_hide_timer(self) -> None:
+        # On the clock, not a thread timer: a browser has no thread to start,
+        # and the callback changes the widget, which belongs to the UI thread.
         try:
-            t = threading.Timer(self.hide_delay, self._on_hide_timer_thread)
-            t.daemon = True
-            t.start()
-            self._hide_timer = t
+            runtime.clock.schedule_once(self._on_hide_timer, self.hide_delay)
+            self._hide_armed = True
         except Exception:
             exception_once(logger, "scrollbar_start_hide_timer_exc", "Scrollbar hide timer start raised")
-            self._hide_timer = None
 
     def _cancel_hide_timer(self) -> None:
-        timer = getattr(self, "_hide_timer", None)
-        if timer is None:
+        if not self._hide_armed:
             return
+        self._hide_armed = False
         try:
-            timer.cancel()
+            runtime.clock.unschedule(self._on_hide_timer)
         except Exception:
             exception_once(logger, "scrollbar_hide_timer_cancel_exc", "Hide timer cancel raised")
-        self._hide_timer = None
 
     # --- drawing ---
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
