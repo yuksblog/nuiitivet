@@ -17,6 +17,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.common.target import is_web
 from nuiitivet.platform.tray import TrayIcon
 from nuiitivet.theme.manager import ThemeManager
 from nuiitivet.theme.plain_theme import PlainTheme
@@ -422,9 +423,19 @@ class App:
         factory to the active dev session and returns; the dev runner then
         drives the real event loop, file watching, and reloads. In production
         (no dev session) it blocks on the pyglet loop as usual.
+
+        In a browser the method starts the frame loop and returns as well: the
+        browser's event loop drives the app, and ``draw_fps`` and ``renderer``
+        have no effect.
         """
 
         resolved_renderer = parse_renderer_mode(renderer)
+
+        if is_web():
+            from ..backends.web.runner import run_app as run_web_app
+
+            run_web_app(self)
+            return
 
         # Hot-reload handoff: if the dev runner installed a session, give it the
         # App + factory and return without blocking. See nuiitivet.dev.
