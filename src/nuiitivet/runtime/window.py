@@ -2297,6 +2297,18 @@ class Window:
         # first frame after reappearing repaints everything that changed.
         if not self._visible_obs.value:
             return
+        self._flush_frame_queues()
+        try:
+            window.switch_to()
+            window.dispatch_event("on_draw")
+            window.flip()
+        except RendererError:
+            raise
+        except Exception:
+            exception_once(logger, "app_window_draw_flip_exc", "Window draw/flip raised")
+
+    def _flush_frame_queues(self) -> None:
+        """Run what is queued for the start of a frame: size callbacks, then builds."""
         # Size callbacks queued by the previous frame's layout run first, so the
         # Observables they write are picked up by the build flush below and land
         # in this frame. Between frames is the only safe point for them: they are
@@ -2321,14 +2333,6 @@ class Window:
             flush_scope_recompositions()
         except Exception:
             exception_once(logger, "app_flush_scope_recompositions_post_exc", "flush_scope_recompositions failed")
-        try:
-            window.switch_to()
-            window.dispatch_event("on_draw")
-            window.flip()
-        except RendererError:
-            raise
-        except Exception:
-            exception_once(logger, "app_window_draw_flip_exc", "Window draw/flip raised")
 
     def _rebuild_content_root(self, new_factory: "RootFactory | None" = None) -> _ContentRoot:
         """Rebuild the content subtree from the root factory.

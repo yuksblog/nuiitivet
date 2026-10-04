@@ -44,10 +44,10 @@ def test_scrollbar_auto_hide_starts_animation_on_scroll() -> None:
     assert scrollbar._visibility.target == 1.0
 
     controller.axis_state(ScrollDirection.VERTICAL).offset.value = 10.0
-    assert scrollbar._hide_timer is not None
+    assert scrollbar._hide_armed
     assert scrollbar._visibility.target == 1.0
 
-    scrollbar._on_hide_timer_thread()
+    scrollbar._on_hide_timer(0.2)
     assert scrollbar._visibility.target == 0.0
 
     scrollbar.unmount()

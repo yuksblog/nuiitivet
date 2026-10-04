@@ -87,11 +87,15 @@ module = ["mcp.*"]
 ignore_missing_imports = true
 module = ["jeepney.*"]
 
+[[tool.mypy.overrides]]
+ignore_missing_imports = true
+module = ["js", "pyodide.*"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-"nuiitivet" = ["material/symbols/*"]
+"nuiitivet" = ["material/symbols/*", "backends/web/static/*"]
 
 [build-system]
 build-backend = "setuptools.build_meta"
