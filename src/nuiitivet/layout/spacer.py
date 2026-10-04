@@ -9,6 +9,7 @@ from typing import Optional, Tuple
 from ..rendering.padding import PaddingLike
 from ..rendering.sizing import SizingLike
 from ..widgeting.widget import Widget
+from ..widgeting.paint_replay import replay_safe
 
 
 class Spacer(Widget):
@@ -54,6 +55,7 @@ class Spacer(Widget):
 
         return (pref_w, pref_h)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         # record last rect (invisible widget)
         self.set_last_rect(x, y, width, height)

@@ -827,10 +827,11 @@ class RadioButton(Toggleable, InteractiveWidget):
             total_h = min(int(total_h), int(max_height))
         return (int(total_w), int(total_h))
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Paint radio button with MD3-like visuals."""
         try:
-            from nuiitivet.rendering.skia import draw_oval, make_paint, make_rect, skcolor
+            from nuiitivet.rendering.skia import draw_oval, draw_ring, make_paint, make_rect, skcolor
             from nuiitivet.material.theme.color_role import ColorRole
             from nuiitivet.material.theme.theme_data import MaterialThemeData
             from nuiitivet.theme.theme import Theme
@@ -881,15 +882,10 @@ class RadioButton(Toggleable, InteractiveWidget):
                 if layer_rect is not None and layer_paint is not None:
                     draw_oval(canvas, layer_rect, layer_paint)
 
-            ring_paint = make_paint(
-                color=skcolor(stroke_hex, stroke_alpha),
-                style="stroke",
-                stroke_width=stroke_width,
-                aa=True,
-            )
+            ring_paint = make_paint(color=skcolor(stroke_hex, stroke_alpha), style="fill", aa=True)
             ring_rect = make_rect(icon_x, icon_y, icon_diameter, icon_diameter)
             if ring_rect is not None and ring_paint is not None:
-                draw_oval(canvas, ring_rect, ring_paint)
+                draw_ring(canvas, ring_rect, stroke_width, ring_paint)
 
             progress = self._get_selection_progress()
             if progress > 1e-6:
@@ -919,6 +915,7 @@ class RadioButton(Toggleable, InteractiveWidget):
         except Exception:
             exception_once(_logger, "radio_button_paint_exc", "RadioButton paint raised")
 
+    @replay_safe
     def draw_focus_indicator(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Draw the standard focus ring around the state-layer circle."""
         content_x, content_y, content_w, content_h = self.content_rect(x, y, width, height)

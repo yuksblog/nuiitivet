@@ -264,6 +264,11 @@ for the caret's rect each time it places its candidates. Publishing that rect
 on every paint was rejected: a scroll moves the caret on screen without
 painting the field.
 
+A row is replayed at another position than it was recorded at, and Skia does
+not rasterise every shape the same at every position. A stroked oval differs
+on its edge pixels at a device scale above 1. A filled shape does not, so a
+`RadioButton` fills its ring between two ovals.
+
 Three more rows are painted directly: one larger than the viewport, since
 recording it would walk more than the clip shows; one that changed on more
 than two consecutive paints, since recording a row every frame costs more

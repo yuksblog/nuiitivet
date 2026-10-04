@@ -11,6 +11,7 @@ from ..rendering.sizing import SizingLike
 from ..widgeting.callbacks import WillPopCallback
 from ..widgeting.modifier import ModifierElement
 from ..widgeting.widget import Widget
+from nuiitivet.widgeting.paint_replay import replay_safe
 
 _logger = logging.getLogger(__name__)
 
@@ -101,6 +102,7 @@ class WillPopScope(Widget):
         except Exception:
             exception_once(_logger, "will_pop_child_layout_exc", "Child layout/set_layout_rect raised")
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
         child = self._child()

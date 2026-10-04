@@ -11,6 +11,7 @@ from ..rendering.sizing import Sizing, SizingLike, parse_sizing
 from .container import Container
 from .gap import normalize_gap
 from .layout_utils import expand_layout_children, paint_laid_out_children
+from nuiitivet.widgeting.paint_replay import replay_safe
 
 logger = logging.getLogger(__name__)
 
@@ -302,6 +303,7 @@ class Grid(Widget):
             placement.child.layout(rect_w, rect_h)
             placement.child.set_layout_rect(rect_x, rect_y, rect_w, rect_h)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         self.set_last_rect(x, y, width, height)
 

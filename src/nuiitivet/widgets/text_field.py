@@ -18,6 +18,7 @@ from nuiitivet.widgets.input_filter import InputFilterLike
 from nuiitivet.widgets.interaction import InteractionHostMixin, FocusSource
 from nuiitivet.widgets.editable_text import EditableText
 from nuiitivet.platform import get_system_clipboard
+from nuiitivet.widgeting.paint_replay import replay_safe
 
 _logger = logging.getLogger(__name__)
 
@@ -159,6 +160,7 @@ class TextFieldBase(InteractionHostMixin, ComposableWidget):
         """Build the widget tree."""
         return self
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         """Paint the text field."""
         if canvas is None:

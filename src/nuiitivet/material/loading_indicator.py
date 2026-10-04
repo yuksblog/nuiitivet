@@ -23,6 +23,7 @@ from .shapes import (
     sample_shape_points,
 )
 from .styles.loading_indicator_style import LoadingIndicatorStyle
+from nuiitivet.widgeting.paint_replay import replay_safe
 
 logger = logging.getLogger(__name__)
 
@@ -220,6 +221,7 @@ class LoadingIndicator(Widget):
             self._path = make_path()
         return self._path
 
+    @replay_safe
     def paint(self, canvas: Any, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
         if canvas is None:

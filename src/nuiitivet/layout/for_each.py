@@ -19,6 +19,7 @@ from ..widgeting.widget import ComposableWidget, Widget
 from nuiitivet.observable import ObservableProtocol
 from nuiitivet.common.logging_once import exception_once
 from .spacer import Spacer
+from nuiitivet.widgeting.paint_replay import replay_safe
 
 logger = logging.getLogger(__name__)
 
@@ -122,6 +123,7 @@ class ForEach(ComposableWidget):
         # ForEach itself is not rendered; its children are lifted into the parent.
         return (0, 0)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         # ForEach is a provider; actual painting happens in parent layouts.
         return None

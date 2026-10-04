@@ -8,6 +8,7 @@ from nuiitivet.layout.measure import preferred_size as measure_preferred_size
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgeting.modifier import ModifierElement
 from nuiitivet.widgeting.widget import Widget
+from nuiitivet.widgeting.paint_replay import replay_safe
 
 
 class StickBox(Widget):
@@ -54,6 +55,7 @@ class StickBox(Widget):
         py = int(round(ty - ay + dy))
         self._sticker_child.set_layout_rect(px, py, sticker_w, sticker_h)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
 
