@@ -48,11 +48,6 @@ def _size_min_width(size: ButtonSize) -> int:
     return max(64, h)
 
 
-def _size_min_height(size: ButtonSize) -> int:
-    """Return the minimum touch-target height (>= 48 dp per MD3)."""
-    return max(48, BUTTON_SIZE_TOKENS[size]["container_height"])
-
-
 @dataclass(frozen=True)
 class ButtonStyle:
     """Immutable style for the :class:`Button` widget (M3-compliant).
@@ -78,8 +73,10 @@ class ButtonStyle:
     #: space. Distinct from ``Widget.padding``, which sits outside the container.
     content_insets: PaddingLike = (16, 0, 16, 0)
     spacing: int = 8
-    min_width: int = 64
-    min_height: int = 48
+    #: ``None`` on either minimum is the container height, raised to the 48dp
+    #: touch target under a form factor that reserves one.
+    min_width: Optional[int] = 64
+    min_height: Optional[int] = None
     label_font_size: int = 14
     icon_size: int = 20
 
@@ -149,7 +146,6 @@ class ButtonStyle:
             content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
-            min_height=_size_min_height(size),
             label_font_size=t["label_font_size"],
             icon_size=t["icon_size"],
             elevation=0,
@@ -172,7 +168,6 @@ class ButtonStyle:
             content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
-            min_height=_size_min_height(size),
             label_font_size=t["label_font_size"],
             icon_size=t["icon_size"],
             elevation=0,
@@ -193,8 +188,7 @@ class ButtonStyle:
             container_height=t["container_height"],
             content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
-            min_width=max(48, t["container_height"]),
-            min_height=_size_min_height(size),
+            min_width=None,
             label_font_size=t["label_font_size"],
             icon_size=t["icon_size"],
             elevation=0,
@@ -216,7 +210,6 @@ class ButtonStyle:
             content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
-            min_height=_size_min_height(size),
             label_font_size=t["label_font_size"],
             icon_size=t["icon_size"],
             elevation=1,
@@ -238,7 +231,6 @@ class ButtonStyle:
             content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
-            min_height=_size_min_height(size),
             label_font_size=t["label_font_size"],
             icon_size=t["icon_size"],
             elevation=0,
@@ -265,8 +257,7 @@ class IconButtonStyle:
             pressed_corner_radius=t["pressed_corner_radius"],
             container_height=h,
             content_insets=0,
-            min_width=max(48, h),
-            min_height=max(48, h),
+            min_width=None,
             icon_size=t["icon_size"],
         )
 

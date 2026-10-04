@@ -35,6 +35,7 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.platform import get_system_clipboard
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.theme.color_role import ColorRole
+from nuiitivet.material.theme.form_factor import DEFAULT_FORM_FACTOR, FormFactor, density_shrink, form_factor_of
 from nuiitivet.animation import Animatable, RgbaTupleConverter
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS
 from nuiitivet.widgeting.paint_replay import replay_safe
@@ -45,6 +46,10 @@ if TYPE_CHECKING:
 
 
 _logger = logging.getLogger(__name__)
+
+_DENSITY_FLOOR = -5
+# A filled field shorter than this has no room for a floating label.
+_MIN_FLOATING_LABEL_HEIGHT = 52
 
 _Symbol: Optional[Type["Symbol"]] = None
 try:
@@ -271,6 +276,7 @@ class TextField(InteractiveWidget):
         self.is_error = initial_is_error
 
         self._user_style = style
+        self._dense_style: Optional[Tuple[TextFieldStyle, int, TextFieldStyle]] = None
 
         self._on_change = on_change
         self._on_submit = on_submit
@@ -589,15 +595,33 @@ class TextField(InteractiveWidget):
 
     @property
     def style(self) -> TextFieldStyle:
-        if self._user_style is not None:
-            return self._user_style
-
-        from nuiitivet.material.styles.text_field_style import TextFieldStyle
-
         theme = self._resolvable_theme()
-        if theme is None:
-            return TextFieldStyle.filled()
-        return TextFieldStyle.from_theme(theme)
+        if self._user_style is not None:
+            base = self._user_style
+        elif theme is None:
+            base = TextFieldStyle.filled()
+        else:
+            base = TextFieldStyle.from_theme(theme)
+
+        form_factor = FormFactor.of(DEFAULT_FORM_FACTOR) if theme is None else form_factor_of(self)
+        shrink = density_shrink(base.density, form_factor.text_field, _DENSITY_FLOOR)
+        if shrink == 0:
+            return base
+        memo = self._dense_style
+        if memo is None or memo[0] is not base or memo[1] != shrink:
+            left, top, right, bottom = base.content_insets
+            cut = shrink // 2
+            dense = base.copy_with(
+                container_height=base.container_height - shrink,
+                content_insets=(left, top - cut, right, bottom - cut),
+                density=0,
+            )
+            memo = self._dense_style = (base, shrink, dense)
+        return memo[2]
+
+    def _label_is_inline(self, style: TextFieldStyle) -> bool:
+        """Whether the label stays in the text row: a filled field too short for a floating label."""
+        return bool(self.label) and style.mode == "filled" and style.container_height < _MIN_FLOATING_LABEL_HEIGHT
 
     @property
     def value(self) -> str:
@@ -758,7 +782,7 @@ class TextField(InteractiveWidget):
         # the full content area; this offset only affects the input text and
         # populated label position.
         self._label_band = 0
-        if self.label and style.mode == "filled":
+        if self.label and style.mode == "filled" and not self._label_is_inline(style):
             self._label_band = 16
             pt = pt + self._label_band
 
@@ -850,7 +874,7 @@ class TextField(InteractiveWidget):
     def _update_label_state(self):
         has_text = bool(self._editable.value)
         is_focused = self._editable.state.focused
-        should_float = has_text or is_focused
+        should_float = (has_text or is_focused) and not self._label_is_inline(self.style)
 
         target = 1.0 if should_float else 0.0
         self._label_progress.target = target
@@ -1048,6 +1072,10 @@ class TextField(InteractiveWidget):
             return
 
         label_progress = self._label_progress.value
+        if self._label_is_inline(self.style):
+            if self._editable.value:
+                return
+            label_progress = 0.0
 
         start_size = 16
         end_size = 12

@@ -76,6 +76,7 @@ if TYPE_CHECKING:
     from .intents import BasicDialogIntent
     from .theme.color_role import ColorRole
     from .theme.elevation import elevation_shadows
+    from .theme.form_factor import FormFactor
     from .theme.scheme_variant import SchemeVariant
     from .text import Text
     from .navigator import MaterialNavigator as Navigator
@@ -187,6 +188,7 @@ __all__ = [
     "BasicDialogIntent",
     "ColorRole",
     "elevation_shadows",
+    "FormFactor",
     "SchemeVariant",
     "NavigationRail",
     "RailItem",
@@ -313,6 +315,7 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "BasicDialogIntent": ("intents", "BasicDialogIntent"),
     "ColorRole": ("theme.color_role", "ColorRole"),
     "elevation_shadows": ("theme.elevation", "elevation_shadows"),
+    "FormFactor": ("theme.form_factor", "FormFactor"),
     "SchemeVariant": ("theme.scheme_variant", "SchemeVariant"),
     "NavigationRail": ("navigation_rail", "NavigationRail"),
     "RailItem": ("navigation_rail", "RailItem"),

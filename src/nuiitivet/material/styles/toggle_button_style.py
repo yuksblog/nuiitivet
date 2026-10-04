@@ -17,7 +17,7 @@ from dataclasses import dataclass, replace
 from typing import Optional, TYPE_CHECKING
 
 from .button_size import BUTTON_SIZE_TOKENS, ButtonSize
-from .button_style import ButtonStyle, PaddingLike, _size_content_insets, _size_min_height, _size_min_width
+from .button_style import ButtonStyle, PaddingLike, _size_content_insets, _size_min_width
 from ..theme.color_role import ColorRole
 from nuiitivet.theme.types import ColorSpec
 
@@ -47,8 +47,8 @@ class ToggleButtonStyle:
     pressed_corner_radius: Optional[int] = 8
     content_insets: PaddingLike = (16, 0, 16, 0)
     spacing: int = 8
-    min_width: int = 64
-    min_height: int = 48
+    min_width: Optional[int] = 64
+    min_height: Optional[int] = None
     label_font_size: int = 14
     icon_size: int = 20
     border_width: float = 0.0
@@ -131,7 +131,6 @@ class ToggleButtonStyle:
             content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
-            min_height=_size_min_height(size),
             label_font_size=t["label_font_size"],
             icon_size=t["icon_size"],
             border_width=0.0,
@@ -160,7 +159,6 @@ class ToggleButtonStyle:
             content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
-            min_height=_size_min_height(size),
             label_font_size=t["label_font_size"],
             icon_size=t["icon_size"],
             border_width=t["outline_width"],
@@ -189,7 +187,6 @@ class ToggleButtonStyle:
             content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
-            min_height=_size_min_height(size),
             label_font_size=t["label_font_size"],
             icon_size=t["icon_size"],
             border_width=0.0,
@@ -218,7 +215,6 @@ class ToggleButtonStyle:
             content_insets=_size_content_insets(size),
             spacing=t["icon_label_space"],
             min_width=_size_min_width(size),
-            min_height=_size_min_height(size),
             label_font_size=t["label_font_size"],
             icon_size=t["icon_size"],
             border_width=0.0,

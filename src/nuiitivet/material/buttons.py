@@ -32,6 +32,7 @@ from nuiitivet.material.styles.button_style import ButtonStyle, IconButtonStyle,
 from nuiitivet.material.styles.button_size import EXTENDED_FAB_SIZE_TOKENS, FabSize
 from nuiitivet.material.styles.fab_style import FabStyle
 from nuiitivet.material.styles.toggle_button_style import ToggleButtonStyle
+from nuiitivet.material.theme.form_factor import min_extent
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.theme.dependency import theme_generation
@@ -752,8 +753,9 @@ class MaterialButtonBase(InteractiveWidget):
         min_h = 0
         try:
             style = self.style
-            min_w = int(getattr(style, "min_width", 0) or 0)
-            min_h = int(getattr(style, "min_height", 0) or 0)
+            container_h = style.container_height
+            min_w = min_extent(style.min_width, container_h, self)
+            min_h = min_extent(style.min_height, container_h, self)
         except Exception as e:
             exception_once(
                 logger,

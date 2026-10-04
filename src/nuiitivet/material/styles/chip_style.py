@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.theme.types import ColorSpec
@@ -25,8 +25,9 @@ class ChipStyle:
         container_height: Visual container height in pixels.
         content_insets: Insets from the container edge to the content (left, top, right, bottom).
         spacing: Gap between chip content items.
-        min_width: Minimum chip width.
-        min_height: Minimum touch target height.
+        min_width: Minimum chip width. ``None`` is the container height, raised to
+            the 48dp touch target under a form factor that reserves one.
+        min_height: Minimum chip height. ``None`` behaves as for ``min_width``.
         state_layer_color: Overlay color for hover/press/drag states.
         hover_alpha: State layer opacity for hover.
         pressed_alpha: State layer opacity for pressed.
@@ -45,8 +46,8 @@ class ChipStyle:
     container_height: int = 32
     content_insets: tuple[int, int, int, int] = (8, 0, 8, 0)
     spacing: int = 8
-    min_width: int = 48
-    min_height: int = 48
+    min_width: Optional[int] = None
+    min_height: Optional[int] = None
 
     state_layer_color: ColorSpec = ColorRole.ON_SURFACE
     hover_alpha: float = 0.08

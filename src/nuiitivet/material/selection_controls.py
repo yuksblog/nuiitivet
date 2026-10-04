@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from nuiitivet.widgeting.paint_replay import replay_safe
 import logging
+import math
 from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional, Tuple, Union, cast
 
 from nuiitivet.rendering.padding import PaddingLike
@@ -34,6 +35,7 @@ from nuiitivet.widgets.interaction import FocusNode, FocusNodePolicy, FocusScope
 from nuiitivet.widgets.toggleable import Toggleable
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS, EXPRESSIVE_DEFAULT_SPATIAL
+from nuiitivet.material.theme.form_factor import form_factor_of
 
 if TYPE_CHECKING:
     from nuiitivet.theme.theme import Theme
@@ -51,6 +53,21 @@ def _scale_alpha(color: RGBA, factor: float) -> RGBA:
     """Return `color` with its alpha multiplied by `factor` (0.0..1.0)."""
     r, g, b, a = color
     return (r, g, b, max(0, min(255, int(round(a * factor)))))
+
+
+def _box_size(style: Any, context: Any) -> int:
+    """Return a control's layout box: the touch target, or the state layer where none is reserved."""
+    target = int(style.default_touch_target)
+    if form_factor_of(context).touch_targets:
+        return target
+    return int(round(target * style.state_layer_ratio))
+
+
+def _size_basis(style: Any, context: Any, box: int) -> int:
+    """Return the touch-target size whose proportions a control laid out in ``box`` takes."""
+    if form_factor_of(context).touch_targets:
+        return int(box)
+    return int(round(box / style.state_layer_ratio))
 
 
 class _CheckboxLook(NamedTuple):
@@ -145,15 +162,6 @@ class Checkbox(Toggleable, InteractiveWidget):
         # Store style (use provided or get from theme lazily)
         self._style = style
 
-        # Touch-target size is style-driven, not a constructor parameter: MD3
-        # fixes the selection-control target at 48dp (SIZE_POLICY: MD3 fixes the
-        # axis -> style only). Sourced from the resolved style's
-        # ``default_touch_target``; the ``width_sizing``/``height_sizing``
-        # escape hatch on the base kernel still overrides it.
-        # Read from the argument, not ``self.style``: the theme is unreachable
-        # until the widget is attached.
-        touch_target = int(style.default_touch_target) if style is not None else 48
-
         final_padding = padding if padding is not None else 0
 
         # Initialize Toggleable
@@ -162,13 +170,10 @@ class Checkbox(Toggleable, InteractiveWidget):
             on_change=on_toggle,
             tristate=False,  # Checkbox does not cycle to indeterminate
             disabled=disabled,
-            width=touch_target,
-            height=touch_target,
             padding=final_padding,
             key=key,
         )
 
-        self._touch_target_size = touch_target
         self._look: ThemeKept[_CheckboxLook] = ThemeKept()
 
         initial_selection = 1.0 if self.value is True or self.value is None else 0.0
@@ -312,15 +317,9 @@ class Checkbox(Toggleable, InteractiveWidget):
         w_dim = self.width_sizing
         h_dim = self.height_sizing
 
-        if w_dim.kind == "fixed":
-            width = int(w_dim.value)
-        else:
-            width = self._touch_target_size
-
-        if h_dim.kind == "fixed":
-            height = int(h_dim.value)
-        else:
-            height = self._touch_target_size
+        box = _box_size(self.style, self)
+        width = int(w_dim.value) if w_dim.kind == "fixed" else box
+        height = int(h_dim.value) if h_dim.kind == "fixed" else box
 
         l, t, r, b = self.padding
         total_w = width + l + r
@@ -381,7 +380,7 @@ class Checkbox(Toggleable, InteractiveWidget):
         roles = mat.roles if mat is not None else {}
         outline, container, mark = self._resolve_box_colors(theme)
         return _CheckboxLook(
-            sizes=self.style.compute_sizes(touch_sz),
+            sizes=self.style.compute_sizes(_size_basis(self.style, self, touch_sz)),
             outline=rgba_to_skia_color(outline),
             container=container,
             mark=mark,
@@ -514,7 +513,8 @@ class Checkbox(Toggleable, InteractiveWidget):
             return
         cx = content_x + (content_w - touch_sz) // 2
         cy = content_y + (content_h - touch_sz) // 2
-        diameter = float(cast(float, self.style.compute_sizes(touch_sz)["state_layer_size"]))
+        sizes = self.style.compute_sizes(_size_basis(self.style, self, touch_sz))
+        diameter = float(cast(float, sizes["state_layer_size"]))
         ring_x = cx + (touch_sz - diameter) / 2.0
         ring_y = cy + (touch_sz - diameter) / 2.0
         self.draw_focus_ring(canvas, ring_x, ring_y, diameter, diameter, [diameter / 2.0] * 4)
@@ -717,11 +717,6 @@ class RadioButton(Toggleable, InteractiveWidget):
         self.option_value = value
         self._style = style
 
-        # Touch-target size is style-driven (MD3 fixes the axis -> style only).
-        # Read from the argument, not ``self.style``: the theme is unreachable
-        # until the widget is attached.
-        touch_target = int(style.default_touch_target) if style is not None else 48
-
         final_padding = padding if padding is not None else 0
 
         super().__init__(
@@ -729,13 +724,9 @@ class RadioButton(Toggleable, InteractiveWidget):
             on_change=None,
             tristate=False,
             disabled=disabled,
-            width=touch_target,
-            height=touch_target,
             padding=final_padding,
             key=key,
         )
-
-        self._touch_target_size = touch_target
 
         self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_EFFECTS)
         self.bind(self._state_layer_anim.subscribe(lambda _: self.invalidate()))
@@ -814,8 +805,9 @@ class RadioButton(Toggleable, InteractiveWidget):
         w_dim = self.width_sizing
         h_dim = self.height_sizing
 
-        width = int(w_dim.value) if w_dim.kind == "fixed" else self._touch_target_size
-        height = int(h_dim.value) if h_dim.kind == "fixed" else self._touch_target_size
+        box = _box_size(self.style, self)
+        width = int(w_dim.value) if w_dim.kind == "fixed" else box
+        height = int(h_dim.value) if h_dim.kind == "fixed" else box
 
         l, t, r, b = self.padding
         total_w = width + l + r
@@ -846,7 +838,7 @@ class RadioButton(Toggleable, InteractiveWidget):
 
             self.set_last_rect(x, y, width, height)
 
-            sizes = self.style.compute_sizes(touch_sz)
+            sizes = self.style.compute_sizes(_size_basis(self.style, self, touch_sz))
             icon_diameter = float(cast(float, sizes["icon_diameter"]))
             inner_dot = float(cast(float, sizes["inner_dot"]))
             stroke_width = float(cast(float, sizes["stroke_width"]))
@@ -924,7 +916,8 @@ class RadioButton(Toggleable, InteractiveWidget):
             return
         cx = content_x + (content_w - touch_sz) // 2
         cy = content_y + (content_h - touch_sz) // 2
-        diameter = float(cast(float, self.style.compute_sizes(touch_sz)["state_layer_size"]))
+        sizes = self.style.compute_sizes(_size_basis(self.style, self, touch_sz))
+        diameter = float(cast(float, sizes["state_layer_size"]))
         ring_x = cx + (touch_sz - diameter) / 2.0
         ring_y = cy + (touch_sz - diameter) / 2.0
         self.draw_focus_ring(canvas, ring_x, ring_y, diameter, diameter, [diameter / 2.0] * 4)
@@ -956,11 +949,6 @@ class Switch(Toggleable, InteractiveWidget):
         self._style = style
         self._on_change_bool = on_change
 
-        # Touch-target size is style-driven (MD3 fixes the axis -> style only).
-        # Read from the argument, not ``self.style``: the theme is unreachable
-        # until the widget is attached.
-        touch_target = int(style.default_touch_target) if style is not None else 48
-
         final_padding = padding if padding is not None else 0
 
         def _on_toggle(next_val: Optional[bool]) -> None:
@@ -974,13 +962,9 @@ class Switch(Toggleable, InteractiveWidget):
             on_change=_on_toggle,
             tristate=False,
             disabled=disabled,
-            width=touch_target,
-            height=touch_target,
             padding=final_padding,
             key=key,
         )
-
-        self._touch_target_size = touch_target
 
         self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_EFFECTS)
         self.bind(self._state_layer_anim.subscribe(lambda _: self.invalidate()))
@@ -1031,8 +1015,8 @@ class Switch(Toggleable, InteractiveWidget):
         w_dim = self.width_sizing
         h_dim = self.height_sizing
 
-        width = int(w_dim.value) if w_dim.kind == "fixed" else self._touch_target_size
-        height = int(h_dim.value) if h_dim.kind == "fixed" else self._touch_target_size
+        width = int(w_dim.value) if w_dim.kind == "fixed" else self._default_width()
+        height = int(h_dim.value) if h_dim.kind == "fixed" else _box_size(self.style, self)
 
         l, t, r, b = self.padding
         total_w = width + l + r
@@ -1044,6 +1028,18 @@ class Switch(Toggleable, InteractiveWidget):
             total_h = min(int(total_h), int(max_height))
         return (int(total_w), int(total_h))
 
+    def _track_width(self) -> float:
+        style = self.style
+        sizes = style.compute_sizes(_size_basis(style, self, _box_size(style, self)))
+        return float(cast(float, sizes["track_width"]))
+
+    def _default_width(self) -> int:
+        """Return the switch's own width: the touch target, or the whole track where none is reserved."""
+        box = _box_size(self.style, self)
+        if form_factor_of(self).touch_targets:
+            return box
+        return max(box, int(math.ceil(self._track_width())))
+
     def paint_outsets(self) -> Tuple[int, int, int, int]:
         """Extend the overflow allowance for the track's sideways overhang.
 
@@ -1051,12 +1047,9 @@ class Switch(Toggleable, InteractiveWidget):
         outside the track, so the base ring-only allowance would clip the
         ring's left and right edges.
         """
-        import math
-
         base = super().paint_outsets()
         try:
-            sizes = self.style.compute_sizes(self._touch_target_size)
-            track_overflow = (float(cast(float, sizes["track_width"])) - float(self._touch_target_size)) / 2.0
+            track_overflow = (self._track_width() - float(self._default_width())) / 2.0
         except Exception:
             track_overflow = 0.0
         if track_overflow <= 0:
@@ -1070,7 +1063,7 @@ class Switch(Toggleable, InteractiveWidget):
         from nuiitivet.theme.theme import Theme
 
         style = self.style
-        sizes = style.compute_sizes(touch_sz)
+        sizes = style.compute_sizes(_size_basis(style, self, touch_sz))
         mat = Theme.of(self).extension(MaterialThemeData)
         roles = mat.roles if mat is not None else {}
 
@@ -1195,7 +1188,7 @@ class Switch(Toggleable, InteractiveWidget):
         cx = content_x + (content_w - touch_sz) // 2
         cy = content_y + (content_h - touch_sz) // 2
 
-        sizes = self.style.compute_sizes(touch_sz)
+        sizes = self.style.compute_sizes(_size_basis(self.style, self, touch_sz))
         track_w = float(cast(float, sizes["track_width"]))
         track_h = float(cast(float, sizes["track_height"]))
 

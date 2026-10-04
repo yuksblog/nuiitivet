@@ -80,6 +80,7 @@ from nuiitivet.widgets.input_filter import InputFilterLike
 # it leaves TextField untouched; moving it to a shared module would be a
 # refactor of text_fields.py, which is out of scope here.
 from nuiitivet.material.text_fields import _build_text_field_icon
+from nuiitivet.material.theme.form_factor import DEFAULT_FORM_FACTOR, FormFactor, density_shrink, form_factor_of
 from nuiitivet.widgeting.paint_replay import replay_safe
 
 if TYPE_CHECKING:
@@ -89,6 +90,8 @@ if TYPE_CHECKING:
 
 
 _logger = logging.getLogger(__name__)
+
+_DENSITY_FLOOR = -4
 
 IconLike = Union["Symbol", str, ReadOnlyObservableProtocol["Symbol"], ReadOnlyObservableProtocol[str], None]
 
@@ -119,10 +122,10 @@ class _SearchBarCore(InteractiveWidget):
         style: Optional[SearchBarStyle] = None,
     ) -> None:
         self._user_style = style
+        self._dense_style: Optional[Tuple[SearchBarStyle, int, SearchBarStyle]] = None
         resolved = self.style
 
         super().__init__(
-            height=resolved.container_height,
             state_layer_color=resolved.state_layer_color,
             # The focus subject is the inner EditableText; mirroring it here
             # would ping-pong between two FocusNodes on pointer press. Same
@@ -197,13 +200,27 @@ class _SearchBarCore(InteractiveWidget):
     @property
     def style(self) -> SearchBarStyle:
         """Return the resolved search bar style."""
-        if self._user_style is not None:
-            return self._user_style
-
         theme = self._resolvable_theme()
-        if theme is None:
-            return SearchBarStyle()
-        return SearchBarStyle.from_theme(theme)
+        if self._user_style is not None:
+            base = self._user_style
+        elif theme is None:
+            base = SearchBarStyle()
+        else:
+            base = SearchBarStyle.from_theme(theme)
+
+        form_factor = FormFactor.of(DEFAULT_FORM_FACTOR) if theme is None else form_factor_of(self)
+        shrink = density_shrink(base.density, form_factor.search_bar, _DENSITY_FLOOR)
+        if shrink == 0:
+            return base
+        memo = self._dense_style
+        if memo is None or memo[0] is not base or memo[1] != shrink:
+            dense = base.copy_with(
+                container_height=base.container_height - shrink,
+                icon_target=base.icon_target - shrink,
+                density=0,
+            )
+            memo = self._dense_style = (base, shrink, dense)
+        return memo[2]
 
     # ------------------------------------------------------------------
     # Value / focus

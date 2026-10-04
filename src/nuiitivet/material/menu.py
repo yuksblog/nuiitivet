@@ -16,6 +16,7 @@ from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.styles.divider_style import DividerStyle
 from nuiitivet.material.styles.icon_style import IconStyle
 from nuiitivet.material.styles.menu_style import MenuStyle
+from nuiitivet.material.theme.form_factor import density_shrink, form_factor_of
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.material.symbols import Symbols
@@ -47,6 +48,9 @@ def _with_opacity(color: ColorSpec, opacity: float) -> ColorSpec:
         base, alpha = color
         return (cast(ColorBase, base), float(alpha) * opacity)
     return (cast(ColorBase, color), opacity)
+
+
+_DENSITY_FLOOR = -3
 
 
 class MenuDivider:
@@ -682,6 +686,10 @@ class Menu(InteractiveWidget):
             resolved = self._user_style
         else:
             resolved = MenuStyle.from_theme(Theme.of(self))
+        shrink = density_shrink(resolved.density, form_factor_of(self).menu, _DENSITY_FLOOR)
+        if shrink:
+            # ``density=0`` marks the step as applied: a submenu adopts this style.
+            resolved = resolved.copy_with(item_height=resolved.item_height - shrink, density=0)
         if resolved != self._applied_style:
             self._apply_menu_style(resolved)
         return resolved

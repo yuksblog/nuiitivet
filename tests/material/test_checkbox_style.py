@@ -88,4 +88,4 @@ def test_checkbox_touch_target_from_style():
         checked=False, style=CheckboxStyle(default_touch_target=40), padding=8, disabled=True
     )
     assert checkbox2.style is not None
-    assert checkbox2._touch_target_size == 40
+    assert checkbox2.preferred_size() == (40 + 16, 40 + 16)
