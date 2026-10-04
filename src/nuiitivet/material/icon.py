@@ -20,6 +20,7 @@ from nuiitivet.rendering.skia import (
 from nuiitivet.rendering.sizing import SizingLike, parse_sizing
 from nuiitivet.material.symbols import Symbol, Symbols
 from nuiitivet.observable import ReadOnlyObservableProtocol
+from nuiitivet.widgeting.paint_replay import replay_safe
 
 if TYPE_CHECKING:
     from nuiitivet.material.styles.icon_style import IconStyle
@@ -449,6 +450,7 @@ class Icon(IconBase):
             logger.exception("Icon get_typeface raised", exc_info=exc)
             return None
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         """Paint icon with padding support (M3準拠)."""
         cx, cy, cw, ch = self.content_rect(x, y, width, height)

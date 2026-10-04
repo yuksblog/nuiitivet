@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Any, List
+from contextlib import contextmanager
+from typing import Any, Iterator, List
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -14,14 +15,18 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.scroll_viewport import ScrollViewport
+from nuiitivet.material.navigation_rail import NavigationRail, RailItem
+from nuiitivet.material.search import SearchBar
 from nuiitivet.material.selection_controls import Checkbox
+from nuiitivet.material.slider import HorizontalSlider
 from nuiitivet.material.text import Text
+from nuiitivet.material.text_fields import TextField
 from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.observable import Observable
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.runtime import app_events
 from nuiitivet.scrolling import ScrollController, ScrollDirection
-from nuiitivet.testing import mount
+from nuiitivet.testing import AppHarness, mount
 from nuiitivet.widgeting.paint_replay import replay_safe
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.box import Box
@@ -267,3 +272,118 @@ def test_a_replayed_frame_equals_a_direct_paint(scale) -> None:
 
     assert len(set(direct)) > 5
     assert replayed == direct
+
+
+class _App:
+    """A scroll viewport as a window's content, painted by hand so a test chooses which frames exist."""
+
+    WIDTH = 300
+
+    def __init__(self, harness: AppHarness, viewport: ScrollViewport, controller: ScrollController) -> None:
+        self._harness = harness
+        self._viewport = viewport
+        self._controller = controller
+        self._canvas = _canvas(max(self.WIDTH, int(harness.size[1])))
+        self.window = harness.window
+
+    def frame(self) -> None:
+        rect = self._viewport.global_visual_rect
+        assert rect is not None
+        x, y, width, height = (int(v) for v in rect)
+        self._viewport.paint(self._canvas, x, y, width, height)
+
+    def scroll(self, offset: float) -> None:
+        self._controller.scroll_to(offset, axis=ScrollDirection.VERTICAL)
+        self._harness.settle()
+
+    def drag(self, start: tuple[float, float], end: tuple[float, float]) -> None:
+        self.window._dispatch_mouse_press(int(start[0]), int(start[1]), button=1)
+        self.window._dispatch_mouse_motion(int(end[0]), int(end[1]), buttons=1)
+        self.window._dispatch_mouse_release(int(end[0]), int(end[1]), button=1)
+        self._harness.settle()
+
+
+@contextmanager
+def _app(rows: List[Widget], *, height: int = 200) -> Iterator[_App]:
+    controller = ScrollController()
+    viewport = ScrollViewport(
+        child=Column(children=rows),
+        controller=controller,
+        direction=ScrollDirection.VERTICAL,
+        width=Sizing.fixed(_App.WIDTH),
+        height=Sizing.fixed(height),
+    )
+    with AppHarness(viewport, size=(_App.WIDTH, height), leak_check="off") as harness:
+        yield _App(harness, viewport, controller)
+
+
+def _filler() -> List[Widget]:
+    return [Row(padding=4, children=[Text(f"row {i}")]) for i in range(40)]
+
+
+@pytest.mark.parametrize(
+    "build",
+    [
+        lambda: HorizontalSlider(0.5, width=200),
+        lambda: TextField("text", label="Label", leading_icon="search", width=200),
+        lambda: SearchBar("query", width=280),
+        lambda: NavigationRail(children=[RailItem("home", "Home"), RailItem("search", "Search")]),
+    ],
+    ids=["slider", "text field", "search bar", "navigation rail"],
+)
+def test_a_row_holding_a_material_input_is_replayed(build) -> None:
+    row = Row(children=[build()])
+    with _app([row, *_filler()], height=400) as app:
+        app.frame()
+        app.frame()
+        picture = row._replay_picture
+        assert picture is not None
+
+        app.scroll(10)
+        app.frame()
+
+        assert row._replay_picture is picture
+
+
+def test_a_slider_in_a_replayed_row_drags_to_the_pointer_after_a_scroll() -> None:
+    slider = HorizontalSlider(0.5, width=200)
+    row = Row(children=[slider])
+    with _app([*_filler()[:2], row, *_filler()]) as app:
+        app.frame()
+        app.frame()
+        picture = row._replay_picture
+        assert picture is not None
+        # No frame after the scroll: the track is where layout puts it, painted or not.
+        app.scroll(20)
+
+        rect = slider.global_visual_rect
+        assert rect is not None
+        x, y, width, height = rect
+        app.drag((x + width * 0.75, y + height / 2), (x + width * 0.25, y + height / 2))
+
+        assert slider.value == pytest.approx(0.25, abs=0.03)
+
+
+def test_a_text_field_in_a_replayed_row_places_its_caret_after_a_scroll() -> None:
+    text = "hello world"
+    field = TextField(text, width=200)
+    editable = field._editable
+    row = Row(children=[field])
+    with _app([*_filler()[:2], row, *_filler()]) as app:
+        app.frame()
+        app.frame()
+        assert row._replay_picture is not None
+        rect = editable.global_visual_rect
+        assert rect is not None
+        x, y, width, height = rect
+        app.drag((x + width - 1, y + height / 2), (x + width - 1, y + height / 2))
+        assert editable._state_internal.value.selection.end == len(text)
+        before = app.window.ime.cursor_rect
+
+        app.scroll(20)
+
+        # The IME is told where the caret is now, not where it was last painted.
+        after = app.window.ime.cursor_rect
+        assert (after.x, after.y) == (before.x, before.y - 20)
+        app.drag((x + 1, y - 20 + height / 2), (x + 1, y - 20 + height / 2))
+        assert editable._state_internal.value.selection.end == 0
