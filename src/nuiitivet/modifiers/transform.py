@@ -359,7 +359,8 @@ def rotate(angle: AngleLike, origin: OriginLike = "center") -> TransformModifier
             coords. Defaults to "center".
 
     Note:
-        Rotation is paint-only. Layout and hit-testing remain untransformed.
+        Rotation is paint-only. The widget keeps the rect its layout gave it
+        and takes clicks there, not where it is painted.
     """
     return TransformModifier(rotation=angle, transform_origin=origin)
 
@@ -377,7 +378,8 @@ def scale(factor: ScaleLike, origin: OriginLike = "center") -> TransformModifier
             coords. Defaults to "center".
 
     Note:
-        Scale is paint-only. Layout and hit-testing remain untransformed.
+        Scale is paint-only. The widget keeps the rect its layout gave it
+        and takes clicks there, not where it is painted.
     """
     return TransformModifier(scale=factor, transform_origin=origin)
 
@@ -389,7 +391,8 @@ def translate(offset: TranslateLike) -> TransformModifier:
         offset: Translation offset as (dx, dy) tuple, or an observable.
 
     Note:
-        Translation is paint-only. Layout and hit-testing remain untransformed.
+        Translation is paint-only. The widget keeps the rect its layout gave it
+        and takes clicks there, not where it is painted.
     """
     return TransformModifier(translation=offset)
 
@@ -402,6 +405,7 @@ def opacity(value: OpacityLike) -> TransformModifier:
             or an observable providing opacity.
 
     Note:
-        Opacity is paint-only. Layout and hit-testing remain unchanged.
+        Opacity is paint-only. A widget at 0.0 still takes its space and its
+        clicks.
     """
     return TransformModifier(opacity=value)

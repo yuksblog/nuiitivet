@@ -1,6 +1,11 @@
 # Transform Modifiers
 
-Transform modifiers are used to apply paint-only transformations to Widgets, such as opacity, rotation, scaling, and translation. These transformations do not affect the layout or hit-testing of the Widget.
+Transform modifiers change how a Widget is painted: opacity, rotation, scaling, and translation. They are decoration. The Widget keeps the place and size its layout gave it.
+
+- Its neighbours do not move. A scaled or translated Widget paints over them.
+- It receives clicks where it was laid out, not where it is painted. A button translated by `(20, 20)` is still pressed at its original position.
+
+To move or resize a Widget, use layout: padding, alignment, or sizing.
 
 ## Opacity
 
