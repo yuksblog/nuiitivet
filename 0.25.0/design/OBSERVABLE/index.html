@@ -1,0 +1,4085 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A declarative, reactive Python UI framework.">
+      
+      
+        <meta name="author" content="yuksblog">
+      
+      
+        <link rel="canonical" href="https://yuksblog.github.io/nuiitivet/0.25.0/design/OBSERVABLE/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Observable and Reactive Programming - Nuiitivet Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../assets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#observable-and-reactive-programming" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Nuiitivet Documentation" class="md-header__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Nuiitivet Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Observable and Reactive Programming
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="purple"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="lime"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    yuksblog/nuiitivet
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../guide/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Guide
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../api/nuiitivet/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Changelog
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Nuiitivet Documentation" class="md-nav__button md-logo" aria-label="Nuiitivet Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Nuiitivet Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/yuksblog/nuiitivet" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    yuksblog/nuiitivet
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guide
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2" id="__nav_2_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guide
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/intuitive_grammar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The intuitive grammar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_3" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/layout/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Layout
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_3" id="__nav_2_3_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Layout
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/basics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/alignment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Alignment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/sizing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Sizing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/spacing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Spacing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/grid/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Grid
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/overflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/dynamic/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dynamic
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/adaptive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adaptive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/layout/extras/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extras
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_4" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/overlay/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overlay
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_4" id="__nav_2_4_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Overlay
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/overlay/primitives/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/overlay/dialogs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dialogs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/navigation/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Navigation
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Navigation
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/navigation/intent/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Intent-Based Navigation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/navigation/nested/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Nested Navigation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_6" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/window/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Window
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_6" id="__nav_2_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Window
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/chrome/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Window Chrome
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/size_position/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Size and Position
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/operations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/renderer_selection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Renderer Selection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/file_dialogs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    File Dialogs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/menu_bar/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Menu Bar
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/multi_window/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Multiple Windows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/notifications/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Desktop Notifications
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/window/tray_icon/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tray Icon
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/modifiers/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Modifiers
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/decoration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Decoration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/interaction/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interaction
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/pointer_participation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Pointer Participation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/transform/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Transform
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/popup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Popup
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/lifecycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Lifecycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/modifiers/others/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Others
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_8" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/state-management/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    State Management
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_8" id="__nav_2_8_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    State Management
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/getting_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/basic_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Basic API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/operators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Operators
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/practical_controls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Practical Controls
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/concurrency/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concurrency
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/thread_safety/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Thread Safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/async_state/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Async State
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/background_work/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Background Work
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/state-management/patterns_and_recipes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Patterns and Recipes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/design-system/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI Design System
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_9" id="__nav_2_9_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    UI Design System
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_app/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material App
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_overlay/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Overlay
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_theme/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Theme
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_navigator/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Navigator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/material_widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Widgets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/theme_extensions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Theme Extensions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/design-system/font_configuration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Font Configuration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_10" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/ai_pair_programming/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    AI pair-programming
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_10" id="__nav_2_10_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_10_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_10">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    AI pair-programming
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/ai_pair_programming/install_skills/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install the skills
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/ai_pair_programming/hot_reload/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Hot Reload
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/ai_pair_programming/on_screen_modes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The on-screen modes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/ai_pair_programming/dev_bridge_mcp/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dev Bridge MCP
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_11" >
+        
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../../guide/testing/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_11" id="__nav_2_11_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_11">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Testing
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/testing/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing a widget
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/testing/screens/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing a screen
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/testing/async/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing async flows
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/testing/clock/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testing outside the harness
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_12" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_12" id="__nav_2_12_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_12_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_12">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Advanced
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/advanced/interaction_region/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Interaction Region
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/advanced/geometry/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Geometry
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_13" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_13" id="__nav_2_13_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_13_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_13">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Packaging
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guide/packaging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Packaging
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/nuiitivet/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/material/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Material Components
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/modifiers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Modifiers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/widgets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Primitives
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://github.com/yuksblog/nuiitivet/releases" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Changelog
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-core-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Core Model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-threading-dispatch-by-default-opt-out-explicitly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Threading: Dispatch by Default, Opt Out Explicitly
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Operators
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Operators">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-two-kinds-deriving-and-wrapping" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Two Kinds: Deriving and Wrapping
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-the-wrapper-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. The Wrapper Contract
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. The Wrapper Contract">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-lifetime" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Lifetime
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-value-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Value Semantics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-dependency-tracking" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Dependency Tracking
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-dispatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Dispatch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#45-operator-parity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.5 Operator Parity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#46-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.6 Implementation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-the-wrapping-operators" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. The Wrapping Operators
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. The Wrapping Operators">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#51-timing-debounce-and-throttle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.1 Timing: debounce and throttle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#52-value-gating-filter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.2 Value Gating: filter
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#53-asynchronous-mapping-switch_map" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.3 Asynchronous Mapping: switch_map
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#54-accumulation-scan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5.4 Accumulation: scan
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-binding-an-observable-to-a-widget-the-value-cell" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Binding an Observable to a Widget: the Value Cell
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Binding an Observable to a Widget: the Value Cell">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-when-the-callers-type-is-not-the-widgets-input-type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 When the Caller's Type Is Not the Widget's Input Type
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-failure-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Failure Semantics
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/yuksblog/nuiitivet/edit/main/docs/design/OBSERVABLE.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="observable-and-reactive-programming">Observable and Reactive Programming<a class="headerlink" href="#observable-and-reactive-programming" title="Permanent link">&para;</a></h1>
+<p>An <code>Observable</code> is a value that notifies when it changes. It is ownerless: a
+domain model, a service or a widget holds one and it emits without a
+framework mixin or a hidden hook. The thread rules it lives under are in
+<a href="../CONCURRENCY_MODEL/">CONCURRENCY_MODEL.md</a>, and the paradigms it serves in
+<a href="../PROGRAMMING_PARADIMS/">PROGRAMMING_PARADIMS.md</a>.</p>
+<h2 id="1-core-model">1. Core Model<a class="headerlink" href="#1-core-model" title="Permanent link">&para;</a></h2>
+<p>A global <code>batch()</code> context, backed by <code>contextvars</code>, unifies batching. It
+nests, records the dirty <code>_ObservableValue</code>s and queues the computed
+observables so that each recomputes exactly once when the outermost batch
+exits, which makes an update glitch-free when several observables change in
+one handler. The UI layer wraps pointer, key and focus dispatch in <code>batch()</code>,
+so a widget author mutates state in a handler and gets the batch for free;
+business logic writes <code>with batch():</code> only where it clusters updates.</p>
+<p>Binding updates flow through <code>_queue_binding_invalidation()</code> and flush with
+the scope recompositions before paint. The two mechanisms complement each
+other: the batch removes redundant recomputes, the queue makes a widget
+invalidate once per frame.</p>
+<h2 id="2-threading-dispatch-by-default-opt-out-explicitly">2. Threading: Dispatch by Default, Opt Out Explicitly<a class="headerlink" href="#2-threading-dispatch-by-default-opt-out-explicitly" title="Permanent link">&para;</a></h2>
+<p>A worker thread that writes an observable would otherwise notify widgets from
+a non-UI thread. So a write from another thread marshals its notification onto
+the UI thread by default, and <code>dispatch=False</code> opts a value out. Default-on
+was chosen for three reasons:</p>
+<ol>
+<li><strong>The unsafe case must not be the quiet one.</strong> Forgetting to dispatch
+   would produce a crash or silent tree corruption whose cause is nowhere near
+   the symptom; forgetting <code>dispatch=False</code> costs some coalescing on a value
+   nothing renders.</li>
+<li><strong>The cost is small and bounded</strong>: one integer comparison against a cached
+   UI-thread ident per write, about 75 ns, a tenth of a write.</li>
+<li><strong>The opt-out carries information.</strong> <code>dispatch=False</code> states "no widget
+   binds to this, and every intermediate value matters", which the absence
+   of a call could not say.</li>
+</ol>
+<p><code>_ObservableValue</code>, <code>Observable</code> and <code>ComputedObservable</code> take
+<code>dispatch: bool = True</code>. The thread test is
+<code>runtime.threading.is_ui_thread()</code>, the one definition of the UI thread. The
+setter marshals through the installed clock (<code>runtime.clock.schedule_once(...,
+0)</code>), coalescing to one flush per tick; <code>batch()</code> dispatches its flush to the
+UI thread if any observable in it dispatches. <code>map()</code> propagates the opt-out;
+<code>combine(...).compute(...)</code> dispatches unless every source opted out, and
+takes an explicit <code>dispatch=</code> to override. A wrapper makes no dispatch
+decision of its own (§4.4).</p>
+<p>A compute function runs on the triggering thread, which may be a worker;
+only the notification is marshalled, so a compute function reads observable
+values and never a widget. A marshalled write is asynchronous and coalesced:
+the writer reads back the old value until the next tick, and intermediate
+values are dropped.</p>
+<h2 id="3-operators">3. Operators<a class="headerlink" href="#3-operators" title="Permanent link">&para;</a></h2>
+<p>The operator set is minimal and uniform, in the spirit of ReactiveProperty
+and Signals: every operation is a method chain, dependencies are explicit
+where a case is simple (<code>map</code>, <code>combine</code>) and tracked automatically where it
+is not (<code>compute</code>), and a reader learns <code>map</code> first and <code>compute</code> last.</p>
+<p>Operators left out: <code>combine_latest</code>, redundant with <code>combine().compute()</code>;
+<code>select</code> / <code>where</code>, second names for <code>map</code> and <code>filter</code>; <code>zip</code> / <code>merge</code>, with
+no in-tree case. An operator earns its place by removing a hazard, by making a
+class of silent, intermittent bug unwritable, never by saving keystrokes.</p>
+<h3 id="31-two-kinds-deriving-and-wrapping">3.1 Two Kinds: Deriving and Wrapping<a class="headerlink" href="#31-two-kinds-deriving-and-wrapping" title="Permanent link">&para;</a></h3>
+<p>This distinction is the load-bearing one in this document.</p>
+<p><strong>Deriving</strong> operators, <code>map</code>, <code>combine</code> and <code>compute</code>, answer "what is
+<code>.value</code> right now?" with a function of their sources. They hold no state and
+keep nothing subscribed: <code>map</code> and <code>combine</code> are built on <code>compute</code>, whose
+tracking context (<code>_tracking_context</code>, a <code>contextvars</code> value) captures every
+<code>.value</code> read during the function and re-collects the dependencies on every
+recompute, so a conditional read is tracked correctly and <code>batch()</code> folds
+redundant recomputes.</p>
+<p><strong>Wrapping</strong> operators stay subscribed to their source for as long as they
+live, either shaping when or whether its values are republished (<code>debounce</code>,
+<code>throttle</code>, <code>filter</code>) or publishing values of their own that depend on more
+than the source's current one (<code>switch_map</code>, <code>scan</code>). That subscription is
+what makes lifetime, value semantics and threading real questions. §4
+answers them once for all wrappers; §5 covers what each operator adds.</p>
+<h2 id="4-the-wrapper-contract">4. The Wrapper Contract<a class="headerlink" href="#4-the-wrapper-contract" title="Permanent link">&para;</a></h2>
+<p>Everything here applies to every source-wrapping operator. An operator in §5
+states only where it adds to these rules.</p>
+<h3 id="41-lifetime">4.1 Lifetime<a class="headerlink" href="#41-lifetime" title="Permanent link">&para;</a></h3>
+<p>A wrapper's subscription to its source is a reference edge, and pointing it
+the wrong way makes the whole chain uncollectable.</p>
+<p><strong>The source must not keep the wrapper alive.</strong> <code>source.subscribe(self._on_x)</code>
+stores a bound method, which strongly references the wrapper; the source then
+outlives the wrapper and keeps everything it holds reachable. Wrappers
+subscribe through a weak reference to <code>self</code>, the shape <code>ComputedObservable</code>
+uses for its dependency edges.</p>
+<p><strong>A wrapper lives exactly as long as something holds it</strong>: the object itself,
+or the <code>Disposable</code> that <code>subscribe()</code> returns, whose closure holds the
+wrapper. This is what makes the framework's convention correct without
+further thought:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="bp">self</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">debounce</span><span class="p">(</span><span class="mf">0.3</span><span class="p">)</span><span class="o">.</span><span class="n">subscribe</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_query</span><span class="p">))</span>
+</span></code></pre></div>
+<p><code>bind()</code> retains the <code>Disposable</code>, which retains the chain; unmount disposes
+it, and the chain is collectable once the widget is. Dropping the
+<code>Disposable</code> drops the chain, the rule <code>compute</code> and <code>map</code> already follow: a
+derived observable nobody holds does not exist.</p>
+<p><strong>Teardown releases the source and disarms the clock.</strong> <code>dispose()</code> is
+idempotent, unschedules every callback the wrapper may have armed, and runs
+from <code>__del__</code> as a backstop. A wrapper with a timer already armed survives
+until it fires, since the clock holds the bound callback, so a pending emit
+completes rather than vanishing mid-flight.</p>
+<p><code>Disposable.dispose()</code> drops its closure, which holds the observable, the
+subscriber and every wrapper between them; retaining it after disposal would
+pin the chain for as long as the <code>Disposable</code> lives, for a widget's <code>bind()</code>
+list until the widget itself is collected. Disposal installs a no-op in its
+place. The leak check in <code>testing/_leaks.py</code> exempts the graph's own edges,
+recognised by an explicit <code>mark_internal_subscription</code> rather than by
+inferring an owner from the callback, because under the first rule there is
+no owner left to infer.</p>
+<h3 id="42-value-semantics">4.2 Value Semantics<a class="headerlink" href="#42-value-semantics" title="Permanent link">&para;</a></h3>
+<p><strong>A wrapper holds the value it last emitted.</strong> <code>.value</code> is not a live read of
+the source; it is what this observable last published, seeded at
+construction. <code>_emit_to_subscribers()</code> stores the value before notifying, so a
+subscriber reading back through the wrapper sees what it was handed.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">d</span> <span class="o">=</span> <span class="n">q</span><span class="o">.</span><span class="n">debounce</span><span class="p">(</span><span class="mf">0.3</span><span class="p">)</span>     <span class="c1"># d.value == q.value  (seeded at construction)</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="n">q</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="s2">&quot;abc&quot;</span>         <span class="c1"># d.value unchanged: still the seed</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># 0.3 s later           # d.value == &quot;abc&quot;</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">nv</span><span class="o">.</span><span class="n">Text</span><span class="p">(</span><span class="n">d</span><span class="p">)</span>              <span class="c1"># binds correctly, no map() needed</span>
+</span></code></pre></div>
+<p>Reading through to the source was rejected. <code>nv.Text(q.debounce(0.3))</code> would
+then render whatever the source holds at build time, with no error and no
+warning, the UI working while silently ignoring the operator asked for; the
+workaround, <code>.map(str)</code>, reads as type conversion, so nothing in the code
+would say "this is what makes debounce take effect". Read-through also makes
+<code>.value</code> mean "this observable's value" on an <code>Observable</code> and "some other
+observable's value" on a wrapper.</p>
+<p>Before the first emission a wrapper reports its seed, and what the seed is
+belongs to each operator (§5), the one part of value semantics they do not
+share. The cost: "thin the notifications but read the true current value on
+demand", throttle as a sampler, is not expressible through the operator; no
+in-tree case needs it, and <code>wrapper._source.value</code> is there if one appears.</p>
+<h3 id="43-dependency-tracking">4.3 Dependency Tracking<a class="headerlink" href="#43-dependency-tracking" title="Permanent link">&para;</a></h3>
+<p><strong>A derivation depends on the wrapper, not on what the wrapper reads.</strong> If a
+wrapper's inner read of its source registered that source with the tracking
+context, a derivation would hold two edges, one shaped and one raw, and the
+raw one fires first and unconditionally, bypassing the shaping:
+<code>q.debounce(0.3).map(f)</code> would recompute on the keystroke. So
+<code>SourceSubscribingObservable.value</code> registers itself and evaluates
+<code>_current_value()</code> with tracking suppressed, and the seed read in <code>__init__</code>
+is untracked for the same reason, so building a wrapper inside a <code>compute()</code>
+hands that computation no edge to the wrapper's source. A user callback a
+wrapper invokes, <code>filter</code>'s predicate, runs untracked too: reading another
+observable inside it creates no edge, and that dependency belongs in
+<code>combine</code>.</p>
+<h3 id="44-dispatch">4.4 Dispatch<a class="headerlink" href="#44-dispatch" title="Permanent link">&para;</a></h3>
+<p><strong>Wrappers have no <code>dispatch</code> flag, because the decision belongs to whoever
+writes a value.</strong> Nothing writes to a wrapper: it re-publishes what its source
+notified it of, and that notification already arrived on the thread the
+source chose. A wrapper emits right there, inheriting the decision.</p>
+<p>The exception is a wrapper that emits from a worker it started itself,
+<code>switch_map</code> and only that one. There is no arrival thread to inherit, so it
+marshals unconditionally through the clock, with no thread test, because
+<code>fn</code> never runs on the UI thread. It cannot honour a source's
+<code>dispatch=False</code>: that opt-out promises a notification synchronous with the
+write, and the answer does not exist yet when the write happens. Emitting
+from the worker would also break superseding, since two runs can each pass
+the "am I still current?" test before either emits, and routing both through
+the clock is what collapses them to one emission of the newest; emitting
+under the lock would run subscriber code with the lock held.</p>
+<h3 id="45-operator-parity">4.5 Operator Parity<a class="headerlink" href="#45-operator-parity" title="Permanent link">&para;</a></h3>
+<p>A wrapper offers the same operators as any other observable, so a chain never
+dead-ends on the operator it just used: <code>_ObservableValue</code>,
+<code>ComputedObservable</code> and <code>SourceSubscribingObservable</code> each define the full
+set. Not through a shared mixin, because the first two propagate the
+<code>dispatch=False</code> opt-out into what they build and a wrapper has none to
+propagate; <code>tests/observable/test_operator_parity.py</code> asserts the three stay
+equal.</p>
+<h3 id="46-implementation">4.6 Implementation<a class="headerlink" href="#46-implementation" title="Permanent link">&para;</a></h3>
+<p><code>SourceSubscribingObservable</code> (<code>observable/wrapper.py</code>) owns every rule in
+this section; an operator subclasses it and implements <code>_seed</code>,
+<code>_on_source_changed</code> and <code>_clock_callbacks</code>. It takes two type parameters,
+<code>[TIn, TOut]</code>. An operator that hands the source's own values on subclasses
+<code>ShapingObservable[T]</code>, which fixes the two together and seeds from the
+source, correct because the types agree; <code>switch_map</code> and <code>scan</code> are the
+operators where they differ, and therefore the ones whose seed cannot come
+from the source. <code>_seed()</code> sets <code>_held_value</code>, <code>_emit_to_subscribers()</code>
+updates it, and the default <code>_current_value()</code> returns it. Clock callbacks
+are matched by equality, so <code>dispose()</code> can unschedule a callback that was
+never armed at no cost. <code>_untracked(fn)</code> runs a wrapper's own reads and its
+user callbacks with tracking suppressed. The pytest plugin arms
+<code>track_subscriptions</code> around every test and holds each <code>Disposable</code>
+strongly, so a test that asserts on collection disarms it first.</p>
+<h2 id="5-the-wrapping-operators">5. The Wrapping Operators<a class="headerlink" href="#5-the-wrapping-operators" title="Permanent link">&para;</a></h2>
+<h3 id="51-timing-debounce-and-throttle">5.1 Timing: <code>debounce</code> and <code>throttle</code><a class="headerlink" href="#51-timing-debounce-and-throttle" title="Permanent link">&para;</a></h3>
+<p>Typing, pointer moves and a stream of API responses change a source faster
+than the UI and the recomputations behind it are worth running. Two
+operators thin them because they thin differently: most input wants the
+trailing edge, once it has settled (typing, a window resize), while pointer
+moves and scrolling want periodic samples of something that never settles.</p>
+<ul>
+<li><code>seconds</code> has no default. The window is a trade-off the app makes, and a
+  default would hide it in the framework.</li>
+<li>The seed differs by operator: <code>debounce</code> reports the source's
+  construction-time value until the input first settles; <code>throttle</code> emits on
+  the leading edge, so its first change moves it immediately.</li>
+<li>Emissions arrive on the UI thread, because the timers go through the
+  installed clock rather than a thread of their own, so nothing needs
+  marshalling and a test installs a deterministic clock instead of sleeping.</li>
+</ul>
+<p><code>DebouncedObservable</code> and <code>ThrottledObservable</code> (<code>observable/timed.py</code>) hold
+only the latest pending value and disarm their timer in <code>dispose()</code>.</p>
+<h3 id="52-value-gating-filter">5.2 Value Gating: <code>filter</code><a class="headerlink" href="#52-value-gating-filter" title="Permanent link">&para;</a></h3>
+<p>Some of a source's values must not reach the UI: an amount that has not
+validated yet, a selection that is sometimes empty. <code>map</code> cannot express
+this, since it must return something for every input, so the rejected value
+still arrives, merely transformed. <code>filter</code> updates only when the predicate
+accepts the value, and <code>.value</code> is the last value that passed.</p>
+<ul>
+<li>The seed (<code>initial</code>) is required, keyword-only, without a default. Every
+  other operator derives <code>.value</code> from its source; <code>filter</code> alone cannot,
+  because the predicate may reject everything the source ever produces, so
+  the caller states what the UI shows until the first value passes.</li>
+<li>The seed is tested too: at construction the source's current value runs
+  through the predicate and is kept if it passes, so <code>initial</code> means
+  strictly "nothing has passed", not "nothing has arrived yet".</li>
+<li><code>None</code> is an ordinary value. "Nothing has passed" is carried by the seed
+  rather than by the value, so no sentinel is needed.</li>
+<li>No equality check of its own: <code>_ObservableValue</code> de-dupes before it
+  notifies, and no wrapper second-guesses that.</li>
+</ul>
+<p>Two alternatives to the seed were rejected. Passing the source through until
+the first pass displays a value the predicate rejected, the one outcome the
+operator exists to prevent, and is the read-through §4.2 rules out. Reporting
+<code>Optional[T]</code> grows a <code>None</code> check on every downstream <code>map</code>, where the seed
+answers the same question without changing the type.</p>
+<p><code>FilteredObservable</code> (<code>observable/filtered.py</code>) is a <code>ShapingObservable</code>
+whose <code>__init__</code> replaces <code>_held_value</code> with <code>initial</code> unless the source's
+construction-time value passes.</p>
+<h3 id="53-asynchronous-mapping-switch_map">5.3 Asynchronous Mapping: <code>switch_map</code><a class="headerlink" href="#53-asynchronous-mapping-switch_map" title="Permanent link">&para;</a></h3>
+<p>A value derived from a function that takes time to answer. <code>map</code> runs its
+function synchronously on the triggering thread, the UI thread in a
+<code>debounce</code> chain, so I/O in it blocks the window, and with two calls in
+flight the slower-but-older one lands last and wins. Written by hand, the
+per-run <code>threading.Event</code> protocol fails silently: a reused <code>Event</code> that gets
+<code>clear()</code>ed lets a superseded worker resume, and an unguarded <code>except</code> /
+<code>finally</code> lets a stale run write over a live one. That is the hazard §3
+requires an operator to remove.</p>
+<p><code>switch_map</code> is <code>map</code>, and its scope follows: a run starts only because the
+source's value changed, is discarded only because it changed again, and
+produces exactly one value. What that cannot express stays a hand-written
+worker:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">Shape</th>
+<th style="text-align: left;">Why it is not a mapping</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">Started by a button</td>
+<td style="text-align: left;">A click changes no input; a Retry button is the sharp case, since an unchanged value de-duplicates and nothing fires.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Reports progress as it runs</td>
+<td style="text-align: left;">A mapping produces one value, not a stream.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Stopped by an explicit Cancel</td>
+<td style="text-align: left;">"The user wants this to stop" is not an input.</td>
+</tr>
+<tr>
+<td style="text-align: left;">Accumulates onto the previous value</td>
+<td style="text-align: left;">A mapping depends on its input alone; an append also depends on the value it replaces, which superseding cannot order. Accumulating the results is <code>scan</code> over the output.</td>
+</tr>
+</tbody>
+</table>
+<p>The amount of data returned and the weight of the work are not criteria: a
+thread is started either way.</p>
+<ul>
+<li>The seed is required, as in §5.2, but means "no run has landed yet",
+  because no run starts at construction: building a ViewModel must not fire
+  I/O.</li>
+<li>Failure is a value. <code>fn</code> catches what the UI must render and returns it in
+  the app's own result type, so one value decides both the error and the
+  items it replaces, and the result stays a plain observable whose only read
+  surface is <code>.value</code>. An exception that escapes <code>fn</code> is a bug: logged
+  through <code>exception_once</code>, delivered to nobody.</li>
+<li><code>CancelToken</code> is cooperative and optional. Python cannot interrupt a
+  thread, so superseding discards the result and the worker runs to
+  completion; a run that checks the token can return early, and one that
+  blocks in a single call never gets the chance. It is still the second
+  positional parameter of every <code>fn</code>, because a signature cannot be widened
+  later without breaking every existing one, and against a hand-rolled
+  <code>threading.Event</code> it removes the ways to misuse one: no <code>clear()</code>, one
+  token per run.</li>
+<li>A superseded run's result never lands, from any path. The test is identity
+  against the live token at delivery, not a flag read earlier, so a result
+  returned from <code>fn</code>'s own <code>except</code> or <code>finally</code> is discarded like any other.</li>
+<li><code>.value</code> is the last landed result; <code>dispose()</code> supersedes whatever is in
+  flight; results are marshalled to the UI thread (§4.4).</li>
+<li><code>fn</code> is synchronous. Accepting <code>async def</code> behind the same name would mean
+  two supersede implementations; widening later is additive.</li>
+</ul>
+<p>A companion <code>results.error</code> observable was rejected: it does not survive
+<code>.map()</code>, so a binding built from the result cannot see it; it needs its own
+supersede test, clearing rule and batching; and it decides only the error,
+never the accompanying value, leaving a failed run's error above the previous
+run's rows.</p>
+<p><code>SwitchMappedObservable</code> (<code>observable/switched.py</code>) subclasses
+<code>SourceSubscribingObservable[TIn, TOut]</code>. Each run gets a fresh <code>CancelToken</code>
+and a daemon thread named <code>switch_map:&lt;fn qualname&gt;</code>, so a test joins workers
+instead of sleeping. Delivery stages the result under a lock only if the
+delivering token is still current, then schedules <code>_flush</code> on the clock, and
+<code>_flush</code> re-reads the stage, so a result superseded in between is still
+dropped. <code>exception_once</code> is keyed on the function's qualname, so two
+<code>switch_map</code>s cannot de-duplicate each other's bug into silence.</p>
+<h3 id="54-accumulation-scan">5.4 Accumulation: <code>scan</code><a class="headerlink" href="#54-accumulation-scan" title="Permanent link">&para;</a></h3>
+<p>A value that follows from every emission rather than from the source's
+current one: how many times something fired, a running total, a list
+appended to. The scope is accumulation over an operator's output. An
+<code>Observable</code> is mutable state, so accumulating a user action is one line in
+the handler; <code>debounce</code>, <code>throttle</code> and <code>switch_map</code> publish because time
+passed or a run landed, so there is no handler to hold that line, and without
+<code>scan</code> the only way in is <code>subscribe</code>: an empty <code>Observable</code> beside the write
+that fills it, plus a <code>Disposable</code> that must be held or the value silently
+stops moving.</p>
+<ul>
+<li>The seed is required, as in §5.2 and §5.3, meaning "the source has emitted
+  nothing". The construction-time value is not folded in: it has not been
+  emitted, and folding it would start a counter at 1 and count a debounce
+  window that never settled.</li>
+<li>One emission out per emission in. A fold landing on the accumulator it
+  already held still emits, because the fold ran; a repeated source value
+  folds once, since <code>_ObservableValue</code> de-dupes before it notifies.</li>
+<li>The accumulator never re-seeds. It belongs to this observable rather than
+  to the chain: a rebuilt chain is a new observable that starts from <code>initial</code>
+  again.</li>
+<li><code>fn</code> is a pure function of the two values handed to it, run untracked
+  (§4.3); a raising <code>fn</code> leaves the accumulator as it stood (§7).</li>
+</ul>
+<p><code>fold</code> was rejected as the name: it states a terminal result, and what is
+published here is every intermediate accumulator. <code>accumulate</code> matches
+<code>itertools</code> at the cost of length. <code>scan</code> is not a second name, since no
+existing operator accumulates.</p>
+<p><code>ScannedObservable</code> (<code>observable/scanned.py</code>) subclasses
+<code>SourceSubscribingObservable[TIn, TAcc]</code>; <code>_seed</code> returns <code>initial</code> without
+reading the source.</p>
+<h2 id="6-binding-an-observable-to-a-widget-the-value-cell">6. Binding an Observable to a Widget: the Value Cell<a class="headerlink" href="#6-binding-an-observable-to-a-widget-the-value-cell" title="Permanent link">&para;</a></h2>
+<p>Every input widget holds a value somewhere. Passing an observable to its
+constructor <strong>substitutes that storage cell</strong>; it does not describe a
+direction of flow. <code>Toggleable</code> states the rule in code:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">def</span><span class="w"> </span><span class="nf">_get_state_obj</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_external</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_external</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_state_internal</span>
+</span></code></pre></div>
+<p>Both the read path and the write path go through <code>_get_state_obj()</code>, and only
+one of the two cells is ever live. With a single cell there is no second copy
+to keep in sync and no direction to choose: the user's edit lands wherever the
+widget's value lives, which is the caller's observable when the caller
+supplied one. Two-way binding is a consequence of the structure, not a mode;
+<code>Checkbox</code>, <code>Switch</code>, <code>RadioButton</code>, <code>RadioGroup</code> and the sliders all behave
+this way without implementing it.</p>
+<p>Three consequences follow:</p>
+<ul>
+<li><strong>A widget does not keep its own copy alongside an external observable.</strong>
+  Two cells make a direction expressible, and any direction chosen is wrong
+  half the time. Where a widget's internal representation is richer than what
+  the caller's observable can hold, the widget mirrors instead of
+  substituting, and the mirror is justified in
+  <a href="../TEXT_EDITING/">TEXT_EDITING.md</a>, the one such case.</li>
+<li><strong>A read-only observable is display-only</strong>, because there is nothing to
+  write to. That is what a computed or mapped value is, and it is how a caller
+  asks for display without an edit path.</li>
+<li><strong>The distinction is enforced at runtime, not by the type checker.</strong>
+  Whether a source is writable is decided by
+  <code>isinstance(value, ObservableProtocol)</code>, which separates the two protocols
+  by the presence of <code>set</code>. A static overload cannot express it: both arms
+  take the same argument and return the same widget, so there is nothing for
+  the checker to discriminate on. That is why no operator may hand back a
+  read-only static type over a runtime-writable object: it would produce a
+  source the caller declared display-only that a widget then writes to, and
+  no runtime check could catch it. A genuine read-only view has to be a real
+  wrapper object, so that the runtime agrees with the type.</li>
+</ul>
+<h3 id="61-when-the-callers-type-is-not-the-widgets-input-type">6.1 When the Caller's Type Is Not the Widget's Input Type<a class="headerlink" href="#61-when-the-callers-type-is-not-the-widgets-input-type" title="Permanent link">&para;</a></h3>
+<p>A text field edits <code>str</code>; applications want dates, amounts, quantities. This
+looks like the one case §6 cannot serve, since the two sides hold different
+types. The answer is not a mirror but an inversion: <strong>the text is the cell;
+the typed value is derived from it.</strong></p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="bp">self</span><span class="o">.</span><span class="n">arrival_text</span> <span class="o">=</span> <span class="n">nv</span><span class="o">.</span><span class="n">Observable</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>            <span class="c1"># the cell, bound to the field</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="bp">self</span><span class="o">.</span><span class="n">arrival</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">arrival_text</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">parse_date</span><span class="p">)</span>  <span class="c1"># derived, read-only</span>
+</span></code></pre></div>
+<p>A widget's value type therefore follows its primary input mechanism, not the
+type the application finds most convenient. <code>DockedDatePicker</code> binds <code>str</code>
+because it can be typed into; <code>DatePicker</code>, the inline calendar, binds
+<code>date | None</code> because it cannot. Three things rule out keeping the typed
+value as the cell:</p>
+<ul>
+<li><strong>The mirror exception does not stretch this far.</strong> The text-editing
+  mirror is a total enrichment: text plus selection contains the text, so the
+  two always agree about the value. A conversion is partial, <code>"06/1"</code> is not
+  a date. A widget mirroring across a partial map has to invent a policy for
+  the gap, and needs an error cell to express it; it is then the sole writer
+  of that cell, so an application that wants to report a business-level
+  error ("already booked") has to write to it too, and the two-writer problem
+  reappears one level up. The gap is not a defect; it is the normal state of
+  a field someone is typing into.</li>
+<li><strong>An observable-side conversion operator cannot see the commit.</strong> Whether
+  a value is finished is a widget event, Enter or focus leaving, that an
+  <code>Observable</code> is not told about, so an operator-shaped conversion has to
+  convert on every keystroke, the behaviour it was introduced to avoid.
+  Commit-time work belongs on <code>on_submit</code> / <code>on_focus_change</code>, where the
+  widget's own value already lives.</li>
+<li><strong>Derivation loses nothing.</strong> <code>filter().map()</code> holds the last valid value,
+  <code>map()</code> alone reports the invalid state, <code>debounce()</code> composes into the
+  same chain, and the error message is one more <code>map()</code> of the same text:
+  one writer, no disagreement possible.</li>
+</ul>
+<p>This follows from reactivity being observable-driven. In a rebuild-driven
+framework an application influences a widget by supplying values read during
+rebuild, so a date field can accept a validity predicate and a set of error
+strings and the application never owns a cell; Flutter's
+<code>InputDatePickerFormField</code> is built that way. Here the cell is the influence
+path, so handing the application the cell is the only way to give it control.</p>
+<h2 id="7-failure-semantics">7. Failure Semantics<a class="headerlink" href="#7-failure-semantics" title="Permanent link">&para;</a></h2>
+<p>§5.3 states the rule for <code>switch_map</code>: failure the UI must render is a value,
+not an exception. That rule holds for every callback the graph runs. <strong>An
+exception reaching the framework is always a bug</strong>, never an outcome to
+publish, and it cannot be raised, because there is no caller who could handle
+it: a derivation re-runs because something changed, and "something" is a
+clock callback marshalling a worker's write, a <code>debounce</code> timer, or an
+unrelated handler three widgets away. Raising there decides only, by which
+thread happened to be passing, whose stack the failure lands on.</p>
+<p><strong>Every such bug is logged and contained</strong>, through
+<code>exception_once_per_exc</code>, keyed by the failure's own type and innermost
+frame, so two broken derivations are reported separately and one that keeps
+failing every keystroke stays a single line. The compute function's name
+cannot do that job: every <code>.map()</code> shares one <code>compute_fn</code> closure inside
+<code>ComputedObservable.map</code>, so keying on it would collapse unrelated bugs into
+the first one reported. <code>switch_map</code> keys on the qualname because there the
+user's own <code>fn</code> is what runs.</p>
+<p>Containment is per callback, and what the observable holds is the previous
+value:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align: left;">What raises</th>
+<th style="text-align: left;">Where it is caught</th>
+<th style="text-align: left;">What <code>.value</code> reports afterwards</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: left;">a derivation (<code>map</code>, <code>combine().compute</code>, <code>Observable.compute</code>)</td>
+<td style="text-align: left;"><code>ComputedObservable._recompute</code></td>
+<td style="text-align: left;">the previous value; no emission</td>
+</tr>
+<tr>
+<td style="text-align: left;">a <code>filter</code> predicate</td>
+<td style="text-align: left;"><code>FilteredObservable._passes</code></td>
+<td style="text-align: left;">the last value that passed; the tested value counts as not passing</td>
+</tr>
+<tr>
+<td style="text-align: left;">a <code>switch_map</code> function</td>
+<td style="text-align: left;"><code>SwitchMappedObservable._run</code></td>
+<td style="text-align: left;">the last landed result; the failed run publishes nothing</td>
+</tr>
+<tr>
+<td style="text-align: left;">a <code>scan</code> function</td>
+<td style="text-align: left;"><code>ScannedObservable._on_source_changed</code></td>
+<td style="text-align: left;">the accumulator as it stood; the failed fold publishes nothing</td>
+</tr>
+<tr>
+<td style="text-align: left;">a subscriber</td>
+<td style="text-align: left;"><code>_notify.notify_all</code></td>
+<td style="text-align: left;">unaffected; the remaining subscribers are still notified</td>
+</tr>
+</tbody>
+</table>
+<p>Keeping the previous value was chosen over propagating a sentinel, which would
+leak into every consumer and every operator downstream. The cost is stated
+plainly: a failed derivation is silently stale, and the log line is the only
+signal, the trade <code>filter</code> already makes for a rejected value.</p>
+<p><strong>A failed derivation is retried.</strong> Its dependency edges are torn down before
+each run and re-armed after it whether or not it succeeded, so the next change
+to a source runs it again and a transiently broken derivation recovers on its
+own. Leaving the edges down would be worse than the original bug: one log
+line, then an observable frozen for the rest of the process. The one case
+that cannot recover is a run that raised before reading anything, which has
+no source to recover from.</p>
+<p><strong>The subscriber guard is per callback, not one <code>try</code> around the loop.</strong> A
+single <code>try</code> would relocate the truncation: the first raising subscriber
+would still stop every one registered after it, which is what makes the
+symptom "a binding that sometimes does not update", with registration order
+deciding who breaks. The loop also re-reads the value per callback, because a
+subscriber may write back to the observable notifying it (§6's cell, where an
+application normalises what a text field produced), and the subscribers after
+it must be handed what that write left behind.</p>
+<p><strong>The graph's own subscriptions are exempt.</strong> A computed's dependency edges
+and a wrapper's edge to its source are tagged <code>mark_internal_subscription</code>
+(§4.1), and an exception on one of them re-raises rather than being logged.
+Such an exception is the framework's own signal, not a broken subscriber: the
+batch queue's infinite-loop detector reaches the notify loop through exactly
+this path, and swallowing it would turn a loud protection into a silent one.
+Every internal edge that runs application code guards it at its own site,
+where the log can name what broke.</p>
+<p><code>observable/_notify.py</code> holds the one notify loop, used by
+<code>_ObservableValue</code>, <code>ComputedObservable</code> on both the direct and the
+marshalled path, and <code>SourceSubscribingObservable</code>.
+<code>ComputedObservable._recompute</code> records success in a sentinel-typed local and
+assigns <code>_value</code> only on success, so "keep the previous value" is the absence
+of a write rather than a restore. An equality check that raises after a
+recompute (<code>computed_value_eq_exc</code>) is treated as "not equal", which emits
+rather than suppresses.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 yuksblog
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/yuksblog/nuiitivet" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.indexes", "navigation.top", "navigation.tracking", "navigation.path", "navigation.instant", "navigation.instant.progress", "navigation.footer", "toc.follow", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link", "content.tooltips", "content.action.edit"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>
