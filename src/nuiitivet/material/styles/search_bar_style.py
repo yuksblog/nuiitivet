@@ -56,6 +56,11 @@ class SearchBarStyle:
     leading_icon_color: ColorSpec = ColorRole.ON_SURFACE
     trailing_icon_color: ColorSpec = ColorRole.ON_SURFACE_VARIANT
     icon_size: int = 24
+    # A tappable icon occupies a 48dp target. With the contained 4dp outer space
+    # that puts the 24dp glyph's edge at 16dp from the container edge, which is
+    # what the MD3 measurements show and what the 16dp ``no-actions`` space matches
+    # when there is no target to inset.
+    icon_target: float = 48.0
 
     # Cursor & selection
     cursor_color: ColorSpec = ColorRole.PRIMARY

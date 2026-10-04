@@ -46,10 +46,6 @@ if TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
-# The M3 container height, which is also the first row of a multi-line field.
-_ROW_HEIGHT = 56
-
-
 _Symbol: Optional[Type["Symbol"]] = None
 try:
     from nuiitivet.material.symbols import Symbol as _ImportedSymbol
@@ -671,12 +667,12 @@ class TextField(InteractiveWidget):
         h_dim = self.height_sizing
 
         default_width = 200
-        default_height = _ROW_HEIGHT
 
         font = self._get_font()
         style = self.style
         if not style:
-            return (default_width, default_height)
+            return (default_width, TextFieldStyle.container_height)
+        default_height = style.container_height
 
         pl, pt, pr, pb = style.content_insets
 
@@ -768,7 +764,7 @@ class TextField(InteractiveWidget):
 
         # Icons and the resting label sit in the first row, which is the whole
         # field for a single line.
-        row_h = _ROW_HEIGHT if self.is_multiline else ch
+        row_h = style.container_height if self.is_multiline else ch
 
         # Leading Icon
         leading_w = 0

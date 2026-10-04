@@ -52,7 +52,8 @@ class TextFieldStyle:
     # Shape
     border_radius: float = 4.0  # Top corners for filled, all for outlined
 
-    # Layout
+    # Layout. ``container_height`` is also the first row of a multi-line field.
+    container_height: int = 56
     content_insets: Tuple[int, int, int, int] = (16, 16, 16, 16)  # L, T, R, B
 
     def copy_with(self, **changes) -> "TextFieldStyle":

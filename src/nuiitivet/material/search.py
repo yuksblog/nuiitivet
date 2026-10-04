@@ -92,12 +92,6 @@ _logger = logging.getLogger(__name__)
 
 IconLike = Union["Symbol", str, ReadOnlyObservableProtocol["Symbol"], ReadOnlyObservableProtocol[str], None]
 
-# A tappable icon occupies a 48dp target. With the contained 4dp outer space
-# that puts the 24dp glyph's edge at 16dp from the container edge, which is
-# what the MD3 measurements show and what the 16dp ``no-actions`` space matches
-# when there is no target to inset.
-_ICON_TARGET = 48.0
-
 
 class _SearchBarCore(InteractiveWidget):
     """The search bar container itself: 56dp tall, fully rounded, no elevation.
@@ -289,13 +283,13 @@ class _SearchBarCore(InteractiveWidget):
         style = self.style
 
         if self.leading_icon is not None:
-            text_left = style.leading_space + _ICON_TARGET + style.icon_label_gap
+            text_left = style.leading_space + style.icon_target + style.icon_label_gap
         else:
             # md.comp.search-bar.contained.no-actions.leading-space
             text_left = 16.0
 
         if self.trailing_icon is not None:
-            text_right = width - style.trailing_space - _ICON_TARGET - style.icon_label_gap
+            text_right = width - style.trailing_space - style.icon_target - style.icon_label_gap
         else:
             text_right = width - 16.0
 
@@ -309,14 +303,14 @@ class _SearchBarCore(InteractiveWidget):
 
         if self.leading_icon is not None:
             lw, lh = self.leading_icon.preferred_size()
-            ix = style.leading_space + (_ICON_TARGET - lw) / 2.0
+            ix = style.leading_space + (style.icon_target - lw) / 2.0
             iy = (height - lh) / 2.0
             self.leading_icon.layout(lw, lh)
             self.leading_icon.set_layout_rect(int(ix), int(iy), int(lw), int(lh))
 
         if self.trailing_icon is not None:
             tw, th = self.trailing_icon.preferred_size()
-            ix = width - style.trailing_space - _ICON_TARGET + (_ICON_TARGET - tw) / 2.0
+            ix = width - style.trailing_space - style.icon_target + (style.icon_target - tw) / 2.0
             iy = (height - th) / 2.0
             self.trailing_icon.layout(tw, th)
             self.trailing_icon.set_layout_rect(int(ix), int(iy), int(tw), int(th))
