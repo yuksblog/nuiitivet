@@ -96,7 +96,7 @@ def test_button_style_defaults():
     assert style.container_height == 40
     assert style.content_insets == (16, 0, 16, 0)
     assert style.min_width == 64
-    assert style.min_height == 48
+    assert style.min_height is None
     assert style.elevation == 0
 
 

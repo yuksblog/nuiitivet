@@ -32,6 +32,9 @@ from nuiitivet.material.toolbar import DockedToolbar
 from nuiitivet.material.tooltip_widgets import Tooltip
 from nuiitivet.widgets.box import Box
 
+# The assertions below are the MD3 baseline geometry.
+pytestmark = pytest.mark.usefixtures("mobile_form_factor")
+
 
 def _lay_out(widget):
     w, h = widget.preferred_size()

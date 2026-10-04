@@ -80,6 +80,7 @@ from nuiitivet.widgets.input_filter import InputFilterLike
 # it leaves TextField untouched; moving it to a shared module would be a
 # refactor of text_fields.py, which is out of scope here.
 from nuiitivet.material.text_fields import _build_text_field_icon
+from nuiitivet.material.theme.form_factor import default_form_factor, density_shrink, form_factor_of
 from nuiitivet.widgeting.paint_replay import replay_safe
 
 if TYPE_CHECKING:
@@ -90,17 +91,13 @@ if TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
-IconLike = Union["Symbol", str, ReadOnlyObservableProtocol["Symbol"], ReadOnlyObservableProtocol[str], None]
+_DENSITY_FLOOR = -4
 
-# A tappable icon occupies a 48dp target. With the contained 4dp outer space
-# that puts the 24dp glyph's edge at 16dp from the container edge, which is
-# what the MD3 measurements show and what the 16dp ``no-actions`` space matches
-# when there is no target to inset.
-_ICON_TARGET = 48.0
+IconLike = Union["Symbol", str, ReadOnlyObservableProtocol["Symbol"], ReadOnlyObservableProtocol[str], None]
 
 
 class _SearchBarCore(InteractiveWidget):
-    """The search bar container itself: 56dp tall, fully rounded, no elevation.
+    """The search bar container itself: fully rounded, no elevation.
 
     This is the widget the state layer, the focus ring and a docked popup all
     attach to. It is deliberately *not* the public widget: the public one owns
@@ -125,10 +122,10 @@ class _SearchBarCore(InteractiveWidget):
         style: Optional[SearchBarStyle] = None,
     ) -> None:
         self._user_style = style
+        self._dense_style: Optional[Tuple[SearchBarStyle, int, SearchBarStyle]] = None
         resolved = self.style
 
         super().__init__(
-            height=resolved.container_height,
             state_layer_color=resolved.state_layer_color,
             # The focus subject is the inner EditableText; mirroring it here
             # would ping-pong between two FocusNodes on pointer press. Same
@@ -203,13 +200,27 @@ class _SearchBarCore(InteractiveWidget):
     @property
     def style(self) -> SearchBarStyle:
         """Return the resolved search bar style."""
-        if self._user_style is not None:
-            return self._user_style
-
         theme = self._resolvable_theme()
-        if theme is None:
-            return SearchBarStyle()
-        return SearchBarStyle.from_theme(theme)
+        if self._user_style is not None:
+            base = self._user_style
+        elif theme is None:
+            base = SearchBarStyle()
+        else:
+            base = SearchBarStyle.from_theme(theme)
+
+        form_factor = default_form_factor() if theme is None else form_factor_of(self)
+        shrink = density_shrink(base.density, form_factor.search_bar, _DENSITY_FLOOR)
+        if shrink == 0:
+            return base
+        memo = self._dense_style
+        if memo is None or memo[0] is not base or memo[1] != shrink:
+            dense = base.copy_with(
+                container_height=base.container_height - shrink,
+                icon_target=base.icon_target - shrink,
+                density=0,
+            )
+            memo = self._dense_style = (base, shrink, dense)
+        return memo[2]
 
     # ------------------------------------------------------------------
     # Value / focus
@@ -276,7 +287,7 @@ class _SearchBarCore(InteractiveWidget):
     # ------------------------------------------------------------------
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
-        """The bar is as wide as it is given and 56dp tall."""
+        """The bar is as wide as it is given and as tall as the style's container."""
         style = self.style
         width = int(max_width) if max_width is not None else int(style.min_width)
         height = int(style.container_height)
@@ -289,34 +300,34 @@ class _SearchBarCore(InteractiveWidget):
         style = self.style
 
         if self.leading_icon is not None:
-            text_left = style.leading_space + _ICON_TARGET + style.icon_label_gap
+            text_left = style.leading_space + style.icon_target + style.icon_label_gap
         else:
             # md.comp.search-bar.contained.no-actions.leading-space
             text_left = 16.0
 
         if self.trailing_icon is not None:
-            text_right = width - style.trailing_space - _ICON_TARGET - style.icon_label_gap
+            text_right = width - style.trailing_space - style.icon_target - style.icon_label_gap
         else:
             text_right = width - 16.0
 
         return (text_left, text_right)
 
     def layout(self, width: int, height: int) -> None:
-        """Place the icons in their 48dp targets and the editable between them."""
+        """Place the icons in their targets and the editable between them."""
         super().layout(width, height)
 
         style = self.style
 
         if self.leading_icon is not None:
             lw, lh = self.leading_icon.preferred_size()
-            ix = style.leading_space + (_ICON_TARGET - lw) / 2.0
+            ix = style.leading_space + (style.icon_target - lw) / 2.0
             iy = (height - lh) / 2.0
             self.leading_icon.layout(lw, lh)
             self.leading_icon.set_layout_rect(int(ix), int(iy), int(lw), int(lh))
 
         if self.trailing_icon is not None:
             tw, th = self.trailing_icon.preferred_size()
-            ix = width - style.trailing_space - _ICON_TARGET + (_ICON_TARGET - tw) / 2.0
+            ix = width - style.trailing_space - style.icon_target + (style.icon_target - tw) / 2.0
             iy = (height - th) / 2.0
             self.trailing_icon.layout(tw, th)
             self.trailing_icon.set_layout_rect(int(ix), int(iy), int(tw), int(th))

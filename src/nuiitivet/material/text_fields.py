@@ -35,6 +35,7 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.platform import get_system_clipboard
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.theme.color_role import ColorRole
+from nuiitivet.material.theme.form_factor import default_form_factor, density_shrink, form_factor_of
 from nuiitivet.animation import Animatable, RgbaTupleConverter
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS
 from nuiitivet.widgeting.paint_replay import replay_safe
@@ -46,9 +47,9 @@ if TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
-# The M3 container height, which is also the first row of a multi-line field.
-_ROW_HEIGHT = 56
-
+_DENSITY_FLOOR = -5
+# A filled field shorter than this has no room for a floating label.
+_MIN_FLOATING_LABEL_HEIGHT = 52
 
 _Symbol: Optional[Type["Symbol"]] = None
 try:
@@ -167,7 +168,8 @@ class TextField(InteractiveWidget):
                 typeable; whether a finished value is acceptable belongs in
                 *is_error* / *supporting_text*, and reshaping a finished
                 value belongs in *on_submit*.
-            label: Floating label text.
+            label: Floating label text. A filled field shorter than 52dp shows it
+                only while the field is empty.
             leading_icon: Icon displayed before the text.
             on_tap_leading_icon: Callback invoked when the leading icon is
                 tapped. With it the icon is a standard icon button -- hover,
@@ -275,6 +277,7 @@ class TextField(InteractiveWidget):
         self.is_error = initial_is_error
 
         self._user_style = style
+        self._dense_style: Optional[Tuple[TextFieldStyle, int, TextFieldStyle]] = None
 
         self._on_change = on_change
         self._on_submit = on_submit
@@ -399,7 +402,8 @@ class TextField(InteractiveWidget):
             input_filter: Rule applied to text as the user types it, a line
                 break included: ``deny(r"\\n")`` keeps a wrapping field to one
                 paragraph.
-            label: Floating label text.
+            label: Floating label text. A filled field shorter than 52dp shows it
+                only while the field is empty.
             leading_icon: Icon displayed before the text, in the first row.
             on_tap_leading_icon: Callback invoked when the leading icon is
                 tapped; with it the icon is a standard icon button.
@@ -593,15 +597,33 @@ class TextField(InteractiveWidget):
 
     @property
     def style(self) -> TextFieldStyle:
-        if self._user_style is not None:
-            return self._user_style
-
-        from nuiitivet.material.styles.text_field_style import TextFieldStyle
-
         theme = self._resolvable_theme()
-        if theme is None:
-            return TextFieldStyle.filled()
-        return TextFieldStyle.from_theme(theme)
+        if self._user_style is not None:
+            base = self._user_style
+        elif theme is None:
+            base = TextFieldStyle.filled()
+        else:
+            base = TextFieldStyle.from_theme(theme)
+
+        form_factor = default_form_factor() if theme is None else form_factor_of(self)
+        shrink = density_shrink(base.density, form_factor.text_field, _DENSITY_FLOOR)
+        if shrink == 0:
+            return base
+        memo = self._dense_style
+        if memo is None or memo[0] is not base or memo[1] != shrink:
+            left, top, right, bottom = base.content_insets
+            cut = shrink // 2
+            dense = base.copy_with(
+                container_height=base.container_height - shrink,
+                content_insets=(left, top - cut, right, bottom - cut),
+                density=0,
+            )
+            memo = self._dense_style = (base, shrink, dense)
+        return memo[2]
+
+    def _label_is_inline(self, style: TextFieldStyle) -> bool:
+        """Whether the label stays in the text row: a filled field too short for a floating label."""
+        return bool(self.label) and style.mode == "filled" and style.container_height < _MIN_FLOATING_LABEL_HEIGHT
 
     @property
     def value(self) -> str:
@@ -671,12 +693,12 @@ class TextField(InteractiveWidget):
         h_dim = self.height_sizing
 
         default_width = 200
-        default_height = _ROW_HEIGHT
 
         font = self._get_font()
         style = self.style
         if not style:
-            return (default_width, default_height)
+            return (default_width, TextFieldStyle.container_height)
+        default_height = style.container_height
 
         pl, pt, pr, pb = style.content_insets
 
@@ -762,13 +784,13 @@ class TextField(InteractiveWidget):
         # the full content area; this offset only affects the input text and
         # populated label position.
         self._label_band = 0
-        if self.label and style.mode == "filled":
+        if self.label and style.mode == "filled" and not self._label_is_inline(style):
             self._label_band = 16
             pt = pt + self._label_band
 
         # Icons and the resting label sit in the first row, which is the whole
         # field for a single line.
-        row_h = _ROW_HEIGHT if self.is_multiline else ch
+        row_h = style.container_height if self.is_multiline else ch
 
         # Leading Icon
         leading_w = 0
@@ -854,7 +876,7 @@ class TextField(InteractiveWidget):
     def _update_label_state(self):
         has_text = bool(self._editable.value)
         is_focused = self._editable.state.focused
-        should_float = has_text or is_focused
+        should_float = (has_text or is_focused) and not self._label_is_inline(self.style)
 
         target = 1.0 if should_float else 0.0
         self._label_progress.target = target
@@ -1052,6 +1074,10 @@ class TextField(InteractiveWidget):
             return
 
         label_progress = self._label_progress.value
+        if self._label_is_inline(self.style):
+            if self._editable.value:
+                return
+            label_progress = 0.0
 
         start_size = 16
         end_size = 12

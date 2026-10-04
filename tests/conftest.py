@@ -3,6 +3,7 @@ import sys
 import warnings
 
 import pyglet
+import pytest
 
 # The pytester fixture drives the sub-sessions in tests/testing/test_plugin.py.
 pytest_plugins = ["pytester"]
@@ -55,3 +56,11 @@ warnings.filterwarnings(
 # isolation we ship, so a regression there breaks this suite first. The
 # fixture that cancelled leaked _ThreadClock timers and the one that
 # restored the App roots (since made per-instance) are both superseded.
+
+
+@pytest.fixture
+def mobile_form_factor(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make "mobile" the default form factor, for a test that asserts the MD3 baseline geometry."""
+    from nuiitivet.material.theme import form_factor
+
+    monkeypatch.setattr(form_factor, "DEFAULT_FORM_FACTOR", "mobile")

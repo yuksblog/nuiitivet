@@ -55,13 +55,14 @@ Examples of each branch:
 
 - open on both axes (`Box`, `Row`, `Card`, `Text`): `width`, `height`
 - open on one axis: `Button.width`, `TextField.width`, `NavigationRail.width`;
-  the other axis is a token (button height by size variant, `TextField` 56dp,
-  `MenuStyle.item_height`) and lives in style
+  the other axis is a token (button height by size variant,
+  `TextFieldStyle.container_height`, `MenuStyle.item_height`) and lives in
+  style
 - main axis only, named `length`: `Slider`, `VerticalScrollbar`; the cross
   axis is a track or thickness token
 - uniform: `Icon.size`, `CircularProgressIndicator.size`
-- fixed on both: `Checkbox` / `RadioButton` / `Switch` (48dp target and a
-  fixed graphic, adjustable via `*Style.default_touch_target`), `IconButton`
+- fixed on both: `Checkbox` / `RadioButton` / `Switch` (a fixed graphic in a
+  box the form factor decides, adjustable via `*Style.default_touch_target`), `IconButton`
   / `Fab` (a square of the container height), the badges: no size parameter
 
 The rule curates the public surface only. Reaching into `WidgetKernel`'s

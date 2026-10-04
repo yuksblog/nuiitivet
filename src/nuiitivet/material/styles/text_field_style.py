@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Literal, Tuple, TYPE_CHECKING
+from typing import Literal, Optional, Tuple, TYPE_CHECKING
 
 from ..theme.color_role import ColorRole
+from ..theme.form_factor import check_density
 from nuiitivet.theme.types import ColorSpec
 
 if TYPE_CHECKING:
@@ -52,8 +53,14 @@ class TextFieldStyle:
     # Shape
     border_radius: float = 4.0  # Top corners for filled, all for outlined
 
-    # Layout
+    # Layout. ``container_height`` is also the first row of a multi-line field.
+    container_height: int = 56
     content_insets: Tuple[int, int, int, int] = (16, 16, 16, 16)  # L, T, R, B
+    # Density step, 4dp each. ``None`` follows the theme's form factor. The lowest is -5.
+    density: Optional[int] = None
+
+    def __post_init__(self) -> None:
+        check_density(self.density, "TextFieldStyle.density")
 
     def copy_with(self, **changes) -> "TextFieldStyle":
         """Create a new style instance with specified fields changed."""

@@ -14,6 +14,10 @@ from nuiitivet.material.styles.text_field_style import TextFieldStyle
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.material.theme.theme_data import MaterialThemeData
+import pytest
+
+# The assertions below are the MD3 baseline geometry.
+pytestmark = pytest.mark.usefixtures("mobile_form_factor")
 
 light, _ = MaterialThemeFactory.from_seed_pair("#00FF00")
 

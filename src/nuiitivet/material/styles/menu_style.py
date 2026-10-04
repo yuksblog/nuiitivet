@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 from nuiitivet.material.theme.color_role import ColorRole
+from nuiitivet.material.theme.form_factor import check_density
 from nuiitivet.theme.types import ColorSpec
 
 if TYPE_CHECKING:
@@ -23,6 +24,8 @@ class MenuStyle:
     container_vertical_padding: int = 8
 
     item_height: int = 44
+    # Density step, 4dp each. ``None`` follows the theme's form factor. The lowest is -3.
+    density: Optional[int] = None
     item_horizontal_inset: int = 4
     item_horizontal_padding: int = 12
     item_spacing: int = 12
@@ -48,6 +51,9 @@ class MenuStyle:
 
     divider_color: ColorSpec = ColorRole.OUTLINE_VARIANT
     divider_vertical_padding: int = 8
+
+    def __post_init__(self) -> None:
+        check_density(self.density, "MenuStyle.density")
 
     def copy_with(self, **changes) -> "MenuStyle":
         """Return a copy of this style with selected fields overridden."""

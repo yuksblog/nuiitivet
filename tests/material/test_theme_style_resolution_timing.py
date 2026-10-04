@@ -64,6 +64,9 @@ from nuiitivet.theme.manager import ThemeManager
 from nuiitivet.theme.theme import Theme
 from nuiitivet.widgeting.widget import Widget
 
+# The assertions below are the MD3 baseline geometry.
+pytestmark = pytest.mark.usefixtures("mobile_form_factor")
+
 _THEME_LOGGER = "nuiitivet.theme.theme"
 
 

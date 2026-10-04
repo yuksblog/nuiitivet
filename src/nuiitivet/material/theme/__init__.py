@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .color_role import ColorRole
+from .form_factor import FormFactor, FormFactorLike
 from .theme_data import MaterialThemeData
 from .material_theme import MaterialThemeFactory
 from .scheme_variant import (
@@ -13,6 +14,8 @@ from .scheme_variant import (
 
 __all__ = [
     "ColorRole",
+    "FormFactor",
+    "FormFactorLike",
     "MaterialThemeData",
     "MaterialThemeFactory",
     "SchemeVariant",

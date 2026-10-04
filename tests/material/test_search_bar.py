@@ -20,6 +20,10 @@ from nuiitivet.material.styles.search_bar_style import DockedSearchBarStyle, Sea
 from nuiitivet.observable import Observable
 from nuiitivet.widgets.interaction import FocusSource
 from nuiitivet.widgets.box import Box
+import pytest
+
+# The assertions below are the MD3 baseline geometry.
+pytestmark = pytest.mark.usefixtures("mobile_form_factor")
 
 
 # ---------------------------------------------------------------------------

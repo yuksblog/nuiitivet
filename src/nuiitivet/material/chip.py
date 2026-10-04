@@ -11,6 +11,7 @@ from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.styles.icon_style import IconStyle
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.text import Text
+from nuiitivet.material.theme.form_factor import min_extent
 from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.rendering.padding import parse_padding
 from nuiitivet.rendering.sizing import SizingLike
@@ -220,9 +221,9 @@ class MaterialChipBase(InteractiveWidget):
         style = self.style
 
         if getattr(self.width_sizing, "kind", None) != "fixed":
-            w = max(int(w), int(style.min_width))
+            w = max(int(w), min_extent(style.min_width, style.container_height, self))
         if getattr(self.height_sizing, "kind", None) != "fixed":
-            h = max(int(h), int(style.min_height))
+            h = max(int(h), min_extent(style.min_height, style.container_height, self))
 
         if max_width is not None:
             w = min(int(w), int(max_width))

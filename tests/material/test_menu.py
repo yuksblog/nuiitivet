@@ -10,6 +10,7 @@ from nuiitivet.material import Menu, MenuDivider, MenuItem, SubMenuItem
 from nuiitivet.material.icon import Icon
 from nuiitivet.material.symbols import Symbols
 from typing import TYPE_CHECKING, Callable, cast
+import pytest
 
 if TYPE_CHECKING:
     from nuiitivet.overlay.overlay_handle import OverlayHandle
@@ -21,6 +22,9 @@ from nuiitivet.modifiers.popup import popup
 from nuiitivet.observable import Observable, runtime
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgets.interaction import FocusNode
+
+# The assertions below are the MD3 baseline geometry.
+pytestmark = pytest.mark.usefixtures("mobile_form_factor")
 
 
 def test_menu_style_defaults() -> None:

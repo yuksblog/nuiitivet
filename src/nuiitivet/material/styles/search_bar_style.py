@@ -8,13 +8,14 @@ or a divider colour — see :mod:`nuiitivet.material.search` for why.
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing import TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 from nuiitivet.animation.motion import Motion
 from nuiitivet.material.motion import EXPRESSIVE_FAST_SPATIAL
 from nuiitivet.theme.types import ColorSpec
 
 from ..theme.color_role import ColorRole
+from ..theme.form_factor import check_density
 
 if TYPE_CHECKING:
     from ...theme import Theme
@@ -35,6 +36,8 @@ class SearchBarStyle:
     # the contained variant separates by surface role instead of by shadow.
     container_color: ColorSpec = ColorRole.SURFACE_CONTAINER_HIGH
     container_height: float = 56.0
+    # Density step, 4dp each. ``None`` follows the theme's form factor. The lowest is -4.
+    density: Optional[int] = None
 
     # Outer margin, animated between the two endpoints on focus.
     # md.comp.search-bar.contained.leading-margin (24dp) ->
@@ -56,6 +59,11 @@ class SearchBarStyle:
     leading_icon_color: ColorSpec = ColorRole.ON_SURFACE
     trailing_icon_color: ColorSpec = ColorRole.ON_SURFACE_VARIANT
     icon_size: int = 24
+    # A tappable icon occupies a 48dp target. With the contained 4dp outer space
+    # that puts the 24dp glyph's edge at 16dp from the container edge, which is
+    # what the MD3 measurements show and what the 16dp ``no-actions`` space matches
+    # when there is no target to inset.
+    icon_target: float = 48.0
 
     # Cursor & selection
     cursor_color: ColorSpec = ColorRole.PRIMARY
@@ -70,6 +78,9 @@ class SearchBarStyle:
     leading_space: float = 4.0
     trailing_space: float = 4.0
     icon_label_gap: float = 4.0
+
+    def __post_init__(self) -> None:
+        check_density(self.density, "SearchBarStyle.density")
 
     def copy_with(self, **changes) -> "SearchBarStyle":
         """Create a new style instance with specified fields changed."""

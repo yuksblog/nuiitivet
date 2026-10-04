@@ -56,6 +56,36 @@ The `ThemeManager` holds the current theme and a generation counter and
 notifies one owner, the `AppScope`; it keeps no subscriber list, for the
 reason THEME_CONSUMPTION.md gives.
 
+## Form Factor
+
+A form factor is the component sizes for one kind of device.
+`MaterialThemeData.form_factor` holds it. `desktop` is the default and
+`mobile` is the MD3 baseline. A form factor says whether a small control
+reserves the 48dp touch target, and holds a density step per component. One
+step takes 4dp off the component's height.
+
+A style keeps the MD3 baseline numbers under every form factor. The widget
+applies the form factor where it reads the theme. A style factory cannot:
+`ButtonStyle.tonal()` runs with no theme in reach. A minimum size left
+`None` on a style is resolved at the same place.
+
+`desktop` puts the controls of one row at 40dp. A button of size `"s"` is
+40dp already, so the components with a size ladder have no density step.
+
+`Checkbox`, `RadioButton` and `Switch` take the 40dp state layer as their
+layout box when no touch target is reserved. Their graphic keeps its
+proportions against the 48dp target, so a checkbox stays 18dp.
+
+A filled text field shorter than 52dp has no room for a floating label. Its
+label stays in the text row and is hidden once the field has text.
+
+One density number for the whole theme was rejected. A button is 40dp and a
+text field is 56dp. A uniform step lowers both by the same amount, so the
+controls of a row never line up.
+
+A target row height in place of named form factors was rejected. The steps
+could be computed from it, but a chip and a menu item do not follow the row.
+
 ## Against the Alternatives
 
 Flutter's `ThemeData` with per-widget sub-themes is the closest shape; the

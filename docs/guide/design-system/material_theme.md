@@ -86,6 +86,56 @@ Both options are accepted by `ThemeFactory.light`, `dark`, `from_seed`, and `fro
 
 ---
 
+## Choosing the Component Sizes
+
+```python
+import nuiitivet.material as nv
+
+nv.App(
+    nv.Window(content=build_root),
+    # use this: "desktop" (default), "mobile" or a FormFactor
+    theme=nv.ThemeFactory.light("#6750A4", form_factor="mobile"),
+).run()
+```
+
+![Form Factor](../../assets/material_theme_form_factor.png)
+
+`form_factor` sets how large the controls are. Colors, shapes and font sizes stay the same.
+
+| Form factor | Sizes |
+| --- | --- |
+| `"desktop"` | The default. The controls of one row are 40dp tall: `TextField`, `SearchBar`, `Button`, `Checkbox`, `RadioButton`, `Switch`. A menu item is 32dp. |
+| `"mobile"` | The Material Design 3 sizes, built for touch. A `TextField` is 56dp, and a control smaller than 48dp reserves a 48dp touch target. |
+
+See the full runnable demo: `samples/design-system/material_theme/form_factor.py`
+
+### If a filled text field loses its label
+
+Under `"desktop"` a filled `TextField` shows its label only while the field is empty. A 40dp filled field has no room for a label above the text.
+
+Use `TextFieldStyle.outlined()` to keep the label on the outline, or put a `Text` beside the field.
+
+### Resizing one component in the whole app
+
+Start from a built-in form factor and change one density step. A step takes 4dp off the Material Design 3 height: `0` is 56dp for a `TextField`, `-2` is 48dp.
+
+```python
+theme = nv.ThemeFactory.light(
+    "#6750A4",
+    form_factor=nv.FormFactor.desktop().copy_with(text_field=-2),
+)
+```
+
+### Resizing one widget
+
+A style's `density` wins over the form factor.
+
+```python
+nv.TextField(label="Name", style=nv.TextFieldStyle.outlined().copy_with(density=-2))
+```
+
+---
+
 ## Switching Themes at Runtime
 
 To switch the active theme, call `App.of(self).set_theme(...)` with a `Theme`
