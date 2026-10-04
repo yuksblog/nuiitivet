@@ -30,6 +30,7 @@ from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.material.badge import LargeBadge, SmallBadge
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL, EXPRESSIVE_DEFAULT_EFFECTS
 from nuiitivet.modifiers.transform import rotate
+from nuiitivet.widgeting.paint_replay import replay_safe
 
 logger = logging.getLogger(__name__)
 
@@ -537,6 +538,7 @@ class _RailItemButton(InteractiveWidget):
         self._badge_widget.set_layout_rect(bx, by, bw, bh)
         self._badge_rect = (bx, by, bw, bh)
 
+    @replay_safe
     def draw_background(self, canvas, x: int, y: int, width: int, height: int) -> None:
         if canvas is None or self._indicator_rect is None:
             return
@@ -558,6 +560,7 @@ class _RailItemButton(InteractiveWidget):
         radii = [radius, radius, radius, radius]
         draw_round_rect(canvas, rect, radii, paint)
 
+    @replay_safe
     def draw_focus_indicator(self, canvas, x: int, y: int, width: int, height: int):
         """Draw the focus ring inset within the active-indicator shape.
 
@@ -590,6 +593,7 @@ class _RailItemButton(InteractiveWidget):
         except Exception:
             exception_once(logger, "rail_item_focus_ring_exc", "Failed to draw focus indicator")
 
+    @replay_safe
     def draw_state_layer(self, canvas, x: int, y: int, width: int, height: int):
         """Draw state layer matching the indicator shape."""
         if self._indicator_rect is None:
@@ -619,6 +623,7 @@ class _RailItemButton(InteractiveWidget):
 
         draw_round_rect(canvas, rect, radii, paint)
 
+    @replay_safe
     def draw_children(self, canvas, x: int, y: int, width: int, height: int):
         if not self.children:
             return
@@ -679,9 +684,11 @@ class _RailMenuButton(InteractiveWidget):
         d = int(round(self._state_layer_size))
         return (x + (width - d) // 2, y + (height - d) // 2, d, d)
 
+    @replay_safe
     def draw_state_layer(self, canvas, x: int, y: int, width: int, height: int) -> None:
         super().draw_state_layer(canvas, *self._state_layer_rect(x, y, width, height))
 
+    @replay_safe
     def draw_focus_indicator(self, canvas, x: int, y: int, width: int, height: int) -> None:
         super().draw_focus_indicator(canvas, *self._state_layer_rect(x, y, width, height))
 
@@ -791,6 +798,7 @@ class _NavigationRailLayout(Widget):
         self._item_group.layout(group_rect_i[2], group_rect_i[3])
         self._item_group.set_layout_rect(group_rect_i[0], group_rect_i[1], group_rect_i[2], group_rect_i[3])
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
 
@@ -891,6 +899,7 @@ class _RailItemGroup(InteractionHostMixin, Widget):
             cursor_collapsed += step_collapsed
             cursor_expanded += step_expanded
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
 
@@ -1292,6 +1301,7 @@ class NavigationRail(InteractionHostMixin, Widget):
         child.layout(cw, ch)
         child.set_layout_rect(l, t, cw, ch)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Paint the NavigationRail."""
         children = self.children_snapshot()

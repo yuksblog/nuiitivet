@@ -10,6 +10,7 @@ from nuiitivet.observable import ObservableBase
 from ..rendering.sizing import SizingLike
 from ..rendering.visual_bounds import transformed_outsets
 from ..widgeting.modifier import ModifierElement
+from ..widgeting.paint_replay import replay_safe
 from ..widgeting.widget import Widget
 
 
@@ -240,6 +241,7 @@ class TransformBox(Widget):
             origin=self._resolve_origin(width, height),
         )
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
         hints = self._take_paint_hints()
