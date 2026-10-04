@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import math
+from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, Optional, Sequence, Tuple, cast
 
@@ -15,6 +16,7 @@ from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS
 from nuiitivet.material.styles.slider_style import SliderStyle
 from nuiitivet.observable import ObservableProtocol
 from nuiitivet.rendering.sizing import Sizing, SizingLike, parse_sizing
+from nuiitivet.widgeting.paint_replay import replay_safe
 from nuiitivet.widgets.interaction import DraggableNode, FocusScope, PointerInputNode, VirtualStopPolicy
 from nuiitivet.animation import Animatable
 
@@ -26,6 +28,20 @@ class Orientation(Enum):
 
     HORIZONTAL = "horizontal"
     VERTICAL = "vertical"
+
+
+@dataclass(frozen=True, slots=True)
+class _TrackGeometry:
+    """The track and the handle's travel, in the coordinates of the rect they were derived from."""
+
+    x: float
+    y: float
+    width: float
+    height: float
+    start: float
+    end: float
+    handle_start: float
+    handle_end: float
 
 
 def _resolve_length_sizing(length: SizingLike) -> Sizing:
@@ -77,15 +93,6 @@ class _SliderBase(InteractiveWidget):
 
         self._active_handle_index = 0
         self._space_accel_armed = False
-
-        self._track_x = 0.0
-        self._track_y = 0.0
-        self._track_w = 0.0
-        self._track_h = 0.0
-        self._track_start = 0.0
-        self._track_end = 0.0
-        self._handle_range_start = 0.0
-        self._handle_range_end = 0.0
 
         self._state_layer_anim: Animatable[float] = Animatable(0.0, motion=EXPRESSIVE_DEFAULT_EFFECTS)
         self._handle_width_anim: Animatable[float] = Animatable(
@@ -173,11 +180,12 @@ class _SliderBase(InteractiveWidget):
         return self._min_value + (span * ratio)
 
     def _track_ratio_from_pointer(self, event: PointerEvent) -> float:
+        geometry = self._input_geometry()
         axis_value = event.x if self._orientation is Orientation.HORIZONTAL else event.y
-        h_span = self._handle_range_end - self._handle_range_start
+        h_span = geometry.handle_end - geometry.handle_start
         if h_span <= 0.0:
             return 0.0
-        ratio = _clamp((axis_value - self._handle_range_start) / h_span, 0.0, 1.0)
+        ratio = _clamp((axis_value - geometry.handle_start) / h_span, 0.0, 1.0)
         # Vertical: invert so larger value is at the top (smaller y)
         if self._orientation is Orientation.VERTICAL:
             ratio = 1.0 - ratio
@@ -207,18 +215,11 @@ class _SliderBase(InteractiveWidget):
         self._drag_node.activate(event)
 
     def _hit_test_track(self, x: float, y: float) -> bool:
-        gx, gy, gw, gh = self.global_visual_rect or (0, 0, 0, 0)
-        self._compute_geometry(float(gx), float(gy), float(gw), float(gh))
-        if self._track_w <= 0.0 or self._track_h <= 0.0:
-            return False
-        return (
-            self._track_x <= x <= self._track_x + self._track_w and self._track_y <= y <= self._track_y + self._track_h
-        )
+        track = self._input_geometry()
+        return track.x <= x <= track.x + track.width and track.y <= y <= track.y + track.height
 
     def _hit_test_handle(self, x: float, y: float) -> bool:
-        gx, gy, gw, gh = self.global_visual_rect or (0, 0, 0, 0)
-        self._compute_geometry(float(gx), float(gy), float(gw), float(gh))
-        centers = self._handle_centers()
+        centers = self._handle_centers(self._input_geometry())
         handle_w = self._current_handle_width()
         handle_h = float(self.style.active_handle_height)
         if self._orientation is Orientation.VERTICAL:
@@ -307,6 +308,7 @@ class _SliderBase(InteractiveWidget):
         l, t, r, b = self.padding
         return (int(width) + l + r, int(height) + t + b)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         try:
             from nuiitivet.material.theme.color_role import ColorRole
@@ -316,7 +318,7 @@ class _SliderBase(InteractiveWidget):
 
             self.set_last_rect(x, y, width, height)
             self.draw_background(canvas, *self.content_rect(x, y, width, height))
-            self._compute_geometry(float(x), float(y), float(width), float(height))
+            track = self._track_geometry(float(x), float(y), float(width), float(height))
 
             style = self.style
             theme = Theme.of(self).extension(MaterialThemeData)
@@ -346,7 +348,7 @@ class _SliderBase(InteractiveWidget):
             handle_w_now = self._current_handle_width()
             lead = float(style.handle_leading_space)
             trail = float(style.handle_trailing_space)
-            centers_now = self._handle_centers()
+            centers_now = self._handle_centers(track)
 
             # Compute blocked (handle gap) zones in axis coordinates
             # The axis dimension of the handle is always handle_w_now (the thin/short side).
@@ -357,7 +359,7 @@ class _SliderBase(InteractiveWidget):
                 center_ax = hx if self._orientation is Orientation.HORIZONTAL else hy
                 blocked.append((center_ax - half - lead, center_ax + half + trail))
             blocked.sort()
-            h_span = self._handle_range_end - self._handle_range_start
+            h_span = track.handle_end - track.handle_start
 
             def _ratio_to_ax(ratio: float) -> float:
                 """Map active range ratio to canvas axis coord.
@@ -369,16 +371,16 @@ class _SliderBase(InteractiveWidget):
                 """
                 if self._orientation is Orientation.VERTICAL:
                     if ratio <= 0.0:
-                        return self._track_end
+                        return track.end
                     if ratio >= 1.0:
-                        return self._track_start
-                    return self._handle_range_start + (1.0 - ratio) * h_span
+                        return track.start
+                    return track.handle_start + (1.0 - ratio) * h_span
                 else:
                     if ratio <= 0.0:
-                        return self._track_start
+                        return track.start
                     if ratio >= 1.0:
-                        return self._track_end
-                    return self._handle_range_start + ratio * h_span
+                        return track.end
+                    return track.handle_start + ratio * h_span
 
             a_s_ax = _ratio_to_ax(active_start)
             a_e_ax = _ratio_to_ax(active_end)
@@ -396,16 +398,16 @@ class _SliderBase(InteractiveWidget):
 
             # Build cut points and draw non-blocked segments
             # Only cut at track boundaries, active range boundaries, and handle gap boundaries
-            # (do NOT cut at _handle_range_start/end — those are for handle movement only)
+            # (do NOT cut at the handle's travel ends — those are for handle movement only)
             cut_set = {
-                self._track_start,
-                self._track_end,
+                track.start,
+                track.end,
                 a_s_ax,
                 a_e_ax,
             }
             for bs, be in blocked:
                 cut_set.update((bs, be))
-            cuts = sorted(c for c in cut_set if self._track_start - 1e-6 <= c <= self._track_end + 1e-6)
+            cuts = sorted(c for c in cut_set if track.start - 1e-6 <= c <= track.end + 1e-6)
 
             for i in range(len(cuts) - 1):
                 sa, ea = cuts[i], cuts[i + 1]
@@ -426,22 +428,22 @@ class _SliderBase(InteractiveWidget):
 
                 # Per-corner radii: only apply radius on edges at track ends.
                 # Edges adjacent to handle gaps or active boundaries are flat (0).
-                at_start = abs(sa - self._track_start) < 1.0
-                at_end = abs(ea - self._track_end) < 1.0
+                at_start = abs(sa - track.start) < 1.0
+                at_end = abs(ea - track.end) < 1.0
                 if self._orientation is Orientation.HORIZONTAL:
                     # Rect corners: [TL, TR, BR, BL]
                     # Left edge = at_start, Right edge = at_end
                     r_left = seg_radius if at_start else 0.0
                     r_right = seg_radius if at_end else 0.0
                     seg_radii = [r_left, r_right, r_right, r_left]
-                    seg_rect = make_rect(sa, self._track_y, ea - sa, self._track_h)
+                    seg_rect = make_rect(sa, track.y, ea - sa, track.height)
                 else:
                     # Rect corners: [TL, TR, BR, BL]
                     # Top edge = at_start, Bottom edge = at_end
                     r_top = seg_radius if at_start else 0.0
                     r_bottom = seg_radius if at_end else 0.0
                     seg_radii = [r_top, r_top, r_bottom, r_bottom]
-                    seg_rect = make_rect(self._track_x, sa, self._track_w, ea - sa)
+                    seg_rect = make_rect(track.x, sa, track.width, ea - sa)
                 if seg_rect is not None and seg_paint is not None:
                     draw_round_rect(canvas, seg_rect, seg_radii, seg_paint)
 
@@ -449,8 +451,8 @@ class _SliderBase(InteractiveWidget):
             stop_r = float(style.stop_indicator_size) / 2.0
             # Inset from track ends: stop_r + trailing_space creates 4dp visible gap
             stop_inset = stop_r + float(style.stop_indicator_trailing_space)
-            stop_range_s = self._track_start + stop_inset
-            stop_range_e = self._track_end - stop_inset
+            stop_range_s = track.start + stop_inset
+            stop_range_e = track.end - stop_inset
             # Handle proximity gap: stop_r + trailing_space + half-handle (axis dim = handle_w_now)
             handle_gap = stop_inset + handle_w_now / 2.0
 
@@ -471,10 +473,10 @@ class _SliderBase(InteractiveWidget):
                 # t is already the value ratio, use it directly for active/inactive color
                 stop_ratio = t
                 if self._orientation is Orientation.HORIZONTAL:
-                    sx, sy = axis_pos, self._track_y + self._track_h / 2.0
+                    sx, sy = axis_pos, track.y + track.height / 2.0
                     near_handle = any(abs(sx - hx) < handle_gap for hx, _hy in centers_now)
                 else:
-                    sx, sy = self._track_x + self._track_w / 2.0, axis_pos
+                    sx, sy = track.x + track.width / 2.0, axis_pos
                     near_handle = any(abs(sy - hy) < handle_gap for _hx, hy in centers_now)
                 if near_handle:
                     continue
@@ -488,7 +490,7 @@ class _SliderBase(InteractiveWidget):
                     draw_oval(canvas, stop_rect, stop_paint)
 
             layer_alpha = self._get_active_state_layer_opacity()
-            centers = self._handle_centers()
+            centers = self._handle_centers(track)
             if centers:
                 active_index = max(0, min(self._active_handle_index, len(centers) - 1))
                 cx, cy = centers[active_index]
@@ -617,7 +619,8 @@ class _SliderBase(InteractiveWidget):
 
         canvas.drawTextBlob(blob, tx, ty, text_paint)
 
-    def _compute_geometry(self, x: float, y: float, width: float, height: float) -> None:
+    def _track_geometry(self, x: float, y: float, width: float, height: float) -> _TrackGeometry:
+        """Return the track for a widget rect; ``paint`` and input derive it, neither stores it."""
         cx, cy, cw, ch = self.content_rect(int(x), int(y), int(width), int(height))
         style = self.style
         track_thickness = min(
@@ -626,51 +629,48 @@ class _SliderBase(InteractiveWidget):
         )
 
         if self._orientation is Orientation.HORIZONTAL:
-            self._track_w = max(1.0, float(cw))
-            self._track_h = max(1.0, track_thickness)
-            self._track_x = float(cx)
-            self._track_y = float(cy) + (float(ch) - self._track_h) / 2.0
-            self._track_start = self._track_x
-            self._track_end = self._track_x + self._track_w
+            track_w = max(1.0, float(cw))
+            track_h = max(1.0, track_thickness)
+            track_x = float(cx)
+            track_y = float(cy) + (float(ch) - track_h) / 2.0
+            start, end = track_x, track_x + track_w
         else:
-            self._track_w = max(1.0, track_thickness)
-            self._track_h = max(1.0, float(ch))
-            self._track_x = float(cx) + (float(cw) - self._track_w) / 2.0
-            self._track_y = float(cy)
-            self._track_start = self._track_y
-            self._track_end = self._track_y + self._track_h
+            track_w = max(1.0, track_thickness)
+            track_h = max(1.0, float(ch))
+            track_x = float(cx) + (float(cw) - track_w) / 2.0
+            track_y = float(cy)
+            start, end = track_y, track_y + track_h
 
         # Handle movable range: inset by stop indicator size + spacing from track ends
         stop_inset = float(style.stop_indicator_size) / 2.0 + float(style.stop_indicator_trailing_space)
-        self._handle_range_start = self._track_start + stop_inset
-        self._handle_range_end = max(self._handle_range_start, self._track_end - stop_inset)
-
-    def _point_on_track(self, ratio: float) -> Tuple[float, float]:
-        """Return the pixel (x, y) for a given ratio within the handle movable range."""
-        ratio = _clamp(ratio, 0.0, 1.0)
-        h_span = self._handle_range_end - self._handle_range_start
-        if self._orientation is Orientation.HORIZONTAL:
-            return (
-                self._handle_range_start + h_span * ratio,
-                self._track_y + self._track_h / 2.0,
-            )
-        # Vertical: invert so larger value is at the top (smaller y)
-        return (
-            self._track_x + self._track_w / 2.0,
-            self._handle_range_start + h_span * (1.0 - ratio),
+        handle_start = start + stop_inset
+        return _TrackGeometry(
+            x=track_x,
+            y=track_y,
+            width=track_w,
+            height=track_h,
+            start=start,
+            end=end,
+            handle_start=handle_start,
+            handle_end=max(handle_start, end - stop_inset),
         )
 
-    def _active_track_rect(self, start_ratio: float, end_ratio: float):
-        from nuiitivet.rendering.skia import make_rect
+    def _input_geometry(self) -> _TrackGeometry:
+        """Return the track in the coordinates pointer events arrive in."""
+        gx, gy, gw, gh = self.global_visual_rect or (0, 0, 0, 0)
+        return self._track_geometry(float(gx), float(gy), float(gw), float(gh))
 
-        sx, sy = self._point_on_track(start_ratio)
-        ex, ey = self._point_on_track(end_ratio)
+    def _point_on_track(self, track: _TrackGeometry, ratio: float) -> Tuple[float, float]:
+        """Return the pixel (x, y) for a given ratio within the handle movable range."""
+        ratio = _clamp(ratio, 0.0, 1.0)
+        h_span = track.handle_end - track.handle_start
         if self._orientation is Orientation.HORIZONTAL:
-            return make_rect(min(sx, ex), self._track_y, abs(ex - sx), self._track_h)
-        return make_rect(self._track_x, min(sy, ey), self._track_w, abs(ey - sy))
+            return (track.handle_start + h_span * ratio, track.y + track.height / 2.0)
+        # Vertical: invert so larger value is at the top (smaller y)
+        return (track.x + track.width / 2.0, track.handle_start + h_span * (1.0 - ratio))
 
     def _pick_handle_index(self, event: PointerEvent) -> int:
-        centers = self._handle_centers()
+        centers = self._handle_centers(self._input_geometry())
         if len(centers) <= 1:
             return 0
         axis_value = event.x if self._orientation is Orientation.HORIZONTAL else event.y
@@ -690,7 +690,7 @@ class _SliderBase(InteractiveWidget):
     def _step_active_handle(self, delta: float) -> None:
         raise NotImplementedError
 
-    def _handle_centers(self) -> Sequence[Tuple[float, float]]:
+    def _handle_centers(self, track: _TrackGeometry) -> Sequence[Tuple[float, float]]:
         raise NotImplementedError
 
     def _active_range_ratio(self) -> Tuple[float, float]:
@@ -813,8 +813,8 @@ class _Slider(_SliderBase):
         if self._on_change is not None:
             self._on_change(self.value)
 
-    def _handle_centers(self) -> Sequence[Tuple[float, float]]:
-        return [self._point_on_track(self._value_to_ratio(self.value))]
+    def _handle_centers(self, track: _TrackGeometry) -> Sequence[Tuple[float, float]]:
+        return [self._point_on_track(track, self._value_to_ratio(self.value))]
 
     def _active_range_ratio(self) -> Tuple[float, float]:
         return (0.0, self._value_to_ratio(self.value))
@@ -1060,10 +1060,10 @@ class _RangeSlider(_SliderBase):
         if self._on_change is not None:
             self._on_change((self.value_start, self.value_end))
 
-    def _handle_centers(self) -> Sequence[Tuple[float, float]]:
+    def _handle_centers(self, track: _TrackGeometry) -> Sequence[Tuple[float, float]]:
         return [
-            self._point_on_track(self._value_to_ratio(self.value_start)),
-            self._point_on_track(self._value_to_ratio(self.value_end)),
+            self._point_on_track(track, self._value_to_ratio(self.value_start)),
+            self._point_on_track(track, self._value_to_ratio(self.value_end)),
         ]
 
     def _active_range_ratio(self) -> Tuple[float, float]:
