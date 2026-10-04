@@ -11,6 +11,7 @@ from pyodide.ffi import create_proxy
 
 from nuiitivet.backends.web import skia
 from nuiitivet.backends.web.clock import BrowserClock
+from nuiitivet.backends.web.input import button_code, buttons_mask, key_name, wheel_steps
 from nuiitivet.common.logging_once import exception_once, warning_once
 from nuiitivet.observable.runtime import set_clock
 from nuiitivet.rendering.skia.color import rgba_to_skia_color
@@ -40,7 +41,11 @@ class _Loop:
             set_timeout=lambda ms: js.setTimeout(self._on_timer, ms),
             clear_timeout=js.clearTimeout,
         )
+        self._escape_down = False
         self._host.onResize = create_proxy(self.request_draw)
+        self._host.onPointer = create_proxy(self._pointer)
+        self._host.onWheel = create_proxy(self._wheel)
+        self._host.onKey = create_proxy(self._key)
 
     def request_draw(self, immediate: bool = False) -> None:
         self._draw_wanted = True
@@ -71,6 +76,55 @@ class _Loop:
             self._draw(self._window)
         except Exception:
             exception_once(logger, "web_frame_exc", "Drawing a frame raised")
+
+    def _pointer(self, kind: str, x: float, y: float, button: int, buttons: int, modifier_keys: int) -> None:
+        win = self._window
+        if win is None:
+            return
+        try:
+            if kind == "move":
+                win._dispatch_mouse_motion(int(x), int(y), buttons=buttons_mask(buttons), modifier_keys=modifier_keys)
+            elif kind == "down":
+                win._dispatch_mouse_press(int(x), int(y), button=button_code(button), modifier_keys=modifier_keys)
+            else:
+                win._dispatch_mouse_release(int(x), int(y), button=button_code(button), modifier_keys=modifier_keys)
+        except Exception:
+            exception_once(logger, "web_pointer_exc", "Pointer dispatch raised")
+
+    def _wheel(self, x: float, y: float, delta_x: float, delta_y: float, delta_mode: int) -> None:
+        win = self._window
+        if win is None:
+            return
+        try:
+            steps_x, steps_y = wheel_steps(delta_x, delta_mode), wheel_steps(delta_y, delta_mode)
+            win._dispatch_mouse_scroll(int(x), int(y), steps_x, steps_y)
+        except Exception:
+            exception_once(logger, "web_wheel_exc", "Wheel dispatch raised")
+
+    def _key(self, down: bool, key: str, code: str, modifier_keys: int) -> bool:
+        """Dispatch a key. ``True`` keeps the browser from acting on it as well."""
+        win = self._window
+        if win is None:
+            return False
+        try:
+            name = key_name(key, code)
+            win._set_modifier_keys(modifier_keys)
+            if name == "escape":
+                # Back navigation fires on the release, and only after a press that could be handled.
+                if down:
+                    self._escape_down = bool(win.can_handle_back_event())
+                    return self._escape_down
+                if not self._escape_down:
+                    return False
+                self._escape_down = False
+            dispatch = win._dispatch_key_press if down else win._dispatch_key_release
+            handled = bool(dispatch(name, modifier_keys))
+            if handled:
+                win.invalidate()
+            return handled
+        except Exception:
+            exception_once(logger, "web_key_exc", "Key dispatch raised")
+            return False
 
     def _draw(self, win: Any) -> None:
         handle = self._host.frame()

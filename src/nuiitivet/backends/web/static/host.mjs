@@ -34,6 +34,9 @@ export function installHost(CK, canvas, fontData) {
     pixelHeight: 0,
     dpr: 1,
     onResize: null,
+    onPointer: null,
+    onWheel: null,
+    onKey: null,
 
     // The surface for this frame. It is made again when the canvas or the
     // device pixel ratio changed, and the caller repaints everything then.
@@ -168,6 +171,35 @@ export function installHost(CK, canvas, fontData) {
     );
   };
   watchRatio();
+
+  // The bits follow MOD_SHIFT, MOD_CTRL, MOD_ALT and MOD_META of nuiitivet.input.codes.
+  const mods = (e) => (e.shiftKey ? 1 : 0) | (e.ctrlKey ? 2 : 0) | (e.altKey ? 4 : 0) | (e.metaKey ? 8 : 0);
+  const pointer = (kind) => (e) => host.onPointer?.(kind, e.offsetX, e.offsetY, e.button, e.buttons, mods(e));
+  canvas.addEventListener("pointerdown", (e) => {
+    canvas.focus();
+    // A drag keeps reaching the canvas after the pointer leaves it.
+    canvas.setPointerCapture(e.pointerId);
+    pointer("down")(e);
+  });
+  canvas.addEventListener("pointerup", pointer("up"));
+  canvas.addEventListener("pointermove", pointer("move"));
+  canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+  canvas.addEventListener(
+    "wheel",
+    (e) => {
+      // Ctrl with the wheel is the browser's zoom.
+      if (e.ctrlKey) return;
+      e.preventDefault();
+      host.onWheel?.(e.offsetX, e.offsetY, e.deltaX, e.deltaY, e.deltaMode);
+    },
+    { passive: false },
+  );
+  const key = (down) => (e) => {
+    if (e.repeat) return;
+    if (host.onKey?.(down, e.key, e.code, mods(e))) e.preventDefault();
+  };
+  canvas.addEventListener("keydown", key(true));
+  canvas.addEventListener("keyup", key(false));
 
   globalThis.NV_HOST = host;
   return host;
