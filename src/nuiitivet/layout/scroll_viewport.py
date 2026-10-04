@@ -153,10 +153,10 @@ class ScrollViewport(Widget):
     ) -> Tuple[int, int]:
         """Give weight-sized content the viewport's extent on the cross axis.
 
-        A weight is a share of what the parent offers, so it has no intrinsic
-        size to measure -- ``preferred_size`` answers with padding alone. Laying
-        the content out at that answer is what shrink-wraps a ``width="wt"`` card
-        inside a vertical scrollable.
+        A weight is a share of what the parent offers, but ``preferred_size``
+        answers with the content's own size. Laying the content out at that
+        answer is what shrink-wraps a ``width="wt"`` card inside a vertical
+        scrollable.
 
         Only a weight is substituted. ``auto`` content keeps its preferred size
         and still overflows a narrower viewport, which is what a scrollable is
