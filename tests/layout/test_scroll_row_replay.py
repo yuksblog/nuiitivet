@@ -15,6 +15,7 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.scroll_viewport import ScrollViewport
+from nuiitivet.material.search import SearchBar
 from nuiitivet.material.selection_controls import Checkbox
 from nuiitivet.material.slider import HorizontalSlider
 from nuiitivet.material.text import Text
@@ -324,8 +325,9 @@ def _filler() -> List[Widget]:
     [
         lambda: HorizontalSlider(0.5, width=200),
         lambda: TextField("text", label="Label", leading_icon="search", width=200),
+        lambda: SearchBar("query", width=280),
     ],
-    ids=["slider", "text field"],
+    ids=["slider", "text field", "search bar"],
 )
 def test_a_row_holding_a_material_input_is_replayed(build) -> None:
     row = Row(children=[build()])

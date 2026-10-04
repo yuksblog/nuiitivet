@@ -80,6 +80,7 @@ from nuiitivet.widgets.input_filter import InputFilterLike
 # it leaves TextField untouched; moving it to a shared module would be a
 # refactor of text_fields.py, which is out of scope here.
 from nuiitivet.material.text_fields import _build_text_field_icon
+from nuiitivet.widgeting.paint_replay import replay_safe
 
 if TYPE_CHECKING:
     from nuiitivet.material.symbols import Symbol
@@ -334,6 +335,7 @@ class _SearchBarCore(InteractiveWidget):
         )
         return make_font(tf, size)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Draw the container, the state layer, the text and the icons."""
         if canvas is None:
@@ -491,6 +493,7 @@ class _SearchPane(Widget):
         self._child.layout(bw, bh)
         self._child.set_layout_rect(bx, by, bw, bh)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Paint the child; the pane's own margins stay empty by design."""
         self.set_last_rect(x, y, width, height)
@@ -588,6 +591,7 @@ class _DockedContainer(Widget):
         self._content.layout(width, height)
         self._content.set_layout_rect(0, 0, width, height)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Draw the rounded surface, then the app's content on top."""
         if canvas is None:
