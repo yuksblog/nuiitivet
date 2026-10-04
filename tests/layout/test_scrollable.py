@@ -423,10 +423,11 @@ if __name__ == "__main__":
 
 
 def test_vertical_scrollable_gives_weight_content_the_viewport_width():
-    """A weight has no intrinsic size, so the viewport must supply it.
+    """A weight is a share of the viewport, so the viewport must supply it.
 
-    Measured alone, ``width="wt"`` answers with padding only. Laying the content
-    out at that answer is what shrink-wraps a full-width card inside a list.
+    Measured alone, ``width="wt"`` answers with the content's own width. Laying
+    the content out at that answer is what shrink-wraps a full-width card inside
+    a list.
     """
     child = Column([Text("Item")], width="wt")
     scrollable = VerticalScrollable(child=child)
@@ -460,6 +461,24 @@ def test_scrollable_leaves_the_scroll_axis_content_driven():
 
     assert child.layout_rect is not None
     assert int(child.layout_rect[3]) > 100
+
+
+def test_scrollable_sizes_weight_content_as_auto_on_the_scroll_axis():
+    """Nothing offers a size on the scroll axis, so a weight there measures as ``auto``."""
+    weight_column = Column([Text("Item") for _ in range(40)], height="wt")
+    auto_column = Column([Text("Item") for _ in range(40)])
+    weight_row = Row([Text("Item") for _ in range(40)], width="wt")
+    auto_row = Row([Text("Item") for _ in range(40)])
+
+    for child in (weight_column, auto_column):
+        VerticalScrollable(child=child).layout(300, 100)
+    for child in (weight_row, auto_row):
+        HorizontalScrollable(child=child).layout(100, 200)
+
+    assert weight_column.layout_rect is not None and auto_column.layout_rect is not None
+    assert weight_column.layout_rect[3] == auto_column.layout_rect[3] > 100
+    assert weight_row.layout_rect is not None and auto_row.layout_rect is not None
+    assert weight_row.layout_rect[2] == auto_row.layout_rect[2] > 100
 
 
 def test_scrollable_does_not_stretch_auto_sized_content():
