@@ -43,6 +43,7 @@ from nuiitivet.observable.protocols import ObservableBase
 from nuiitivet.rendering.skia.geometry import clip_rect, make_rect
 from nuiitivet.widgets.interaction import FocusTraversalBlocker
 from nuiitivet.widgeting.widget import Widget
+from nuiitivet.widgeting.paint_replay import replay_safe
 
 if TYPE_CHECKING:
     from nuiitivet.observable.protocols import Disposable
@@ -354,6 +355,7 @@ class Collapsible(FocusTraversalBlocker, Widget):
             child_h,
         )
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
         child = self._child()

@@ -22,7 +22,13 @@ wraps each row. A list wrapper puts the whole list under one wrapper that hides
 most of it: ``scroll`` and ``clip`` show 800 px of it, ``translate`` moves it
 off the canvas.
 
+``--scroll`` times one frame of a scroll under a viewport. ``--row mixed``
+swaps the row for one of widgets that draw without a container: a
+``RadioButton``, an ``Icon`` with a badge stuck to it, a ``Text`` with a
+tooltip, a ``Spacer``, two progress indicators and a divider.
+
 Run:  python scripts/investigation/bench_paint_walk.py [--rows N] [--frames N] [--wrap NAME] [--profile]
+      python scripts/investigation/bench_paint_walk.py --scroll PX [--row NAME]
 """
 
 from __future__ import annotations
@@ -56,6 +62,7 @@ ROW_WRAPPERS = (
 )
 LIST_WRAPPERS = ("scroll", "clip", "translate")
 WRAPPERS = ("none", *ROW_WRAPPERS, *LIST_WRAPPERS)
+ROWS = ("settings", "mixed")
 
 
 def _add_src_to_path() -> None:
@@ -129,6 +136,27 @@ def _row(nv: Any, i: int) -> Any:
             ),
             nv.Switch(i % 3 == 0),
             nv.Button("Apply", style=nv.ButtonStyle.tonal()),
+        ],
+    )
+
+
+def _mixed_row(nv: Any, i: int) -> Any:
+    return nv.Column(
+        children=[
+            nv.Row(
+                gap=12,
+                padding=8,
+                cross_alignment="center",
+                children=[
+                    nv.RadioButton(i),
+                    nv.Icon("star").modifier(nv.stick(nv.SmallBadge())),
+                    nv.Text(f"Download number {i}").modifier(nv.tooltip(nv.Text(f"Tip {i}"))),
+                    nv.Spacer(width=24),
+                    nv.LinearProgressIndicator((i % 10) / 10.0, width=160),
+                    nv.CircularProgressIndicator((i % 7) / 7.0),
+                ],
+            ),
+            nv.HorizontalDivider(),
         ],
     )
 
@@ -221,20 +249,25 @@ def measure(skia: Any, rows: int, frames: int, wrap: str = "none") -> dict[str, 
     return out
 
 
-def measure_scroll(skia: Any, rows: int, frames: int, viewport: int) -> dict[str, float]:
+def measure_scroll(skia: Any, rows: int, frames: int, viewport: int, row: str = "settings") -> dict[str, float]:
     """Time one frame of a scroll: the list under a viewport, moved 7 px per frame."""
     import nuiitivet.material as nv
     from nuiitivet.scrolling import ScrollController, ScrollDirection
     from nuiitivet.testing import mount
 
     controller = ScrollController()
-    content = nv.Column(children=[_row(nv, i) for i in range(rows)])
+    build = _mixed_row if row == "mixed" else _row
+    content = nv.Column(children=[build(nv, i) for i in range(rows)])
+    if row == "mixed":
+        content = nv.RadioGroup(content, value=0)
     tree = nv.VerticalScrollable(content, controller=controller, height=viewport)
-    limit = max(1, rows * ROW_HEIGHT - viewport)
-    out: dict[str, float] = {"visible_widgets": float(viewport // ROW_HEIGHT * 8)}
+    out: dict[str, float] = {}
 
     with mount(tree, theme=nv.ThemeFactory.light("#6750A4"), leak_check="off") as host:
         host.layout(WIDTH, viewport)
+        row_height = max(1, content.layout_rect[3] // rows)
+        limit = max(1, rows * row_height - viewport)
+        out["visible_widgets"] = float(viewport // row_height * (_count_widgets(content) - 1) // rows)
 
         def paint() -> None:
             recorder = skia.PictureRecorder()
@@ -266,6 +299,7 @@ def main() -> int:
     parser.add_argument("--frames", type=int, default=20, help="frames to time per case")
     parser.add_argument("--wrap", choices=WRAPPERS, default="none", help="wrapper between the list and its rows")
     parser.add_argument("--scroll", type=int, metavar="PX", help="time a scroll frame under a viewport this tall")
+    parser.add_argument("--row", choices=ROWS, default="settings", help="what a row holds, with --scroll")
     parser.add_argument("--profile", action="store_true", help="also print a cProfile of the run")
     args = parser.parse_args()
 
@@ -278,7 +312,7 @@ def main() -> int:
         return 1
 
     if args.scroll:
-        print(report(measure_scroll(skia, args.rows, args.frames, args.scroll)))
+        print(report(measure_scroll(skia, args.rows, args.frames, args.scroll, args.row)))
         return 0
 
     print(report(measure(skia, args.rows, args.frames, args.wrap)))

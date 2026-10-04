@@ -11,6 +11,7 @@ from nuiitivet.rendering.sizing import Sizing, SizingLike
 from nuiitivet.rendering.skia import make_paint, make_rect
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.widgeting.widget import Widget
+from nuiitivet.widgeting.paint_replay import replay_safe
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,7 @@ class _DividerBase(Widget):
 
         return (pref_w, pref_h)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Paint the divider line.
 

@@ -11,6 +11,7 @@ from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia import clip_rect, make_rect
 from nuiitivet.rendering.skia.skia_module import get_skia
 from nuiitivet.widgeting.widget import Widget
+from nuiitivet.widgeting.paint_replay import replay_safe
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +104,7 @@ class Image(Widget):
 
         return (max(0, total_w), max(0, total_h))
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Paint the image into the given rect according to fit and alignment."""
         self.set_last_rect(x, y, width, height)

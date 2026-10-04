@@ -13,6 +13,7 @@ from nuiitivet.overlay.overlay_position import OverlayPosition
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgeting.modifier import ModifierElement
 from nuiitivet.widgeting.widget import Widget
+from nuiitivet.widgeting.paint_replay import replay_safe
 
 if TYPE_CHECKING:
     from typing import Any
@@ -293,6 +294,7 @@ class PopupBox(Widget):
         self._child.layout(width, height)
         self._child.set_layout_rect(0, 0, width, height)
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
 

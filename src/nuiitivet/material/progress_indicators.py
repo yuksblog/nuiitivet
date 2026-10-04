@@ -17,6 +17,7 @@ from .styles.progress_indicator_style import (
     CircularProgressIndicatorStyle,
     LinearProgressIndicatorStyle,
 )
+from nuiitivet.widgeting.paint_replay import replay_safe
 
 PaddingArg = Tuple[int, int] | Tuple[int, int, int, int] | int
 
@@ -538,6 +539,7 @@ class LinearProgressIndicator(_DeterminateProgressBase):
 
         return active, track, stop
 
+    @replay_safe
     def paint(self, canvas: Any, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
         if canvas is None:
@@ -682,6 +684,7 @@ class IndeterminateLinearProgressIndicator(_IndeterminateProgressBase):
 
         return _resolve_active_track_colors(style=self.style, disabled=self.disabled, theme=Theme.of(self))
 
+    @replay_safe
     def paint(self, canvas: Any, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
         if canvas is None:
@@ -800,6 +803,7 @@ class CircularProgressIndicator(_DeterminateProgressBase):
             h = min(h, int(max_height))
         return (w, h)
 
+    @replay_safe
     def paint(self, canvas: Any, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
         if canvas is None:
@@ -935,6 +939,7 @@ class IndeterminateCircularProgressIndicator(_IndeterminateProgressBase):
 
         return _resolve_active_track_colors(style=self.style, disabled=self.disabled, theme=Theme.of(self))
 
+    @replay_safe
     def paint(self, canvas: Any, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
         if canvas is None:

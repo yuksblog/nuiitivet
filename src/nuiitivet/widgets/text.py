@@ -16,6 +16,7 @@ from nuiitivet.rendering.skia import (
     get_typeface,
     get_default_font_fallbacks,
     make_font,
+    make_rect,
     make_text_blob,
     measure_text_ink_bounds,
     measure_text_width,
@@ -431,7 +432,7 @@ class TextBase(Widget):
         clip = self._overflow == "clip"
         if clip:
             canvas.save()
-            canvas.clipRect((cx, cy, cx + cw, cy + ch))
+            canvas.clipRect(make_rect(cx, cy, cw, ch))
 
         if len(runs) == 1:
             self._paint_single_line(canvas, runs[0], cx, cy, cw, ch, alignment, paint)

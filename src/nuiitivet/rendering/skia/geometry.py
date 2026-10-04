@@ -326,6 +326,41 @@ def draw_oval(canvas, rect, paint) -> bool:
     return False
 
 
+def draw_ring(canvas, rect, stroke_width: float, paint) -> bool:
+    """Draw the ring a stroke of ``stroke_width`` would trace along the oval of ``rect``.
+
+    The ring is filled between two ovals, which rasterises the same wherever
+    it lands. A stroked oval does not: replayed from a picture drawn at another
+    position, its edge pixels differ at a device scale above 1.
+
+    Args:
+        canvas: Skia canvas to draw on.
+        rect: Bounds of the oval at the middle of the ring.
+        stroke_width: Thickness of the ring.
+        paint: A fill paint.
+
+    Returns:
+        True on success.
+    """
+
+    skia = get_skia(raise_if_missing=False)
+    if canvas is None or rect is None or paint is None or skia is None:
+        return False
+    draw = getattr(canvas, "drawDRRect", None)
+    if not callable(draw):
+        debug_once(logger, "canvas_drawdrrect_missing", "canvas.drawDRRect unavailable")
+        return False
+    half = float(stroke_width) / 2.0
+    try:
+        outer = skia.RRect.MakeOval(rect.makeOutset(half, half))
+        inner = skia.RRect.MakeOval(rect.makeInset(half, half))
+        draw(outer, inner, paint)
+        return True
+    except Exception:
+        exception_once(logger, "canvas_drawdrrect_exc", "canvas.drawDRRect failed")
+        return False
+
+
 def make_path() -> Optional[object]:
     """Return a skia.Path or None if unavailable."""
 
@@ -419,6 +454,7 @@ __all__ = [
     "local_clip_bounds",
     "make_point",
     "draw_oval",
+    "draw_ring",
     "make_path",
     "path_add_rect",
     "path_add_rrect",
