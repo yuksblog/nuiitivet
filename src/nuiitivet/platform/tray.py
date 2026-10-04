@@ -66,8 +66,8 @@ class TrayIcon:
             on_activate: Called when the icon itself is activated the platform's
                 conventional way. Support varies: on macOS only without a
                 ``menu`` (a menu owns the click there); on Windows the gesture
-                is a double-click; a Linux AppIndicator host cannot deliver it
-                at all. Treat it as an optional shortcut
+                is a double-click; on Linux the desktop decides, and some
+                never send it. Treat it as an optional shortcut
                 and keep an equivalent entry in ``menu``.
             dock_visibility: macOS Dock presence: ``"always"`` (default),
                 ``"auto"`` (in the Dock only while some window is visible — the
@@ -157,9 +157,9 @@ class TrayIcon:
             from .tray_win32 import TrayWin32Bridge
 
             return TrayWin32Bridge(self)
-        from .tray_pystray import TrayPystrayBridge
+        from .tray_sni import TraySniBridge
 
-        return TrayPystrayBridge(self)
+        return TraySniBridge(self)
 
     def _uninstall(self) -> None:
         """Remove the icon. Called by the backend when the loop stops."""

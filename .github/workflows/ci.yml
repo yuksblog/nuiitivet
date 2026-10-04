@@ -66,11 +66,13 @@ jobs:
         with:
           enable-cache: true
 
+      # dbus-daemon: without it the tray's D-Bus tests skip silently.
       - name: Install Skia system dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -y
           sudo apt-get install -y --no-install-recommends \
+            dbus-daemon \
             libfontconfig1 \
             libegl1 \
             libegl-mesa0 \
