@@ -139,7 +139,7 @@ class Screen(nv.ComposableWidget):
 
 def main() -> None:
     if sys.platform != "darwin":
-        print("This spike is macOS-only; use spike_tray_pystray.py elsewhere.")
+        print("This spike is macOS-only.")
         return
 
     screen = Screen()

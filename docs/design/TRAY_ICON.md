@@ -36,15 +36,14 @@ if ok else "close")`, one visible line, the Qt and Electron division of
 responsibility. An install failure never takes the app down, the
 `Desktop.notify` policy, logged once; an app that treats the tray as
 essential reads `installed` and fails fast itself. `installed` means the
-user can reach the app through the tray: on a backend that cannot show a
-menu at all, pystray's bare-XOrg backend, a menu-carrying tray refuses to
-install rather than reporting an icon the user cannot operate, which would
+user can reach the app through the tray: on a Linux desktop with no tray
+host, install fails rather than reporting an icon nobody can see, which would
 steer the recipe toward locking the user out.
 
 `on_activate` is an optional shortcut, not a primary affordance: macOS
 delivers it only without a menu, since a menu owns the click; Windows on
-double-click; a Linux AppIndicator host not at all. An equivalent menu entry
-must always exist. Activation mirrors `MenuBarController.activate` minus the
+double-click; a Linux desktop only if it chooses to. An equivalent menu
+entry must always exist. Activation mirrors `MenuBarController.activate` minus the
 window scope, always on the UI thread.
 
 ## Visibility Is Not Lifecycle
@@ -104,28 +103,27 @@ one the notification backend adds a transient icon of its own. Letting the
 backend always add its own was rejected: an app with a tray would show two
 icons for the length of every notification.
 
-**Linux** uses pystray (`platform/tray_pystray.py`), a regular dependency
-platform-marked in `pyproject.toml` so macOS and Windows never install it.
-It is not an extra, because `TrayIcon` must work without the app author
-choosing anything. A direct backend would hand-roll the StatusNotifierItem
-and dbusmenu protocols on a DBus library that is itself a new dependency.
-The bridge boundary keeps a future swap local.
+**Linux** speaks the tray protocol itself (`platform/tray_sni.py`) through
+jeepney, a pure-Python D-Bus library, a regular dependency platform-marked in
+`pyproject.toml`. The bridge exports a StatusNotifierItem and its dbusmenu on
+the session bus and registers with the desktop's StatusNotifierWatcher; the
+desktop draws the icon and the menu. A receiver thread serves the desktop's
+calls on a blocking connection, and every activation hops to the UI thread
+through the runtime clock before touching the model.
 
-The icon runs detached, but the backend families differ. `xorg` spins its
-own thread, so its callbacks arrive off the UI thread. `appindicator` and
-`gtk` start no loop: they queue every icon operation, including the initial
-show that registers the item on DBus, onto the GLib main context and assume
-the host runs a GLib loop. nuiitivet runs only pyglet's, so the bridge
-iterates the default GLib context from a 60 Hz clock interval on the UI
-thread; without that pump nothing is dispatched and the icon never appears
-while `install()` returns cleanly, a silent failure that would strand the
-close-to-tray recipe with a hidden window and no icon to restore it. Every
-activation hops to the UI thread through the runtime clock before touching
-the model, and every observable in the menu tree also triggers
-`Icon.update_menu()`, since not every backend rebuilds the menu on display.
+The desktop keeps its own copy of the menu, so every observable in the tree
+emits `LayoutUpdated` and the desktop asks for the layout again. Item ids
+follow the tree's order, so the layout is planned afresh on every request and
+the bridge keeps no menu state between requests. The icon travels as a
+pixmap decoded by skia; an icon theme name was rejected because the app
+would have to install its icon into the theme first.
 
-The Linux tray is best-effort by contract: KDE and SNI hosts work, GNOME needs the
-AppIndicator extension, bare XOrg has no menu support and refuses install,
-and AppIndicator cannot deliver `on_activate`. The API always works,
+A restarted desktop shell forgets every item. The bridge watches the
+watcher's bus name and registers again when a new owner appears.
+
+The Linux tray is best-effort by contract. A desktop with a
+StatusNotifierWatcher works, KDE natively and GNOME through the AppIndicator
+extension; a desktop without one, bare X11 included, refuses install; and
+the desktop decides whether a click sends `Activate`. The API always works,
 `installed` reports the truth, and the recipe degrades to a normal closing
 window.

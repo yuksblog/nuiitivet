@@ -15,14 +15,10 @@ classifiers = [
 ]
 dependencies = [
   "materialyoucolor>=3.0.3",
-  # pyglet 3.0 removes ImageData.blit and the per-resize glViewport reset
-  # the backend relies on; the upper bound goes when that migration is done.
   "pyglet>=2.1.14,<3",
   "pyopengl>=3.1.10",
   "skia-python>=138.0",
-  # Linux tray icon backend. macOS and Windows talk to the OS directly, so an
-  # app packaged there bundles no LGPL library.
-  'pystray>=0.19.0; sys_platform == "linux"',
+  'jeepney>=0.9.0; sys_platform == "linux"',
 ]
 description = "AI friendly Desktop UI framework for Python"
 keywords = ["ui", "desktop", "framework", "graphics", "opengl", "skia", "material design"]
@@ -78,30 +74,18 @@ check_untyped_defs = true
 files = ["src", "tests", "samples"]
 mypy_path = "stubs"
 
-# Tests rely on monkeypatching and hand-written stub classes, which do not
-# survive body checking. Keep their bodies unchecked and drop the resulting
-# "untyped body" notes.
 [[tool.mypy.overrides]]
 check_untyped_defs = false
 disable_error_code = ["annotation-unchecked"]
 module = ["tests.*"]
 
-# 'mcp' is an optional dependency (the [dev] extra); CI type-checks without it
-# installed. Treat its imports as resolvable so the optional dev/mcp_server.py
-# module still type-checks. When the SDK *is* installed (a contributor working
-# on the MCP server), mypy uses its real types -- this override only suppresses
-# the "missing stub" error when it is absent.
 [[tool.mypy.overrides]]
 ignore_missing_imports = true
 module = ["mcp.*"]
 
-# PyGObject ('gi') has no type stubs or py.typed marker. It is used only by the
-# Linux tray's GLib pump (platform/tray_pystray.py) and is present only when a
-# system PyGObject is exposed to the venv; treat its imports as resolvable so
-# the module still type-checks with or without it installed.
 [[tool.mypy.overrides]]
 ignore_missing_imports = true
-module = ["gi.*"]
+module = ["jeepney.*"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

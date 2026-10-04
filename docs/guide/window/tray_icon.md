@@ -84,7 +84,8 @@ app = nv.App(window, tray=tray, exit_policy=nv.ExitPolicy.EXPLICIT)
 - **`close_action=...`** — what the OS close button does: `"close"` (default)
   destroys the window, `"hide"` parks it. It accepts an Observable, and the
   binding above is the important part: hide **only while the tray icon is
-  actually showing**. If the tray failed to install (see the Linux section),
+  actually showing**. If the tray failed to install (see
+  [If no icon appears on Linux](#if-no-icon-appears-on-linux)),
   the close button quietly keeps meaning close, and the user is never locked
   out of an app they cannot reach. Hard-coding `close_action="hide"` skips that
   safety; hiding the last visible window with no tray showing logs a warning.
@@ -132,7 +133,7 @@ menu entry, because support varies:
 | --- | --- |
 | macOS | Only without a `menu` — a menu owns the click there |
 | Windows | Double-click |
-| Linux (AppIndicator) | Not deliverable (a pystray limitation) |
+| Linux | The desktop decides; some never send it |
 
 ## The icon image
 
@@ -143,42 +144,14 @@ convention for menu-bar icons. Without `icon=`, macOS shows the tooltip text
 in the menu bar and the other platforms show a neutral placeholder; ship a
 real icon.
 
-## Linux needs two system packages
+## If no icon appears on Linux
 
-Windows and macOS need nothing. On Linux the icon and its menu are drawn by
-the desktop, and nuiitivet reaches that through two pieces pip cannot supply:
-
-1. **PyGObject** — the binding that lets Python talk to the desktop
-   libraries (the `gi` module).
-2. **The Ayatana AppIndicator typelib** — the description of the tray API
-   itself, named `AyatanaAppIndicator3-0.1` (older systems: `AppIndicator3-0.1`).
-
-Both have to come from the system package manager, so the names differ per
-distribution — search yours for "PyGObject" and "Ayatana AppIndicator". On
-Debian and Ubuntu:
-
-```bash
-sudo apt install python3-gi gir1.2-ayatanaappindicator3-0.1
-```
-
-Then let the venv see them, which is not the default:
-
-```bash
-python -m venv .venv --system-site-packages
-```
-
-Without all of this a tray carrying a menu refuses to install. `installed`
-stays `False`, so the recipe above degrades on its own: the close button keeps
-meaning close, and nothing hides into an icon that was never there.
-
-### GNOME needs one more thing
-
-With those packages in place the icon appears on KDE, XFCE and most other
-desktops. GNOME is the exception — it has nowhere to put tray icons until
-the [AppIndicator extension](https://extensions.gnome.org/extension/615/appindicator-support/)
+Windows and macOS need nothing, and neither does KDE, XFCE or Ubuntu's
+desktop. On Linux the icon and its menu are drawn by the desktop, and plain
+GNOME has nowhere to put tray icons until the
+[AppIndicator extension](https://extensions.gnome.org/extension/615/appindicator-support/)
 is installed.
 
-This case is quieter, and worth knowing before you go looking for the bug in
-your app: the icon is handed over successfully, so `installed` is `True`, but
-nothing appears. `installed` reports that nuiitivet delivered the icon — not
-that the desktop decided to show it. On GNOME, check the extension first.
+On a desktop that hosts no tray icons the install fails. `installed` stays
+`False`, so the recipe above degrades on its own: the close button keeps
+meaning close, and nothing hides into an icon that was never there.
