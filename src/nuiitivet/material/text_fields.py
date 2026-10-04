@@ -37,6 +37,7 @@ from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.animation import Animatable, RgbaTupleConverter
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS
+from nuiitivet.widgeting.paint_replay import replay_safe
 
 if TYPE_CHECKING:
     from nuiitivet.material.symbols import Symbol
@@ -898,6 +899,7 @@ class TextField(InteractiveWidget):
     def build(self) -> Widget:
         return self
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         if canvas is None:
             return

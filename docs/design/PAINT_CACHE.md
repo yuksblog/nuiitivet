@@ -248,13 +248,21 @@ the rows, so it marks none of them.
 A row is replayed only when every widget in it declares its drawing safe to
 replay (`replay_safe`, on `paint` and the `draw_*` hooks). The declaration is
 on the function, so a subclass that overrides one is undeclared again. It
-exists because skipping `paint()` is not always harmless: a `Slider` stores
-the position of its track while painting and reads it while dragging, and a
-replayed row would leave that position where the last recording put it. A
+exists because skipping `paint()` is not always harmless: a nested scroll
+viewport stores its size while painting and reads it in hit testing, and a
+replayed row would leave that size where the last recording put it. A
 widget the framework does not know, an application's own, may do the same.
 Undeclared is the default, so such a row is painted on every frame, as before.
 Marking the unsafe widgets instead was rejected: an application's widget would
 then be replayed without anyone having checked it.
+
+A declared widget takes the position its input needs from layout, when the
+input arrives. A `Slider` computes its track from its rect once to draw it and
+again for each pointer event. A text field settles the offset that keeps its
+caret in view wherever the offset is read, and the IME asks the focused field
+for the caret's rect each time it places its candidates. Publishing that rect
+on every paint was rejected: a scroll moves the caret on screen without
+painting the field.
 
 Three more rows are painted directly: one larger than the viewport, since
 recording it would walk more than the clip shows; one that changed on more

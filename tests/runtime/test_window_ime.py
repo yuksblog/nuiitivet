@@ -42,6 +42,41 @@ def test_each_window_owns_its_own_ime_state() -> None:
     assert a.ime.window_location == (100, 200)
 
 
+def test_a_cursor_source_is_asked_on_every_read() -> None:
+    ime = IMEManager()
+    caret = [(10.0, 20.0, 2.0, 16.0)]
+    ime.set_cursor_source(lambda: caret[0])
+
+    assert (ime.cursor_rect.x, ime.cursor_rect.y) == (10.0, 20.0)
+    caret[0] = (10.0, 5.0, 2.0, 16.0)
+    assert ime.cursor_rect.y == 5.0
+
+
+def test_a_published_rect_replaces_the_source() -> None:
+    ime = IMEManager()
+    ime.set_cursor_source(lambda: (10.0, 20.0, 2.0, 16.0))
+
+    ime.update_cursor_rect(1, 2, 3, 4)
+
+    assert (ime.cursor_rect.x, ime.cursor_rect.y) == (1, 2)
+
+
+def test_the_focused_field_is_the_cursor_source_until_it_loses_focus() -> None:
+    field = EditableText()
+    other = EditableText()
+    window = App(Window(content=field)).main_window
+
+    _focus(window, field)
+    assert window.ime._cursor_source == field._ime_caret_rect
+
+    # A field that never held the source cannot take it away.
+    window.ime.clear_cursor_source(other._ime_caret_rect)
+    assert window.ime._cursor_source == field._ime_caret_rect
+
+    window.request_focus(None)
+    assert window.ime._cursor_source is None
+
+
 def test_os_focus_loss_commits_pending_composition() -> None:
     field = EditableText()
     window = App(Window(content=field)).main_window

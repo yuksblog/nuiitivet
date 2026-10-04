@@ -18,6 +18,7 @@ from nuiitivet.layout.scroll_viewport import ScrollViewport
 from nuiitivet.material.selection_controls import Checkbox
 from nuiitivet.material.slider import HorizontalSlider
 from nuiitivet.material.text import Text
+from nuiitivet.material.text_fields import TextField
 from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.observable import Observable
 from nuiitivet.rendering.sizing import Sizing
@@ -322,8 +323,9 @@ def _filler() -> List[Widget]:
     "build",
     [
         lambda: HorizontalSlider(0.5, width=200),
+        lambda: TextField("text", label="Label", leading_icon="search", width=200),
     ],
-    ids=["slider"],
+    ids=["slider", "text field"],
 )
 def test_a_row_holding_a_material_input_is_replayed(build) -> None:
     row = Row(children=[build()])
@@ -356,3 +358,28 @@ def test_a_slider_in_a_replayed_row_drags_to_the_pointer_after_a_scroll() -> Non
         app.drag((x + width * 0.75, y + height / 2), (x + width * 0.25, y + height / 2))
 
         assert slider.value == pytest.approx(0.25, abs=0.03)
+
+
+def test_a_text_field_in_a_replayed_row_places_its_caret_after_a_scroll() -> None:
+    text = "hello world"
+    field = TextField(text, width=200)
+    editable = field._editable
+    row = Row(children=[field])
+    with _app([*_filler()[:2], row, *_filler()]) as app:
+        app.frame()
+        app.frame()
+        assert row._replay_picture is not None
+        rect = editable.global_visual_rect
+        assert rect is not None
+        x, y, width, height = rect
+        app.drag((x + width - 1, y + height / 2), (x + width - 1, y + height / 2))
+        assert editable._state_internal.value.selection.end == len(text)
+        before = app.window.ime.cursor_rect
+
+        app.scroll(20)
+
+        # The IME is told where the caret is now, not where it was last painted.
+        after = app.window.ime.cursor_rect
+        assert (after.x, after.y) == (before.x, before.y - 20)
+        app.drag((x + 1, y - 20 + height / 2), (x + 1, y - 20 + height / 2))
+        assert editable._state_internal.value.selection.end == 0

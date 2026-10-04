@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional, Tuple, Union, cast
+from typing import Any, Optional, Tuple, Union, cast
 
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import Widget
@@ -18,6 +18,7 @@ from nuiitivet.input.codes import (
 from nuiitivet.observable import Disposable, Observable, ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.platform import get_system_clipboard
 from nuiitivet.widgeting.context_lookup import find_window
+from nuiitivet.widgeting.paint_replay import replay_safe
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgets.interaction import (
     InteractionHostMixin,
@@ -186,6 +187,8 @@ class EditableText(InteractionHostMixin, Widget):
         # outgrow the height.
         self._scroll_x: float = 0.0
         self._scroll_y: float = 0.0
+        # What the offsets were last settled for; a reader settles them again when it differs.
+        self._scroll_key: Optional[Tuple[Any, ...]] = None
         # The x a run of Up/Down moves aims for, so a short line passed on the
         # way does not pull the caret left for good. Any other edit drops it.
         self._goal_x: Optional[float] = None
@@ -384,6 +387,7 @@ class EditableText(InteractionHostMixin, Widget):
             self._external_sub = self._external_str_obs.subscribe(_on_external_change)
 
     def on_unmount(self) -> None:
+        self._withdraw_ime_caret()
         super().on_unmount()
         if self._external_sub:
             self._external_sub.dispose()
@@ -417,6 +421,9 @@ class EditableText(InteractionHostMixin, Widget):
 
         self._goal_x = None
         self._state_internal.value = new_value
+        if self.state.focused:
+            # A rect published by another writer since the focus arrived gives way to the caret.
+            self._publish_ime_caret()
         if current.text != new_value.text:
             self._text_changed()
         else:
@@ -658,23 +665,27 @@ class EditableText(InteractionHostMixin, Widget):
             return 0
 
         lines = self._lines(font, self._wrap_width())
+        scroll_x, scroll_y = self._settle_scroll(font, *self._viewport)
         if self.multiline:
             metrics = font.getMetrics()
             line_h = max(1.0, float(-metrics.fAscent + metrics.fDescent))
-            row = int((y + self._scroll_y) // line_h)
+            row = int((y + scroll_y) // line_h)
             line = lines[max(0, min(row, len(lines) - 1))]
             return index_at(self._get_display_text(text), line, x, self._measure(font))
-        return index_at(self._get_display_text(text), lines[0], x + self._scroll_x, self._measure(font))
+        return index_at(self._get_display_text(text), lines[0], x + scroll_x, self._measure(font))
 
     def _handle_focus_change(self, focused: bool, source: FocusSource):
         # A focus change (e.g. clicking away, which commits an active
         # composition) ends any input burst, so a pending IME-commit marker
         # must not survive to suppress a later, unrelated Enter.
         self._ime_just_committed = False
-        if not focused:
+        if focused:
+            self._publish_ime_caret()
+        else:
             # Clear the pointer-origin marker so the next keyboard focus
             # acquisition correctly shows the focus ring.
             self._focus_from_pointer = False
+            self._withdraw_ime_caret()
         self.invalidate()
         if self._on_focus_change_callback:
             invoke_event_handler(
@@ -830,8 +841,107 @@ class EditableText(InteractionHostMixin, Widget):
         self._update_value(new_value)
         return True
 
+    # --- caret geometry --------------------------------------------------------
+
+    def _settle_scroll(self, font, width: int, height: int) -> Tuple[float, float]:
+        """Return the offsets that keep the caret inside a ``width`` x ``height`` viewport.
+
+        Painting and pointer handling both settle through here, so a caret
+        index read from a press never depends on a paint having run.
+        """
+        if width <= 0:
+            return (self._scroll_x, self._scroll_y)
+        value = self._state_internal.value
+        key = (value, width, height, self._font_size, self._font_family, self._obscure_text, self._multiline)
+        if key == self._scroll_key:
+            return (self._scroll_x, self._scroll_y)
+
+        display_text = self._get_display_text(value.text)
+        metrics = font.getMetrics()
+        line_h = -metrics.fAscent + metrics.fDescent
+        measure = self._measure(font)
+        lines = self._lines(font, self._wrap_width(width))
+        caret_line = line_of(lines, value.selection.end)
+
+        # As the platform's inputs do: a single line scrolls sideways under the
+        # caret, several lines scroll the caret's line into view.
+        margin = 2.0  # Padding so the caret is not flush against the edge.
+        if self.multiline:
+            scroll_x = 0.0
+            scroll_y = self._scroll_y
+            total_h = line_h * len(lines)
+            if total_h <= height:
+                scroll_y = 0.0
+            else:
+                caret_top = line_h * caret_line
+                if caret_top - scroll_y < 0:
+                    scroll_y = caret_top
+                elif caret_top + line_h - scroll_y > height:
+                    scroll_y = caret_top + line_h - height
+                scroll_y = max(0.0, min(scroll_y, total_h - height))
+        else:
+            scroll_y = 0.0
+            caret_x_in_line = caret_x(display_text, lines[caret_line], value.selection.end, measure)
+            total_text_width = measure(display_text) if display_text else 0.0
+            scroll_x = self._scroll_x
+            if total_text_width <= max(0.0, width - margin):
+                scroll_x = 0.0
+            else:
+                # Keep the caret visible.
+                if caret_x_in_line - scroll_x < 0:
+                    scroll_x = caret_x_in_line
+                elif caret_x_in_line - scroll_x > width - margin:
+                    scroll_x = caret_x_in_line - (width - margin)
+                # Avoid leaving empty space at the right edge.
+                max_scroll = max(0.0, total_text_width - (width - margin))
+                scroll_x = max(0.0, min(scroll_x, max_scroll))
+
+        self._scroll_x = scroll_x
+        self._scroll_y = scroll_y
+        self._scroll_key = key
+        return (scroll_x, scroll_y)
+
+    def _first_baseline(self, metrics, y: float, height: int, scroll_y: float) -> float:
+        """Return the first line's baseline: lines start at the top, a single line sits centred."""
+        if self.multiline:
+            return y - scroll_y - metrics.fAscent
+        return y + (height - metrics.fAscent + metrics.fDescent) / 2 - metrics.fDescent
+
+    def _ime_caret_rect(self) -> Optional[Tuple[float, float, float, float]]:
+        """Return the caret's rect in window coordinates, where the IME opens its candidates."""
+        rect = self.global_visual_rect
+        font = self._get_font()
+        if rect is None or not font:
+            return None
+        x, y, _width, _height = rect
+        width, height = self._viewport
+        value = self._state_internal.value
+        metrics = font.getMetrics()
+        lines = self._lines(font, self._wrap_width(width))
+        caret_line = line_of(lines, value.selection.end)
+        caret_in_line = caret_x(
+            self._get_display_text(value.text), lines[caret_line], value.selection.end, self._measure(font)
+        )
+        scroll_x, scroll_y = self._settle_scroll(font, width, height)
+        line_h = -metrics.fAscent + metrics.fDescent
+        baseline = self._first_baseline(metrics, y, height, scroll_y) + caret_line * line_h
+        return (x + caret_in_line - scroll_x, baseline + metrics.fAscent, 2.0, line_h)
+
+    def _publish_ime_caret(self) -> None:
+        """Make this field the one its window's IME asks for the caret."""
+        # A bare tree (offscreen measurement, tests) has no window.
+        window = find_window(self)
+        if window is not None:
+            window.ime.set_cursor_source(self._ime_caret_rect)
+
+    def _withdraw_ime_caret(self) -> None:
+        window = find_window(self)
+        if window is not None:
+            window.ime.clear_cursor_source(self._ime_caret_rect)
+
     # --- painting --------------------------------------------------------------
 
+    @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         if canvas is None:
             return
@@ -853,43 +963,8 @@ class EditableText(InteractionHostMixin, Widget):
         caret_line = line_of(lines, selection.end)
         caret_x_in_line = caret_x(display_text, lines[caret_line], selection.end, measure)
 
-        # Scroll so that the caret stays within the viewport, as the
-        # platform's inputs do: a single line scrolls sideways under the
-        # caret, several lines scroll the caret's line into view.
-        margin = 2.0  # Padding so the caret is not flush against the edge.
-        if self.multiline:
-            scroll_x = 0.0
-            scroll_y = self._scroll_y
-            total_h = line_h * len(lines)
-            if total_h <= height:
-                scroll_y = 0.0
-            else:
-                caret_top = line_h * caret_line
-                if caret_top - scroll_y < 0:
-                    scroll_y = caret_top
-                elif caret_top + line_h - scroll_y > height:
-                    scroll_y = caret_top + line_h - height
-                scroll_y = max(0.0, min(scroll_y, total_h - height))
-            # Lines start at the top; a single line sits centred.
-            first_baseline = y - scroll_y - font_metrics.fAscent
-        else:
-            scroll_y = 0.0
-            total_text_width = measure(display_text) if display_text else 0.0
-            scroll_x = self._scroll_x
-            if total_text_width <= max(0.0, width - margin):
-                scroll_x = 0.0
-            else:
-                # Keep the caret visible.
-                if caret_x_in_line - scroll_x < 0:
-                    scroll_x = caret_x_in_line
-                elif caret_x_in_line - scroll_x > width - margin:
-                    scroll_x = caret_x_in_line - (width - margin)
-                # Avoid leaving empty space at the right edge.
-                max_scroll = max(0.0, total_text_width - (width - margin))
-                scroll_x = max(0.0, min(scroll_x, max_scroll))
-            first_baseline = y + (height + line_h) / 2 - font_metrics.fDescent
-        self._scroll_x = scroll_x
-        self._scroll_y = scroll_y
+        scroll_x, scroll_y = self._settle_scroll(font, width, height)
+        first_baseline = self._first_baseline(font_metrics, y, height, scroll_y)
 
         # Clip drawing to the layout viewport so long text never bleeds
         # outside the field. Use a save/restore scope to avoid disturbing
@@ -957,18 +1032,6 @@ class EditableText(InteractionHostMixin, Widget):
                 ty = first_baseline + caret_line * line_h
                 cursor_top = ty + font_metrics.fAscent
                 cursor_bottom = ty + font_metrics.fDescent
-
-                # Into this window's IME state, so a focused field in another
-                # window cannot race the candidate-window position. A bare
-                # tree (offscreen measurement, tests) has no window: skip.
-                window = find_window(self)
-                if window is not None:
-                    window.ime.update_cursor_rect(
-                        x + cursor_x,
-                        cursor_top,
-                        2,
-                        cursor_bottom - cursor_top,
-                    )
 
                 cursor_color = resolve_color_to_rgba(self.cursor_color, theme=_theme)
                 paint_cursor = make_paint(color=cursor_color, style="stroke", stroke_width=2)
