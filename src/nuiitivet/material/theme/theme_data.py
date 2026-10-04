@@ -6,7 +6,7 @@ from dataclasses import dataclass, field, replace
 from typing import Callable, Mapping, TYPE_CHECKING, Any, TypeVar
 
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.material.theme.form_factor import DEFAULT_FORM_FACTOR, FormFactor
+from nuiitivet.material.theme.form_factor import FormFactor, default_form_factor
 from nuiitivet.theme.types import ThemeExtension
 
 if TYPE_CHECKING:
@@ -62,7 +62,7 @@ class MaterialThemeData(ThemeExtension):
     """Material Design specific theme data."""
 
     roles: Mapping[ColorRole, ColorValue]
-    form_factor: FormFactor = field(default_factory=lambda: FormFactor.of(DEFAULT_FORM_FACTOR))
+    form_factor: FormFactor = field(default_factory=default_form_factor)
 
     # Widget styles (lazy-loaded to avoid circular imports)
     # Button variants

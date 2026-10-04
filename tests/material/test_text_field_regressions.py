@@ -20,6 +20,10 @@ from nuiitivet.widgets.editable_text import EditableText
 from nuiitivet.widgets.interaction import FocusNode
 from nuiitivet.widgets.text_editing import TextRange
 from nuiitivet.widgets.interaction import FocusSource
+import pytest
+
+# The assertions below are the MD3 baseline geometry.
+pytestmark = pytest.mark.usefixtures("mobile_form_factor")
 
 # ---------------------------------------------------------------------------
 # 1. Japanese rendering uses locale-aware font fallback for label/supporting.

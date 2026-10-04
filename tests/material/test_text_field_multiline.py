@@ -7,6 +7,10 @@ from unittest.mock import MagicMock, patch
 from nuiitivet.input.codes import MOD_SHIFT
 from nuiitivet.material.styles.text_field_style import TextFieldStyle
 from nuiitivet.material.text_fields import TextField
+import pytest
+
+# The assertions below are the MD3 baseline geometry.
+pytestmark = pytest.mark.usefixtures("mobile_form_factor")
 
 
 class _Metrics:

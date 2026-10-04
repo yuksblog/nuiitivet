@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Optional, Tuple
 
 from nuiitivet.menubar.theme_data import MenuBarThemeData
 from nuiitivet.scrolling import ScrollbarThemeData
 from nuiitivet.theme.theme import Theme
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.material.theme.form_factor import DEFAULT_FORM_FACTOR, FormFactor, FormFactorLike
+from nuiitivet.material.theme.form_factor import FormFactor, FormFactorLike, default_form_factor
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 from nuiitivet.material.theme.palette import from_seed
 from nuiitivet.material.theme.scheme_variant import (
@@ -66,20 +66,21 @@ class MaterialThemeFactory:
         *,
         variant: SchemeVariant = DEFAULT_VARIANT,
         contrast_level: float = DEFAULT_CONTRAST_LEVEL,
-        form_factor: FormFactorLike = DEFAULT_FORM_FACTOR,
+        form_factor: Optional[FormFactorLike] = None,
     ) -> Theme:
         """Create a Material theme from a seed color.
 
         `variant` and `contrast_level` default to the Material 3 defaults; see
         `nuiitivet.material.theme.palette.from_seed`.
         `form_factor` sets the component sizes: `"desktop"`, `"mobile"` or a
-        `FormFactor`.
+        `FormFactor`. Omitted, it is `"desktop"`.
         """
         roles = from_seed(
             seed_color, dark=(mode == "dark"), variant=variant, contrast_level=contrast_level
         )
 
-        material_data = MaterialThemeData(roles=roles, form_factor=FormFactor.of(form_factor))
+        resolved_form_factor = default_form_factor() if form_factor is None else FormFactor.of(form_factor)
+        material_data = MaterialThemeData(roles=roles, form_factor=resolved_form_factor)
         return Theme(
             mode=mode,
             extensions=[
@@ -96,7 +97,7 @@ class MaterialThemeFactory:
         *,
         variant: SchemeVariant = DEFAULT_VARIANT,
         contrast_level: float = DEFAULT_CONTRAST_LEVEL,
-        form_factor: FormFactorLike = DEFAULT_FORM_FACTOR,
+        form_factor: Optional[FormFactorLike] = None,
     ) -> Theme:
         return MaterialThemeFactory.from_seed(
             seed_color, mode="light", variant=variant, contrast_level=contrast_level, form_factor=form_factor
@@ -108,7 +109,7 @@ class MaterialThemeFactory:
         *,
         variant: SchemeVariant = DEFAULT_VARIANT,
         contrast_level: float = DEFAULT_CONTRAST_LEVEL,
-        form_factor: FormFactorLike = DEFAULT_FORM_FACTOR,
+        form_factor: Optional[FormFactorLike] = None,
     ) -> Theme:
         return MaterialThemeFactory.from_seed(
             seed_color, mode="dark", variant=variant, contrast_level=contrast_level, form_factor=form_factor
@@ -121,7 +122,7 @@ class MaterialThemeFactory:
         *,
         variant: SchemeVariant = DEFAULT_VARIANT,
         contrast_level: float = DEFAULT_CONTRAST_LEVEL,
-        form_factor: FormFactorLike = DEFAULT_FORM_FACTOR,
+        form_factor: Optional[FormFactorLike] = None,
     ) -> Tuple[Theme, Theme]:
         """Create light and dark themes from a seed color."""
         return (

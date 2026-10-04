@@ -4,6 +4,10 @@ from nuiitivet.material.selection_controls import Checkbox, RadioButton, Switch
 from nuiitivet.material.styles.checkbox_style import CheckboxStyle
 from nuiitivet.material.styles.radio_button_style import RadioButtonStyle
 from nuiitivet.material.styles.switch_style import SwitchStyle
+import pytest
+
+# The assertions below are the MD3 baseline geometry.
+pytestmark = pytest.mark.usefixtures("mobile_form_factor")
 
 
 def _record_focus_ring_calls(widget):

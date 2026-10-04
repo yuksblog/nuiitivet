@@ -35,7 +35,7 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.platform import get_system_clipboard
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.material.theme.form_factor import DEFAULT_FORM_FACTOR, FormFactor, density_shrink, form_factor_of
+from nuiitivet.material.theme.form_factor import default_form_factor, density_shrink, form_factor_of
 from nuiitivet.animation import Animatable, RgbaTupleConverter
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS
 from nuiitivet.widgeting.paint_replay import replay_safe
@@ -168,7 +168,8 @@ class TextField(InteractiveWidget):
                 typeable; whether a finished value is acceptable belongs in
                 *is_error* / *supporting_text*, and reshaping a finished
                 value belongs in *on_submit*.
-            label: Floating label text.
+            label: Floating label text. A filled field shorter than 52dp shows it
+                only while the field is empty.
             leading_icon: Icon displayed before the text.
             on_tap_leading_icon: Callback invoked when the leading icon is
                 tapped. With it the icon is a standard icon button -- hover,
@@ -401,7 +402,8 @@ class TextField(InteractiveWidget):
             input_filter: Rule applied to text as the user types it, a line
                 break included: ``deny(r"\\n")`` keeps a wrapping field to one
                 paragraph.
-            label: Floating label text.
+            label: Floating label text. A filled field shorter than 52dp shows it
+                only while the field is empty.
             leading_icon: Icon displayed before the text, in the first row.
             on_tap_leading_icon: Callback invoked when the leading icon is
                 tapped; with it the icon is a standard icon button.
@@ -603,7 +605,7 @@ class TextField(InteractiveWidget):
         else:
             base = TextFieldStyle.from_theme(theme)
 
-        form_factor = FormFactor.of(DEFAULT_FORM_FACTOR) if theme is None else form_factor_of(self)
+        form_factor = default_form_factor() if theme is None else form_factor_of(self)
         shrink = density_shrink(base.density, form_factor.text_field, _DENSITY_FLOOR)
         if shrink == 0:
             return base

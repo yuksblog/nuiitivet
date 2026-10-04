@@ -2,6 +2,10 @@ from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.material.buttons import Button
 from tests.helpers.pointer import send_pointer_event_for_test
 from nuiitivet.material import ButtonStyle
+import pytest
+
+# The assertions below are the MD3 baseline geometry.
+pytestmark = pytest.mark.usefixtures("mobile_form_factor")
 
 
 def test_filled_preferred_size_and_click():

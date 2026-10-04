@@ -2,6 +2,10 @@ from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.material.selection_controls import Switch
 from nuiitivet.observable import Observable
 from tests.helpers.pointer import send_pointer_event_for_test
+import pytest
+
+# The assertions below are the MD3 baseline geometry.
+pytestmark = pytest.mark.usefixtures("mobile_form_factor")
 
 
 def _make_obs(initial: bool):

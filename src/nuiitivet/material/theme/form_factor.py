@@ -119,7 +119,12 @@ FormFactorLike = Union[FormFactor, FormFactorName]
 _DESKTOP = FormFactor(touch_targets=False, text_field=-4, search_bar=-4, menu=-3)
 _MOBILE = FormFactor()
 
-DEFAULT_FORM_FACTOR: FormFactorName = "mobile"
+DEFAULT_FORM_FACTOR: FormFactorName = "desktop"
+
+
+def default_form_factor() -> FormFactor:
+    """Return the form factor of a theme that names none."""
+    return FormFactor.of(DEFAULT_FORM_FACTOR)
 
 
 def form_factor_of(context: Any) -> FormFactor:
@@ -139,7 +144,7 @@ def form_factor_of(context: Any) -> FormFactor:
 
     data = Theme.of(context).extension(MaterialThemeData)
     if data is None:
-        return FormFactor.of(DEFAULT_FORM_FACTOR)
+        return default_form_factor()
     return data.form_factor
 
 

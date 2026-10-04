@@ -7,6 +7,10 @@ from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.material.theme.theme_data import MaterialThemeData
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from dataclasses import replace
+import pytest
+
+# The assertions below are the MD3 baseline geometry.
+pytestmark = pytest.mark.usefixtures("mobile_form_factor")
 
 
 def test_checkbox_uses_theme_default_style():

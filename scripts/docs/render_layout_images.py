@@ -115,6 +115,7 @@ SAMPLES = [
     ("samples/design-system/material_theme/no_theme.py", "material_theme_no_theme.png"),
     ("samples/design-system/material_theme/seed_color.py", "material_theme_seed_color.png"),
     ("samples/design-system/material_theme/dark_mode.py", "material_theme_dark_mode.png"),
+    ("samples/design-system/material_theme/form_factor.py", "material_theme_form_factor.png"),
     # Material Widgets
     ("samples/design-system/material_widgets/text.py", "material_widgets_text.png"),
     ("samples/design-system/material_widgets/icon.py", "material_widgets_icon.png"),

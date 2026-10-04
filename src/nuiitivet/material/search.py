@@ -80,7 +80,7 @@ from nuiitivet.widgets.input_filter import InputFilterLike
 # it leaves TextField untouched; moving it to a shared module would be a
 # refactor of text_fields.py, which is out of scope here.
 from nuiitivet.material.text_fields import _build_text_field_icon
-from nuiitivet.material.theme.form_factor import DEFAULT_FORM_FACTOR, FormFactor, density_shrink, form_factor_of
+from nuiitivet.material.theme.form_factor import default_form_factor, density_shrink, form_factor_of
 from nuiitivet.widgeting.paint_replay import replay_safe
 
 if TYPE_CHECKING:
@@ -97,7 +97,7 @@ IconLike = Union["Symbol", str, ReadOnlyObservableProtocol["Symbol"], ReadOnlyOb
 
 
 class _SearchBarCore(InteractiveWidget):
-    """The search bar container itself: 56dp tall, fully rounded, no elevation.
+    """The search bar container itself: fully rounded, no elevation.
 
     This is the widget the state layer, the focus ring and a docked popup all
     attach to. It is deliberately *not* the public widget: the public one owns
@@ -208,7 +208,7 @@ class _SearchBarCore(InteractiveWidget):
         else:
             base = SearchBarStyle.from_theme(theme)
 
-        form_factor = FormFactor.of(DEFAULT_FORM_FACTOR) if theme is None else form_factor_of(self)
+        form_factor = default_form_factor() if theme is None else form_factor_of(self)
         shrink = density_shrink(base.density, form_factor.search_bar, _DENSITY_FLOOR)
         if shrink == 0:
             return base
@@ -287,7 +287,7 @@ class _SearchBarCore(InteractiveWidget):
     # ------------------------------------------------------------------
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
-        """The bar is as wide as it is given and 56dp tall."""
+        """The bar is as wide as it is given and as tall as the style's container."""
         style = self.style
         width = int(max_width) if max_width is not None else int(style.min_width)
         height = int(style.container_height)
@@ -313,7 +313,7 @@ class _SearchBarCore(InteractiveWidget):
         return (text_left, text_right)
 
     def layout(self, width: int, height: int) -> None:
-        """Place the icons in their 48dp targets and the editable between them."""
+        """Place the icons in their targets and the editable between them."""
         super().layout(width, height)
 
         style = self.style
