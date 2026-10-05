@@ -25,11 +25,7 @@ try {
   page.on("console", (message) => console.log(`[${message.type()}]`, message.text()));
   await page.goto(args.url);
   // The page removes the status element once the app runs.
-  await page.waitForFunction(
-    () => !document.getElementById("status") || document.getElementById("status").textContent !== "Loading…",
-    null,
-    { timeout: 180_000 },
-  );
+  await page.waitForFunction(() => document.body.dataset.state !== undefined, null, { timeout: 180_000 });
   await page.waitForTimeout(1500);
   const status = await page.evaluate(() => document.getElementById("status")?.textContent ?? null);
   if (status !== null) console.error("status:", status);

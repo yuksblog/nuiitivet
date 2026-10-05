@@ -9,8 +9,10 @@ import logging
 import subprocess
 import sys
 from abc import ABC, abstractmethod
+from typing import Callable, Optional
 
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.common.target import is_web
 
 
 logger = logging.getLogger(__name__)
@@ -116,7 +118,41 @@ class DummyClipboard(Clipboard):
         self._text = text
 
 
+class BrowserClipboard(Clipboard):
+    """The app's side of the browser's clipboard.
+
+    A page may read the browser's clipboard only inside a paste event, so the
+    browser backend carries the text across: it calls :meth:`receive` when the
+    user pastes, and ``on_copy`` hands it what the app copies.
+    """
+
+    def __init__(self) -> None:
+        self._text = ""
+        self.on_copy: Optional[Callable[[str], None]] = None
+
+    def get_text(self) -> str:
+        return self._text
+
+    def set_text(self, text: str) -> None:
+        self._text = text
+        if self.on_copy is not None:
+            self.on_copy(text)
+
+    def receive(self, text: str) -> None:
+        """Take the text of a paste event.
+
+        Args:
+            text: What the browser's clipboard holds.
+        """
+        self._text = text
+
+
+_browser_clipboard = BrowserClipboard()
+
+
 def get_system_clipboard() -> Clipboard:
+    if is_web():
+        return _browser_clipboard
     if sys.platform == "darwin":
         return MacClipboard()
     if sys.platform == "linux":

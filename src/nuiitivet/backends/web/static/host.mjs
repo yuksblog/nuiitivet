@@ -7,7 +7,7 @@
 // adapter's matrix inside a save level of its own, and every save, restore and
 // clip pops that level first.
 
-export function installHost(CK, canvas, fontData) {
+export function installHost(CK, canvas, input, fonts) {
   const styles = [CK.PaintStyle.Fill, CK.PaintStyle.Stroke];
   const caps = [CK.StrokeCap.Butt, CK.StrokeCap.Round, CK.StrokeCap.Square];
   const ltrb = (l, t, r, b) => CK.LTRBRect(l, t, r, b);
@@ -27,7 +27,7 @@ export function installHost(CK, canvas, fontData) {
 
   const host = {
     CK,
-    fontData,
+    fonts,
     width: 0,
     height: 0,
     pixelWidth: 0,
@@ -37,6 +37,21 @@ export function installHost(CK, canvas, fontData) {
     onPointer: null,
     onWheel: null,
     onKey: null,
+    onText: null,
+    onCompose: null,
+    onPaste: null,
+
+    // Move the unseen input field to the caret. Without a focused text field
+    // it asks for no on-screen keyboard.
+    placeInput(x, y, height, editing) {
+      input.style.left = `${x}px`;
+      input.style.top = `${y}px`;
+      input.style.height = `${Math.max(1, height)}px`;
+      input.inputMode = editing ? "text" : "none";
+    },
+    writeClipboard(text) {
+      navigator.clipboard?.writeText(text).catch((error) => console.warn("copy failed:", error));
+    },
 
     // The surface for this frame. It is made again when the canvas or the
     // device pixel ratio changed, and the caller repaints everything then.
@@ -175,8 +190,11 @@ export function installHost(CK, canvas, fontData) {
   // The bits follow MOD_SHIFT, MOD_CTRL, MOD_ALT and MOD_META of nuiitivet.input.codes.
   const mods = (e) => (e.shiftKey ? 1 : 0) | (e.ctrlKey ? 2 : 0) | (e.altKey ? 4 : 0) | (e.metaKey ? 8 : 0);
   const pointer = (kind) => (e) => host.onPointer?.(kind, e.offsetX, e.offsetY, e.button, e.buttons, mods(e));
+  // The input field holds the keyboard focus, so text, IME and paste events
+  // arrive there. A press on the canvas must not take the focus away.
+  canvas.addEventListener("mousedown", (e) => e.preventDefault());
   canvas.addEventListener("pointerdown", (e) => {
-    canvas.focus();
+    input.focus({ preventScroll: true });
     // A drag keeps reaching the canvas after the pointer leaves it.
     canvas.setPointerCapture(e.pointerId);
     pointer("down")(e);
@@ -194,12 +212,41 @@ export function installHost(CK, canvas, fontData) {
     },
     { passive: false },
   );
-  const key = (down) => (e) => {
-    if (e.repeat) return;
-    if (host.onKey?.(down, e.key, e.code, mods(e))) e.preventDefault();
-  };
-  canvas.addEventListener("keydown", key(true));
-  canvas.addEventListener("keyup", key(false));
+
+  let composing = false;
+  // A key pressed during a composition belongs to the IME; 229 is how older browsers mark one.
+  const imeKey = (e) => composing || e.isComposing || e.keyCode === 229;
+  input.addEventListener("keydown", (e) => {
+    if (imeKey(e)) return;
+    const accel = e.ctrlKey || e.metaKey;
+    // The paste event carries the text; the key alone cannot read the clipboard.
+    if (accel && e.key.toLowerCase() === "v") return;
+    const handled = host.onKey?.(true, e.key, e.code, mods(e), e.repeat);
+    // A character key stays with the browser, which turns it into an input event.
+    if ((handled && (e.key.length > 1 || accel)) || e.key === "Enter") e.preventDefault();
+  });
+  input.addEventListener("keyup", (e) => {
+    if (!imeKey(e)) host.onKey?.(false, e.key, e.code, mods(e), false);
+  });
+  input.addEventListener("input", () => {
+    if (composing) return;
+    const text = input.value;
+    input.value = "";
+    if (text) host.onText?.(text);
+  });
+  input.addEventListener("compositionstart", () => { composing = true; });
+  input.addEventListener("compositionupdate", (e) => host.onCompose?.(e.data));
+  input.addEventListener("compositionend", (e) => {
+    composing = false;
+    input.value = "";
+    if (e.data) host.onText?.(e.data);
+    else host.onCompose?.("");
+  });
+  input.addEventListener("paste", (e) => {
+    e.preventDefault();
+    host.onPaste?.(e.clipboardData.getData("text/plain"));
+  });
+  input.focus({ preventScroll: true });
 
   globalThis.NV_HOST = host;
   return host;

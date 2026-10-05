@@ -8,14 +8,14 @@ draws, inside a save level the host pops before every save, restore and clip,
 and clips are applied in device coordinates.
 
 Geometry and paint state live in Python as well and cross to JS once per draw.
-Every family name resolves to the one typeface the page loaded; a font file
+Every family name resolves to the text typefaces the page loaded; a font file
 loads as its own typeface.
 """
 
 from __future__ import annotations
 
 import math
-from typing import Any, Optional, Sequence
+from typing import Any, Iterable, Optional, Sequence
 
 import js
 from pyodide.ffi import to_js
@@ -369,11 +369,11 @@ class Typeface:
 
     @staticmethod
     def MakeFromName(family: Any, style: Any = None) -> "Typeface":
-        return _default_typeface()
+        return _text_typeface(style)
 
     @staticmethod
     def MakeDefault() -> "Typeface":
-        return _default_typeface()
+        return _text_typeface()
 
     @staticmethod
     def MakeFromData(data: Any, index: int = 0) -> Optional["Typeface"]:
@@ -385,14 +385,25 @@ class Typeface:
         return Typeface.MakeFromData(Data.MakeFromFileName(path))
 
 
-_TYPEFACE: Typeface | None = None
+_TEXT_FACES: dict[int, Typeface] = {}
 
 
-def _default_typeface() -> Typeface:
-    global _TYPEFACE
-    if _TYPEFACE is None:
-        _TYPEFACE = Typeface(CK.Typeface.MakeTypefaceFromData(H.fontData))
-    return _TYPEFACE
+def _text_typeface(style: Any = None) -> Typeface:
+    """The page's text typeface of the weight nearest to the style's.
+
+    A browser has no font manager to ask, so every family name resolves to the
+    faces the page loaded, one per weight.
+    """
+    if not _TEXT_FACES:
+        for font in H.fonts:
+            _TEXT_FACES[int(font.weight)] = Typeface(CK.Typeface.MakeTypefaceFromData(font.data))
+    wanted = style.weight() if isinstance(style, FontStyle) else 400
+    return _TEXT_FACES[nearest_weight(_TEXT_FACES, wanted)]
+
+
+def nearest_weight(weights: Iterable[int], wanted: int) -> int:
+    """The weight closest to ``wanted``; of two equally close, the lighter."""
+    return min(weights, key=lambda weight: (abs(weight - wanted), weight))
 
 
 class FontMgr:
@@ -401,7 +412,7 @@ class FontMgr:
         return FontMgr()
 
     def matchFamilyStyle(self, family: Any, style: Any) -> Typeface:
-        return _default_typeface()
+        return _text_typeface(style)
 
     def countFamilies(self) -> int:
         return 0
@@ -416,7 +427,7 @@ class FontMetrics:
 
 class Font:
     def __init__(self, typeface: Typeface | None = None, size: float = 12.0) -> None:
-        self._typeface = typeface if isinstance(typeface, Typeface) else _default_typeface()
+        self._typeface = typeface if isinstance(typeface, Typeface) else _text_typeface()
         self._f = CK.Font.new(self._typeface._t, float(size))
         self._size = float(size)
         self._metrics: FontMetrics | None = None

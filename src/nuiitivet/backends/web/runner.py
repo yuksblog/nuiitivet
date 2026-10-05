@@ -13,7 +13,9 @@ from nuiitivet.backends.web import skia
 from nuiitivet.backends.web.clock import BrowserClock
 from nuiitivet.backends.web.input import button_code, buttons_mask, key_name, wheel_steps
 from nuiitivet.common.logging_once import exception_once, warning_once
+from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT, text_motion_for_key
 from nuiitivet.observable.runtime import set_clock
+from nuiitivet.platform.clipboard import BrowserClipboard, get_system_clipboard
 from nuiitivet.rendering.skia.color import rgba_to_skia_color
 from nuiitivet.runtime.threading import set_ui_thread
 
@@ -46,6 +48,13 @@ class _Loop:
         self._host.onPointer = create_proxy(self._pointer)
         self._host.onWheel = create_proxy(self._wheel)
         self._host.onKey = create_proxy(self._key)
+        self._host.onText = create_proxy(self._text)
+        self._host.onCompose = create_proxy(self._compose)
+        self._host.onPaste = create_proxy(self._paste)
+        self._input_place: Optional[tuple[float, float, float, bool]] = None
+        clipboard = get_system_clipboard()
+        if isinstance(clipboard, BrowserClipboard):
+            clipboard.on_copy = self._host.writeClipboard
 
     def request_draw(self, immediate: bool = False) -> None:
         self._draw_wanted = True
@@ -101,8 +110,11 @@ class _Loop:
         except Exception:
             exception_once(logger, "web_wheel_exc", "Wheel dispatch raised")
 
-    def _key(self, down: bool, key: str, code: str, modifier_keys: int) -> bool:
-        """Dispatch a key. ``True`` keeps the browser from acting on it as well."""
+    def _key(self, down: bool, key: str, code: str, modifier_keys: int, repeat: bool) -> bool:
+        """Dispatch a key. ``True`` keeps the browser from acting on it as well.
+
+        A held key repeats only as a text motion, as on the desktop.
+        """
         win = self._window
         if win is None:
             return False
@@ -117,14 +129,49 @@ class _Loop:
                 if not self._escape_down:
                     return False
                 self._escape_down = False
-            dispatch = win._dispatch_key_press if down else win._dispatch_key_release
-            handled = bool(dispatch(name, modifier_keys))
+            handled = False
+            if not repeat:
+                dispatch = win._dispatch_key_press if down else win._dispatch_key_release
+                handled = bool(dispatch(name, modifier_keys))
+            motion = text_motion_for_key(name) if down else None
+            if motion is not None and not modifier_keys & (MOD_CTRL | MOD_ALT | MOD_META):
+                handled = bool(win._dispatch_text_motion(motion, select=bool(modifier_keys & MOD_SHIFT))) or handled
             if handled:
                 win.invalidate()
             return handled
         except Exception:
             exception_once(logger, "web_key_exc", "Key dispatch raised")
             return False
+
+    def _text(self, text: str) -> None:
+        self._edit("web_text_exc", lambda win: win._dispatch_text(text))
+
+    def _compose(self, text: str) -> None:
+        # The browser does not report a selection inside the composition, so the caret sits at its end.
+        self._edit("web_compose_exc", lambda win: win._dispatch_ime_composition(text, len(text), 0))
+
+    def _paste(self, text: str) -> None:
+        clipboard = get_system_clipboard()
+        if isinstance(clipboard, BrowserClipboard):
+            clipboard.receive(text)
+        self._edit("web_paste_exc", lambda win: win._dispatch_key_press("v", MOD_CTRL))
+
+    def _edit(self, key: str, dispatch: Any) -> None:
+        win = self._window
+        if win is None:
+            return
+        try:
+            if dispatch(win):
+                win.invalidate()
+        except Exception:
+            exception_once(logger, key, "Text input dispatch raised")
+
+    def _place_input(self, win: Any) -> None:
+        rect = win.ime.cursor_rect
+        place = (rect.x, rect.y, rect.height, win.ime.has_cursor_source)
+        if place != self._input_place:
+            self._input_place = place
+            self._host.placeInput(*place)
 
     def _draw(self, win: Any) -> None:
         handle = self._host.frame()
@@ -151,6 +198,7 @@ class _Loop:
             root.paint(canvas, 0, 0, width, height)
         canvas.restore()
         self._surface.flush()
+        self._place_input(win)
         win._dirty = False
         win._paint_dirty = False
 

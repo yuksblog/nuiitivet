@@ -147,6 +147,16 @@ def test_save_counts_follow_skia(web: tuple[Any, _Host]) -> None:
     assert len(host.named("restore")) == 3
 
 
+def test_text_weight_resolves_to_the_nearest_loaded_face(web: tuple[Any, _Host]) -> None:
+    skia, _host = web
+
+    assert skia.nearest_weight([400, 500], 400) == 400
+    assert skia.nearest_weight([400, 500], 700) == 500
+    assert skia.nearest_weight([400, 500], 100) == 400
+    # Halfway between two faces, the lighter one: a text must not turn bolder than asked.
+    assert skia.nearest_weight([400, 500], 450) == 400
+
+
 def test_rrect_takes_both_radii_shapes(web: tuple[Any, _Host]) -> None:
     skia, _host = web
     rect = skia.Rect.MakeWH(10, 10)
