@@ -1,6 +1,7 @@
 // Open a page served by `python -m nuiitivet.web run` in the installed Chrome, replay input, and save screenshots.
 //
-// Steps are `click:x,y`, `wheel:x,y,deltaY`, `key:Name`, `move:x,y`, `resize:w,h` and `wait:ms`.
+// Steps are `click:x,y`, `wheel:x,y,deltaY`, `key:Name`, `type:text`, `paste:text`, `move:x,y`, `resize:w,h`
+// and `wait:ms`.
 // A screenshot `<out>-<n>.png` is saved before the first step and after each one.
 //
 // Run:  node browser/drive.mjs --out shots/run [--url http://localhost:8000/] [--scale 2] click:60,70 key:Tab
@@ -25,9 +26,7 @@ try {
     if (!message.text().includes("404 (Not Found)")) console.log(`[${message.type()}]`, message.text());
   });
   await page.goto(args.url);
-  await page.waitForFunction(() => document.getElementById("status")?.textContent !== "Loading…", null, {
-    timeout: 180_000,
-  });
+  await page.waitForFunction(() => document.body.dataset.state !== undefined, null, { timeout: 180_000 });
   const status = await page.evaluate(() => document.getElementById("status")?.textContent ?? null);
   if (status !== null) console.error("status:", status);
 
@@ -46,6 +45,14 @@ try {
       await page.mouse.move(Number(values[0]), Number(values[1]));
       await page.mouse.wheel(0, Number(values[2]));
     } else if (kind === "key") await page.keyboard.press(rest);
+    else if (kind === "type") await page.keyboard.type(rest);
+    else if (kind === "paste") {
+      await page.evaluate((text) => {
+        const data = new DataTransfer();
+        data.setData("text/plain", text);
+        document.activeElement.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, cancelable: true }));
+      }, rest);
+    }
     else if (kind === "resize") await page.setViewportSize({ width: Number(values[0]), height: Number(values[1]) });
     else if (kind === "wait") await page.waitForTimeout(Number(rest));
     else throw new Error(`unknown step: ${step}`);

@@ -42,6 +42,11 @@ class IMEManager:
             self._cursor_rect = IMECursorInfo(*rect)
         return self._cursor_rect
 
+    @property
+    def has_cursor_source(self) -> bool:
+        """Whether a text field has registered its caret, which it does while it holds the focus."""
+        return self._cursor_source is not None
+
     def set_cursor_source(self, source: CursorSource) -> None:
         """Register the function asked for the caret's rect on every read.
 

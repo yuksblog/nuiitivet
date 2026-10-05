@@ -7,12 +7,29 @@
 <style>
   html, body { margin: 0; height: 100%; overflow: hidden; }
   #nuiitivet { display: block; width: 100vw; height: 100vh; outline: none; touch-action: none; }
-  #status { position: fixed; inset: 0; margin: 0; padding: 16px; font: 14px/1.4 monospace; white-space: pre-wrap; }
+  /* Unseen, and moved to the caret so the browser puts the IME's candidate window there. */
+  #nuiitivet-input {
+    position: fixed; left: 0; top: 0; width: 1px; height: 16px; margin: 0; padding: 0; border: 0;
+    opacity: 0; resize: none; overflow: hidden; pointer-events: none; font-size: 16px; white-space: pre;
+  }
+  #status {
+    position: fixed; inset: 0; display: flex; flex-direction: column; gap: 16px;
+    align-items: center; justify-content: center; font: 14px/1.4 system-ui, sans-serif; color: #555;
+  }
+  #status.failed {
+    display: block; padding: 16px; font-family: monospace; white-space: pre-wrap; color: #b00020; overflow: auto;
+  }
+  #status-spinner {
+    width: 32px; height: 32px; border: 3px solid #ddd; border-top-color: #666; border-radius: 50%;
+    animation: nuiitivet-spin 0.9s linear infinite;
+  }
+  @keyframes nuiitivet-spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
-<canvas id="nuiitivet" tabindex="0"></canvas>
-<pre id="status">Loading…</pre>
-<script type="module" src="/boot.mjs"></script>
+<canvas id="nuiitivet"></canvas>
+<textarea id="nuiitivet-input" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"></textarea>
+<div id="status"><div id="status-spinner"></div><div id="status-label">Loading…</div></div>
+<script type="module" src="boot.mjs"></script>
 </body>
 </html>
