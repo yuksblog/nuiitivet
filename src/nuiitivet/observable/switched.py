@@ -89,6 +89,11 @@ class CancelToken:
         """Whether a newer run has started, making this run's result unwanted."""
         return self._flag.is_set()
 
+    @property
+    def cancelled(self) -> bool:
+        """Whether the caller of a server function stopped waiting for it."""
+        return self._flag.is_set()
+
     def _supersede(self) -> None:
         self._flag.set()
 
