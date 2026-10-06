@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from nuiitivet.remote.stubs import ServerOnly, stub_source
+from nuiitivet.web.stubs import ServerOnly, stub_source
 from nuiitivet.web.server import build_bundle
 
 _BACKEND_INIT = "import nuiitivet.material as nv\n\nnv.server_only()\n"
