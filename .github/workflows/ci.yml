@@ -133,10 +133,64 @@ jobs:
       - name: Run pytest
         run: uv run --no-sync pytest
 
+  # A sample built as a site, painted by headless Chromium and compared with
+  # the desktop's paint of the same tree. Pyodide and CanvasKit are downloaded
+  # once per version of assets.py; Chromium once per Playwright version.
+  browser:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install Skia system dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends \
+            libfontconfig1 \
+            libegl1 \
+            libegl-mesa0 \
+            libgl1 \
+            libgl1-mesa-dri \
+            libglvnd0
+
+      - name: Sync locked dependencies
+        run: uv sync --locked --dev --group browser
+
+      - name: Cache Pyodide and CanvasKit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/nuiitivet
+          key: web-runtime-${{ hashFiles('src/nuiitivet/web/assets.py') }}
+
+      - name: Cache Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('uv.lock') }}
+
+      - name: Install Chromium
+        run: uv run playwright install --with-deps chromium
+
+      - name: Run the browser test
+        env:
+          NUIITIVET_BROWSER_TESTS: required
+        run: uv run pytest tests/web/test_browser.py
+
   # The single required status check. It stands in for the jobs above so the
   # branch rule never has to name a matrix entry.
   ci:
-    needs: [changes, check, check-without-pytest-asyncio]
+    needs: [changes, check, check-without-pytest-asyncio, browser]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -146,6 +200,7 @@ jobs:
             ${{ needs.changes.result }}
             ${{ needs.check.result }}
             ${{ needs['check-without-pytest-asyncio'].result }}
+            ${{ needs.browser.result }}
         run: |
           echo "results: $RESULTS"
           for result in $RESULTS; do
