@@ -100,10 +100,11 @@ def test_server_refuses_a_path_outside_the_site(base_url: str) -> None:
 
 
 def test_build_writes_a_site_that_needs_no_other_server(app_path: Path, tmp_path: Path) -> None:
-    out = tmp_path / "dist"
+    dist = tmp_path / "dist"
 
-    assert main(["build", str(app_path), "-o", str(out)]) == 0
+    assert main(["build", str(app_path), "-o", str(dist)]) == 0
 
+    out = dist / "site"
     config = json.loads((out / "config.json").read_text())
     assert (config["pyodide"], config["canvaskit"]) == ("pyodide/", "canvaskit/")
     for name in ("index.html", "boot.mjs", "host.mjs", "bundle.zip", "pyodide/pyodide.mjs", "canvaskit/canvaskit.wasm"):
@@ -114,6 +115,22 @@ def test_build_writes_a_site_that_needs_no_other_server(app_path: Path, tmp_path
     licenses = {path.name for path in (out / "licenses").iterdir()}
     assert {"pyodide-LICENSE.txt", "canvaskit-LICENSE.txt", "noto-sans-jp-LICENSE.txt"} <= licenses
     assert "material-symbols-LICENSE.txt" in licenses
+
+
+def test_build_writes_the_app_s_sources_for_the_server(app_path: Path, tmp_path: Path) -> None:
+    dist = tmp_path / "dist"
+
+    assert main(["build", str(app_path), "-o", str(dist)]) == 0
+
+    assert (dist / "server" / "app.py").read_text() == "print('app')\n"
+    assert (dist / "server" / "views" / "home.py").is_file()
+    assert not (dist / "server" / "__pycache__").exists()
+    assert not (dist / "server" / ".venv").exists()
+
+
+def test_serve_needs_a_built_app(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["serve", str(tmp_path)]) == 2
+    assert "not a built app" in capsys.readouterr().err
 
 
 def test_the_page_refers_to_its_files_by_relative_urls(app_path: Path, tmp_path: Path) -> None:

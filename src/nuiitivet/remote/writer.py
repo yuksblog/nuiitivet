@@ -9,7 +9,7 @@ from nuiitivet.observable import runtime
 from nuiitivet.observable._sentinel import UNSET, _Unset
 from nuiitivet.observable.protocols import MutableObservableBase
 
-from .codec import Codec
+from .codec import Codec, Json
 
 T_contra = TypeVar("T_contra", contravariant=True)
 
@@ -39,7 +39,7 @@ class WriteOnlyObservable(Protocol[T_contra]):
 
 
 class CallWriter:
-    """Carries one call's writes to the caller's Observable."""
+    """Carries one call's writes, in their wire form, to the caller's Observable."""
 
     __slots__ = ("_target", "_codec", "_lock", "_pending", "_scheduled", "_closed")
 
@@ -57,17 +57,17 @@ class CallWriter:
         self._scheduled = False
         self._closed = False
 
-    @property
-    def value(self) -> object:
-        raise AttributeError("a WriteOnlyObservable cannot be read; the caller's Observable is not on this side")
+    def receive(self, data: Json) -> None:
+        """Take one write. Any thread; the Observable is written on the UI thread.
 
-    @value.setter
-    def value(self, v: Any) -> None:
-        copied = self._codec.copy(v)
+        Args:
+            data: The value, encoded.
+        """
+        value = self._codec.decode(data)
         with self._lock:
             if self._closed:
                 return
-            self._pending = copied
+            self._pending = value
             if self._scheduled:
                 return
             self._scheduled = True

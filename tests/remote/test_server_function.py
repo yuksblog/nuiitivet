@@ -8,15 +8,17 @@ from __future__ import annotations
 
 import asyncio
 import threading
-from dataclasses import dataclass
 from typing import Any, Callable
 
 import pytest
+
+from dataclasses import dataclass
 
 from nuiitivet.observable import Observable, runtime
 from nuiitivet.observable.switched import CancelToken
 from nuiitivet.remote import ServerError, WriteOnlyObservable, server, server_only
 from nuiitivet.remote.scope import is_server_only
+from tests.remote.models import Order
 
 server_only()
 
@@ -55,14 +57,13 @@ def clock(monkeypatch: pytest.MonkeyPatch) -> ManualClock:
     return manual
 
 
-@dataclass
-class Order:
-    id: int
-    items: list[str]
-
-
 class OrderNotFound(Exception):
     pass
+
+
+@dataclass
+class ServerSideOnly:
+    id: int
 
 
 class Gate:
@@ -329,6 +330,10 @@ def _bare_writer(progress: WriteOnlyObservable) -> None:  # type: ignore[type-ar
     return None
 
 
+def _server_side_type(order: ServerSideOnly) -> None:
+    return None
+
+
 async def _coroutine(a: int) -> int:
     return a
 
@@ -347,6 +352,7 @@ class _Holder:
         (_var_args, r"\*a is not allowed"),
         (_token_without_default, "parameter cancel needs a default"),
         (_bare_writer, "parameter progress needs its value type"),
+        (_server_side_type, "ServerSideOnly is defined in the server-only module"),
         (_coroutine, "plain def"),
         (_Holder.method, "module level"),
         (lambda a: a, "module level"),
