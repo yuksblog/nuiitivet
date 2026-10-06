@@ -208,6 +208,12 @@ def site_files(root: Path) -> dict[str, Source]:
     return {path.relative_to(root).as_posix(): path for path in sorted(root.rglob("*")) if path.is_file()}
 
 
+class _Server(ThreadingHTTPServer):
+    # On Windows SO_REUSEADDR lets a second server bind a port one is already serving on,
+    # and the browser then shows the other app; on Unix it only frees a port left in TIME_WAIT.
+    allow_reuse_address = sys.platform != "win32"
+
+
 def make_server(files: dict[str, Source], port: int, *, host: str = "127.0.0.1") -> ThreadingHTTPServer:
     """A server for a site and the calls of its ``@server`` functions.
 
@@ -215,6 +221,9 @@ def make_server(files: dict[str, Source], port: int, *, host: str = "127.0.0.1")
         files: What :func:`site` or :func:`site_files` returned.
         port: The port to listen on; 0 picks a free one.
         host: The address to listen on.
+
+    Raises:
+        OSError: The port is in use.
     """
 
     class Handler(BaseHTTPRequestHandler):
@@ -240,7 +249,7 @@ def make_server(files: dict[str, Source], port: int, *, host: str = "127.0.0.1")
         def log_message(self, format: str, *args: object) -> None:
             pass
 
-    return ThreadingHTTPServer((host, port), Handler)
+    return _Server((host, port), Handler)
 
 
 __all__ = [

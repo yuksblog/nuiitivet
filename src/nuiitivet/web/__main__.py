@@ -16,6 +16,7 @@ An app without server functions needs only ``dist/site`` and any file server.
 from __future__ import annotations
 
 import argparse
+import errno
 import sys
 import webbrowser
 from http.server import ThreadingHTTPServer
@@ -80,18 +81,26 @@ def _serve(args: argparse.Namespace) -> int:
     return 0
 
 
+_COMMANDS = {"run": _run, "build": _build, "serve": _serve}
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     args = _build_parser().parse_args(argv)
     if args.command == "serve":
         if not (args.dist / "site").is_dir():
             print(f"not a built app: {args.dist}", file=sys.stderr)
             return 2
-        return _serve(args)
-    if not args.app.is_file():
+    elif not args.app.is_file():
         print(f"app not found: {args.app}", file=sys.stderr)
         return 2
     try:
-        return _run(args) if args.command == "run" else _build(args)
+        return _COMMANDS[args.command](args)
+    except OSError as error:
+        if error.errno == errno.EADDRINUSE:
+            print(f"port {args.port} is already in use; pick another with --port", file=sys.stderr)
+        else:
+            print(error, file=sys.stderr)
+        return 1
     except RuntimeError as error:
         print(error, file=sys.stderr)
         return 1

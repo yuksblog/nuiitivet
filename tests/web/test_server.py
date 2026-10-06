@@ -133,6 +133,28 @@ def test_serve_needs_a_built_app(tmp_path: Path, capsys: pytest.CaptureFixture[s
     assert "not a built app" in capsys.readouterr().err
 
 
+@pytest.fixture
+def port_in_use(base_url: str) -> int:
+    return int(base_url.rsplit(":", 1)[1])
+
+
+def test_a_second_server_cannot_take_a_port_in_use(app_path: Path, port_in_use: int) -> None:
+    with pytest.raises(OSError):
+        make_server(site(app_path, bundle_runtime=False), port_in_use)
+
+
+def test_run_names_a_port_in_use(app_path: Path, port_in_use: int, capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["run", str(app_path), "--port", str(port_in_use), "--no-open"]) == 1
+    assert capsys.readouterr().err == f"port {port_in_use} is already in use; pick another with --port\n"
+
+
+def test_serve_names_a_port_in_use(tmp_path: Path, port_in_use: int, capsys: pytest.CaptureFixture[str]) -> None:
+    (tmp_path / "dist" / "site").mkdir(parents=True)
+
+    assert main(["serve", str(tmp_path / "dist"), "--port", str(port_in_use)]) == 1
+    assert capsys.readouterr().err == f"port {port_in_use} is already in use; pick another with --port\n"
+
+
 def test_the_page_refers_to_its_files_by_relative_urls(app_path: Path, tmp_path: Path) -> None:
     out = tmp_path / "dist"
     write_site(site(app_path, bundle_runtime=True), out)
