@@ -18,8 +18,8 @@ from pathlib import Path
 from typing import Callable, Iterator, Union
 
 import nuiitivet
-from nuiitivet.remote.http import handle_call
-from nuiitivet.remote.stubs import SKIPPED_DIRS, ServerOnly
+from nuiitivet.web.calls import handle_call
+from nuiitivet.web.stubs import SKIPPED_DIRS, ServerOnly
 from nuiitivet.web.assets import CANVASKIT_CDN, LICENSES, PYODIDE_CDN, RUNTIME, TEXT_FONTS, fetch
 
 # A file on disk, or bytes made at each read.

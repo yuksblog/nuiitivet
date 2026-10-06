@@ -12,8 +12,8 @@ from typing import Any
 
 from nuiitivet.observable.switched import CancelToken
 
-from .codec import Json
-from .function import CALL_ROUTE, encode_error, lookup
+from nuiitivet.remote.codec import Json
+from nuiitivet.remote.function import CALL_ROUTE, encode_error, lookup
 
 # How often a running call looks for the caller hanging up, in seconds.
 _POLL = 0.05
