@@ -4,7 +4,7 @@ import logging
 import threading
 import warnings
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
-from typing import Any, Callable, Generic, List, Literal, Optional, TypeVar, TYPE_CHECKING
+from typing import Any, Awaitable, Callable, Generic, List, Literal, Optional, TypeVar, TYPE_CHECKING, Union
 
 from nuiitivet.common.logging_once import debug_once
 from nuiitivet.runtime.threading import is_ui_thread
@@ -202,13 +202,16 @@ class _ObservableValue(MutableObservableBase[T]):
 
     def switch_map(
         self,
-        fn: Callable[[T, "CancelToken"], _R],
+        fn: Union[Callable[[T, "CancelToken"], _R], Callable[[T], Awaitable[_R]]],
         *,
         initial: _R,
     ) -> "SwitchMappedObservable[T, _R]":
         """Asynchronous :meth:`map`: the newest run's result, older runs discarded.
 
-        See :class:`~nuiitivet.observable.switched.SwitchMappedObservable`.
+        ``fn`` is a plain function of ``(value, CancelToken)``, run on a
+        thread, or a coroutine function of ``(value)`` such as a ``@server``
+        function, run as a task. See
+        :class:`~nuiitivet.observable.switched.SwitchMappedObservable`.
         """
         from .switched import SwitchMappedObservable
 

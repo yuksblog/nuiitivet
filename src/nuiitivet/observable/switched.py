@@ -17,6 +17,11 @@ mapping, and stays a hand-written worker (see
 data come back" is not one of the three: a run that answers with items *and* a
 total *and* a facet list still answers once, and returns them as one value.
 
+``fn`` is either a plain function, run on a thread of its own, or a coroutine
+function, run as a task on the UI thread's event loop. A ``@server`` function
+is the second kind, and the only kind that runs in a browser, which has no
+thread to give the first.
+
 **Failure is a value, not a channel.** ``fn`` runs where no caller is on the
 stack, so an exception has nowhere to go. Rather than grow a second read
 surface on the returned observable -- which would not survive ``.map()``, and
@@ -37,9 +42,11 @@ logged through ``exception_once`` and delivered to nobody, exactly as a raising
 
 from __future__ import annotations
 
+import asyncio
+import inspect
 import logging
 import threading
-from typing import Callable, Optional, Sequence, TypeVar
+from typing import Any, Awaitable, Callable, Optional, Sequence, TypeVar, Union
 
 from nuiitivet.common.logging_once import exception_once
 
@@ -113,10 +120,17 @@ class SwitchMappedObservable(SourceSubscribingObservable[TIn, TOut]):
     I/O, and the source's construction-time value is usually the empty one -- so
     ``initial`` here means "no run has landed yet".
 
-    ``fn`` never runs on the UI thread. It may read observables, but must not
-    touch widgets or anything else the UI thread owns, the same constraint §2
-    already places on compute functions. Results are marshalled back before they
-    are published, so subscribers and bindings still run on the UI thread.
+    A plain ``fn`` takes ``(value, CancelToken)`` and never runs on the UI
+    thread. It may read observables, but must not touch widgets or anything
+    else the UI thread owns, the same constraint §2 already places on compute
+    functions. Results are marshalled back before they are published, so
+    subscribers and bindings still run on the UI thread.
+
+    A coroutine ``fn`` takes ``(value)`` and runs as a task on the event loop;
+    a superseded run is a cancelled task. This is how a ``@server`` function
+    is passed::
+
+        results = query.debounce(0.3).switch_map(search_products, initial=[])
 
     Lifetime follows the contract in :mod:`~nuiitivet.observable.wrapper`: hold
     this object, or the ``Disposable`` from :meth:`subscribe`, for as long as the
@@ -126,14 +140,20 @@ class SwitchMappedObservable(SourceSubscribingObservable[TIn, TOut]):
     def __init__(
         self,
         source: ReadOnlyObservableProtocol[TIn],
-        fn: Callable[[TIn, CancelToken], TOut],
+        fn: Union[Callable[[TIn, CancelToken], TOut], Callable[[TIn], Awaitable[TOut]]],
         *,
         initial: TOut,
     ):
-        self._fn = fn
+        # Either shape is called by the run that matches it.
+        self._fn: Callable[..., Any] = fn
+        # An object with an async __call__ is a coroutine function too.
+        self._is_coroutine = inspect.iscoroutinefunction(fn) or inspect.iscoroutinefunction(
+            getattr(fn, "__call__", None)
+        )
         self._initial = initial
         self._lock = threading.Lock()
         self._current_token: Optional[CancelToken] = None
+        self._current_task: Optional["asyncio.Task[Any]"] = None
         self._pending_result: TOut | _Unset = UNSET
         super().__init__(source)
 
@@ -158,6 +178,15 @@ class SwitchMappedObservable(SourceSubscribingObservable[TIn, TOut]):
             # Anything staged by the run just superseded is now unwanted, and
             # dropping it here means a flush already scheduled finds nothing.
             self._pending_result = UNSET
+            task, self._current_task = self._current_task, None
+        if task is not None:
+            task.cancel()
+
+        if self._is_coroutine:
+            from nuiitivet.widgeting.callbacks import spawn_task
+
+            self._current_task = spawn_task(self._run_task(value, token), owner_name=f"switch_map:{self._fn_name()}")
+            return
 
         thread = threading.Thread(
             target=self._run,
@@ -179,6 +208,21 @@ class SwitchMappedObservable(SourceSubscribingObservable[TIn, TOut]):
             # reaching here means ``fn`` itself is broken: a bug to log, not a
             # result to publish. Keyed by the function so two different
             # switch_maps cannot de-duplicate each other's bug into silence.
+            exception_once(
+                logger,
+                f"switch_map_fn_raised:{self._fn_name()}",
+                f"switch_map function {self._fn_name()!r} raised; no value was published",
+            )
+            return
+        self._deliver(result, token)
+
+    async def _run_task(self, value: TIn, token: CancelToken) -> None:
+        """The body of one run, as a task on the event loop."""
+        try:
+            result = await self._fn(value)
+        except asyncio.CancelledError:
+            return
+        except Exception:
             exception_once(
                 logger,
                 f"switch_map_fn_raised:{self._fn_name()}",
@@ -230,5 +274,8 @@ class SwitchMappedObservable(SourceSubscribingObservable[TIn, TOut]):
             token = self._current_token
             self._current_token = None
             self._pending_result = UNSET
+            task, self._current_task = self._current_task, None
         if token is not None:
             token._supersede()
+        if task is not None:
+            task.cancel()
