@@ -166,11 +166,10 @@ it is unit-tested as any function.
 Arguments and the result cross as JSON, and the codec comes from the type
 annotations, never from the data: a float annotated `float` arrives as a
 float even when it was sent as `2`, a dataclass arrives as that dataclass,
-and a value of another type is refused with the field named. The types that
-cross are the scalars, `bytes`, `datetime` and `date`, an `Enum`, a dataclass
-of such fields, and `list`, `tuple`, `dict[str, ...]` and `T | None` of them.
-The dataclass must come from a module the page gets, since the stub's
-signature names it.
+and a value of another type is refused with the field named. A type the
+codec has no rule for is refused when the function is defined, not at the
+first call. A dataclass must come from a module the page gets, since the
+stub's signature names it.
 
 Progress flows through a `WriteOnlyObservable` parameter. The caller passes an
 observable, the server side writes it, and each write streams back as a line

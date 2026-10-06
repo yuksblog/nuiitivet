@@ -91,6 +91,12 @@ module = ["jeepney.*"]
 ignore_missing_imports = true
 module = ["js", "pyodide.*"]
 
+# A sample of several files imports its siblings by bare name, as a script
+# does; mypy knows them only by their path under samples/.
+[[tool.mypy.overrides]]
+ignore_missing_imports = true
+module = ["backend", "models"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
