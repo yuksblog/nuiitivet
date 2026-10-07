@@ -109,3 +109,13 @@ wherever a `font_family` is accepted (`nv.TextStyle`; icon fonts via
 `nv.IconStyle(custom_font_family=...)`). The app-wide default family is
 `nv.Fonts.set_default_family("Hiragino Sans")`; `None` restores locale-based
 detection.
+
+## In a browser
+
+Of what this file covers, the menu bar (drawn in the page) and the app's own
+font files carry over. The rest does not: the main window fills the canvas
+(`width`/`height` ignored, `title` becomes the tab title), a second
+`nv.Window(...).open()` is not shown, `nv.FileDialog` returns `None`,
+`nv.Desktop.notify` does nothing, a system font name falls back to the
+shipped text font. Threads raise `RuntimeError: can't start new thread`: see
+`@nv.server` in references/state.md.

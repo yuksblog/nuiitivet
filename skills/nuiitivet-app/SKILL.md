@@ -249,6 +249,13 @@ which widget catches a click when layers overlap (default is `auto`; each takes 
 To **run, hot-reload, and debug** the app, switch to the **nuiitivet-debug**
 skill — it owns the edit → see → act → verify loop.
 
+To **open the same app in a browser**: `python -m nuiitivet.web run app.py`.
+`python -m nuiitivet.web build app.py -o dist` writes `dist/site` for any file
+server and `dist/server` for the `@nv.server` functions;
+`python -m nuiitivet.web serve dist` serves both. Everything in the entry
+script's directory goes to the browser, so the app lives in a directory of its
+own. What the browser lacks is listed at the end of references/desktop.md.
+
 ## References — read the one matching the task
 
 These files are **self-contained** — everything needed to write correct
@@ -260,7 +267,7 @@ day-to-day nuiitivet code is here, offline.
 - **State, reactivity, derived/async values** →
   [references/state.md](references/state.md) — Observable, `combine`/`compute`,
   `map`/`debounce`/`filter`/`scan`, `switch_map` for async work, background threads and
-  cancellation, ViewModel pattern.
+  cancellation, `@nv.server` for work that also runs in a browser, ViewModel pattern.
 - **Layout, sizing, spacing, dynamic lists, modifiers** →
   [references/layout.md](references/layout.md).
 - **Navigation, dialogs, snackbars, overlays** →
@@ -269,5 +276,5 @@ day-to-day nuiitivet code is here, offline.
 - **Text fields, search bars, date pickers** →
   [references/inputs.md](references/inputs.md) — binding the value, Enter versus
   blur, input filters, typed values.
-- **Windows, the menu bar, the tray, file dialogs, notifications, fonts** →
-  [references/desktop.md](references/desktop.md).
+- **Windows, the menu bar, the tray, file dialogs, notifications, fonts, and
+  what of these a browser has** → [references/desktop.md](references/desktop.md).

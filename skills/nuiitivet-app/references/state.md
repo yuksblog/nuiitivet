@@ -132,6 +132,11 @@ self.items   = self.outcome.map(lambda o: o.items)       # chains like any Obser
   values only. Results are marshalled back before subscribers run.
 - **`cancel.superseded` is optional.** The result is discarded either way;
   checking only saves wasted work, and a blocking call never gets to check.
+- **An `async def fn(value)` runs as a task on the UI thread**, no `cancel`
+  parameter: a superseded run is cancelled with `asyncio.CancelledError` at its
+  `await`. Use it when the work is `await`-able — an HTTP call, a `@nv.server`
+  function — and in an app that also runs in a browser, where a plain `fn`
+  has no thread to run on.
 
 Only for work that is a **function of an Observable's value**. Hand-write it
 instead (see Cancellation) when it is started by a button — a Retry button
@@ -253,6 +258,62 @@ reports over a live one.
 Unmounting does not stop a worker (its writes are inert, not unsafe). If the work
 exists only for that screen, cancel from an `on_unmount()` override — not an
 `on_unmount` modifier in `build()`, which fires on every rebuild.
+
+### `@nv.server` — the same work when the app also runs in a browser
+
+A browser has no thread: `threading.Thread`, `asyncio.to_thread` and a plain
+`switch_map` `fn` raise `RuntimeError: can't start new thread` there. Put the
+work in a `@nv.server` function instead; it runs on a thread on the desktop and
+on a server in the browser, and the screen awaits it the same way on both. The
+same function is where a secret (a DB password, an API key) belongs: its module
+never reaches the browser.
+
+```python
+# backend.py — never sent to the browser; the page gets a stub with the same signatures
+import nuiitivet.material as nv
+from models import Report                     # a dataclass in a module both sides get
+
+nv.server_only()                              # at the top of the module, or of a package __init__.py
+
+@nv.server
+def scan(
+    query: str,
+    progress: nv.WriteOnlyObservable[float],  # the function writes, the screen reads
+    cancel: nv.CancelToken = nv.CancelToken(),  # keep the default; set when the caller cancels
+) -> Report:
+    for index, word in enumerate(WORDS):
+        if cancel.cancelled:
+            break
+        progress.value = index / len(WORDS)   # latest value per tick reaches the screen
+    return Report(scanned=index + 1, matches=[])
+
+# app.py
+from backend import scan
+
+async def start(self) -> None:
+    self._task = asyncio.ensure_future(scan(self.query.value, self.progress))
+    try:
+        report = await self._task             # on the desktop: a runtime thread; in a browser: HTTP
+    except asyncio.CancelledError:
+        return                                # self._task.cancel() from the Cancel button
+    except nv.ServerError as error:
+        self.status.value = str(error)        # a non-built-in exception: "Rejected: not for you"
+```
+
+- **Module-level `def` in a `nv.server_only()` module, every parameter and the
+  return annotated, or the import raises.** A `@nv.server` method, lambda,
+  nested or `async` function is not accepted.
+- **Types come from the annotations, never from the data**: scalars, `bytes`,
+  `datetime`/`date`, an `Enum`, a dataclass of these, `list`/`tuple`/`dict[str, …]`/
+  `Optional` of these. `Any`, `object`, `set`, a bare `list` raise at import.
+  A dataclass defined in the server-only module raises too: the page has no
+  class to rebuild it from — put it in a module both sides import.
+- **Arguments and the result are copies, on the desktop as well.** A list
+  appended to inside the function is unchanged in the caller.
+- **A built-in exception (`ValueError`, `KeyError`) reaches the caller as
+  itself**; any other class arrives as `nv.ServerError`.
+- **Never `threading.Event` here**: cancellation is the `nv.CancelToken`
+  parameter, set when the awaiting task is cancelled.
 
 ## Run a side effect with `subscribe()`
 

@@ -26,8 +26,16 @@ _ENTRY = "main"
 
 
 def _sample_files() -> list[pathlib.Path]:
-    """Every runnable sample: package markers are not programs."""
-    return sorted(p for p in _SAMPLES.rglob("*.py") if p.name != "__init__.py")
+    """Every runnable sample: package markers are not programs.
+
+    A sample of several files keeps its program in ``app.py``; the other files
+    of that directory are its modules, not programs.
+    """
+    return sorted(
+        p
+        for p in _SAMPLES.rglob("*.py")
+        if p.name != "__init__.py" and (p.name == "app.py" or not (p.parent / "app.py").exists())
+    )
 
 
 def _entry_of(tree: ast.Module) -> ast.FunctionDef | ast.AsyncFunctionDef | None:

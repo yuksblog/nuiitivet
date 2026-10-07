@@ -120,8 +120,13 @@ def test_samples_use_only_the_single_root() -> None:
 
 
 def test_samples_import_cleanly() -> None:
-    """Every sample module imports (module-level symbols resolve against the root)."""
+    """Every sample module imports (module-level symbols resolve against the root).
+
+    A sample's directory is on the path while it imports, as it is when the
+    sample runs as a script, so a sample of several files finds its siblings.
+    """
     import importlib.util
+    import sys
 
     failures: list[str] = []
     for i, f in enumerate(_sample_files()):
@@ -129,13 +134,18 @@ def test_samples_import_cleanly() -> None:
         spec = importlib.util.spec_from_file_location(name, f)
         assert spec and spec.loader
         mod = importlib.util.module_from_spec(spec)
-        import sys
-
         sys.modules[name] = mod
+        sys.path.insert(0, str(f.parent))
+        loaded_before = set(sys.modules)
         try:
             spec.loader.exec_module(mod)
         except Exception as exc:  # noqa: BLE001 — report all, fail once
             failures.append(f"{f.relative_to(_ROOT)}: {type(exc).__name__}: {exc}")
         finally:
+            sys.path.remove(str(f.parent))
             sys.modules.pop(name, None)
+            for loaded in set(sys.modules) - loaded_before:
+                module_file = getattr(sys.modules[loaded], "__file__", None) or ""
+                if module_file.startswith(str(f.parent)):
+                    del sys.modules[loaded]
     assert failures == [], "Samples failed to import:\n" + "\n".join(failures)

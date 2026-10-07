@@ -33,6 +33,7 @@ the whole toolkit in one import. Only `nuiitivet.material` is available today.
 - [Navigation](navigation/index.md)
 - [Window](window/index.md)
 - [Modifiers](modifiers/index.md)
+- [Web](web/index.md)
 
 ## AI pair-programming
 

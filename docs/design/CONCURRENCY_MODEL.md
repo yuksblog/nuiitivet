@@ -48,6 +48,10 @@ would otherwise flood the event loop queue and starve input.
   thread the runtime owns (`asyncio.to_thread`); the line after the `await`
   is back on the UI thread.
 - I/O: an `async` handler that awaits it.
+- Work that runs on the web too: a `@server` function, awaited by the handler.
+  On the desktop it runs on a thread the runtime owns; in a browser, where
+  there is no second thread, the same call goes to a server
+  ([WEB_TARGET.md](WEB_TARGET.md)).
 - High-frequency values: the default marshal already coalesces. `dispatch=False`
   only where every intermediate value is needed and no widget is bound.
 

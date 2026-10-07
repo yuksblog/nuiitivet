@@ -24,6 +24,11 @@ locally:
 - `uv run mypy`
 - `uv run flake8 src tests samples --max-line-length=120 --extend-ignore=E203`
 
+A change under `src/nuiitivet/web/` or `src/nuiitivet/backends/web/` also
+passes the browser test, which paints a sample in headless Chromium:
+`uv sync --group browser`, `uv run playwright install chromium`, then
+`uv run pytest tests/web/test_browser.py`. Without the browser it skips.
+
 A change under `docs/` passes:
 
 - `uv run --group docs mkdocs build --strict`

@@ -52,6 +52,9 @@ addopts = ["--import-mode=importlib"]
 testpaths = ["tests"]
 
 [dependency-groups]
+browser = [
+    "playwright>=1.63.0",
+]
 dev = [
   # Self-reference the published extra so a plain `uv sync` keeps 'mcp'
   # installed: extras are not synced by default, and the sync is exact.
@@ -90,6 +93,17 @@ module = ["jeepney.*"]
 [[tool.mypy.overrides]]
 ignore_missing_imports = true
 module = ["js", "pyodide.*"]
+
+# The browser dependency group is installed only where the browser test runs.
+[[tool.mypy.overrides]]
+ignore_missing_imports = true
+module = ["playwright.*"]
+
+# A sample of several files imports its siblings by bare name, as a script
+# does; mypy knows them only by their path under samples/.
+[[tool.mypy.overrides]]
+ignore_missing_imports = true
+module = ["backend", "models"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
