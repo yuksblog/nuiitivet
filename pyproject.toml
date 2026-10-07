@@ -94,6 +94,11 @@ module = ["jeepney.*"]
 ignore_missing_imports = true
 module = ["js", "pyodide.*"]
 
+# The browser dependency group is installed only where the browser test runs.
+[[tool.mypy.overrides]]
+ignore_missing_imports = true
+module = ["playwright.*"]
+
 # A sample of several files imports its siblings by bare name, as a script
 # does; mypy knows them only by their path under samples/.
 [[tool.mypy.overrides]]
