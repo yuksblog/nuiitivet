@@ -52,7 +52,8 @@ class _SurfaceRecorder:
 
     def finishRecordingAsPicture(self) -> None:
         surface.getCanvas().restore()
-        surface.flush()
+        if getattr(js.SPIKE, "flush", True):
+            surface.flush()
         js.SPIKE.finish()
 
 
