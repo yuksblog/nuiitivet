@@ -51,8 +51,9 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"\bsetState\b"), "Flutter/React",
      "Assign to an Observable: `self.x.value = ...` — the UI rebinds itself."),
     (re.compile(r"\.run_thread\s*\(|\.run_task\s*\("), "Flet",
-     "Work the browser cannot run on a thread goes in a @nv.server function in a "
-     "nv.server_only() module, awaited from the handler: `await fn(...)` on both targets."),
+     "Work the browser cannot run on a thread goes in a @nv.worker function, or in a @nv.server "
+     "function in a nv.server_only() module when it needs a server, awaited from the handler: "
+     "`await fn(...)` on both targets."),
     (re.compile(r"\buseState\b|\buseEffect\b|\buseMemo\b|\buseRef\b|\buseCallback\b"), "React",
      "Use nv.Observable for state; derive with combine().compute() / map()."),
     (re.compile(r"\buseSelector\b|\buseDispatch\b|\bConsumerWidget\b|\bref\.watch\b"), "Redux/Riverpod",

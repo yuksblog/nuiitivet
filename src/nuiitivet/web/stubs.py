@@ -1,4 +1,4 @@
-"""What the page gets in place of the app's server-only modules, found by reading the sources.
+"""What the page gets in place of the server-only modules, and what its worker imports, found by reading the sources.
 
 Nothing here imports the app: a build must not run server code, and the
 server-only modules are the ones that would open a database on import.
@@ -16,6 +16,7 @@ _SERVER_ONLY = "server_only"
 # Directories whose files are never part of the app.
 SKIPPED_DIRS = {"__pycache__", "node_modules", "venv"}
 _SERVER = "server"
+_WORKER = "worker"
 
 
 def _calls(statement: ast.stmt, name: str) -> bool:
@@ -145,6 +146,26 @@ def stub_source(path: Path, module: str) -> str | None:
     return "\n".join(lines) + "\n"
 
 
+def worker_modules(root: Path) -> list[str]:
+    """The dotted names of the app's modules that hold a ``@worker`` function, for the page's worker to import.
+
+    A server-only module is left out: the desktop refuses a worker function there.
+
+    Args:
+        root: The app's directory.
+    """
+    server_only = ServerOnly(root)
+    names: list[str] = []
+    for path in sorted(root.rglob("*.py")):
+        parts = path.relative_to(root).parts
+        if any(part.startswith(".") or part in SKIPPED_DIRS for part in parts) or server_only.covers(path):
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        if any(isinstance(node, ast.FunctionDef) and _decorated_with(node, _WORKER) for node in tree.body):
+            names.append(_module_name(path, root))
+    return names
+
+
 def _names_in_signature(function: ast.FunctionDef) -> Iterator[str]:
     nodes: list[ast.AST] = [function.args]
     if function.returns is not None:
@@ -155,4 +176,4 @@ def _names_in_signature(function: ast.FunctionDef) -> Iterator[str]:
                 yield node.id
 
 
-__all__ = ["SKIPPED_DIRS", "ServerOnly", "stub_source"]
+__all__ = ["SKIPPED_DIRS", "ServerOnly", "stub_source", "worker_modules"]

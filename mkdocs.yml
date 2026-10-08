@@ -226,7 +226,7 @@ nav:
           - guide/web/index.md
           - Running During Development: guide/web/running.md
           - What Differs from the Desktop: guide/web/desktop_differences.md
-          - Server Functions: guide/web/server_functions.md
+          - Worker and Server Functions: guide/web/worker_and_server_functions.md
           - Building and Deploying: guide/web/building_and_deploying.md
   - API Reference:
       - Core: api/nuiitivet.md

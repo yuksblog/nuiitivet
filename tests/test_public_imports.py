@@ -124,28 +124,36 @@ def test_samples_import_cleanly() -> None:
 
     A sample's directory is on the path while it imports, as it is when the
     sample runs as a script, so a sample of several files finds its siblings.
+    A file inside a package of the sample is imported through the package,
+    by its dotted name from the sample's directory.
     """
+    import importlib
     import importlib.util
     import sys
 
     failures: list[str] = []
     for i, f in enumerate(_sample_files()):
-        name = f"_sample_import_check_{i}"
-        spec = importlib.util.spec_from_file_location(name, f)
-        assert spec and spec.loader
-        mod = importlib.util.module_from_spec(spec)
-        sys.modules[name] = mod
-        sys.path.insert(0, str(f.parent))
+        root = f.parent
+        while (root / "__init__.py").exists():
+            root = root.parent
+        sys.path.insert(0, str(root))
         loaded_before = set(sys.modules)
         try:
-            spec.loader.exec_module(mod)
+            if root == f.parent:
+                name = f"_sample_import_check_{i}"
+                spec = importlib.util.spec_from_file_location(name, f)
+                assert spec and spec.loader
+                mod = importlib.util.module_from_spec(spec)
+                sys.modules[name] = mod
+                spec.loader.exec_module(mod)
+            else:
+                importlib.import_module(".".join(f.relative_to(root).with_suffix("").parts))
         except Exception as exc:  # noqa: BLE001 — report all, fail once
             failures.append(f"{f.relative_to(_ROOT)}: {type(exc).__name__}: {exc}")
         finally:
-            sys.path.remove(str(f.parent))
-            sys.modules.pop(name, None)
+            sys.path.remove(str(root))
             for loaded in set(sys.modules) - loaded_before:
                 module_file = getattr(sys.modules[loaded], "__file__", None) or ""
-                if module_file.startswith(str(f.parent)):
+                if module_file.startswith(str(root)):
                     del sys.modules[loaded]
     assert failures == [], "Samples failed to import:\n" + "\n".join(failures)

@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 from nuiitivet.observable import Observable, runtime
 from nuiitivet.observable.switched import CancelToken
-from nuiitivet.remote import ServerError, WriteOnlyObservable, server, server_only
+from nuiitivet.remote import RemoteError, WriteOnlyObservable, server, server_only
 from nuiitivet.remote.scope import is_server_only
 from tests.remote.models import Order
 
@@ -202,7 +202,7 @@ async def test_a_builtin_exception_reaches_the_caller_as_itself() -> None:
 
 
 async def test_any_other_exception_reaches_the_caller_as_server_error() -> None:
-    with pytest.raises(ServerError) as caught:
+    with pytest.raises(RemoteError) as caught:
         await fail_custom(7)
 
     assert caught.value.type_name == "OrderNotFound"

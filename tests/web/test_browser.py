@@ -1,4 +1,4 @@
-"""A sample painted by headless Chrome, against the same sample painted on the desktop.
+"""Samples driven in headless Chrome: one painted against the desktop, one calling a worker function.
 
 The page is the built site, Pyodide and CanvasKit included, served by the
 framework's own server. The two renders never match pixel for pixel: the
@@ -6,6 +6,9 @@ browser draws with CanvasKit and the page's fonts, the desktop with
 skia-python and the system's. They are compared by the mean colour of 16 px
 blocks, which a font swap leaves alone and a page that painted nothing, or
 laid out differently, moves far past the threshold.
+
+The worker sample is read through the page's Pyodide, and driven with the
+mouse and the keyboard, so what the test sees is what the user sees.
 
 Needs the ``browser`` dependency group and a Chromium: ``uv sync --group browser``
 and ``uv run playwright install chromium``, or an installed Chrome. Without
@@ -131,3 +134,115 @@ def test_the_browser_paints_the_sample_as_the_desktop_does(page_url: str, tmp_pa
 
     differing = _differing_blocks(_block_means(tmp_path / "desktop.png"), _block_means(tmp_path / "browser.png"))
     assert differing <= MAX_DIFFERING_BLOCKS, f"{differing:.1%} of {BLOCK} px blocks differ"
+
+
+# -- worker functions ----------------------------------------------------------
+
+WORKER_APP = APP.parent.parent / "worker_functions" / "app.py"
+# What the sample's search finds for its default query, "word1".
+WORD1_RESULT = "28 words within one edit of word1"
+
+_IN_PAGE = """
+from nuiitivet._interaction.perception import _coerce_display, find_targets
+from nuiitivet.backends.web.runner import _app
+
+
+def _widget(key):
+    [widget] = find_targets(_app.main_window.root, key=key)
+    return widget
+
+
+def text_of(key):
+    widget = _widget(key)
+    for attr in ("label", "text", "title"):
+        display = _coerce_display(getattr(widget, attr, None))
+        if display is not None:
+            return display
+    return None
+
+
+def center_of(key):
+    x, y, w, h = _widget(key).global_layout_rect
+    return [x + w / 2, y + h / 2]
+"""
+
+
+@pytest.fixture(scope="module")
+def worker_page_url() -> Iterator[str]:
+    """The worker sample's built site, served on a free port for the whole module."""
+    httpd = make_server(site(WORKER_APP, bundle_runtime=True), 0)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{httpd.server_address[1]}/"
+    httpd.shutdown()
+    httpd.server_close()
+
+
+class _Page:
+    """Drives the running app through the page's Pyodide and Playwright's mouse and keyboard."""
+
+    def __init__(self, page: playwright_api.Page) -> None:
+        self.page = page
+        page.evaluate("code => NV_PYODIDE.runPython(code)", _IN_PAGE)
+
+    def text(self, key: str) -> str:
+        return self.page.evaluate("code => NV_PYODIDE.runPython(code)", f"text_of({key!r})")
+
+    def click(self, key: str) -> None:
+        x, y = self.page.evaluate("code => NV_PYODIDE.runPython(code).toJs()", f"center_of({key!r})")
+        self.page.mouse.click(x, y)
+
+    def wait_for_text(self, key: str, expected: str, timeout: float = 60.0) -> None:
+        self.page.wait_for_function(
+            "([code, expected]) => NV_PYODIDE.runPython(code) === expected",
+            arg=[f"text_of({key!r})", expected],
+            timeout=timeout * 1000,
+        )
+
+    def set_query(self, value: str) -> None:
+        self.click("query")
+        self.page.keyboard.press("End")
+        for _ in range(8):
+            self.page.keyboard.press("Backspace")
+        self.page.keyboard.type(value)
+
+
+def test_a_worker_function_answers_reports_and_cancels_while_the_page_keeps_answering(worker_page_url: str) -> None:
+    with playwright_api.sync_playwright() as playwright:
+        browser = _launch(playwright)
+        try:
+            page = browser.new_page(viewport={"width": 480, "height": 320}, device_scale_factor=1)
+            errors: list[str] = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(worker_page_url)
+            page.wait_for_function("document.body.dataset.state !== undefined", timeout=180_000)
+            assert page.evaluate("document.body.dataset.state") == "running"
+            app = _Page(page)
+
+            # Progress while it runs, a click answered meanwhile, and a cancel.
+            app.click("search")
+            app.wait_for_text("status", "searching")
+            app.click("click")
+            app.wait_for_text("clicks", "1 clicks", timeout=5.0)
+            assert app.text("status") == "searching"
+            page.wait_for_function(
+                "code => NV_PYODIDE.runPython(code) !== '0%'", arg="text_of('progress')", timeout=60_000
+            )
+            app.click("cancel")
+            app.wait_for_text("status", "cancelled")
+
+            # The result, from the replacement worker.
+            app.click("search")
+            app.wait_for_text("status", WORD1_RESULT)
+
+            # A built-in exception, as itself.
+            app.set_query("")
+            app.click("search")
+            app.wait_for_text("status", "type something to look for")
+
+            # Any other exception, as RemoteError.
+            app.set_query("secret")
+            app.click("search")
+            app.wait_for_text("status", "Rejected: not for you")
+        finally:
+            browser.close()
+    assert not errors, errors

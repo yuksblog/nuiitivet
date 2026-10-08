@@ -78,7 +78,7 @@ from nuiitivet.observable import (
     combine,
 )
 from nuiitivet.observable.clocks import Clocks
-from nuiitivet.remote import ServerError, WriteOnlyObservable, server, server_only
+from nuiitivet.remote import RemoteError, WriteOnlyObservable, server, server_only, worker
 
 # Input (keyboard-modifier masks for ``on_key`` / ``on_key_up`` handlers and
 # backend-neutral pointer button codes for ``PointerEvent.button``)
@@ -234,10 +234,11 @@ __all__: list[str] = [
     "Clock",
     "ClockCallback",
     "Clocks",
-    "ServerError",
+    "RemoteError",
     "WriteOnlyObservable",
     "server",
     "server_only",
+    "worker",
     # Theme
     "Theme",
     "TypeScale",

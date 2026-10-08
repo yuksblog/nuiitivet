@@ -1,4 +1,4 @@
-"""Call a server function from the screen: progress, cancel, the errors, and a screen that keeps answering.
+"""Call a worker function from the screen: progress, cancel, the errors, and a screen that keeps answering.
 
 Run on the desktop:   python app.py
 Run in a browser:     python -m nuiitivet.web run app.py
@@ -7,7 +7,7 @@ Run in a browser:     python -m nuiitivet.web run app.py
 import asyncio
 
 import nuiitivet.material as nv
-from backend.search import search  # on the web this import resolves to the stub
+from jobs import search
 
 
 class SearchScreen(nv.ComposableWidget):
@@ -77,7 +77,7 @@ class SearchScreen(nv.ComposableWidget):
 
 
 def main() -> None:
-    nv.App(nv.Window(content=SearchScreen, title="Server functions", width=480, height=320)).run()
+    nv.App(nv.Window(content=SearchScreen, title="Worker functions", width=480, height=320)).run()
 
 
 if __name__ == "__main__":

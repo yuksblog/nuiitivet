@@ -8,8 +8,9 @@ browser as they do on the desktop. What follows is the rest.
 A browser has one thread. `threading.Thread(...).start()` raises
 `RuntimeError: can't start new thread`, and so does anything built on it:
 `asyncio.to_thread`, a `ThreadPoolExecutor`, `switch_map` with a plain
-function. That work goes in a [server function](server_functions.md), which
-runs on the desktop too.
+function. That work goes in a
+[worker or server function](worker_and_server_functions.md), which runs on
+the desktop too.
 
 ## What is ignored
 
@@ -40,5 +41,5 @@ text font; there is no system font to find.
 
 ## Next Steps
 
-- [Server Functions](server_functions.md)
+- [Worker and Server Functions](worker_and_server_functions.md)
 - [Web overview](index.md)

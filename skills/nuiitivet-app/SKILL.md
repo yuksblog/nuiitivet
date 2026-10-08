@@ -251,7 +251,7 @@ skill — it owns the edit → see → act → verify loop.
 
 To **open the same app in a browser**: `python -m nuiitivet.web run app.py`.
 `python -m nuiitivet.web build app.py -o dist` writes `dist/site` for any file
-server and `dist/server` for the `@nv.server` functions;
+server, `@nv.worker` functions included, and `dist/server` for the `@nv.server` functions;
 `python -m nuiitivet.web serve dist` serves both. Everything in the entry
 script's directory goes to the browser, so the app lives in a directory of its
 own. What the browser lacks is listed at the end of references/desktop.md.
@@ -267,7 +267,7 @@ day-to-day nuiitivet code is here, offline.
 - **State, reactivity, derived/async values** →
   [references/state.md](references/state.md) — Observable, `combine`/`compute`,
   `map`/`debounce`/`filter`/`scan`, `switch_map` for async work, background threads and
-  cancellation, `@nv.server` for work that also runs in a browser, ViewModel pattern.
+  cancellation, `@nv.worker` / `@nv.server` for work that also runs in a browser, ViewModel pattern.
 - **Layout, sizing, spacing, dynamic lists, modifiers** →
   [references/layout.md](references/layout.md).
 - **Navigation, dialogs, snackbars, overlays** →

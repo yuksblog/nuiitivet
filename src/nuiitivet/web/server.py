@@ -19,7 +19,7 @@ from typing import Callable, Iterator, Union
 
 import nuiitivet
 from nuiitivet.web.calls import handle_call
-from nuiitivet.web.stubs import SKIPPED_DIRS, ServerOnly
+from nuiitivet.web.stubs import SKIPPED_DIRS, ServerOnly, worker_modules
 from nuiitivet.web.assets import CANVASKIT_CDN, LICENSES, PYODIDE_CDN, RUNTIME, TEXT_FONTS, fetch
 
 # A file on disk, or bytes made at each read.
@@ -134,11 +134,14 @@ def site(app_path: Path, *, bundle_runtime: bool) -> dict[str, Source]:
         "canvaskit": "canvaskit/" if bundle_runtime else CANVASKIT_CDN + "bin/",
         "fonts": [{"url": asset.path, "weight": weight} for weight, asset in TEXT_FONTS],
         "files": [{"url": _ICON_FONT_URL, "path": f"{_PAGE_ROOT}/lib/nuiitivet/material/symbols/{_ICON_FONT}"}],
+        "workers": worker_modules(app_path.parent),
     }
     files: dict[str, Source] = {
         "index.html": STATIC / "index.html",
         "boot.mjs": STATIC / "boot.mjs",
         "host.mjs": STATIC / "host.mjs",
+        "workers.mjs": STATIC / "workers.mjs",
+        "worker.mjs": STATIC / "worker.mjs",
         "config.json": lambda: json.dumps(config).encode(),
         "bundle.zip": lambda: build_bundle(app_path),
         _ICON_FONT_URL: _SYMBOLS / _ICON_FONT,

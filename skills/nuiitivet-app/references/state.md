@@ -259,59 +259,87 @@ Unmounting does not stop a worker (its writes are inert, not unsafe). If the wor
 exists only for that screen, cancel from an `on_unmount()` override — not an
 `on_unmount` modifier in `build()`, which fires on every rebuild.
 
-### `@nv.server` — the same work when the app also runs in a browser
+### `@nv.worker` and `@nv.server` — the same work when the app also runs in a browser
 
 A browser has no thread: `threading.Thread`, `asyncio.to_thread` and a plain
 `switch_map` `fn` raise `RuntimeError: can't start new thread` there. Put the
-work in a `@nv.server` function instead; it runs on a thread on the desktop and
-on a server in the browser, and the screen awaits it the same way on both. The
-same function is where a secret (a DB password, an API key) belongs: its module
-never reaches the browser.
+work in a `@nv.worker` function: it runs on a thread on the desktop and on the
+page's Web Worker in the browser, and the screen awaits it the same way on
+both. Mark it `@nv.server` instead when the work needs what the browser does
+not run or must not hold: a library Pyodide lacks, more memory than a tab, a
+module the user must not read. Then it runs on a thread on the desktop and on
+a server in the browser, and its module never reaches the browser. The two
+take the same parameters and the same `await`; a function moves between the
+marks with no change to its body or its callers.
 
 ```python
-# backend.py — never sent to the browser; the page gets a stub with the same signatures
+# jobs.py — sent to the browser with the app; the page's worker imports it at start
 import nuiitivet.material as nv
-from models import Report                     # a dataclass in a module both sides get
 
-nv.server_only()                              # at the top of the module, or of a package __init__.py
+@nv.worker
+def search(query: str, progress: nv.WriteOnlyObservable[float]) -> list[str]:
+    ...                                       # same parameters and rules as @nv.server below
+
+# app.py
+from jobs import search
+
+matches = await search(self.query.value, self.progress)   # on the desktop: a runtime thread; in a browser: the worker
+```
+
+- **A `@nv.worker` function's module must not call `nv.server_only()`**, or
+  the import raises; it lives in the app's directory, in a module the browser
+  gets.
+- **Cancelling a running `@nv.worker` call in the browser ends the worker**;
+  the page starts another, and the next call waits about two seconds for it.
+- **One worker, one call at a time**: a second call waits for the first.
+
+```python
+# backend/__init__.py — the package never reaches the browser; the page gets stubs with the same signatures
+import nuiitivet.material as nv
+
+nv.server_only()                              # or at the top of a single module
+
+# backend/search.py
+import nuiitivet.material as nv
 
 @nv.server
-def scan(
+def search(
     query: str,
     progress: nv.WriteOnlyObservable[float],  # the function writes, the screen reads
     cancel: nv.CancelToken = nv.CancelToken(),  # keep the default; set when the caller cancels
-) -> Report:
+) -> list[str]:
+    matches: list[str] = []
     for index, word in enumerate(WORDS):
         if cancel.cancelled:
             break
         progress.value = index / len(WORDS)   # latest value per tick reaches the screen
-    return Report(scanned=index + 1, matches=[])
+    return matches
 
 # app.py
-from backend import scan
+from backend.search import search
 
 async def start(self) -> None:
-    self._task = asyncio.ensure_future(scan(self.query.value, self.progress))
+    self._task = asyncio.ensure_future(search(self.query.value, self.progress))
     try:
-        report = await self._task             # on the desktop: a runtime thread; in a browser: HTTP
+        matches = await self._task            # on the desktop: a runtime thread; in a browser: HTTP
     except asyncio.CancelledError:
         return                                # self._task.cancel() from the Cancel button
-    except nv.ServerError as error:
+    except nv.RemoteError as error:
         self.status.value = str(error)        # a non-built-in exception: "Rejected: not for you"
 ```
 
 - **Module-level `def` in a `nv.server_only()` module, every parameter and the
-  return annotated, or the import raises.** A `@nv.server` method, lambda,
-  nested or `async` function is not accepted.
+  return annotated, or the import raises.** A `@nv.server` or `@nv.worker`
+  method, lambda, nested or `async` function is not accepted.
 - **Types come from the annotations, never from the data**: scalars, `bytes`,
   `datetime`/`date`, an `Enum`, a dataclass of these, `list`/`tuple`/`dict[str, …]`/
   `Optional` of these. `Any`, `object`, `set`, a bare `list` raise at import.
-  A dataclass defined in the server-only module raises too: the page has no
+  A dataclass defined in the server-only package raises too: the page has no
   class to rebuild it from — put it in a module both sides import.
 - **Arguments and the result are copies, on the desktop as well.** A list
   appended to inside the function is unchanged in the caller.
 - **A built-in exception (`ValueError`, `KeyError`) reaches the caller as
-  itself**; any other class arrives as `nv.ServerError`.
+  itself**; any other class arrives as `nv.RemoteError`.
 - **Never `threading.Event` here**: cancellation is the `nv.CancelToken`
   parameter, set when the awaiting task is cancelled.
 
