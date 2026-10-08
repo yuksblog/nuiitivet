@@ -300,8 +300,8 @@ it binds an ordinary `Observable`.
 
 ### 2.2 Heavy work runs on your machine
 
-This is a desktop-only problem. In a web app the heavy work sits inside the
-server, so it never comes up. Importing a 100,000-row CSV freezes the screen if
+This is a desktop-only problem. In a web app the heavy work sits in a worker
+or on the server, so it never comes up. Importing a 100,000-row CSV freezes the screen if
 you run it on the UI thread — and if you run it on a worker, you now have to get
 the result back onto the UI thread.
 

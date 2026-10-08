@@ -1,4 +1,8 @@
-"""``@server``: a function the app awaits, that runs away from the UI."""
+"""``@server``: a function the app awaits, that runs away from the UI.
+
+``RemoteFunction`` is the part a worker function shares: the declared types,
+the run on a desktop thread, and the function's own side of a call.
+"""
 
 from __future__ import annotations
 
@@ -25,15 +29,15 @@ R = TypeVar("R")
 CALL_ROUTE = "nv/call/"
 
 
-class ServerError(Exception):
-    """An exception of a server function whose class the caller cannot be given.
+class RemoteError(Exception):
+    """An exception of a server or worker function, carried by its class name and message.
 
-    A built-in exception reaches the caller as itself. Any other class may
-    exist only on the server, so the caller gets this one.
+    A built-in exception reaches the caller as itself. Any other class
+    reaches it as this one: the class may exist only where the function ran.
     """
 
     def __init__(self, type_name: str, message: str) -> None:
-        """Initialize ServerError.
+        """Initialize RemoteError.
 
         Args:
             type_name: The name of the class raised in the function.
@@ -44,19 +48,22 @@ class ServerError(Exception):
         self.message = message
 
 
-class ServerFunction(Generic[P, R]):
-    """One ``@server`` function: its declared types and how a call runs."""
+class RemoteFunction(Generic[P, R]):
+    """One function that runs away from the UI: its declared types and how a call runs."""
+
+    # The decorator's name, for the errors a definition raises.
+    mark = "remote"
 
     def __init__(self, fn: Callable[P, R], *, placed: bool = True) -> None:
-        """Initialize ServerFunction.
+        """Initialize RemoteFunction.
 
         Args:
             fn: The function as the app wrote it.
-            placed: Whether *fn* must live in a server-only module. The
-                page's stand-in for a function does not.
+            placed: Whether *fn* must live in the kind of module its mark
+                requires. The page's stand-in for a function does not.
 
         Raises:
-            TypeError: If *fn* breaks a rule of :func:`server`.
+            TypeError: If *fn* breaks a rule of its mark.
         """
         self.fn = fn
         self.name = f"{getattr(fn, '__module__', '?')}.{getattr(fn, '__qualname__', repr(fn))}"
@@ -79,20 +86,21 @@ class ServerFunction(Generic[P, R]):
     # -- definition ---------------------------------------------------------
 
     def _error(self, message: str) -> TypeError:
-        return TypeError(f"@server {self.name}: {message}")
+        return TypeError(f"@{self.mark} {self.name}: {message}")
 
     def _check_placement(self, placed: bool) -> None:
         fn = self.fn
         if not inspect.isfunction(fn) or fn.__name__ == "<lambda>" or fn.__qualname__ != fn.__name__:
             # A method or a closure carries state that exists on one side only.
-            raise self._error("only a function defined with def at module level can be a server function")
+            raise self._error(f"only a function defined with def at module level can be a {self.mark} function")
         if inspect.iscoroutinefunction(fn) or inspect.isgeneratorfunction(fn) or inspect.isasyncgenfunction(fn):
-            raise self._error("a server function is a plain def; it already runs away from the UI")
-        if placed and not is_server_only(fn.__module__):
-            raise self._error(
-                f"module {fn.__module__} is not server-only; call nv.server_only() "
-                "at its top, or in the __init__.py of its package"
-            )
+            raise self._error(f"a {self.mark} function is a plain def; it already runs away from the UI")
+        if placed:
+            self._check_module()
+
+    def _check_module(self) -> None:
+        """Raise the definition error when the function's module is not where its mark lives."""
+        raise NotImplementedError
 
     def _hints(self) -> dict[str, Any]:
         try:
@@ -149,7 +157,7 @@ class ServerFunction(Generic[P, R]):
 
         Raises:
             TypeError: If an argument or the result is not of its declared type.
-            ServerError: If the function raised an exception that is not a
+            RemoteError: If the function raised an exception that is not a
                 built-in one. A built-in exception is raised as itself.
         """
         bound = self._caller_signature.bind(*args, **kwargs)
@@ -167,7 +175,7 @@ class ServerFunction(Generic[P, R]):
         token = CancelToken()
         try:
             if is_web():
-                encoded = await self._call_over_http(values, writers)
+                encoded = await self._call_on_web(values, writers)
             else:
                 receivers: dict[str, Callable[[Json], None]] = {n: w.receive for n, w in writers.items()}
                 encoded = await asyncio.to_thread(self.run, values, receivers, token)
@@ -184,7 +192,59 @@ class ServerFunction(Generic[P, R]):
             writer.close(deliver=True)
         return typing.cast(R, self._result.decode(encoded))
 
-    async def _call_over_http(self, values: dict[str, Json], writers: dict[str, CallWriter]) -> Json:
+    async def _call_on_web(self, values: dict[str, Json], writers: dict[str, CallWriter]) -> Json:
+        """Run the call where this mark runs in a browser, and return the encoded result."""
+        raise NotImplementedError
+
+    # -- the function's side -------------------------------------------------
+
+    def run(self, values: dict[str, Json], writers: dict[str, Callable[[Json], None]], token: CancelToken) -> Json:
+        """Run the function here, on the calling thread, from the wire form of its arguments.
+
+        Args:
+            values: Each data argument by name, encoded.
+            writers: For each ``WriteOnlyObservable`` parameter, where the
+                function's writes go, encoded.
+            token: The function's ``CancelToken``.
+
+        Returns:
+            The result, encoded.
+
+        Raises:
+            TypeError: If an argument or the result is not of its declared type.
+            RemoteError: If the function raised an exception that is not a
+                built-in one. A built-in exception is raised as itself.
+        """
+        arguments: dict[str, Any] = {}
+        for name, codec in self._values.items():
+            arguments[name] = _at(f"{self.name}: {name}", codec.decode, values[name])
+        for name, codec in self._writers.items():
+            arguments[name] = _Writer(codec, writers[name])
+        for name in self._tokens:
+            arguments[name] = token
+        call = inspect.BoundArguments(self._signature, arguments)  # type: ignore[arg-type]
+        try:
+            result = self.fn(*call.args, **call.kwargs)
+        except Exception as error:
+            if type(error).__module__ == "builtins":
+                raise
+            raise RemoteError(type(error).__qualname__, str(error)) from error
+        return _at(f"{self.name}: return value", self._result.encode, result)
+
+
+class ServerFunction(RemoteFunction[P, R]):
+    """One ``@server`` function: on the web, its call is one request to the server."""
+
+    mark = "server"
+
+    def _check_module(self) -> None:
+        if not is_server_only(self.fn.__module__):
+            raise self._error(
+                f"module {self.fn.__module__} is not server-only; call nv.server_only() "
+                "at its top, or in the __init__.py of its package"
+            )
+
+    async def _call_on_web(self, values: dict[str, Json], writers: dict[str, CallWriter]) -> Json:
         """One POST; progress arrives on the streamed response, the result ends it."""
         import js
         from pyodide.ffi import to_js
@@ -217,51 +277,16 @@ class ServerFunction(Generic[P, R]):
                     if "w" in message:
                         writers[message["w"]].receive(message["v"])
                     else:
-                        return _result_of(message)
+                        return result_of(message)
         except asyncio.CancelledError:
             # The server sees the connection close and sets its token.
             controller.abort()
             raise
         raise ConnectionError(f"{self.name}: the response ended without a result")
 
-    # -- the server's side ---------------------------------------------------
-
-    def run(self, values: dict[str, Json], writers: dict[str, Callable[[Json], None]], token: CancelToken) -> Json:
-        """Run the function here, on the calling thread, from the wire form of its arguments.
-
-        Args:
-            values: Each data argument by name, encoded.
-            writers: For each ``WriteOnlyObservable`` parameter, where the
-                function's writes go, encoded.
-            token: The function's ``CancelToken``.
-
-        Returns:
-            The result, encoded.
-
-        Raises:
-            TypeError: If an argument or the result is not of its declared type.
-            ServerError: If the function raised an exception that is not a
-                built-in one. A built-in exception is raised as itself.
-        """
-        arguments: dict[str, Any] = {}
-        for name, codec in self._values.items():
-            arguments[name] = _at(f"{self.name}: {name}", codec.decode, values[name])
-        for name, codec in self._writers.items():
-            arguments[name] = _Writer(codec, writers[name])
-        for name in self._tokens:
-            arguments[name] = token
-        call = inspect.BoundArguments(self._signature, arguments)  # type: ignore[arg-type]
-        try:
-            result = self.fn(*call.args, **call.kwargs)
-        except Exception as error:
-            if type(error).__module__ == "builtins":
-                raise
-            raise ServerError(type(error).__qualname__, str(error)) from error
-        return _at(f"{self.name}: return value", self._result.encode, result)
-
 
 class _Writer:
-    """What a running server function holds for a ``WriteOnlyObservable`` parameter."""
+    """What a running function holds for a ``WriteOnlyObservable`` parameter."""
 
     __slots__ = ("_codec", "_send")
 
@@ -285,27 +310,32 @@ def _classes_in(hint: Any) -> list[type]:
 
 
 def encode_error(error: BaseException) -> Json:
-    """The wire form of an exception a server function raised."""
-    if isinstance(error, ServerError):
+    """The wire form of an exception a function raised."""
+    if isinstance(error, RemoteError):
         return {"type": error.type_name, "message": error.message, "builtin": False}
     return {"type": type(error).__qualname__, "message": str(error), "builtin": True}
 
 
-def _result_of(message: Json) -> Json:
+def result_of(message: Json) -> Json:
+    """The encoded result in a call's last message, or the exception it carries, raised.
+
+    Args:
+        message: ``{"r": result}`` or ``{"e": error}``, as :func:`encode_error` wrote it.
+    """
     if "r" in message:
         return message["r"]
     error = message["e"]
     cls = getattr(builtins, error["type"], None) if error["builtin"] else None
     if isinstance(cls, type) and issubclass(cls, Exception):
         raise cls(error["message"])
-    raise ServerError(error["type"], error["message"])
+    raise RemoteError(error["type"], error["message"])
 
 
-_functions: dict[str, ServerFunction[Any, Any]] = {}
+_functions: dict[str, RemoteFunction[Any, Any]] = {}
 
 
-def lookup(name: str) -> ServerFunction[Any, Any] | None:
-    """The ``@server`` function registered under *name*, or ``None``.
+def lookup(name: str) -> RemoteFunction[Any, Any] | None:
+    """The ``@server`` or ``@worker`` function registered under *name*, or ``None``.
 
     Args:
         name: The function's module and name, dotted.
@@ -313,7 +343,10 @@ def lookup(name: str) -> ServerFunction[Any, Any] | None:
     return _functions.get(name)
 
 
-def _awaitable(function: ServerFunction[P, R]) -> Callable[P, Coroutine[Any, Any, R]]:
+def register(function: RemoteFunction[P, R]) -> Callable[P, Coroutine[Any, Any, R]]:
+    """Register *function* under its name and return what the app calls: a coroutine function of its signature."""
+    _functions[function.name] = function
+
     @functools.wraps(function.fn)
     async def call(*args: P.args, **kwargs: P.kwargs) -> R:
         return await function.call(*args, **kwargs)
@@ -346,7 +379,7 @@ def server(fn: Callable[P, R]) -> Callable[P, Coroutine[Any, Any, R]]:
     is set when the awaiting task is cancelled.
 
     An exception reaches the caller: a built-in one as itself, any other as
-    :class:`ServerError`.
+    :class:`RemoteError`.
 
     Args:
         fn: A plain ``def`` at the top level of a module that is covered by
@@ -356,9 +389,7 @@ def server(fn: Callable[P, R]) -> Callable[P, Coroutine[Any, Any, R]]:
     Raises:
         TypeError: If *fn* breaks one of these rules.
     """
-    function = ServerFunction(fn)
-    _functions[function.name] = function
-    return _awaitable(function)
+    return register(ServerFunction(fn))
 
 
 def stub(fn: Callable[P, R]) -> Callable[P, Coroutine[Any, Any, R]]:
@@ -370,7 +401,18 @@ def stub(fn: Callable[P, R]) -> Callable[P, Coroutine[Any, Any, R]]:
     Args:
         fn: A function with the server function's signature and no body.
     """
-    return _awaitable(ServerFunction(fn, placed=False))
+    return register(ServerFunction(fn, placed=False))
 
 
-__all__ = ["CALL_ROUTE", "ServerError", "ServerFunction", "encode_error", "lookup", "server", "stub"]
+__all__ = [
+    "CALL_ROUTE",
+    "RemoteError",
+    "RemoteFunction",
+    "ServerFunction",
+    "encode_error",
+    "lookup",
+    "register",
+    "result_of",
+    "server",
+    "stub",
+]

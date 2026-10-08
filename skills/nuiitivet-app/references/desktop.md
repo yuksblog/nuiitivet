@@ -118,4 +118,4 @@ font files carry over. The rest does not: the main window fills the canvas
 `nv.Window(...).open()` is not shown, `nv.FileDialog` returns `None`,
 `nv.Desktop.notify` does nothing, a system font name falls back to the
 shipped text font. Threads raise `RuntimeError: can't start new thread`: see
-`@nv.server` in references/state.md.
+`@nv.worker` and `@nv.server` in references/state.md.

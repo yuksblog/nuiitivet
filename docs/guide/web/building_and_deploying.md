@@ -18,7 +18,7 @@ URL in it is relative, so it serves from any path of a host.
 ## Deploying the site alone
 
 An app without server functions deploys `dist/site` alone: copy it to any
-static host.
+static host. Its worker functions are part of the site.
 
 ## Deploying the site and the server
 

@@ -15,7 +15,7 @@ code by hand. Find your situation below.
 | I/O in an event handler, and the screen just waits for it | an `async` handler, awaiting the call — no thread involved | |
 | Heavy work in an event handler, and the screen just waits for it | an `async` handler, `await asyncio.to_thread(...)` — a thread, but the runtime owns it | [Thread Safety](state-management/thread_safety.md#short-work-await-it-instead-of-managing-a-thread) |
 | The same heavy work, but it should report progress and be cancellable | a hand-written worker thread | [Background Work](state-management/background_work.md) |
-| A thread in an app that also runs in a browser | a `@nv.server` function | [Server Functions](web/server_functions.md) |
+| A thread in an app that also runs in a browser | a `@nv.worker` function; `@nv.server` when the work needs a server | [Worker and Server Functions](web/worker_and_server_functions.md) |
 | Values arriving faster than the screen needs them | `debounce()` / `throttle()` | [Practical Controls](state-management/practical_controls.md) |
 | Getting a worker's result onto the UI thread | nothing — an observable write is marshalled for you | [Thread Safety](state-management/thread_safety.md) |
 | A consumer that must see every intermediate value, not the newest | `dispatch=False` | [Thread Safety](state-management/thread_safety.md#opting-out-dispatchfalse) |

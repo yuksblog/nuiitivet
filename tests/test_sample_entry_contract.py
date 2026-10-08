@@ -29,12 +29,14 @@ def _sample_files() -> list[pathlib.Path]:
     """Every runnable sample: package markers are not programs.
 
     A sample of several files keeps its program in ``app.py``; the other files
-    of that directory are its modules, not programs.
+    of that directory, and the modules of a package in it, are not programs.
     """
     return sorted(
         p
         for p in _SAMPLES.rglob("*.py")
-        if p.name != "__init__.py" and (p.name == "app.py" or not (p.parent / "app.py").exists())
+        if p.name != "__init__.py"
+        and not (p.parent / "__init__.py").exists()
+        and (p.name == "app.py" or not (p.parent / "app.py").exists())
     )
 
 

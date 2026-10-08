@@ -1,10 +1,12 @@
 // Starts the app in the page: load CanvasKit and Pyodide, unpack the sources,
-// install the host, and run the app module.
+// install the host, and run the app module. The worker for the app's @worker
+// functions, when it has any, starts first and boots alongside.
 //
 // Every URL is relative to the page, so a built site works under any path.
 // `config.json` says where the runtimes are: a CDN, or a directory of the site.
 
 import { installHost } from "./host.mjs";
+import { startWorkers } from "./workers.mjs";
 
 const status = document.getElementById("status");
 const label = document.getElementById("status-label");
@@ -29,6 +31,8 @@ async function start() {
   const config = await fetch("config.json").then((response) => response.json());
   const pyodide = new URL(config.pyodide, location.href).href;
   const canvaskit = new URL(config.canvaskit, location.href).href;
+  // The worker boots meanwhile; an app without a @worker function gets none.
+  if (config.workers.length) startWorkers(config, location.href);
 
   const [{ loadPyodide }, bundle, fonts, files] = await Promise.all([
     import(pyodide + "pyodide.mjs"),
@@ -41,6 +45,8 @@ async function start() {
     CanvasKitInit({ locateFile: (file) => canvaskit + file }),
     loadPyodide({ indexURL: pyodide }),
   ]);
+  // The console and a browser test reach the running app through it.
+  globalThis.NV_PYODIDE = py;
 
   label.textContent = "Starting…";
   installHost(CK, document.getElementById("nuiitivet"), document.getElementById("nuiitivet-input"), fonts);
