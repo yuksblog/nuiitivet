@@ -19,7 +19,7 @@ from typing import Callable, Iterator, Union
 
 import nuiitivet
 from nuiitivet.web.calls import handle_call
-from nuiitivet.web.stubs import SKIPPED_DIRS, ServerOnly, worker_modules
+from nuiitivet.web.stubs import SKIPPED_DIRS, ServerOnly, server_modules, worker_modules
 from nuiitivet.web.assets import CANVASKIT_CDN, LICENSES, PYODIDE_CDN, RUNTIME, TEXT_FONTS, fetch
 
 # A file on disk, or bytes made at each read.
@@ -98,7 +98,7 @@ def build_bundle(app_path: Path) -> bytes:
 
 
 def load_server_functions(app_dir: Path) -> list[str]:
-    """Import the app's server-only modules, so their ``@server`` functions answer calls.
+    """Import the app's modules that hold a ``@server`` function, so those functions answer calls.
 
     Args:
         app_dir: The directory of the app's sources.
@@ -109,7 +109,7 @@ def load_server_functions(app_dir: Path) -> list[str]:
     root = str(app_dir.resolve())
     if root not in sys.path:
         sys.path.insert(0, root)
-    modules = ServerOnly(app_dir).modules()
+    modules = server_modules(app_dir)
     for name in modules:
         importlib.import_module(name)
     return modules

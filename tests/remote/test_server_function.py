@@ -371,11 +371,11 @@ def test_a_nested_function_is_refused() -> None:
         server(inner)
 
 
-def test_a_function_outside_a_server_only_module_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_function_in_a_plain_module_is_accepted(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(_plain, "__module__", "some_app.views")
+    assert not is_server_only("some_app.views")
 
-    with pytest.raises(TypeError, match=r"module some_app\.views is not server-only"):
-        server(_plain)
+    assert asyncio.run(server(_plain)(3)) == 3
 
 
 def test_the_caller_sees_the_signature_without_the_token() -> None:

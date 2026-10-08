@@ -14,8 +14,8 @@ it needs a server.
   must become worker or server functions, the window features that are
   ignored, the first load and the fonts.
 - [Worker and Server Functions](worker_and_server_functions.md): Mark the
-  work with `@nv.worker`, report progress and cancel from the screen, and
-  move the work that needs a server to `@nv.server`, with the server's code
-  kept off the browser.
+  work with `@nv.worker`, report progress and cancel from the screen, move
+  the work that needs a server to `@nv.server`, and keep a module off the
+  browser.
 - [Building and Deploying](building_and_deploying.md): Build the site, and
   deploy it alone or with the server.

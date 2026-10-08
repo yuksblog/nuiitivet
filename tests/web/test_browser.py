@@ -1,4 +1,4 @@
-"""Samples driven in headless Chrome: one painted against the desktop, one calling a worker function.
+"""Samples driven in headless Chrome: one painted against the desktop, two calling a worker and a server function.
 
 The page is the built site, Pyodide and CanvasKit included, served by the
 framework's own server. The two renders never match pixel for pixel: the
@@ -28,7 +28,7 @@ from typing import Iterator
 import pytest
 import skia
 
-from nuiitivet.web.server import make_server, site
+from nuiitivet.web.server import load_server_functions, make_server, site
 
 APP = Path(__file__).resolve().parents[2] / "samples" / "web" / "hello" / "app.py"
 WIDTH, HEIGHT = 320, 200
@@ -240,6 +240,52 @@ def test_a_worker_function_answers_reports_and_cancels_while_the_page_keeps_answ
             app.wait_for_text("status", "type something to look for")
 
             # Any other exception, as RemoteError.
+            app.set_query("secret")
+            app.click("search")
+            app.wait_for_text("status", "Rejected: not for you")
+        finally:
+            browser.close()
+    assert not errors, errors
+
+
+# -- server functions ----------------------------------------------------------
+
+SERVER_APP = APP.parent.parent / "server_functions" / "app.py"
+
+
+@pytest.fixture(scope="module")
+def server_page_url() -> Iterator[str]:
+    """The server sample's built site, served by the process that also answers its server function."""
+    modules = load_server_functions(SERVER_APP.parent)
+    httpd = make_server(site(SERVER_APP, bundle_runtime=True), 0)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{httpd.server_address[1]}/"
+    httpd.shutdown()
+    httpd.server_close()
+    for name in modules:
+        sys.modules.pop(name, None)
+    sys.path.remove(str(SERVER_APP.parent.resolve()))
+
+
+def test_a_server_function_in_a_plain_module_is_answered_by_the_server(server_page_url: str) -> None:
+    with playwright_api.sync_playwright() as playwright:
+        browser = _launch(playwright)
+        try:
+            page = browser.new_page(viewport={"width": 480, "height": 320}, device_scale_factor=1)
+            errors: list[str] = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(server_page_url)
+            page.wait_for_function("document.body.dataset.state !== undefined", timeout=180_000)
+            assert page.evaluate("document.body.dataset.state") == "running"
+            app = _Page(page)
+
+            # The module is in the page as written; the call still goes to the server.
+            source = page.evaluate("code => NV_PYODIDE.runPython(code)", "open('/nuiitivet/app/jobs.py').read()")
+            assert "@nv.server" in source
+            app.click("search")
+            app.wait_for_text("status", WORD1_RESULT)
+
+            # Any other exception, as RemoteError, across the request.
             app.set_query("secret")
             app.click("search")
             app.wait_for_text("status", "Rejected: not for you")

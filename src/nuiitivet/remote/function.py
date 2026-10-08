@@ -99,8 +99,10 @@ class RemoteFunction(Generic[P, R]):
             self._check_module()
 
     def _check_module(self) -> None:
-        """Raise the definition error when the function's module is not where its mark lives."""
-        raise NotImplementedError
+        """Raise the definition error when the function's module is not where its mark lives.
+
+        A mark with no placement rule accepts any module.
+        """
 
     def _hints(self) -> dict[str, Any]:
         try:
@@ -236,13 +238,6 @@ class ServerFunction(RemoteFunction[P, R]):
     """One ``@server`` function: on the web, its call is one request to the server."""
 
     mark = "server"
-
-    def _check_module(self) -> None:
-        if not is_server_only(self.fn.__module__):
-            raise self._error(
-                f"module {self.fn.__module__} is not server-only; call nv.server_only() "
-                "at its top, or in the __init__.py of its package"
-            )
 
     async def _call_on_web(self, values: dict[str, Json], writers: dict[str, CallWriter]) -> Json:
         """One POST; progress arrives on the streamed response, the result ends it."""
@@ -381,10 +376,13 @@ def server(fn: Callable[P, R]) -> Callable[P, Coroutine[Any, Any, R]]:
     An exception reaches the caller: a built-in one as itself, any other as
     :class:`RemoteError`.
 
+    The function's module reaches the browser like any other, and the
+    function's body never runs there. A module that must stay on the server
+    calls :func:`~nuiitivet.remote.scope.server_only`.
+
     Args:
-        fn: A plain ``def`` at the top level of a module that is covered by
-            :func:`~nuiitivet.remote.scope.server_only`, with every parameter
-            and the return type annotated.
+        fn: A plain ``def`` at the top level of a module in the app's
+            directory, with every parameter and the return type annotated.
 
     Raises:
         TypeError: If *fn* breaks one of these rules.

@@ -1,4 +1,4 @@
-"""What the page gets in place of the server-only modules."""
+"""What the page gets in place of the server-only modules, and which modules the server imports."""
 
 from __future__ import annotations
 
@@ -8,10 +8,11 @@ from pathlib import Path
 
 import pytest
 
-from nuiitivet.web.stubs import ServerOnly, stub_source
+from nuiitivet.web.stubs import ServerOnly, server_modules, stub_source
 from nuiitivet.web.server import build_bundle
 
 _BACKEND_INIT = "import nuiitivet.material as nv\n\nnv.server_only()\n"
+_JOBS = "import nuiitivet.material as nv\n\n\n@nv.server\ndef count(limit: int) -> int:\n    return limit\n"
 _ORDERS = '''\
 from __future__ import annotations
 
@@ -46,6 +47,7 @@ def app_dir(tmp_path: Path) -> Path:
     (root / "backend" / "db" / "__init__.py").write_text("")
     (root / "backend" / "db" / "config.toml").write_text("url = 'postgres://...'\n")
     (root / "keys.py").write_text("from nuiitivet import server_only\n\nserver_only()\n\nKEY = 'x'\n")
+    (root / "jobs.py").write_text(_JOBS)
     (root / "views.py").write_text("")
     return root
 
@@ -61,8 +63,8 @@ def test_a_package_with_the_call_in_its_init_is_covered_whole(app_dir: Path) -> 
     assert not server_only.covers(app_dir / "models.py")
 
 
-def test_the_server_only_modules_are_listed_for_import(app_dir: Path) -> None:
-    assert ServerOnly(app_dir).modules() == ["backend", "backend.db", "backend.orders", "keys"]
+def test_the_modules_with_a_server_function_are_listed_for_import(app_dir: Path) -> None:
+    assert server_modules(app_dir) == ["backend.orders", "jobs"]
 
 
 def test_a_stub_keeps_the_signature_and_the_imports_it_needs(app_dir: Path) -> None:
@@ -110,9 +112,15 @@ def test_the_bundle_carries_the_stubs_and_nothing_server_only(app_dir: Path) -> 
     archive = zipfile.ZipFile(io.BytesIO(build_bundle(app_dir / "app.py")))
     names = {name for name in archive.namelist() if name.startswith("app/")}
 
-    assert names == {"app/app.py", "app/models.py", "app/views.py", "app/backend/__init__.py",
+    assert names == {"app/app.py", "app/jobs.py", "app/models.py", "app/views.py", "app/backend/__init__.py",
                      "app/backend/orders.py", "app/backend/db/__init__.py"}
     orders = archive.read("app/backend/orders.py").decode()
     assert "SECRET" not in orders
     assert "connect" not in orders
     assert "@_stub" in orders
+
+
+def test_a_server_function_in_a_plain_module_ships_as_written(app_dir: Path) -> None:
+    archive = zipfile.ZipFile(io.BytesIO(build_bundle(app_dir / "app.py")))
+
+    assert archive.read("app/jobs.py").decode() == _JOBS

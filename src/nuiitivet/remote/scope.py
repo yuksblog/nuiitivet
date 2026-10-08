@@ -14,8 +14,9 @@ def server_only() -> None:
 
     Call it at the top of a module. In a package's ``__init__.py`` it covers
     every module and file of the package. The web build leaves what is
-    declared out of the page, so database addresses, keys and the code that
-    uses them belong here. A ``@server`` function must live in such a module.
+    declared out of the page; a ``@server`` function in it is answered by a
+    stub with its signature. Database addresses, keys, and an import the
+    browser cannot do belong here. A ``@worker`` function cannot.
 
     Raises:
         RuntimeError: If the module is loaded in a browser.
