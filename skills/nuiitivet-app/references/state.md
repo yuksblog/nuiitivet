@@ -267,10 +267,10 @@ work in a `@nv.worker` function: it runs on a thread on the desktop and on the
 page's Web Worker in the browser, and the screen awaits it the same way on
 both. Mark it `@nv.server` instead when the work needs what the browser does
 not run or must not hold: a library Pyodide lacks, more memory than a tab, a
-module the user must not read. Then it runs on a thread on the desktop and on
-a server in the browser, and its module never reaches the browser. The two
-take the same parameters and the same `await`; a function moves between the
-marks with no change to its body or its callers.
+key the user must not read. Then it runs on a thread on the desktop and on a
+server in the browser, and only the call crosses. The two take the same
+parameters and the same `await`; a function moves between the marks with no
+change to its body or its callers.
 
 ```python
 # jobs.py — sent to the browser with the app; the page's worker imports it at start
@@ -286,20 +286,12 @@ from jobs import search
 matches = await search(self.query.value, self.progress)   # on the desktop: a runtime thread; in a browser: the worker
 ```
 
-- **A `@nv.worker` function's module must not call `nv.server_only()`**, or
-  the import raises; it lives in the app's directory, in a module the browser
-  gets.
 - **Cancelling a running `@nv.worker` call in the browser ends the worker**;
   the page starts another, and the next call waits about two seconds for it.
 - **One worker, one call at a time**: a second call waits for the first.
 
 ```python
-# backend/__init__.py — the package never reaches the browser; the page gets stubs with the same signatures
-import nuiitivet.material as nv
-
-nv.server_only()                              # or at the top of a single module
-
-# backend/search.py
+# jobs.py — the module reaches the browser as written; the body runs only on the server
 import nuiitivet.material as nv
 
 @nv.server
@@ -316,7 +308,7 @@ def search(
     return matches
 
 # app.py
-from backend.search import search
+from jobs import search
 
 async def start(self) -> None:
     self._task = asyncio.ensure_future(search(self.query.value, self.progress))
@@ -328,14 +320,20 @@ async def start(self) -> None:
         self.status.value = str(error)        # a non-built-in exception: "Rejected: not for you"
 ```
 
-- **Module-level `def` in a `nv.server_only()` module, every parameter and the
-  return annotated, or the import raises.** A `@nv.server` or `@nv.worker`
-  method, lambda, nested or `async` function is not accepted.
+- **Module-level `def`, every parameter and the return annotated, or the
+  import raises.** A `@nv.server` or `@nv.worker` method, lambda, nested or
+  `async` function is not accepted.
+- **`nv.server_only()` at the top of a module, or in a package's
+  `__init__.py`, keeps it off the browser**: the page gets a stub with the
+  same `@nv.server` signatures. Write it when the module imports what Pyodide
+  lacks (`psycopg2`, `boto3`), opens a connection at import, or holds a key;
+  without it the page imports the module and fails at boot, or carries the
+  key. A `@nv.worker` function in such a module raises at import.
 - **Types come from the annotations, never from the data**: scalars, `bytes`,
   `datetime`/`date`, an `Enum`, a dataclass of these, `list`/`tuple`/`dict[str, …]`/
   `Optional` of these. `Any`, `object`, `set`, a bare `list` raise at import.
-  A dataclass defined in the server-only package raises too: the page has no
-  class to rebuild it from — put it in a module both sides import.
+  A dataclass defined in a `nv.server_only()` module raises too: the page has
+  no class to rebuild it from — put it in a module both sides import.
 - **Arguments and the result are copies, on the desktop as well.** A list
   appended to inside the function is unchanged in the caller.
 - **A built-in exception (`ValueError`, `KeyError`) reaches the caller as

@@ -8,10 +8,9 @@ browser has one thread. `threading.Thread(...).start()`,
 A worker function is the API for that work. On the desktop it runs on a
 thread the runtime owns; in the browser it runs on a Web Worker, a second
 Python the page starts beside the app's. The same function marked
-`@nv.server` runs on a server in the browser instead: on the desktop it runs
-on a thread all the same, and under `python -m nuiitivet.web run` the
-command's own process answers it. The screen's code is the same on both
-targets and under both marks, and so is the function's.
+`@nv.server` runs on a server instead; on the desktop it runs on a thread
+all the same. The screen's code is the same on both targets and under both
+marks, and so is the function's.
 
 ## Worker Function
 
@@ -172,71 +171,41 @@ or the server could not be reached.
 
 ## Server Function
 
+A server function does the same work on a server instead of in the browser.
+
 ```mermaid
 flowchart LR
     subgraph browser [Browser]
         direction LR
-        screen[Page: the screen] -- "await search(...)" --> stub[The stub of search]
+        screen[Page: the screen] -- "await search(...)" --> send[search: the call]
     end
-    stub -- "one request" --> server[Server: search, in its server-only module]
+    send -- "one request" --> server[Server: search]
 ```
 
-A server function is written as a worker function is: the same `def`, the
-same arguments, progress, cancellation and errors. What changes is the
-mark, and where the function's module lives.
-
-### Mark the function
-
-The function runs on the server, so its module, and everything that module
-imports, is code of the server: the libraries installed there, the
-connection it opens, the constants it reads. None of it would run in the
-browser, and none of it should get there. A `@nv.server` function
-therefore lives in a package whose `__init__.py` calls `nv.server_only()`,
-which marks the whole package as the server's: `build` leaves it out of
-the site, and in its place the page gets a stub of each module, the same
-functions with the same signatures, each sending its call to the server.
-`from backend.search import search` resolves on both sides, and nothing
-else in the package reaches the browser.
+### Mark the function and await it
 
 ```python
-# backend/__init__.py
-import nuiitivet.material as nv
-
-nv.server_only()  # keep this package off the browser
-```
-
-```python
-# backend/search.py
+# jobs.py
 import nuiitivet.material as nv
 
 WORDS = [f"word{n}" for n in range(50_000)]
 
 
 @nv.server
-def search(query: str, progress: nv.WriteOnlyObservable[float]) -> list[str]:
-    matches: list[str] = []
-    for index, word in enumerate(WORDS):
-        if query in word:
-            matches.append(word)
-        if index % 500 == 0:
-            progress.value = index / len(WORDS)
-    return matches
+def search(query: str) -> list[str]:
+    return [word for word in WORDS if query in word]
 ```
 
-```text
-myapp/
-├── app.py          # the screens; python -m nuiitivet.web run app.py
-├── jobs.py         # the @nv.worker functions
-└── backend/
-    ├── __init__.py # nv.server_only(): the whole package stays on the server
-    └── search.py   # the @nv.server functions
-```
+The screen imports and awaits it as it does a worker function, and the rest
+is written the same way: the arguments and the result, progress, cancel,
+and the errors. A function moves between the two marks without a change to
+its body or its callers.
 
-## 3. Choose between the two
+## Choose between the two
 
-A function moves between the marks without a change to its body or its
-callers. What differs is where the call runs in the browser, and what that
-costs:
+A worker function runs in the browser, on the user's machine. A server
+function runs on a server, one request per call. What the table lists
+follows from that:
 
 | | `@nv.worker` | `@nv.server` |
 | --- | --- | --- |
@@ -244,19 +213,45 @@ costs:
 | A call | About a millisecond, no network | One round trip to the server |
 | Cancel | The worker is ended and another starts; the next call waits for it, about two seconds | The function stops where it checks the token |
 | Computing resources | The user's machine, within what a browser tab may hold | The server's |
-| Libraries | What Pyodide runs: pure Python, and the packages Pyodide ships. Each one is downloaded with the page | Anything installed on the server. Nothing is added to the page |
+| Libraries | What Pyodide runs: pure Python, and the packages Pyodide ships. Each one is downloaded with the page | Anything installed on the server, imported in a module kept there |
 | Deployment | The site alone, on any file server | A Python process beside the site |
-| Security | The function's code and data are in the browser, where anyone can read them | The function's module stays on the server |
+| Security | The function's code and data are in the browser, where anyone can read them | The same, unless the module is kept on the server |
 
 Mark the work `@nv.worker` unless a row above says otherwise.
+
+## Keep a module on the server
+
+Your function's module goes to the browser with the rest of the app. Two
+kinds of module should not: one that imports a package the browser's Python
+does not have, `psycopg2` say, which stops the app from starting in the
+browser; and one that holds a key you do not want anyone to read. Put
+`nv.server_only()` at the top of such a module and it stays on the server.
+For a package, the call goes in `__init__.py` and covers every module in
+it:
+
+```python
+# backend/__init__.py
+import nuiitivet.material as nv
+
+nv.server_only()  # nothing under here reaches the browser
+```
+
+```text
+myapp/
+├── app.py          # the screens; python -m nuiitivet.web run app.py
+├── jobs.py         # @nv.worker and @nv.server functions the browser may see
+└── backend/
+    ├── __init__.py # nv.server_only()
+    └── search.py   # @nv.server functions that import the server's libraries
+```
 
 ## Full samples
 
 `samples/web/worker_functions/` and `samples/web/server_functions/` are the
 same app: a search for the words within one edit of the query, with
 progress, a Cancel button, and a button to click while it runs. The first
-keeps `search` in `jobs.py` as a worker function; the second moves it into
-the `backend` package as a server function. Search for `word1`, cancel a
+marks `search` in `jobs.py` as a worker function; the second marks it as a
+server function. Search for `word1`, cancel a
 search, clear the field to see the `ValueError`, and look for `secret` to
 see the `RemoteError`.
 

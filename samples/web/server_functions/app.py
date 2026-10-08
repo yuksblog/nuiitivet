@@ -7,7 +7,7 @@ Run in a browser:     python -m nuiitivet.web run app.py
 import asyncio
 
 import nuiitivet.material as nv
-from backend.search import search  # on the web this import resolves to the stub
+from jobs import search
 
 
 class SearchScreen(nv.ComposableWidget):

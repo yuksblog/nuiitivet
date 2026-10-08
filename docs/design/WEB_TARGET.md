@@ -205,7 +205,7 @@ an option: Pyodide's standard library refuses to construct one.
 
 ## Server Functions
 
-`@server` marks a function in a server-only module. In the browser the call
+`@server` marks a function in any module of the app. In the browser the call
 becomes one HTTP request to the server that holds the function. The server
 keeps no session state, so any instance can answer any call.
 
@@ -224,15 +224,26 @@ sequenceDiagram
     end
 ```
 
-The function lives in a server-only module: one whose top level calls
-`server_only()`, or that sits under a package whose `__init__.py` does. A
-server-only module never reaches the browser. The build leaves its files out
-of the zip and writes a stub in their place, with the same signatures, whose
-functions send their call to the server. The stubs come from the source text,
-so the build imports nothing of the server side; a DB password in a
-server-only module stays on the server without the author doing more than
-marking the module. A dataclass in the signature must come from a module the
-page gets, since the stub's signature names it.
+The function's module reaches the browser as any other, and the body never
+runs there: the mark sends the call to the server, which has imported the
+module. The server finds the modules that hold a `@server` function by
+reading the sources, as the page finds its worker modules. A module that
+must not reach the browser, because it imports what Pyodide cannot or holds
+a key, is a server-only one: its top level calls `server_only()`, or it sits
+under a package whose `__init__.py` does. The build leaves its files out of
+the zip and writes a stub in their place, with the same signatures, whose
+functions send their call to the server. The stubs come from the source
+text, so the build imports nothing of the server side. A dataclass in the
+signature must come from a module the page gets, since the stub's signature
+names it.
+
+A `@server` function in a plain module is accepted. Requiring a server-only
+module of every `@server` function was rejected: an app that runs in a
+browser from its own source has put its code there already, and a function
+that needs only the server's CPU would carry a package for a secret it does
+not hold. Making a module server-only because it holds a `@server` function
+was rejected as well: a mark on one function would take the module's other
+names away from the page.
 
 Each progress write streams back as a line of the response. Cancellation is
 the request closing: the caller cancels its task, the browser aborts the

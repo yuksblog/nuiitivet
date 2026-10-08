@@ -1,4 +1,4 @@
-"""What the page gets in place of the server-only modules, and what its worker imports, found by reading the sources.
+"""The stubs of the server-only modules, and the modules that hold a marked function, read from the sources.
 
 Nothing here imports the app: a build must not run server code, and the
 server-only modules are the ones that would open a database on import.
@@ -45,6 +45,19 @@ def _module_name(path: Path, root: Path) -> str:
     return ".".join(parts)
 
 
+def _app_files(root: Path) -> Iterator[Path]:
+    """The ``.py`` files of the app's directory, sorted, without the directories that are never part of the app."""
+    for path in sorted(root.rglob("*.py")):
+        if not any(part.startswith(".") or part in SKIPPED_DIRS for part in path.relative_to(root).parts):
+            yield path
+
+
+def _holds(path: Path, decorator: str) -> bool:
+    """Whether a top-level function of the file at *path* is decorated with *decorator*."""
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    return any(isinstance(node, ast.FunctionDef) and _decorated_with(node, decorator) for node in tree.body)
+
+
 class ServerOnly:
     """The server-only files of an app directory, and the stubs that replace them."""
 
@@ -56,9 +69,7 @@ class ServerOnly:
         """
         self.root = root
         self._scopes: list[Path] = []
-        for path in sorted(root.rglob("*.py")):
-            if any(part.startswith(".") or part in SKIPPED_DIRS for part in path.relative_to(root).parts):
-                continue
+        for path in _app_files(root):
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
             if any(_calls(statement, _SERVER_ONLY) for statement in tree.body):
                 self._scopes.append(path.parent if path.name == "__init__.py" else path)
@@ -71,23 +82,13 @@ class ServerOnly:
         """
         return any(path == scope or scope in path.parents for scope in self._scopes)
 
-    def modules(self) -> list[str]:
-        """The dotted names of every server-only module, packages first."""
-        names: list[str] = []
-        for scope in self._scopes:
-            if scope.is_dir():
-                names.extend(_module_name(path, self.root) for path in sorted(scope.rglob("*.py")))
-            else:
-                names.append(_module_name(scope, self.root))
-        return names
-
     def stubs(self) -> Iterator[tuple[str, str]]:
         """Each stub module as ``(path relative to the app directory, source)``.
 
         A package's ``__init__.py`` always gets one, so the stubs under it
         import. Any other module gets one only if it holds a server function.
         """
-        for path in sorted(self.root.rglob("*.py")):
+        for path in _app_files(self.root):
             if not self.covers(path):
                 continue
             source = stub_source(path, _module_name(path, self.root))
@@ -146,6 +147,15 @@ def stub_source(path: Path, module: str) -> str | None:
     return "\n".join(lines) + "\n"
 
 
+def server_modules(root: Path) -> list[str]:
+    """The dotted names of the app's modules that hold a ``@server`` function, for the server to import.
+
+    Args:
+        root: The app's directory.
+    """
+    return [_module_name(path, root) for path in _app_files(root) if _holds(path, _SERVER)]
+
+
 def worker_modules(root: Path) -> list[str]:
     """The dotted names of the app's modules that hold a ``@worker`` function, for the page's worker to import.
 
@@ -155,15 +165,11 @@ def worker_modules(root: Path) -> list[str]:
         root: The app's directory.
     """
     server_only = ServerOnly(root)
-    names: list[str] = []
-    for path in sorted(root.rglob("*.py")):
-        parts = path.relative_to(root).parts
-        if any(part.startswith(".") or part in SKIPPED_DIRS for part in parts) or server_only.covers(path):
-            continue
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        if any(isinstance(node, ast.FunctionDef) and _decorated_with(node, _WORKER) for node in tree.body):
-            names.append(_module_name(path, root))
-    return names
+    return [
+        _module_name(path, root)
+        for path in _app_files(root)
+        if not server_only.covers(path) and _holds(path, _WORKER)
+    ]
 
 
 def _names_in_signature(function: ast.FunctionDef) -> Iterator[str]:
@@ -176,4 +182,4 @@ def _names_in_signature(function: ast.FunctionDef) -> Iterator[str]:
                 yield node.id
 
 
-__all__ = ["SKIPPED_DIRS", "ServerOnly", "stub_source", "worker_modules"]
+__all__ = ["SKIPPED_DIRS", "ServerOnly", "server_modules", "stub_source", "worker_modules"]

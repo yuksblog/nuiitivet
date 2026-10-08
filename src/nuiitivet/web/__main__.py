@@ -3,7 +3,7 @@
 ``run app.py`` serves the app and the framework from the source tree, so a
 browser reload shows an edit. Its page loads Pyodide and CanvasKit from a CDN.
 The app's ``@server`` functions answer from the same process; an edit to a
-server-only module needs a restart.
+module that holds one needs a restart.
 
 ``build app.py -o dist`` writes ``dist/site``, the page with Pyodide and
 CanvasKit so it loads nothing from elsewhere, and ``dist/server``, the app's

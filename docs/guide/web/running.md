@@ -15,7 +15,8 @@ app in a directory of its own. A directory holding two apps sends both, and
 the server tries to import the other app's server modules.
 
 Reload the browser to see an edit: the sources are read again at every
-request. An edit to a server-only module needs the command restarted.
+request. An edit to a module that holds a `@nv.server` function needs the
+command restarted.
 
 `--port 8001` picks another port; `--no-open` leaves the browser closed. When
 the port is in use, the command says so and exits.
