@@ -85,4 +85,8 @@ is resolved before layout and has no parent. `"wt"` has nothing to take a
 share of, so it is not accepted.
 
 A window position is a nine-point alignment on the screen plus a pixel
-offset, the same vocabulary as widget alignment.
+offset, the same vocabulary as widget alignment. The alignment is resolved
+against the screen's work area and the window's outer frame, not the screen
+bounds and the client area the OS API takes: aligning the client area would
+push a `top` window's title bar off screen and a `bottom` window under the
+taskbar.
