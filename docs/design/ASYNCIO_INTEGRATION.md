@@ -41,10 +41,19 @@ someone else's batch. An exception in the task is caught and logged; it does
 not stop the loop. Callers that need to cancel the handler later, on unmount,
 keep the returned task.
 
-With no loop running, during shutdown or in a test without the harness, an
-async handler is not scheduled. Under the test harness that case raises
-`UnschedulableAsyncWork` instead of being logged once and lost, since a
-de-duplicated log line is exactly the silence the harness exists to break.
+Every task is born in `widgeting.callbacks.spawn_task`. With no loop running
+it returns a `PendingTask` and keeps the coroutine: the main window is mounted
+when the `App` is constructed, before the runner has a loop, so a root widget's
+async `on_mount` is spawned with nothing to run it. `run_async()` starts the
+kept work in spawn order as it enters the loop. Cancelling a `PendingTask`
+before then closes the coroutine, so a widget unmounted before the loop runs
+no work. Where no loop will come, the work is closed and logged once per
+owner: when the runner leaves the loop, under the synchronous fallback loop,
+and after a headless `render_to_png`.
+
+Under the test harness a coroutine spawned with no loop raises
+`UnschedulableAsyncWork` instead of waiting, since a test that goes on would
+be asserting on a handler that never ran.
 
 ## Awaiting an Overlay
 

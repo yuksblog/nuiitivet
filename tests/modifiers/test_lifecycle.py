@@ -231,7 +231,8 @@ async def test_exception_in_async_mount_callback_is_contained() -> None:
     widget.mount(_DummyApp())
 
     # Awaiting the task itself, rather than guessing at a number of loop turns.
-    await asyncio.gather(*list(widget._mount_tasks), return_exceptions=True)
+    tasks = [task for task in widget._mount_tasks if isinstance(task, asyncio.Task)]
+    await asyncio.gather(*tasks, return_exceptions=True)
 
     assert widget._mount_tasks == []
 
@@ -257,3 +258,62 @@ def test_rebuild_remounts_freshly_built_instances() -> None:
 
     # The previously built child is unmounted and a fresh one is mounted.
     assert calls == ["mount", "unmount", "mount"]
+
+
+# --- Before the loop runs ---------------------------------------------------
+
+
+class _Polling(ComposableWidget):
+    """A root whose async on_mount is spawned when the App is constructed."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.ran: list[str] = []
+
+    async def _poll(self) -> None:
+        self.ran.append("started")
+
+    def build(self) -> Widget:
+        return _make_widget().modifier(on_mount(self._poll))
+
+
+def _enter_loop() -> None:
+    from nuiitivet.widgeting.callbacks import start_pending_tasks
+
+    async def _run() -> None:
+        start_pending_tasks()
+        await asyncio.sleep(0)
+
+    asyncio.run(_run())
+
+
+def test_root_async_mount_callback_runs_once_the_loop_starts() -> None:
+    """App construction mounts the root before the runner has a loop."""
+    from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.window import Window
+
+    root = _Polling()
+    app = App(Window(content=root, width=200, height=100))
+    assert app.main_window.root._mounted is True
+    assert root.ran == []
+
+    _enter_loop()
+
+    assert root.ran == ["started"]
+
+
+def test_root_unmounted_before_the_loop_never_runs_its_mount_work(recwarn) -> None:
+    import warnings
+
+    from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.window import Window
+
+    warnings.simplefilter("always")
+    root = _Polling()
+    app = App(Window(content=root, width=200, height=100))
+
+    app.main_window.close()
+    _enter_loop()
+
+    assert root.ran == []
+    assert not [w for w in recwarn.list if issubclass(w.category, RuntimeWarning)]

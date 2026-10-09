@@ -191,6 +191,8 @@ def _clear_mutable_globals() -> None:
     # vanish or be blamed on the wrong test.
     callbacks._task_observers.clear()
     callbacks._error_sinks.clear()
+    # Work a loop-less test spawned would otherwise start on the next test's loop.
+    callbacks.drop_pending_tasks()
     widget_binding._pending_invalidation.clear()
     widget_builder._pending_scope_recompositions.clear()
     widget_size_change._pending_size_changes.clear()

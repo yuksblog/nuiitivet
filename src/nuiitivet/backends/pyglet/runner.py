@@ -42,6 +42,7 @@ from nuiitivet.observable.runtime import set_clock
 from nuiitivet.runtime.threading import set_ui_thread
 from nuiitivet.common.logging_once import debug_once, exception_once, warning_once
 from nuiitivet.runtime.renderer import RendererError, RendererMode
+from nuiitivet.widgeting.callbacks import drop_pending_tasks
 
 logger = logging.getLogger(__name__)
 
@@ -180,6 +181,8 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
     try:
         event_loop.run()
     finally:
+        # Work spawned after the loop ended would otherwise wait forever.
+        drop_pending_tasks()
         try:
             uninstall_tray = getattr(app, "_uninstall_tray", None)
             if callable(uninstall_tray):

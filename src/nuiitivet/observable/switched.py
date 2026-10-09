@@ -46,9 +46,12 @@ import asyncio
 import inspect
 import logging
 import threading
-from typing import Any, Awaitable, Callable, Optional, Sequence, TypeVar, Union
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Optional, Sequence, TypeVar, Union
 
 from nuiitivet.common.logging_once import exception_once
+
+if TYPE_CHECKING:
+    from nuiitivet.widgeting.callbacks import PendingTask
 
 from ._sentinel import UNSET, _Unset
 from .protocols import ReadOnlyObservableProtocol
@@ -153,7 +156,7 @@ class SwitchMappedObservable(SourceSubscribingObservable[TIn, TOut]):
         self._initial = initial
         self._lock = threading.Lock()
         self._current_token: Optional[CancelToken] = None
-        self._current_task: Optional["asyncio.Task[Any]"] = None
+        self._current_task: Optional["asyncio.Task[Any] | PendingTask"] = None
         self._pending_result: TOut | _Unset = UNSET
         super().__init__(source)
 
