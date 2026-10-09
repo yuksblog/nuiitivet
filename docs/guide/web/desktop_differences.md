@@ -20,7 +20,7 @@ the desktop too.
 | `nv.Window(title=...)` | The browser tab's title |
 | A second `nv.Window(...).open()` | Not shown; the console warns once |
 | `App.run(draw_fps=..., renderer=...)` | No effect: frames come with the display's refresh, drawn by CanvasKit |
-| `nv.FileDialog` | Returns `None`, as if the user had cancelled |
+| `nv.FileDialog.open_file(title=..., initial_dir=...)` | The browser's picker has its own title and opens where it last did |
 | `nv.Desktop.notify(...)` | Nothing |
 | `nv.MenuBar` | Drawn in the page, as on the desktop |
 
@@ -38,6 +38,23 @@ caches both; a reload is faster.
 The page has the fonts the framework ships and the font files in the app's
 directory. A family name the page does not have falls back to the shipped
 text font; there is no system font to find.
+
+### File dialogs
+
+`open_file()` shows the browser's file picker. The picker opens only from the
+handler of a click or a key press; called from anywhere else, such as a
+timer, `open_file()` raises `nv.FileDialogError`. The path it returns is a
+copy of the file in the page's memory, read as on the desktop.
+`open_directory()` copies every file under the directory, so a large one
+takes a moment.
+
+`save_file()` asks the user nothing. It returns a path in the page's memory
+at once; write the file there, and the browser downloads it when your handler
+returns, under the `default_name`. A later write to the same path downloads
+nothing: each download is one `save_file()` call.
+
+`python -m nuiitivet.web run samples/window/file_dialogs.py` shows all four
+dialogs.
 
 ## Next Steps
 

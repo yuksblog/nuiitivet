@@ -20,7 +20,7 @@ flowchart RL
         worker[Web Worker: a second Pyodide, the @worker functions]
         py[Pyodide: nuiitivet and the app]
         adapter[CanvasKit adapter]
-        host[host.mjs: canvas, input, clipboard]
+        host[host.mjs: canvas, input, clipboard, files]
     end
     server <-- "a call: POST nv/call/name, then progress and the result" --> py
     worker <-- "a call: a message, then progress and the result" --> py
@@ -113,6 +113,28 @@ the text and dispatches Ctrl+V, so a text field pastes as on the desktop.
 Escape is back navigation, on the release. The press reports whether the app
 can handle it, so the browser acts on the key itself only when the app would
 not.
+
+## File Dialogs
+
+A dialog backend may answer with an awaitable: the browser's picker closes
+in an event, not in a return, and the facade awaits what a UI-thread backend
+hands back. The picker is an input element the host makes for the call. What
+the user chose is copied into the page's file system under a fresh directory
+with the names kept, and a directory pick keeps its layout under the
+directory's name, so the app reads a `Path` as on the desktop. The browser
+shows a picker only while a click or a key press is being handled; the
+backend asks the host before it asks for the picker, and raises instead of
+awaiting a picker that would never open.
+
+A page cannot write where the user chooses, so a save is a download. The
+backend returns a path in the page's file system and hooks the end of the
+task that called it: an event handler is a task of its own, so the download
+follows the handler's write with no API beside the desktop's.
+`showSaveFilePicker` was rejected: Chromium alone has it, and a save would
+behave differently per browser. A `Path` subclass that downloads on close
+was rejected: a library that takes `str(path)` opens the file past it.
+Watching the file system for the write was rejected: a handler that decides
+not to write gives nothing to wait for.
 
 ## One Thread
 

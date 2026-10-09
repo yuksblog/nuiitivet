@@ -113,9 +113,15 @@ detection.
 ## In a browser
 
 Of what this file covers, the menu bar (drawn in the page) and the app's own
-font files carry over. The rest does not: the main window fills the canvas
-(`width`/`height` ignored, `title` becomes the tab title), a second
-`nv.Window(...).open()` is not shown, `nv.FileDialog` returns `None`,
-`nv.Desktop.notify` does nothing, a system font name falls back to the
-shipped text font. Threads raise `RuntimeError: can't start new thread`: see
-`@nv.worker` and `@nv.server` in references/state.md.
+font files carry over as they are. The rest:
+
+| On the desktop | In a browser |
+| --- | --- |
+| `nv.Window(width=..., height=...)` | Ignored: the main window fills the canvas |
+| `nv.Window(title=...)` | The tab title |
+| A second `nv.Window(...).open()` | Not shown |
+| `nv.Desktop.notify(...)` | Nothing |
+| A system font name | The shipped text font |
+| `threading.Thread`, `asyncio.to_thread` | `RuntimeError: can't start new thread`; see `@nv.worker` and `@nv.server` in references/state.md |
+| `nv.FileDialog.open_file()` / `open_files()` / `open_directory()` | The browser's picker, from a click or key handler only; `nv.FileDialogError` elsewhere, e.g. a timer. `title` and `initial_dir` are ignored. The returned path is a copy in the page's memory, read as on the desktop |
+| `nv.FileDialog.save_file()` | Never `None`: a path at once, and the file written there is downloaded under `default_name` when the handler returns. A later write to that path downloads nothing |
