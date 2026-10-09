@@ -198,6 +198,13 @@ class _Page:
             timeout=timeout * 1000,
         )
 
+    def wait_for_text_prefix(self, key: str, prefix: str, timeout: float = 60.0) -> None:
+        self.page.wait_for_function(
+            "([code, prefix]) => (NV_PYODIDE.runPython(code) ?? '').startsWith(prefix)",
+            arg=[f"text_of({key!r})", prefix],
+            timeout=timeout * 1000,
+        )
+
     def set_query(self, value: str) -> None:
         self.click("query")
         self.page.keyboard.press("End")
@@ -289,6 +296,121 @@ def test_a_server_function_in_a_plain_module_is_answered_by_the_server(server_pa
             app.set_query("secret")
             app.click("search")
             app.wait_for_text("status", "Rejected: not for you")
+        finally:
+            browser.close()
+    assert not errors, errors
+
+
+# -- file dialogs ----------------------------------------------------------------
+
+DIALOG_APP = APP.parents[2] / "window" / "file_dialogs.py"
+
+_NO_GESTURE = """
+import nuiitivet.material as nv
+
+
+async def probe():
+    try:
+        await nv.FileDialog.open_file()
+    except nv.FileDialogError:
+        return "FileDialogError"
+    return "no error"
+
+
+await probe()
+"""
+
+
+@pytest.fixture(scope="module")
+def dialog_page_url() -> Iterator[str]:
+    """The file dialogs sample's built site, served on a free port for the whole module."""
+    httpd = make_server(site(DIALOG_APP, bundle_runtime=True), 0)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{httpd.server_address[1]}/"
+    httpd.shutdown()
+    httpd.server_close()
+
+
+def _in_page(page: playwright_api.Page, code: str) -> object:
+    return page.evaluate("code => NV_PYODIDE.runPython(code)", code)
+
+
+def test_file_dialogs_in_a_browser_pick_cancel_and_download(dialog_page_url: str, tmp_path: Path) -> None:
+    picked = tmp_path / "pic.png"
+    picked.write_bytes(bytes(range(256)))
+    folder = tmp_path / "photos"
+    (folder / "2024").mkdir(parents=True)
+    (folder / "notes.md").write_text("notes")
+    (folder / "2024" / "a.png").write_bytes(b"a")
+    with playwright_api.sync_playwright() as playwright:
+        browser = _launch(playwright)
+        try:
+            page = browser.new_page(viewport={"width": 640, "height": 240}, device_scale_factor=1)
+            errors: list[str] = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(dialog_page_url)
+            page.wait_for_function("document.body.dataset.state !== undefined", timeout=180_000)
+            assert page.evaluate("document.body.dataset.state") == "running"
+            app = _Page(page)
+            # The sample's heartbeat runs on the browser's clock.
+            page.wait_for_function(
+                "code => NV_PYODIDE.runPython(code) !== 'UI alive: 0'", arg="text_of('tick')", timeout=10_000
+            )
+
+            # Outside a click, the call raises instead of waiting for a picker that never opens.
+            # Playwright evaluates with a user gesture, so the browser's own answer is stood in for.
+            page.evaluate(
+                "Object.defineProperty(navigator, 'userActivation', {value: {isActive: false}, configurable: true})"
+            )
+            assert page.evaluate("code => NV_PYODIDE.runPythonAsync(code)", _NO_GESTURE) == "FileDialogError"
+            page.evaluate("delete navigator.userActivation")
+
+            # One file: a path the app reads, holding what the user picked.
+            with page.expect_file_chooser() as chooser_info:
+                app.click("open")
+            chooser = chooser_info.value
+            assert not chooser.is_multiple()
+            chooser.set_files(str(picked))
+            app.wait_for_text_prefix("result", "open: ")
+            shown = app.text("result").removeprefix("open: ")
+            assert shown.endswith("/pic.png")
+            assert bytes.fromhex(str(_in_page(page, f"open({shown!r}, 'rb').read().hex()"))) == picked.read_bytes()
+
+            # Cancel.
+            with page.expect_file_chooser() as chooser_info:
+                app.click("open")
+            chooser_info.value.set_files([])
+            app.wait_for_text("result", "cancelled")
+
+            # Several files.
+            with page.expect_file_chooser() as chooser_info:
+                app.click("open_many")
+            chooser = chooser_info.value
+            assert chooser.is_multiple()
+            chooser.set_files([str(picked), str(folder / "notes.md")])
+            app.wait_for_text("result", "open 2: pic.png, notes.md")
+
+            # A directory: its files, under their own layout.
+            with page.expect_file_chooser() as chooser_info:
+                app.click("folder")
+            chooser_info.value.set_files(str(folder))
+            app.wait_for_text_prefix("result", "folder: ")
+            shown = app.text("result").removeprefix("folder: ")
+            assert shown.endswith("/photos")
+            listing = _in_page(
+                page,
+                "import pathlib\n"
+                f"sorted(str(p.relative_to({shown!r})) for p in pathlib.Path({shown!r}).rglob('*') if p.is_file())",
+            )
+            assert list(listing) == ["2024/a.png", "notes.md"]  # type: ignore[call-overload]
+
+            # Save: the download carries what the handler wrote, under the default name.
+            with page.expect_download() as download_info:
+                app.click("save")
+            download = download_info.value
+            assert download.suggested_filename == "untitled.txt"
+            assert Path(download.path()).read_text() == "Saved from the file dialogs sample.\n"
+            app.wait_for_text_prefix("result", "save: ")
         finally:
             browser.close()
     assert not errors, errors

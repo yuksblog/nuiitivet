@@ -377,6 +377,23 @@ async def test_facade_runs_ui_thread_backend_on_the_calling_thread(monkeypatch):
     assert backend.thread is threading.current_thread()
 
 
+class AwaitableBackend(DummyFileDialogBackend):
+    """A backend on the UI thread whose dialog closes later, as the browser's does."""
+
+    runs_on_ui_thread = True
+
+    async def open_file(self, **kwargs):
+        await asyncio.sleep(0)
+        return Path("/picked/later.txt")
+
+
+@pytest.mark.asyncio
+async def test_facade_awaits_a_backend_that_returns_an_awaitable(monkeypatch):
+    monkeypatch.setattr(fd, "get_system_file_dialog_backend", lambda: AwaitableBackend())
+
+    assert await FileDialog.open_file() == Path("/picked/later.txt")
+
+
 class OverlapProbeBackend(DummyFileDialogBackend):
     def __init__(self):
         self.active = 0

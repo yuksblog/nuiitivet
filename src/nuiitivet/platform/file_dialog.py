@@ -4,11 +4,11 @@ This module is OS-dependent but backend-agnostic. Each platform shells out to
 an OS helper process (``osascript`` on macOS, ``zenity``/``kdialog`` on Linux,
 PowerShell on Windows) instead of hosting a second GUI toolkit in-process:
 tkinter's Tk mainloop cannot coexist with the pyglet-owned ``NSApplication``
-on macOS.
+on macOS. A browser has the page's own file picker.
 
-The backend methods block until the dialog is dismissed. Applications use the
-async :class:`FileDialog` facade, which runs the blocking call in a worker
-thread so the UI keeps painting.
+The desktop backends block until the dialog is dismissed. Applications use
+the async :class:`FileDialog` facade, which runs a blocking call in a worker
+thread so the UI keeps painting, and awaits the browser's picker.
 """
 
 from __future__ import annotations
@@ -18,15 +18,19 @@ import logging
 import subprocess
 import sys
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable
 from pathlib import Path
 from typing import Callable, Optional, Sequence, TypeVar, Union
 
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.common.target import is_web
 
 
 logger = logging.getLogger(__name__)
 
 _T = TypeVar("_T")
+# What a backend method returns: the value, or an awaitable of it.
+_Result = Union[_T, Awaitable[_T]]
 
 
 class FileDialogError(RuntimeError):
@@ -38,16 +42,18 @@ class FileDialogError(RuntimeError):
 
 
 class FileDialogBackend(ABC):
-    """Blocking per-platform dialog implementation.
+    """Per-platform dialog implementation.
 
     All methods return the selected path, or ``None`` if the user cancelled,
     and raise :class:`FileDialogError` when the dialog could not be shown.
 
-    ``runs_on_ui_thread`` declares where the blocking call must run: ``False``
-    for subprocess backends (the facade offloads them to a worker thread so
-    the UI keeps painting), ``True`` for in-process native backends whose
-    toolkit is main-thread-only (the facade calls them directly; the native
-    modal loop then owns the thread while the dialog is up).
+    ``runs_on_ui_thread`` declares where the call must run: ``False`` for
+    subprocess backends, which block (the facade offloads them to a worker
+    thread so the UI keeps painting), ``True`` for in-process native backends
+    whose toolkit is main-thread-only (the facade calls them directly; the
+    native modal loop then owns the thread while the dialog is up). A backend
+    on the UI thread may return an awaitable of the result instead: the
+    browser's picker closes in an event, not in a return.
     """
 
     runs_on_ui_thread: bool = False
@@ -59,7 +65,7 @@ class FileDialogBackend(ABC):
         title: Optional[str] = None,
         initial_dir: Optional[Path] = None,
         file_types: Optional[Sequence[str]] = None,
-    ) -> Optional[Path]:
+    ) -> _Result[Optional[Path]]:
         raise NotImplementedError
 
     @abstractmethod
@@ -69,7 +75,7 @@ class FileDialogBackend(ABC):
         title: Optional[str] = None,
         initial_dir: Optional[Path] = None,
         file_types: Optional[Sequence[str]] = None,
-    ) -> list[Path]:
+    ) -> _Result[list[Path]]:
         """Like :meth:`open_file` with multiple selection; cancel is ``[]``."""
         raise NotImplementedError
 
@@ -81,7 +87,7 @@ class FileDialogBackend(ABC):
         initial_dir: Optional[Path] = None,
         default_name: Optional[str] = None,
         file_types: Optional[Sequence[str]] = None,
-    ) -> Optional[Path]:
+    ) -> _Result[Optional[Path]]:
         raise NotImplementedError
 
     @abstractmethod
@@ -90,7 +96,7 @@ class FileDialogBackend(ABC):
         *,
         title: Optional[str] = None,
         initial_dir: Optional[Path] = None,
-    ) -> Optional[Path]:
+    ) -> _Result[Optional[Path]]:
         raise NotImplementedError
 
 
@@ -452,6 +458,10 @@ _backend: Optional[FileDialogBackend] = None
 
 
 def _create_backend() -> FileDialogBackend:
+    if is_web():
+        from .file_dialog_browser import BrowserFileDialogBackend
+
+        return BrowserFileDialogBackend()
     if sys.platform == "darwin":
         # Prefer the in-process Cocoa panels: near-instant once warm, correct
         # focus, app-modal. Fall back to the osascript helper when the bridge
@@ -511,12 +521,16 @@ def _normalize_dir(initial_dir: Union[Path, str, None]) -> Optional[Path]:
 _dialog_lock = asyncio.Lock()
 
 
-async def _run_backend(call: Callable[[FileDialogBackend], _T]) -> _T:
+async def _run_backend(call: Callable[[FileDialogBackend], _Result[_T]]) -> _T:
     async with _dialog_lock:
         backend = get_system_file_dialog_backend()
         if backend.runs_on_ui_thread:
-            return call(backend)
-        return await asyncio.to_thread(lambda: call(backend))
+            result = call(backend)
+        else:
+            result = await asyncio.to_thread(lambda: call(backend))
+        if isinstance(result, Awaitable):
+            return await result
+        return result
 
 
 class FileDialog:
@@ -524,6 +538,8 @@ class FileDialog:
 
     All methods are coroutines: the dialog runs in an OS helper process and is
     awaited from a worker thread, so the UI keeps painting while it is open.
+    In a browser the dialog is the page's file picker, which opens only from
+    a click or a key press; elsewhere the call raises :class:`FileDialogError`.
     Call them from an async event handler::
 
         class Editor(nv.ComposableWidget):
@@ -547,10 +563,13 @@ class FileDialog:
     ) -> Optional[Path]:
         """Pick an existing file to open.
 
+        In a browser the path is a copy of the file in the page's memory.
+
         Args:
-            title: Dialog title; the platform's own when omitted.
+            title: Dialog title; the platform's own when omitted. A browser
+                shows its own.
             initial_dir: Directory the dialog opens in; a leading ``~`` is the
-                home directory.
+                home directory. A browser opens where it last did.
             file_types: Extensions the picker is restricted to, without the
                 leading dot (e.g. ``["png", "jpg"]``); ``None`` allows any file.
         """
@@ -601,7 +620,9 @@ class FileDialog:
 
         The returned path may not exist yet; writing the file is the caller's
         job. The native dialog asks for overwrite confirmation where the
-        platform does so.
+        platform does so. In a browser nothing is asked: the path is in the
+        page's memory, and the file written there is downloaded when the
+        handler that called ``save_file`` returns.
 
         Args:
             title: Dialog title; the platform's own when omitted.
@@ -628,6 +649,9 @@ class FileDialog:
         initial_dir: Union[Path, str, None] = None,
     ) -> Optional[Path]:
         """Pick an existing directory.
+
+        In a browser the path is a copy of the directory's files in the
+        page's memory, and a directory with no file counts as cancelled.
 
         Args:
             title: Dialog title; the platform's own when omitted.

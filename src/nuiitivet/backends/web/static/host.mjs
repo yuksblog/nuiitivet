@@ -53,6 +53,36 @@ export function installHost(CK, canvas, input, fonts) {
       navigator.clipboard?.writeText(text).catch((error) => console.warn("copy failed:", error));
     },
 
+    // A page opens a picker only while a click or a key press is being handled.
+    canShowPicker() {
+      return !navigator.userActivation || navigator.userActivation.isActive;
+    },
+    // The file picker: the files chosen, none when the user cancelled.
+    pickFiles(accept, multiple, directory) {
+      return new Promise((resolve) => {
+        const picker = document.createElement("input");
+        picker.type = "file";
+        picker.accept = accept;
+        picker.multiple = multiple;
+        picker.webkitdirectory = directory;
+        picker.style.display = "none";
+        const done = (files) => { picker.remove(); resolve(files); };
+        picker.addEventListener("change", () => done(Array.from(picker.files)));
+        picker.addEventListener("cancel", () => done([]));
+        document.body.append(picker);
+        picker.click();
+      });
+    },
+    download(name, bytes) {
+      const url = URL.createObjectURL(new Blob([bytes]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = name;
+      link.click();
+      // The browser reads the URL after the click returns; revoking at once can lose the download.
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+    },
+
     // The surface for this frame. It is made again when the canvas or the
     // device pixel ratio changed, and the caller repaints everything then.
     frame() {
