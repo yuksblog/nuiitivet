@@ -13,6 +13,7 @@ import pyglet
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.runtime.renderer import RendererError
+from nuiitivet.widgeting.callbacks import drop_pending_tasks, start_pending_tasks
 
 logger = logging.getLogger(__name__)
 
@@ -276,6 +277,9 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
     def _run_sync(self) -> None:
         from pyglet.window import Window
 
+        # No asyncio loop will ever run here, so the waiting work is dropped
+        # with its diagnostic rather than held for a start that never comes.
+        drop_pending_tasks()
         self._draw_pending = True
         self._next_draw_deadline = time.perf_counter() if self._draw_interval is not None else None
 
@@ -381,6 +385,9 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
         pyglet.app.event_loop = self
         self.dispatch_event("on_enter")
         self.is_running = True
+        # The windows were mounted before this loop existed; their async
+        # mount work has been waiting for it.
+        start_pending_tasks()
 
         try:
             while not self.has_exit:

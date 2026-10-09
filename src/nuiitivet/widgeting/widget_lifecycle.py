@@ -8,7 +8,7 @@ from typing import Any, Callable, List, Optional, Tuple
 
 from ..common.logging_once import exception_once
 from ..runtime.threading import assert_ui_thread
-from .callbacks import VoidCallback, invoke_event_handler, report_contained
+from .callbacks import PendingTask, VoidCallback, invoke_event_handler, report_contained
 from .context_lookup import forget_app_scope
 
 
@@ -28,7 +28,7 @@ class LifecycleHostMixin:
     _mount_callbacks: List[VoidCallback]
     _unmount_callbacks: List[VoidCallback]
     _dispose_callbacks: List[Callable[[], None]]
-    _mount_tasks: List["asyncio.Task[None]"]
+    _mount_tasks: List["asyncio.Task[None] | PendingTask"]
 
     def __init__(self, *args, **kwargs) -> None:  # type: ignore[override]
         super().__init__(*args, **kwargs)
@@ -208,7 +208,7 @@ class LifecycleHostMixin:
         self._mount_tasks.append(task)
         task.add_done_callback(self._discard_mount_task)
 
-    def _discard_mount_task(self, task: "asyncio.Task[None]") -> None:
+    def _discard_mount_task(self, task: "asyncio.Task[None] | PendingTask") -> None:
         try:
             self._mount_tasks.remove(task)
         except ValueError:

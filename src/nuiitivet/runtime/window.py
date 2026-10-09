@@ -20,7 +20,7 @@ import weakref
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, Sequence, Tuple
 
-from ..widgeting.callbacks import spawn_task
+from ..widgeting.callbacks import drop_pending_tasks, spawn_task
 from ..widgeting.context_lookup import find_provider, raise_if_premature_lookup
 from ..widgeting.widget import ComposableWidget, Widget
 from .pointer import PointerCaptureManager
@@ -1219,6 +1219,9 @@ class Window:
         """
         img = self._render_snapshot(scale=1.0, settle=True)
         save_png(img, path)
+        # The headless counterpart of run(): async mount work waiting for a
+        # loop is dropped here, as no loop follows a render.
+        drop_pending_tasks()
 
     def _background_uses_theme(self) -> bool:
         from nuiitivet.theme.types import ColorToken

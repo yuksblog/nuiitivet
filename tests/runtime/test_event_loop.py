@@ -270,3 +270,51 @@ def test_blocking_timer_draws_through_idle_and_rearms(monkeypatch):
 
     assert len(recorded) == 1, "the Win32 timer serves the frame through the draw gate"
     assert platform_loop.timers == [(loop._blocking_timer, None)], "re-armed with idle()'s timeout"
+
+
+# ---------------------------------------------------------------------------
+# run_async(): work spawned before the loop ran starts on entry
+# ---------------------------------------------------------------------------
+
+
+class _StubPlatformLoopRunnable(_StubPlatformLoop):
+    def start(self):
+        return None
+
+    def stop(self):
+        return None
+
+    def step(self, timeout):
+        return True
+
+    def dispatch_posted_events(self):
+        return None
+
+
+def test_run_async_starts_the_work_spawned_before_it(monkeypatch):
+    """A root widget's async on_mount is spawned at App construction, before any loop."""
+    import asyncio
+
+    import pyglet
+
+    from nuiitivet.widgeting.callbacks import spawn_task
+
+    monkeypatch.setattr(pyglet.app, "platform_event_loop", _StubPlatformLoopRunnable(), raising=False)
+    monkeypatch.setattr(pyglet.app, "windows", [], raising=False)
+    monkeypatch.setattr(pyglet.app, "event_loop", None, raising=False)
+
+    loop = ResponsiveEventLoop(_noop_draw, draw_fps=None, keep_running_without_windows=lambda: True)
+    ran = []
+
+    async def _work() -> None:
+        ran.append(True)
+        loop.exit()
+
+    pending = spawn_task(_work(), owner_name="test.before_loop")
+    assert pending.done() is False
+    assert ran == []
+
+    asyncio.run(loop.run_async())
+
+    assert ran == [True]
+    assert pending.done() is True

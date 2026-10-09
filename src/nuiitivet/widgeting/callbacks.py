@@ -95,9 +95,86 @@ class UnschedulableAsyncWork(BaseException):
     """
 
 
+class PendingTask:
+    """Async work spawned before the event loop runs.
+
+    The runner starts it as a task when it enters the loop, in spawn order.
+    Until then ``cancel()`` closes the coroutine, so the work never runs, and
+    ``done()`` reports that. Once started, both forward to the task.
+    """
+
+    __slots__ = ("_coro", "_owner_name", "_task", "_closed", "_done_callbacks")
+
+    def __init__(self, coro: "Coroutine[Any, Any, Any]", owner_name: str) -> None:
+        self._coro = coro
+        self._owner_name = owner_name
+        self._task: Optional["asyncio.Task[Any]"] = None
+        self._closed = False
+        self._done_callbacks: list[Callable[["PendingTask"], None]] = []
+
+    @property
+    def owner_name(self) -> str:
+        """Who spawned the work, as given to :func:`spawn_task`."""
+        return self._owner_name
+
+    def cancel(self) -> bool:
+        """Cancel the work. Returns ``False`` when it had already finished."""
+        if self._task is not None:
+            return self._task.cancel()
+        if self._closed:
+            return False
+        _pending.remove(self)
+        self._close()
+        return True
+
+    def done(self) -> bool:
+        """Whether the work has finished, or was cancelled before it started."""
+        if self._task is not None:
+            return self._task.done()
+        return self._closed
+
+    def add_done_callback(self, fn: Callable[["PendingTask"], None]) -> None:
+        """Call *fn* with this handle when the work finishes or is cancelled.
+
+        Called at once when it already has.
+        """
+        if self._task is not None:
+            self._forward_done(self._task, fn)
+        elif self._closed:
+            fn(self)
+        else:
+            self._done_callbacks.append(fn)
+
+    def _forward_done(self, task: "asyncio.Task[Any]", fn: Callable[["PendingTask"], None]) -> None:
+        def _done(_task: "asyncio.Future[Any]") -> None:
+            fn(self)
+
+        task.add_done_callback(_done)
+
+    def _start(self, loop: "asyncio.AbstractEventLoop") -> "asyncio.Task[Any]":
+        task = loop.create_task(self._coro)
+        self._task = task
+        callbacks, self._done_callbacks = self._done_callbacks, []
+        for fn in callbacks:
+            self._forward_done(task, fn)
+        return task
+
+    def _close(self) -> None:
+        self._closed = True
+        self._coro.close()
+        callbacks, self._done_callbacks = self._done_callbacks, []
+        for fn in callbacks:
+            fn(self)
+
+
+#: Work spawned while no loop was running, in spawn order. The runner drains it
+#: on entering the loop, or when it knows no loop will come.
+_pending: list[PendingTask] = []
+
+
 def spawn_task(
     coro: "Coroutine[Any, Any, Any]", *, owner_name: str = "<unknown>"
-) -> Optional["asyncio.Task[Any]"]:
+) -> "asyncio.Task[Any] | PendingTask":
     """Schedule framework-owned async work. The one place tasks are born.
 
     Every task the framework creates goes through here -- async event handlers,
@@ -107,12 +184,14 @@ def spawn_task(
     ``asyncio.all_tasks()`` and guessing which tasks are its own.
 
     Args:
-        coro: The coroutine to run. Always consumed: scheduled, or closed.
-        owner_name: Who asked, for the diagnostic when there is no loop.
+        coro: The coroutine to run. Always consumed: scheduled, kept until the
+            loop runs, or closed.
+        owner_name: Who asked, for the diagnostic when the work is dropped.
 
     Returns:
-        The scheduled task, or ``None`` when no event loop is running. Callers
-        that need to cancel the work later (e.g. on unmount) should keep it.
+        The scheduled task, or a :class:`PendingTask` when no event loop is
+        running yet. Callers that need to cancel the work later (e.g. on
+        unmount) should keep it.
 
     Raises:
         UnschedulableAsyncWork: No running loop, *and* a test harness is
@@ -121,32 +200,54 @@ def spawn_task(
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
-        # Consume the coroutine either way, or it is collected unawaited and
-        # Python blames framework code for a warning the caller cannot see.
-        coro.close()
-        _report_unschedulable(owner_name)
-        return None
+        if _task_observers:
+            # Closed, or it is collected unawaited and Python blames framework
+            # code for a warning the caller cannot see.
+            coro.close()
+            raise UnschedulableAsyncWork(
+                f"async work from {owner_name} could not be scheduled: no event loop "
+                "is running, so it never ran and never will. The test would be "
+                "asserting on a handler that did nothing. Make the test 'async def' "
+                "and 'await app.idle()' after the action -- the harness runs it on a "
+                "real loop, exactly as production does."
+            )
+        pending = PendingTask(coro, owner_name)
+        _pending.append(pending)
+        return pending
     task = loop.create_task(coro)
     for observe in tuple(_task_observers):
         observe(task)
     return task
 
 
-def _report_unschedulable(owner_name: str) -> None:
-    if _task_observers:
-        raise UnschedulableAsyncWork(
-            f"async work from {owner_name} could not be scheduled: no event loop "
-            "is running, so it never ran and never will. The test would be "
-            "asserting on a handler that did nothing. Make the test 'async def' "
-            "and 'await app.idle()' after the action -- the harness runs it on a "
-            "real loop, exactly as production does."
+def start_pending_tasks() -> None:
+    """Start the work spawned before the loop ran, in spawn order.
+
+    Called by the runner from inside the running loop. Work spawned by the
+    started tasks goes straight to the loop, so one pass empties the list.
+    """
+    loop = asyncio.get_running_loop()
+    pending, _pending[:] = list(_pending), []
+    for item in pending:
+        task = item._start(loop)
+        for observe in tuple(_task_observers):
+            observe(task)
+
+
+def drop_pending_tasks() -> None:
+    """Close the work spawned before the loop ran, because no loop will run it.
+
+    Logged once per owner.
+    """
+    pending, _pending[:] = list(_pending), []
+    for item in pending:
+        item._close()
+        warning_once(
+            logger,
+            f"unschedulable_async_work:{item.owner_name}",
+            "Async work from %s was dropped: no event loop ran.",
+            item.owner_name,
         )
-    warning_once(
-        logger,
-        f"unschedulable_async_work:{owner_name}",
-        "Async work from %s was dropped: no event loop is running.",
-        owner_name,
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -177,7 +278,7 @@ def invoke_event_handler(
     error_key: str,
     error_msg: str,
     owner_name: str = "<unknown>",
-) -> Optional["asyncio.Task[None]"]:
+) -> "asyncio.Task[None] | PendingTask | None":
     """Invoke an event handler, scheduling it as a task if it is async.
 
     This helper handles:
@@ -187,9 +288,9 @@ def invoke_event_handler(
     4. Error logging.
 
     Returns:
-        The scheduled task when *cb* is async and an event loop is running,
-        otherwise ``None``. Callers that need to cancel the handler later
-        (e.g. on unmount) should keep the returned task.
+        The scheduled task when *cb* is async, a :class:`PendingTask` when it
+        is async and the loop has not started yet, otherwise ``None``. Callers
+        that need to cancel the handler later (e.g. on unmount) should keep it.
 
     Raises:
         UnschedulableAsyncWork: *cb* is async, no event loop is running, and a
@@ -229,8 +330,10 @@ def invoke_event_handler(
         # inside it and never started, so it needs closing on its own.
         _close_unstarted(result)
         raise
-    if task is None:
-        _close_unstarted(result)
+    if isinstance(task, PendingTask):
+        # Same nesting: a wrapper closed before the loop ran leaves the
+        # handler's coroutine unstarted. After a run the close is a no-op.
+        task.add_done_callback(lambda _pending: _close_unstarted(result))
     return task
 
 

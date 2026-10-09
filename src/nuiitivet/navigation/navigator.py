@@ -413,14 +413,12 @@ class Navigator(ComposableWidget):
         """Request a back navigation. The pop itself runs as a task."""
         # Counted before the task starts, so ``in_transition`` covers the gap.
         self._back_requests_in_flight += 1
-        scheduled = False
         try:
-            task = spawn_task(self._tracked_request_back(), owner_name=f"{type(self).__name__}.pop")
-            scheduled = task is not None
-        finally:
+            spawn_task(self._tracked_request_back(), owner_name=f"{type(self).__name__}.pop")
+        except BaseException:
             # A coroutine closed before it starts runs no ``finally``, so release here.
-            if not scheduled:
-                self._back_requests_in_flight -= 1
+            self._back_requests_in_flight -= 1
+            raise
 
     async def _tracked_request_back(self) -> bool:
         """Run a back request whose in-flight count was taken by the caller."""

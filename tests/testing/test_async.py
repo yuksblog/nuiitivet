@@ -301,28 +301,6 @@ def test_async_handler_without_a_loop_raises_under_the_harness(nuiitivet_app) ->
         app.click(key="load")
 
 
-def test_unschedulable_handler_leaves_no_unawaited_coroutine(recwarn) -> None:
-    """The dropped coroutine is closed, so Python blames nobody."""
-    from nuiitivet.widgeting.callbacks import invoke_event_handler
-
-    ran = False
-
-    async def _handler() -> None:  # pragma: no cover - never scheduled
-        nonlocal ran
-        ran = True
-
-    warnings.simplefilter("always")
-    assert (
-        invoke_event_handler(
-            _handler, error_key="test", error_msg="test handler", owner_name="test"
-        )
-        is None
-    )
-
-    assert ran is False
-    assert not [w for w in recwarn.list if issubclass(w.category, RuntimeWarning)]
-
-
 def test_navigator_pop_without_a_loop_does_not_crash() -> None:
     """It used to raise RuntimeError from asyncio.create_task."""
     from nuiitivet.navigation.navigator import Navigator
