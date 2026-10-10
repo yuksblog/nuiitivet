@@ -10,6 +10,8 @@ Run on the desktop:   python samples/window/file_dialogs.py
 Run in a browser:     python -m nuiitivet.web run samples/window/file_dialogs.py
 """
 
+import asyncio
+
 import nuiitivet.material as nv
 
 
@@ -17,18 +19,15 @@ class FileDialogApp(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
         self.result: nv.Observable[str] = nv.Observable("(nothing picked yet)")
-        # UI-thread heartbeat on the frame clock: the label stalls exactly
-        # when the UI thread is busy, e.g. while a modal dialog is up.
+        # UI-thread heartbeat: the label stalls exactly when the UI thread
+        # is busy, e.g. while a modal dialog is up.
         self.tick: nv.Observable[int] = nv.Observable(0)
 
-    def _start_beat(self) -> None:
-        nv.Clocks.get().schedule_interval(self._beat, 0.5)
-
-    def _stop_beat(self) -> None:
-        nv.Clocks.get().unschedule(self._beat)
-
-    def _beat(self, dt: float) -> None:
-        self.tick.value += 1
+    async def _beat(self) -> None:
+        # Started as a task on mount, cancelled automatically on unmount.
+        while True:
+            await asyncio.sleep(0.5)
+            self.tick.value += 1
 
     def build(self) -> nv.Widget:
         return nv.Column(
@@ -47,7 +46,7 @@ class FileDialogApp(nv.ComposableWidget):
                     ],
                 ),
             ],
-        ).modifier(nv.on_mount(self._start_beat) | nv.on_unmount(self._stop_beat))
+        ).modifier(nv.on_mount(self._beat))
 
     async def _open(self) -> None:
         path = await nv.FileDialog.open_file(
