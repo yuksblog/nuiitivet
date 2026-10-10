@@ -51,12 +51,17 @@ def parse_window_sizing(value: WindowSizingLike) -> WindowSizing:
 
 @dataclass(frozen=True, slots=True)
 class WindowPosition:
-    """Represents how the OS window is positioned within a screen.
+    """Where the OS window opens on a screen.
 
-    Coordinates:
-    - `alignment` uses the 9-point vocabulary from the layout system.
-    - `offset` is applied after alignment in logical pixels.
-      The offset uses UI coordinates: $+x$ is right, $+y$ is down.
+    From an alignment string: `alignment`.
+
+    Attributes:
+        alignment_key: A nine-point alignment, the layout system's vocabulary.
+            It places the window's outer frame, title bar included, inside the
+            screen's work area: the part not covered by the taskbar, the menu
+            bar or the dock.
+        offset: Screen pixels added after alignment; $+x$ is right, $+y$ is down.
+        screen_index: The screen to open on; out-of-range values use the last screen.
     """
 
     alignment_key: str

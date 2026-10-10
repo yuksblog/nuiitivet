@@ -37,6 +37,7 @@ from nuiitivet.input.codes import (
 )
 
 from .gpu_frame import draw_gpu_frame
+from .window_placement import apply_initial_position
 
 from nuiitivet.observable.runtime import set_clock
 from nuiitivet.runtime.threading import set_ui_thread
@@ -348,68 +349,10 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
     except Exception:
         exception_once(logger, "pyglet_apply_obs_title_exc", "Failed to apply Observable title to window")
 
-    # Initial window positioning.
     try:
         pos = getattr(win, "window_position", None)
         if pos is not None:
-            screens = None
-            try:
-                display = pyglet.canvas.get_display()
-                screens = list(display.get_screens())
-            except Exception:
-                screens = None
-
-            screen = None
-            if screens:
-                idx = int(getattr(pos, "screen_index", 0))
-                if idx < 0:
-                    idx = 0
-                if idx >= len(screens):
-                    idx = len(screens) - 1
-                screen = screens[idx]
-            else:
-                screen = getattr(window, "screen", None)
-
-            if screen is not None:
-                key = str(getattr(pos, "alignment_key", "center")).strip().lower().replace("_", "-")
-                dx, dy = getattr(pos, "offset", (0.0, 0.0))
-                dx = float(dx)
-                dy = float(dy)
-
-                # Pyglet screen coordinates are bottom-left origin (+y is up).
-                # Our UI offset uses +y down, so we invert dy when applying.
-                sx = int(getattr(screen, "x", 0))
-                sy = int(getattr(screen, "y", 0))
-                sw = int(getattr(screen, "width", 0))
-                sh = int(getattr(screen, "height", 0))
-                ww = int(getattr(window, "width", 0))
-                wh = int(getattr(window, "height", 0))
-
-                if key == "center":
-                    horiz = "center"
-                    vert = "center"
-                else:
-                    parts = key.split("-")
-                    vert = parts[0] if len(parts) >= 2 else "center"
-                    horiz = parts[1] if len(parts) >= 2 else "center"
-
-                if horiz == "left":
-                    base_x = 0
-                elif horiz == "right":
-                    base_x = sw - ww
-                else:
-                    base_x = (sw - ww) // 2
-
-                if vert == "bottom":
-                    base_y = 0
-                elif vert == "top":
-                    base_y = sh - wh
-                else:
-                    base_y = (sh - wh) // 2
-
-                x = sx + int(base_x + dx)
-                y = sy + int(base_y - dy)
-                window.set_location(int(x), int(y))
+            apply_initial_position(window, pos)
     except Exception:
         exception_once(logger, "pyglet_window_position_exc", "Failed to apply initial window position")
 
