@@ -50,7 +50,7 @@ its own row in System Settings → Notifications. The first notification asks
 the user for permission; if they decline, later calls are silently ignored
 (see above — never rely on delivery). None of this needs code changes — the
 same `nv.Desktop.notify` call upgrades itself when a bundle identifier is
-present. [macOS App Identity](../packaging.md#macos-app-identity) shows the
+present. [macOS App Identity](../packaging/index.md#macos-app-identity) shows the
 build flags that produce such a bundle.
 
 ## If nothing appears on Linux

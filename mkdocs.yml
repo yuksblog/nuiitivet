@@ -145,7 +145,8 @@ nav:
   - Home: index.md
   - Guide:
       - guide/index.md
-      - The intuitive grammar: guide/intuitive_grammar.md
+      - The intuitive grammar:
+          - guide/intuitive_grammar/index.md
       - Layout:
           - guide/layout/index.md
           - Basics: guide/layout/basics.md
@@ -221,7 +222,7 @@ nav:
           - Interaction Region: guide/advanced/interaction_region.md
           - Geometry: guide/advanced/geometry.md
       - Packaging:
-          - guide/packaging.md
+          - guide/packaging/index.md
       - Web:
           - guide/web/index.md
           - Running During Development: guide/web/running.md

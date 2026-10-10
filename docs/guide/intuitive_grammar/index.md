@@ -4,7 +4,7 @@ Nuiitivet keeps the parts of other frameworks that were already intuitive, so
 most of it reads like something you know. This page builds one small card, a
 few lines at a time.
 
-![The card this page builds](../assets/intuitive_grammar_counter_card.png)
+![The card this page builds](../../assets/intuitive_grammar_counter_card.png)
 
 ## Lay out with a widget tree and parameters
 
@@ -66,7 +66,7 @@ authors settle into, made the rule. And every pair is horizontal first, then
 vertical: `padding=(16, 8)` is 16 left and right, as `alignment` and
 `translate` are x before y.
 
-[Layout](layout/index.md) has the rest, including `Grid`: tracks sized as in
+[Layout](../layout/index.md) has the rest, including `Grid`: tracks sized as in
 WPF, cells placed by area name as in CSS.
 
 ## Add everything else with modifiers
@@ -82,7 +82,7 @@ nv.Text("Clicks", padding=12, width=200).modifier(
 ```
 
 So the code itself tells the two apart: the parameters are the layout, the
-modifier chain is everything else. [Modifiers](modifiers/index.md) lists them.
+modifier chain is everything else. [Modifiers](../modifiers/index.md) lists them.
 
 ## Show state by binding it
 
@@ -94,7 +94,7 @@ nv.Text(count.map(lambda n: f"{n} times"))  # follows count on its own
 
 `Observable` is modelled on ReactiveProperty, from WPF's MVVM. Hand the
 `Observable` to the widget and the widget follows it; there is no `setState`
-and nothing to refresh by hand. [Observable](state-management/index.md) covers
+and nothing to refresh by hand. [Observable](../state-management/index.md) covers
 deriving values and the Rx-style operators.
 
 ## Handle events with ordinary code
@@ -160,5 +160,5 @@ nv.App(nv.Window(content=build_root)).run()
 
 ## Next Steps
 
-- [Layout](layout/index.md) — rows, columns, spacing, sizing and alignment.
-- [Guides](index.md) — the overview.
+- [Layout](../layout/index.md) — rows, columns, spacing, sizing and alignment.
+- [Guides](../index.md) — the overview.

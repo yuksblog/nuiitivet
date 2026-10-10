@@ -128,7 +128,7 @@ The executable will be created in the `dist/` directory.
 ## macOS App Identity
 
 Some OS features only work for an app the system can identify — concretely,
-[desktop notifications](window/notifications.md) (`nv.Desktop.notify`) are only
+[desktop notifications](../window/notifications.md) (`nv.Desktop.notify`) are only
 delivered natively, under your app's own name and icon, when the process runs
 from a `.app` bundle that has a **bundle identifier** and a code signature.
 A build without them still runs; notifications just stay on the fallback path
