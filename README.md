@@ -208,7 +208,7 @@ Where it departs from them, it is to keep the code readable:
 - Decoration and behavior are attached as **modifiers**, chained with `|`
 - Event handlers are written as **procedures**, not declarations
 
-[The intuitive grammar](docs/guide/intuitive_grammar.md) walks through it with
+[The intuitive grammar](docs/guide/intuitive_grammar/index.md) walks through it with
 code.
 
 #### Skills
@@ -314,7 +314,7 @@ of them have an answer ([Background Work](docs/guide/state-management/background
 
 ### 2.3 Ship an executable
 
-There are recipes for PyInstaller and Nuitka ([Packaging](docs/guide/packaging.md)).
+There are recipes for PyInstaller and Nuitka ([Packaging](docs/guide/packaging/index.md)).
 One executable, onto a machine with no Python on it.
 
 ### 2.4 The OS is part of the app
@@ -465,7 +465,7 @@ README live there as runnable modules under [samples/readme/](samples/readme/).
 
 | Guide | Summary |
 | ----- | ------- |
-| [The intuitive grammar](docs/guide/intuitive_grammar.md) | What is borrowed from Flutter, SwiftUI / Compose, CSS and WPF, in one small card. |
+| [The intuitive grammar](docs/guide/intuitive_grammar/index.md) | What is borrowed from Flutter, SwiftUI / Compose, CSS and WPF, in one small card. |
 | [Layout](docs/guide/layout/index.md) | Build UIs with widgets and parameters. |
 | [State Management](docs/guide/state-management/index.md) | Reactive `Observable` state that auto-updates the UI. |
 | [Modifiers](docs/guide/modifiers/index.md) | Attach decoration and behavior to widgets. |
@@ -493,7 +493,7 @@ README live there as runnable modules under [samples/readme/](samples/readme/).
 | ----- | ------- |
 | [Concurrency](docs/guide/concurrency.md) | Choosing a concurrency tool, and safe UI updates from background work. |
 | [AI pair-programming](docs/guide/ai_pair_programming/index.md) | Refine and Debug with a coding agent: the on-screen modes, hot reload, the dev bridge, and the skills. |
-| [Packaging](docs/guide/packaging.md) | Ship your app to users. |
+| [Packaging](docs/guide/packaging/index.md) | Ship your app to users. |
 
 ---
 
