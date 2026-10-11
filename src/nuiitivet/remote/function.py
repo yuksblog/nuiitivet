@@ -12,7 +12,7 @@ import functools
 import inspect
 import json
 import typing
-from typing import Any, Callable, Coroutine, Generic, ParamSpec, TypeVar
+from typing import Any, Callable, Coroutine, Generic, Optional, ParamSpec, TypeVar
 
 from nuiitivet.common.target import is_web
 from nuiitivet.observable.protocols import MutableObservableBase
@@ -151,7 +151,8 @@ class RemoteFunction(Generic[P, R]):
         Arguments, the result and every Observable write are copied the way
         a network connection carries them, so the function shares no object
         with its caller. Cancelling the awaiting task sets the function's
-        ``CancelToken``.
+        ``CancelToken`` on a thread, and ends the Python running it anywhere
+        else.
 
         Args:
             *args: The function's own arguments, without its ``CancelToken``.
@@ -179,8 +180,7 @@ class RemoteFunction(Generic[P, R]):
             if is_web():
                 encoded = await self._call_on_web(values, writers)
             else:
-                receivers: dict[str, Callable[[Json], None]] = {n: w.receive for n, w in writers.items()}
-                encoded = await asyncio.to_thread(self.run, values, receivers, token)
+                encoded = await self._call_on_desktop(values, writers, token)
         except asyncio.CancelledError:
             token._supersede()
             for writer in writers.values():
@@ -197,6 +197,17 @@ class RemoteFunction(Generic[P, R]):
     async def _call_on_web(self, values: dict[str, Json], writers: dict[str, CallWriter]) -> Json:
         """Run the call where this mark runs in a browser, and return the encoded result."""
         raise NotImplementedError
+
+    async def _call_on_desktop(
+        self, values: dict[str, Json], writers: dict[str, CallWriter], token: CancelToken
+    ) -> Json:
+        """Run the call where this mark runs on the desktop, and return the encoded result.
+
+        Here: on a thread the runtime owns, with *token* set when the caller
+        cancels.
+        """
+        receivers: dict[str, Callable[[Json], None]] = {n: w.receive for n, w in writers.items()}
+        return await asyncio.to_thread(self.run, values, receivers, token)
 
     # -- the function's side -------------------------------------------------
 
@@ -311,6 +322,47 @@ def encode_error(error: BaseException) -> Json:
     return {"type": type(error).__qualname__, "message": str(error), "builtin": True}
 
 
+def answer(
+    call_id: int,
+    name: str,
+    values: dict[str, Json],
+    send: Callable[[dict[str, Json]], None],
+    token: Optional[CancelToken] = None,
+) -> None:
+    """Run one call where the function lives and hand what it produces to *send*, message by message.
+
+    The worker's side of a call, the same on a Web Worker, in a child process
+    and on a pooled thread. Each message carries the call's number: ``{"id",
+    "w": name, "v": data}`` for a write to a ``WriteOnlyObservable``
+    parameter, then ``{"id", "r": data}`` with the result or ``{"id", "e":
+    {...}}`` with the exception.
+
+    Args:
+        call_id: The caller's number for the call.
+        name: The function's module and name, dotted.
+        values: The data arguments by name, encoded.
+        send: Takes each message, JSON-ready.
+        token: The function's ``CancelToken``; a fresh one, never set, when
+            omitted.
+    """
+
+    def post(message: dict[str, Json]) -> None:
+        send({"id": call_id, **message})
+
+    def writer(parameter: str) -> Callable[[Json], None]:
+        return lambda data: post({"w": parameter, "v": data})
+
+    function = lookup(name)
+    if function is None:
+        post({"e": encode_error(LookupError(f"no worker function {name}"))})
+        return
+    writers = {parameter: writer(parameter) for parameter in function._writers}
+    try:
+        post({"r": function.run(values, writers, token or CancelToken())})
+    except Exception as error:
+        post({"e": encode_error(error)})
+
+
 def result_of(message: Json) -> Json:
     """The encoded result in a call's last message, or the exception it carries, raised.
 
@@ -336,6 +388,24 @@ def lookup(name: str) -> RemoteFunction[Any, Any] | None:
         name: The function's module and name, dotted.
     """
     return _functions.get(name)
+
+
+def registered() -> list[RemoteFunction[Any, Any]]:
+    """Every ``@server`` and ``@worker`` function defined so far."""
+    return list(_functions.values())
+
+
+def alias_module(module: str, as_module: str) -> None:
+    """Make every function defined in *module* answer to its name under *as_module* too.
+
+    Args:
+        module: The dotted name the functions were registered under.
+        as_module: The name the caller knows the module by.
+    """
+    prefix = module + "."
+    for name, function in list(_functions.items()):
+        if name.startswith(prefix):
+            _functions[as_module + name[len(module):]] = function
 
 
 def register(function: RemoteFunction[P, R]) -> Callable[P, Coroutine[Any, Any, R]]:
@@ -407,9 +477,12 @@ __all__ = [
     "RemoteError",
     "RemoteFunction",
     "ServerFunction",
+    "alias_module",
+    "answer",
     "encode_error",
     "lookup",
     "register",
+    "registered",
     "result_of",
     "server",
     "stub",

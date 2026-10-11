@@ -16,6 +16,8 @@ code by hand. Find your situation below.
 | Heavy work in an event handler, and the screen just waits for it | an `async` handler, `await asyncio.to_thread(...)` — a thread, but the runtime owns it | [Thread Safety](state-management/thread_safety.md#short-work-await-it-instead-of-managing-a-thread) |
 | The same heavy work, but it should report progress and be cancellable | a hand-written worker thread | [Background Work](state-management/background_work.md) |
 | A thread in an app that also runs in a browser | a `@nv.worker` function; `@nv.server` when the work needs a server | [Worker and Server Functions](web/worker_and_server_functions.md) |
+| The same, but no more than N calls at a time | `@nv.worker(parallel=N)` | [Worker and Server Functions](web/worker_and_server_functions.md#cap-the-calls-that-run-at-once) |
+| Work that needs a process: pure Python that should use another core, a loop that never checks its token, native code that may crash | `@nv.worker(process=True)` | [Worker and Server Functions](web/worker_and_server_functions.md#run-calls-in-a-process) |
 | Values arriving faster than the screen needs them | `debounce()` / `throttle()` | [Practical Controls](state-management/practical_controls.md) |
 | Getting a worker's result onto the UI thread | nothing — an observable write is marshalled for you | [Thread Safety](state-management/thread_safety.md) |
 | A consumer that must see every intermediate value, not the newest | `dispatch=False` | [Thread Safety](state-management/thread_safety.md#opting-out-dispatchfalse) |

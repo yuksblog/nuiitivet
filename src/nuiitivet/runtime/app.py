@@ -431,6 +431,10 @@ class App:
 
         resolved_renderer = parse_renderer_mode(renderer)
 
+        from nuiitivet.remote.worker import warm_pool
+
+        warm_pool()
+
         if is_web():
             from ..backends.web.runner import run_app as run_web_app
 

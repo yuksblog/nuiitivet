@@ -30,7 +30,10 @@ def _calls(statement: ast.stmt, name: str) -> bool:
 
 
 def _decorated_with(function: ast.FunctionDef, name: str) -> bool:
+    """Whether *function* carries ``@name``, ``@x.name``, or either with arguments."""
     for decorator in function.decorator_list:
+        if isinstance(decorator, ast.Call):
+            decorator = decorator.func
         if (isinstance(decorator, ast.Name) and decorator.id == name) or (
             isinstance(decorator, ast.Attribute) and decorator.attr == name
         ):
