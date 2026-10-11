@@ -79,7 +79,7 @@ says how to write that place.
 
 | Place | Carries | Skill (`.claude/skills/`) |
 | --- | --- | --- |
-| Design doc (`docs/design/`) | The core ideas: what the design is, how it is realised, which alternatives were rejected and why. API and procedure only as far as the design needs them | `design-creator` |
+| Design doc (`docs/design/`) | The core ideas: what the design is and how it is realised. API and procedure only as far as the design needs them | `design-creator` |
 | Guide (`docs/guide/`) | How a user does something and what will surprise them | `guide-creator` |
 | MCP server text (`src/nuiitivet/dev/mcp_server.py`) | What the server drives, which question goes to which tool, what each tool returns, the skill names | `nuiitivet-skill-maintainer` |
 | Skill (`skills/`) | The agent's procedure and judgement: the order of steps, the choice between tools that could both answer, a rule for a mistake actually made. In `nuiitivet-app`, the Nuiitivet idiom beside the foreign habit it replaces | `nuiitivet-skill-maintainer` |
