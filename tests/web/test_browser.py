@@ -19,6 +19,7 @@ running it.
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import sys
 import threading
@@ -253,6 +254,87 @@ def test_a_worker_function_answers_reports_and_cancels_while_the_page_keeps_answ
         finally:
             browser.close()
     assert not errors, errors
+
+
+# -- parallel workers ----------------------------------------------------------
+
+_PARALLEL_JOBS = '''import time
+import uuid
+
+import nuiitivet.material as nv
+
+WORKER = uuid.uuid4().hex  # one per Python that imports the module
+
+
+@nv.worker(parallel=2, warm=True)
+def tell(seconds: float) -> str:
+    time.sleep(seconds)
+    return WORKER
+'''
+
+_PARALLEL_APP = '''import nuiitivet.material as nv
+from jobs import tell  # noqa: F401
+
+
+def build_root() -> nv.Widget:
+    return nv.Text("parallel")
+
+
+def main() -> None:
+    nv.App(nv.Window(content=build_root)).run()
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+_GATHER = """
+import asyncio
+import json
+
+from jobs import tell
+
+json.dumps(await asyncio.gather(tell(6.0), tell(6.0), tell(6.0)))
+"""
+
+
+@pytest.fixture(scope="module")
+def parallel_page_url(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
+    """A built site of an app with a function marked ``parallel=2, warm=True``, served on a free port."""
+    root = tmp_path_factory.mktemp("parallel")
+    (root / "jobs.py").write_text(_PARALLEL_JOBS)
+    (root / "app.py").write_text(_PARALLEL_APP)
+    httpd = make_server(site(root / "app.py", bundle_runtime=True), 0)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{httpd.server_address[1]}/"
+    httpd.shutdown()
+    httpd.server_close()
+
+
+def test_a_warm_function_has_its_workers_at_start_and_runs_its_calls_on_them(parallel_page_url: str) -> None:
+    with playwright_api.sync_playwright() as playwright:
+        browser = _launch(playwright)
+        try:
+            page = browser.new_page(viewport={"width": 320, "height": 200}, device_scale_factor=1)
+            errors: list[str] = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(parallel_page_url)
+            page.wait_for_function("document.body.dataset.state !== undefined", timeout=180_000)
+            assert page.evaluate("document.body.dataset.state") == "running"
+            expected = min(2, page.evaluate("navigator.hardwareConcurrency"))
+
+            # warm=True: the pool holds the ceiling before any call.
+            size = page.evaluate(
+                "code => NV_PYODIDE.runPython(code)", "from nuiitivet.remote.worker import web_pool\nweb_pool().size"
+            )
+            # Three calls, a ceiling of two: two workers at once, and the third call on whichever frees first.
+            answers = json.loads(page.evaluate("code => NV_PYODIDE.runPythonAsync(code)", _GATHER))
+        finally:
+            browser.close()
+    assert not errors, errors
+    assert size == expected
+    assert len(answers) == 3
+    assert len(set(answers)) == expected
 
 
 # -- server functions ----------------------------------------------------------

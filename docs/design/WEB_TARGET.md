@@ -159,8 +159,9 @@ and its process, the libraries each can run, and whether the module may be
 read in the browser.
 
 On the desktop a call of either mark runs on a thread the runtime owns, in
-the same process. The arguments, the result and every progress write still
-pass through the codec, so the function shares no object with its caller;
+the same process; a `@worker` marked `process` runs in a child process
+instead. The arguments, the result and every progress write still pass
+through the codec, so the function shares no object with its caller;
 cancelling the awaiting task sets the function's token; and an exception
 that is not builtin arrives as `RemoteError`. The desktop follows the
 browser's rules so that an app which works on the desktop works in the
@@ -186,18 +187,29 @@ may have no class to rebuild it from.
 
 ## Worker Functions
 
-`@worker` marks a function in a module the browser gets. In the browser the
-call goes to a Web Worker: a second Pyodide that `boot.mjs` starts when
-`config.json` names a worker module. The worker fetches the same zip,
-unpacks it, and imports the worker modules while the page loads, so the
-first call pays no import. The modules are found by reading the sources, as
-the stubs are; a server-only module is never one of them, and the desktop
-refuses a `@worker` function placed there.
+`@worker` marks a function in a module the browser gets. A server-only
+module cannot hold one: the desktop refuses the mark there, and the build
+leaves the module out of the page.
+
+Two options go with the mark, and they are independent. `parallel` is the
+ceiling on the function's calls that run at once. `process` is the
+desktop's kind: a child process instead of a thread. The browser has one
+kind, a Web Worker, so `process` means nothing there and `parallel` alone
+decides. The rule in one sentence: the number is the function's ceiling,
+the pool is everyone's of its kind, and `warm` is everyone's pre-start.
+
+### The Call
+
+A call goes to one worker as a message: the call's number, the function's
+dotted name, the arguments as JSON. The worker answers with one message per
+write to a progress observable, then the result or the error. A Web Worker,
+a child process and a pooled thread answer through the same function, so
+the kinds differ only in what carries the messages.
 
 ```mermaid
 sequenceDiagram
-    participant App as App (browser)
-    participant W as Web Worker
+    participant App as App
+    participant W as one worker of the pool
     App->>W: a message: the call's number, the function, arguments as JSON
     loop while the function runs
         W-->>App: a message per write to a progress observable
@@ -205,25 +217,46 @@ sequenceDiagram
     alt the function returns
         W-->>App: the result, or the error
     else the caller cancels
-        App--xW: the worker is ended, and another boots
+        App--xW: the worker is ended; another starts when a call needs it
     end
 ```
 
-The page runs one worker, and hands it one call at a time: the next call
-leaves the page's queue when the previous one has answered. A queued call is
-cancelled by forgetting it. The running call cannot be: a busy worker reads
-no message until its function returns, so cancelling it ends the worker, and
-the page boots a replacement that the queue waits for. A worker that ends
-on its own fails its call with `ConnectionError` and is replaced the same
-way; one that fails to boot fails every call with the reason.
+### The Pool
 
-A token the worker polls through a `SharedArrayBuffer` would stop a running
-function without ending the worker; it was rejected because the buffer needs
-cross-origin isolation headers that a plain file host does not send.
-`pickle` as the transport, which the browser could carry, was rejected
-because it would accept on the desktop a value the codec refuses, and the
-desktop would stop predicting the browser. A `multiprocessing` pool is not
-an option: Pyodide's standard library refuses to construct one.
+One pool per kind holds the workers and the calls waiting for them. A call
+runs when fewer calls of its function are running than its ceiling, and a
+worker is idle or one can still start; otherwise it waits, in order. The
+pool grows to the largest ceiling among its functions and never past the
+machine's cores; a worker starts when a call needs it, and `warm` starts a
+function's ceiling with the app. A heavy function can fill the pool and
+make another wait within its own ceiling.
+
+A queued call is cancelled by forgetting it. A running call cannot be: a
+busy worker reads no message until its function returns, so cancelling it
+ends the worker, and the pool starts another when a call needs it. A worker
+that ends on its own fails its call with `ConnectionError`. One that never
+becomes ready fails every call with the reason, until the pool is retired.
+
+### The Workers
+
+In the browser a worker is a second Pyodide that `boot.mjs` starts when
+`config.json` names a worker module. It fetches the same zip, unpacks it,
+and imports the worker modules while the page loads, so the first call pays
+no import. The modules are found by reading the sources, as the stubs are.
+The page starts one worker while it loads and keeps one running, so a
+function without a number finds it there and runs one call at a time; a
+numbered function grows the pool from it.
+
+On the desktop a function with neither option keeps a thread per call, as
+a `@server` function does. `parallel` alone puts it on a pool of threads;
+cancelling sets the running call's token, as a thread cannot be ended.
+`process` puts it on a pool of child processes, started with the `spawn`
+context on every OS and fed the messages through a pipe. A child imports
+the functions' modules by name, and the entry script the way
+`multiprocessing` does, so the window stays behind `__main__`'s guard.
+
+Hot reload retires the desktop's pools: an idle worker ends at once, a busy
+one after its call, and the next call starts one from the reloaded source.
 
 ## Server Functions
 

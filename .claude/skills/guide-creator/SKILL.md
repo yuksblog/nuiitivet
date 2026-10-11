@@ -11,8 +11,7 @@ Creating and updating guides in `docs/guide/`.
 
 **The reader uses the framework; they do not build it.** A guide answers *how
 do I do this* and *what will surprise me*. Design rationale belongs in
-`docs/design/`: why the API is shaped so, what the alternative would have
-cost, what the internal cells are.
+`docs/design/`: why the API is shaped so, what the internal cells are.
 
 Cut on sight:
 
@@ -28,8 +27,20 @@ the user's cursor" is something the reader will hit; "two observables
 describing one thing" is not. Reach for the exact form only where the picture
 would be wrong.
 
-**Headings name what the reader wants to do.** A reader scans the table of
-contents for their problem; a clever heading hides it.
+**The spine comes first, and the headings are the spine.** Before any prose,
+write the page's outline in the reply and mark each level with one of two
+shapes. A *sequence*, when the reader does every sibling in order: the
+headings are the steps, each one's result is the next one's start, and no
+step is missing (mark the function, pass arguments, report progress, cancel,
+handle an error). A *set*, when the reader does one sibling: the headings are
+the choices on one axis, and no two overlap (`@nv.worker` or `@nv.server`;
+the rows of a chooser table). One page holds both, at different levels, and
+the surprise goes where the reader would hit it. Written from the code
+instead, a page names every argument in the order of the signature and
+answers none of the reader's questions first.
+
+**Each heading names what the reader wants to do there.** A reader scans the
+table of contents for their problem; a clever heading hides it.
 
 | Instead of | Write |
 | --- | --- |
@@ -38,9 +49,6 @@ contents for their problem; a clever heading hides it.
 | Wrapping operators compose into the chain | Waiting for the typing to settle |
 | Two things that are not this | Restricting and reshaping the text itself |
 | The one trap | If the field will not accept typing |
-
-**Sibling headings divide their parent on one axis**, with no gap and no
-overlap. Check the whole page, not only the section touched.
 
 **Open with working code, not a principle.** The shortest complete example
 first; comments carry the point (`# bind this` / `# use this`). Prose after,
@@ -63,10 +71,6 @@ repeated only where the two places are far apart.
 | There are cases in which the field will not accept typing | The field sometimes refuses typing |
 | This is done in order to avoid the value being reformatted | *(cut — or name the symptom the reader sees)* |
 
-**List what the page has to say before opening the code.** Written from the
-code, a page names every argument in the order of the signature and ends up a
-docstring with reasons attached.
-
 **Open with the thing and its verb, not an abstraction of it.** "The line
 break is a key gesture" makes the reader translate back to "Shift+Enter breaks
 the line"; write the second.
@@ -75,10 +79,8 @@ the line"; write the second.
 colon are still two facts, in a sentence that got shorter and harder. Delete
 the sentence the reader does not need and leave the other whole.
 
-**The order is the reader's.** What it does before how, the concrete before
-the abstract, the surprise where the reader would hit it, and each only when
-the reader lacks it. A page ordered by the signature answers none of the
-reader's questions first.
+**Within a section, what it does before how and the concrete before the
+abstract**, each only when the reader lacks it.
 
 ## Widget Showcase Pages
 
@@ -204,8 +206,7 @@ reading order. Then fix the **Next Steps** of the page it now follows.
 ## Checklist
 
 - [ ] No design rationale, no doctrine headings — the reader is a user
-- [ ] Headings name a task, not a principle
-- [ ] Sibling headings divide their parent on one axis, no gap, no overlap — checked on the whole page, not only the section touched
+- [ ] The outline was written in the reply before the edit, each level marked sequence or set; every heading in the diff is one of its nodes and names a task; `grep -n '^#' docs/guide/<page>.md`, read top to bottom: a sequence with no missing step, a set with no overlapping choice, on the whole page
 - [ ] Opens with working code
 - [ ] Every snippet executed, including inline ones
 - [ ] Short sentences, one fact each, dense throughout; a fact repeated only where two places are far apart

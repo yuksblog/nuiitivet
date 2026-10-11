@@ -14,6 +14,7 @@ from nuiitivet.web.stubs import worker_modules
 
 _JOBS = "import nuiitivet.material as nv\n\n\n@nv.worker\ndef count(limit: int) -> int:\n    return limit\n"
 _BACKEND = "import nuiitivet.material as nv\n\nnv.server_only()\n\n\n@nv.worker\ndef wrong() -> None:\n    pass\n"
+_PARALLEL = _JOBS.replace("@nv.worker", "@nv.worker(parallel=2)")
 
 
 @pytest.fixture(autouse=True)
@@ -35,6 +36,7 @@ def app_dir(tmp_path: Path) -> Path:
     (root / "jobs.py").write_text(_JOBS)
     (root / "work" / "__init__.py").write_text("")
     (root / "work" / "more.py").write_text(_JOBS)
+    (root / "work" / "parallel.py").write_text(_PARALLEL)
     (root / "backend.py").write_text(_BACKEND)
     (root / "views.py").write_text("def worker() -> None:\n    pass\n")
     (root / "__pycache__").mkdir()
@@ -43,7 +45,7 @@ def app_dir(tmp_path: Path) -> Path:
 
 
 def test_the_modules_with_a_worker_function_are_listed_dotted(app_dir: Path) -> None:
-    assert worker_modules(app_dir) == ["jobs", "work.more"]
+    assert worker_modules(app_dir) == ["jobs", "work.more", "work.parallel"]
 
 
 def test_a_server_only_module_is_not_a_worker_module(app_dir: Path) -> None:
@@ -53,7 +55,7 @@ def test_a_server_only_module_is_not_a_worker_module(app_dir: Path) -> None:
 def test_the_page_names_the_worker_modules_and_carries_the_scripts(app_dir: Path) -> None:
     files = site(app_dir / "app.py", bundle_runtime=False)
 
-    assert json.loads(read(files["config.json"]))["workers"] == ["jobs", "work.more"]
+    assert json.loads(read(files["config.json"]))["workers"] == ["jobs", "work.more", "work.parallel"]
     assert b"loadPyodide" in read(files["worker.mjs"])
     assert b"NV_WORKERS" in read(files["workers.mjs"])
 

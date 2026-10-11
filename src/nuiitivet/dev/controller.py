@@ -29,6 +29,8 @@ import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Optional, cast
 
+from nuiitivet.remote.worker import retire_pool
+
 from .error_overlay import clear_reload_error, show_reload_error
 from .journal import ReloadJournal
 from .navigation_snapshot import restore_navigation, snapshot_navigation
@@ -132,6 +134,8 @@ class HotReloadController:
 
         try:
             result = reload_user_modules(self._project_root, old_factory=self._factory)
+            # The next worker call runs the reloaded source, not a child's copy of the old one.
+            retire_pool()
             new_factory: "RootFactory" = (
                 cast("RootFactory", result.new_factory)
                 if result.new_factory is not None

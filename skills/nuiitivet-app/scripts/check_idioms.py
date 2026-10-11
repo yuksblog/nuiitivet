@@ -53,6 +53,9 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"\.run_thread\s*\(|\.run_task\s*\("), "Flet",
      "Work the browser cannot run on a thread goes in a @nv.worker function, or in a @nv.server "
      "function when it needs a server, awaited from the handler: `await fn(...)` on both targets."),
+    (re.compile(r"\bProcessPoolExecutor\b|\bmultiprocessing\.(?:Process|Pool)\b"), "stdlib",
+     "A process pool dies in the browser. Mark the function @nv.worker(process=True) on a module-level "
+     "def, with parallel=N for up to N calls at once, and await it: `await fn(...)` on both targets."),
     (re.compile(r"\buseState\b|\buseEffect\b|\buseMemo\b|\buseRef\b|\buseCallback\b"), "React",
      "Use nv.Observable for state; derive with combine().compute() / map()."),
     (re.compile(r"\buseSelector\b|\buseDispatch\b|\bConsumerWidget\b|\bref\.watch\b"), "Redux/Riverpod",

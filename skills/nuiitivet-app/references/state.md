@@ -288,7 +288,15 @@ matches = await search(self.query.value, self.progress)   # on the desktop: a ru
 
 - **Cancelling a running `@nv.worker` call in the browser ends the worker**;
   the page starts another, and the next call waits about two seconds for it.
-- **One worker, one call at a time**: a second call waits for the first.
+- **One call at a time on the page's worker**: a second call waits for the first.
+- **`@nv.worker(parallel=N)`** runs up to N calls at once: on pooled threads
+  on the desktop, on N Web Workers in the browser. **`process=True`** moves the
+  desktop's calls to child processes (one at a time without `parallel`); the
+  browser ignores it. The number is the function's ceiling, the pool is shared
+  by every such function, and `warm=True` starts the N Pythons with the app.
+  Cancelling ends the process or Web Worker running the call, and sets the
+  token on a thread. Write this instead of `ProcessPoolExecutor` or
+  `multiprocessing`, which die in the browser.
 
 ```python
 # jobs.py — the module reaches the browser as written; the body runs only on the server

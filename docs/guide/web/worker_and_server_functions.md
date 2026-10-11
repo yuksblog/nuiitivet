@@ -169,6 +169,67 @@ reaches the caller as itself. Any other class reaches it as
 A `ConnectionError` says the function never answered: the worker stopped,
 or the server could not be reached.
 
+### Cap the calls that run at once
+
+```python
+@nv.worker(parallel=3)  # up to three calls at once
+def search(query: str, progress: nv.WriteOnlyObservable[float]) -> list[str]:
+    ...
+```
+
+The number is the function's ceiling: three calls of `search` run at once
+and the fourth waits for one of them to return. On the desktop each runs on
+a thread from a pool; in the browser, on a Web Worker, so the page starts
+up to three. Without a number a thread is started per call and the page
+runs one call at a time.
+
+The pool is everyone's. Every numbered function shares one pool, as large
+as the largest number among them and, in the browser, never larger than the
+machine's cores. A function that fills the pool makes another wait, within
+its own ceiling.
+
+### Run calls in a process
+
+```python
+@nv.worker(process=True)  # a child process instead of a thread
+def search(query: str, progress: nv.WriteOnlyObservable[float]) -> list[str]:
+    ...
+```
+
+On the desktop the calls run in a child process, one at a time; with
+`parallel=N` as well, in up to N child processes. Reach for it when the work
+is pure Python that should use another core, when a loop that never checks
+its token must still be stoppable, or when native code may crash and must
+not take the window with it. The browser ignores the flag: there every call
+already runs in a Web Worker.
+
+A Python starts when a call needs it. The first call waits for the first
+one, about 0.3 seconds on the desktop and about two in the browser; the
+second concurrent call waits for the second. `warm=True` starts them with
+the app instead:
+
+```python
+@nv.worker(parallel=3, process=True, warm=True)  # the three start with the app
+def search(query: str, progress: nv.WriteOnlyObservable[float]) -> list[str]:
+    ...
+```
+
+The warmed Pythons belong to the pool, so every function uses them. Each one
+holds memory for as long as the app runs: tens of megabytes on the desktop,
+60 to 100 in the browser.
+
+Cancelling a call ends the Python running it, on both targets; the function's
+`CancelToken` is never set, so a function marked `process` needs none. The
+pool starts another Python when a call needs it. On a thread, cancelling
+sets the token as it always does.
+
+A child process imports the function's module by name, and your entry
+script the way `multiprocessing` does, so `app.run()` stays under
+`if __name__ == "__main__":`. An app frozen with PyInstaller calls
+`multiprocessing.freeze_support()` first under that line. Under
+`python -m nuiitivet.dev run`, a saved edit reaches the pool at its next
+call: an idle Python is replaced at once, a busy one after its call.
+
 ## Server Function
 
 A server function does the same work on a server instead of in the browser.

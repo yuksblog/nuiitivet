@@ -11,9 +11,8 @@ into the site and reached by link, not from the sidebar.
 ## What to Write
 
 **The reader builds or changes the framework; they do not use it.** A design
-doc carries the core ideas: what the design is, how it is realised, and the
-alternatives that were rejected and why. API and procedure appear only as far
-as the design needs them.
+doc carries the core ideas: what the design is and how it is realised. API
+and procedure appear only as far as the design needs them.
 
 Cut on sight, and move it down to the place whose job it is:
 
@@ -27,11 +26,15 @@ Cut on sight, and move it down to the place whose job it is:
 A design doc that grows past its name has started carrying procedure or API
 reference. Move the surplus down, not into a bigger doc.
 
-**A rejected alternative is one the reader would reach for**, stated as a
-present-state constraint: "`"50%"` raises `ValueError`; accepting it as a
-weight was rejected because it reads as a fraction of the parent." An
-alternative nobody would choose is not written. "We tried X and went back" is
-history; it goes to the issue.
+**The outline comes first, and the headings are the outline.** Before any
+prose, write the section's tree in the reply: at the root, what the thing is
+and the rule it follows; below it, the mechanism divided on the axis the
+subject has, its layers, its phases, or its participants. Each level divides
+its parent on one axis, with no gap and no overlap, on the whole page; `##`
+and `###` are the nodes and the prose only fills them. Written from the code
+or from a fixed what/how template instead, a page ends up a docstring with
+reasons attached, and a structure hidden inside one long section passes the
+heading check untouched.
 
 **A sentence the reader can picture beats an exact one.** "The field ends up
 reformatting itself under the user's cursor" lands; "two observables describing
@@ -41,10 +44,6 @@ wrong.
 **Short sentences, dense from the first line to the last.** Each sentence
 carries one fact the reader does not have. A fact is stated once; it is
 repeated only where the two places are far apart.
-
-**List what the page has to say before opening the code.** Written from the
-code, a page names every argument in the order of the signature and ends up a
-docstring with reasons attached.
 
 **Open with the thing and its verb, not an abstraction of it.** "The line
 break is a key gesture" makes the reader translate back to "Shift+Enter breaks
@@ -58,13 +57,8 @@ the sentence the reader does not need and leave the other whole.
 line." is complete; a reason on a fact that had no alternative dresses the
 outcome up as a decision.
 
-**The order is the reader's.** The fact before its reason, the concrete
-before the abstract, the rejected alternative last, and each only when the
-reader lacks it. A page ordered by the signature answers none of the reader's
-questions first.
-
-**Sibling headings divide their parent on one axis**, with no gap and no
-overlap. Check the whole page, not only the section touched.
+**Within a node, the fact before its reason and the concrete before the
+abstract**, each only when the reader lacks it.
 
 ## Standing Alone
 
@@ -88,12 +82,9 @@ in `mkdocs serve` or the GitHub preview.
 
 ## Checklist
 
-- [ ] Core ideas, realisation, and the alternatives a reader would reach for, each as a present-state constraint — no parameter lists, no procedure, no measurements, no history
+- [ ] The outline was written in the reply before the edit; every heading in the diff is one of its nodes; `grep -n '^##' docs/design/<page>.md`, read top to bottom, divides on one axis at each level
+- [ ] What the design is and how it is realised, as present-state constraints: no parameter lists, no procedure, no measurements, no history
 - [ ] No link into `docs/guide/`, no issue number: `uv run pytest tests/test_design_docs_stand_alone.py`
-- [ ] Short sentences, one fact each, dense throughout; a fact repeated only where two places are far apart
-- [ ] Every sentence states a fact the caller cannot observe, or the alternative it rules out; what an argument does is the docstring's
-- [ ] Each sentence checked against the docstrings and `docs/guide/`, both open beside the draft; what either already says is deleted
-- [ ] Each paragraph opens with the thing and its verb; a reason only where a choice was made; every cut is a deletion, not a merge
-- [ ] Sibling headings divide their parent on one axis, no gap, no overlap — checked on the whole page, not only the section touched
+- [ ] Each sentence: one fact, current state, one the reader cannot observe from the docstrings or `docs/guide/`, both open beside the draft; a reason only where a choice was made; every cut a deletion, not a merge
 - [ ] Structure, flow and sequences drawn as `mermaid`; every new diagram rendered once
 - [ ] `uv run --group docs mkdocs build --strict` passes

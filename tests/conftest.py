@@ -19,6 +19,10 @@ _SRC = _ROOT / "src"
 _SRC_STR = str(_SRC)
 if _SRC_STR not in sys.path:
     sys.path.insert(0, _SRC_STR)
+# A worker process imports a test's module by name; it inherits sys.path, not pytest's import hooks.
+_ROOT_STR = str(_ROOT)
+if _ROOT_STR not in sys.path:
+    sys.path.append(_ROOT_STR)
 
 
 # Silence skia deprecation warnings during tests (font-related deprecations).
