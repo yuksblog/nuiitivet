@@ -167,3 +167,34 @@ def test_hints_wrap_instead_of_running_off_a_narrow_window() -> None:
     assert len(lines) > 1
     for line in lines:
         assert measure_text_width(typeface, hud.FONT_SIZE, line) <= limit
+
+
+# --- captions inside the window -----------------------------------------------
+
+
+def test_fit_inside_moves_a_box_the_least_distance_into_the_margins() -> None:
+    assert hud.fit_inside((590.0, -22.0), (100.0, 20.0), _WINDOW) == (600.0 - hud.MARGIN - 100.0, hud.MARGIN)
+    assert hud.fit_inside((100.0, 100.0), (100.0, 20.0), _WINDOW) == (100.0, 100.0)
+
+
+def test_a_box_wider_than_the_window_sits_at_the_margin() -> None:
+    assert hud.fit_inside((50.0, 50.0), (700.0, 20.0), _WINDOW) == (hud.MARGIN, 50.0)
+
+
+def test_a_caption_given_the_window_is_drawn_inside_it() -> None:
+    from nuiitivet.rendering.skia.skia_module import get_skia
+
+    skia = get_skia(raise_if_missing=False)
+    if skia is None:
+        pytest.skip("skia is needed to measure the caption")
+    font, typeface = hud.hud_font(skia)
+    boxes: list[tuple[float, float, float, float]] = []
+
+    class _Recording(_Canvas):
+        def drawRoundRect(self, rect: Any, *_args: Any) -> None:
+            boxes.append((rect.left(), rect.top(), rect.width(), rect.height()))
+
+    hud.paint_caption(skia, _Recording(), "Text  |  app.py:42", font, typeface, 590.0, -22.0, _WINDOW)
+
+    ((x, y, w, h),) = boxes
+    assert x >= hud.MARGIN and y == hud.MARGIN and x + w <= _WINDOW[0] - hud.MARGIN

@@ -68,3 +68,52 @@ def test_a_paste_keeps_line_breaks_normalized(monkeypatch) -> None:
     field.key("v", 0)
 
     assert field.text == "a\nb"
+
+
+# --- where the field hangs ------------------------------------------------------
+
+
+def test_a_slot_opens_on_the_right_when_the_least_box_fits_there() -> None:
+    slot = inline_field.Slot.beside((100.0, 50.0), (180.0, 24.0), 14.0, (600.0, 400.0))
+
+    assert slot.side == "right"
+    assert slot.room == 600.0 - 12.0 - 100.0 - 14.0
+    assert slot.place((180.0, 24.0), (600.0, 400.0)) == (114.0, 50.0)
+
+
+def test_a_slot_near_the_right_edge_opens_on_the_left_with_that_sides_room() -> None:
+    slot = inline_field.Slot.beside((500.0, 50.0), (180.0, 24.0), 14.0, (600.0, 400.0))
+
+    assert slot.side == "left"
+    assert slot.room == 500.0 - 14.0 - 12.0
+    assert slot.place((180.0, 24.0), (600.0, 400.0)) == (500.0 - 14.0 - 180.0, 50.0)
+
+
+def test_the_room_never_falls_under_the_least_width() -> None:
+    slot = inline_field.Slot.beside((20.0, 50.0), (180.0, 24.0), 14.0, (100.0, 400.0))
+
+    assert slot.room == 180.0
+
+
+def test_a_box_is_pushed_inside_the_margins() -> None:
+    slot = inline_field.Slot.beside((100.0, 390.0), (180.0, 24.0), 14.0, (600.0, 400.0))
+
+    assert slot.place((180.0, 72.0), (600.0, 400.0)) == (114.0, 400.0 - 12.0 - 72.0)
+
+
+def test_a_slot_over_a_widget_extends_right_from_its_left_edge() -> None:
+    slot = inline_field.Slot.over((250.0, 30.0, 100.0, 40.0), (300.0, 200.0))
+
+    assert slot.side == "right" and slot.least == (100.0, 40.0)
+    assert slot.room == 100.0, "the widget is wider than the room left, so the least width wins"
+    assert slot.place((100.0, 40.0), (300.0, 200.0)) == (300.0 - 12.0 - 100.0, 30.0)
+
+
+def test_up_and_down_walk_the_wrapped_lines(monkeypatch) -> None:
+    _monospace(monkeypatch)
+    field = InlineField.open("ab cd ef", wrap=50.0)
+    field.value = field.value.copy_with(selection=TextRange(0, 0))
+
+    field.key("down", 0)
+
+    assert field.value.selection == TextRange(6, 6), "the second line starts where the first wrapped"

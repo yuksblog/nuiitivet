@@ -37,7 +37,7 @@ from nuiitivet.widgets.text_editing import TextEditingValue
 from . import align, landing, reorder
 from .gesture import accel_held, child_toward, chord_held, invalidate, parent_of, pick, travelled, weak
 from .hud import SEPARATOR, Placement
-from .inline_field import InlineField
+from .inline_field import InlineField, Slot
 from .snapshot import Path, path_of, widgets_by_path
 from .source import Frame, construction_frame, site_owner, widgets_built_at
 from .source_edit import (
@@ -105,11 +105,12 @@ class Ghost:
 class TextEditor:
     """The inline field over a widget's text, for the overlay to draw.
 
-    ``value`` carries the text, the selection whose end is the caret, and the
-    input method's uncommitted text as the composing range.
+    Attributes:
+        slot: Where the field hangs: over the widget, with the room to the window's edge fixed when it opened.
+        value: The text, the selection whose end is the caret, and the input method's uncommitted text.
     """
 
-    rect: Rect
+    slot: Slot
     value: TextEditingValue
 
 
@@ -117,6 +118,7 @@ class TextEditor:
 class _Editing:
     node: Callable[[], Any]
     field: InlineField
+    slot: Slot
 
 
 @dataclass
@@ -284,7 +286,7 @@ class LayoutEditMode:
         rect = global_visual_rect(node) if node is not None else None
         if editing is None or rect is None:
             return None
-        return TextEditor(rect, editing.field.value)
+        return TextEditor(editing.slot.moved((rect[0], rect[1])), editing.field.value)
 
     @property
     def exit(self) -> str:
@@ -1193,7 +1195,10 @@ class LayoutEditMode:
             invalidate(app)
             return
         value, _source = found
-        self._editing = _Editing(weak(node) or (lambda: None), InlineField.open(value))
+        rect = global_visual_rect(node) or (0.0, 0.0, 0.0, 0.0)
+        window = (float(getattr(app, "width", 0) or 0), float(getattr(app, "height", 0) or 0))
+        slot = Slot.over(rect, window)
+        self._editing = _Editing(weak(node) or (lambda: None), InlineField.open(value, wrap=slot.wrap), slot)
         invalidate(app)
 
     def _edit_key(self, app: Any, key: str, modifier_keys: int) -> None:

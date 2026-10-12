@@ -83,6 +83,23 @@ class Placement:
         return _near(pointer, (x, y), (w, h), _RETURN if self.away else _DODGE) != self.away
 
 
+def fit_inside(at: Point, box: Size, window: Size) -> Point:
+    """``at`` moved the least distance that puts a ``box`` there inside the window's margins.
+
+    A box wider or taller than the window sits at the top-left margin.
+    """
+    x = min(max(MARGIN, at[0]), max(MARGIN, window[0] - MARGIN - box[0]))
+    y = min(max(MARGIN, at[1]), max(MARGIN, window[1] - MARGIN - box[1]))
+    return (x, y)
+
+
+def caption_size(text: str, typeface: Any) -> Size:
+    """The box ``paint_caption`` draws for ``text``."""
+    from nuiitivet.rendering.skia.font import measure_text_width
+
+    return (measure_text_width(typeface, FONT_SIZE, text) + _PAD * 2, _LINE_HEIGHT)
+
+
 def _near(pointer: Point, origin: Point, box: Size, margin: float) -> bool:
     px, py = pointer
     x, y = origin
@@ -171,17 +188,31 @@ def paint_hud(
             canvas.drawTextBlob(blob, x + _PAD, y + 2.0 + (index + 1) * _LINE_HEIGHT - 6.0, ink)
 
 
-def paint_caption(skia: Any, canvas: Any, text: str, font: Any, typeface: Any, x: float, y: float) -> None:
-    """A one-line caption in a dark rounded box with its top-left at ``(x, y)``."""
+def paint_caption(
+    skia: Any,
+    canvas: Any,
+    text: str,
+    font: Any,
+    typeface: Any,
+    x: float,
+    y: float,
+    window: Optional[Size] = None,
+) -> None:
+    """A one-line caption in a dark rounded box with its top-left at ``(x, y)``.
+
+    Given the ``window``, the box is pushed inside its margins first.
+    """
     if font is None:
         return
-    from nuiitivet.rendering.skia.font import make_text_blob, measure_text_width
+    from nuiitivet.rendering.skia.font import make_text_blob
 
     blob = make_text_blob(text, font)
     if blob is None:
         return
-    text_w = measure_text_width(typeface, FONT_SIZE, text)
-    _paint_box(skia, canvas, x, y, (text_w + _PAD * 2, _LINE_HEIGHT))
+    box = caption_size(text, typeface)
+    if window is not None:
+        x, y = fit_inside((x, y), box, window)
+    _paint_box(skia, canvas, x, y, box)
     ink = skia.Paint(AntiAlias=True)
     ink.setColor(color(skia, CAPTION_INK, 1.0))
     canvas.drawTextBlob(blob, x + _PAD, y + _LINE_HEIGHT - 6.0, ink)
@@ -201,7 +232,9 @@ __all__ = [
     "MARGIN",
     "SEPARATOR",
     "Placement",
+    "caption_size",
     "color",
+    "fit_inside",
     "hud_font",
     "paint_caption",
     "paint_hud",

@@ -402,9 +402,111 @@ def test_the_open_field_paints_beside_the_badge_in_amber(
 
     so.paint_comments(app, _Canvas(), 300, 200)
 
-    ((_skia, _canvas, _app, rect, value, accent, _font, _typeface),) = painted
-    assert rect[0] > so.BADGE_RADIUS and value is mode.writing.field.value
-    assert accent == so._ACCENT
+    ((_skia, _canvas, _app, slot, value, accent, _font, _typeface, window),) = painted
+    assert slot.side == "right" and slot.gap > so.BADGE_RADIUS and value is mode.writing.field.value
+    assert accent == so._ACCENT and window == (300.0, 200.0)
+
+
+# --- the field stays inside the window ----------------------------------------
+
+
+def _field_rects(monkeypatch: pytest.MonkeyPatch) -> list[tuple[float, float, float, float]]:
+    """Run the real ``paint_field`` and keep the rect it took, frame by frame."""
+    rects: list[tuple[float, float, float, float]] = []
+    real = so.paint_field
+
+    def spy(*args: Any, **kwargs: Any) -> Any:
+        rect = real(*args, **kwargs)
+        rects.append(rect)
+        return rect
+
+    monkeypatch.setattr(so, "paint_field", spy)
+    return rects
+
+
+def _inside(rect: tuple[float, float, float, float], window: tuple[float, float]) -> bool:
+    x, y, w, h = rect
+    return x >= 0 and y >= 0 and x + w <= window[0] and y + h <= window[1]
+
+
+def _open_field_on_a_region(
+    app: _App, mode: CommentMode, press: tuple[float, float], release: tuple[float, float]
+) -> None:
+    mode.on_mouse_press(app, *press)
+    mode.on_mouse_release(app, *release)
+    mode.on_key_press(app, "enter", 0)
+    assert mode.writing is not None
+
+
+def test_a_field_on_a_mark_at_the_right_edge_opens_on_the_badges_left(
+    marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app, mode = marking
+    rects = _field_rects(monkeypatch)
+    _open_field_on_a_region(app, mode, (280.0, 20.0), (295.0, 60.0))
+
+    so.paint_comments(app, _Canvas(), 300, 200)
+
+    assert mode.writing is not None and mode.writing.slot.side == "left"
+    (rect,) = rects
+    assert _inside(rect, (300.0, 200.0)) and rect[0] + rect[2] < 280.0
+
+
+def test_typing_past_the_room_wraps_and_keeps_the_side(
+    marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app, mode = marking
+    rects = _field_rects(monkeypatch)
+    _open_field_on_a_region(app, mode, (40.0, 20.0), (60.0, 60.0))
+    assert mode.writing is not None and mode.writing.slot.side == "right"
+
+    for _ in range(12):
+        assert mode.on_text(app, "wider than the room ") is True
+        so.paint_comments(app, _Canvas(), 300, 200)
+
+    assert all(_inside(rect, (300.0, 200.0)) for rect in rects)
+    assert rects[-1][3] > rects[0][3], "the box grew downward, not sideways"
+    assert mode.writing.slot.side == "right"
+
+
+def test_a_field_at_the_bottom_edge_moves_up_as_its_lines_grow(
+    marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app, mode = marking
+    rects = _field_rects(monkeypatch)
+    _open_field_on_a_region(app, mode, (100.0, 185.0), (120.0, 198.0))
+
+    for _ in range(6):
+        mode.on_key_press(app, "enter", MOD_SHIFT)
+        so.paint_comments(app, _Canvas(), 300, 200)
+
+    assert all(_inside(rect, (300.0, 200.0)) for rect in rects)
+    assert rects[-1][1] < rects[0][1], "the box moved up to stay inside"
+
+
+def test_the_caption_beside_a_mark_at_the_right_edge_stays_inside(
+    marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from nuiitivet.dev.hud import caption_size, hud_font
+    from nuiitivet.rendering.skia.skia_module import get_skia
+
+    app, mode = marking
+    placed: list[tuple[str, float, float]] = []
+
+    def fake(_skia: Any, _canvas: Any, text: str, _font: Any, _typeface: Any, x: float, y: float, *_a: Any) -> None:
+        placed.append((text, x, y))
+
+    monkeypatch.setattr(so, "paint_caption", fake)
+    mode.on_mouse_press(app, 280.0, 20.0)
+    mode.on_mouse_release(app, 295.0, 60.0)
+    mode.comments.set_instruction(2, "move this to the left")
+    _leave(app, mode)
+
+    so.paint_comments(app, _Canvas(), 300, 200)
+
+    _font, typeface = hud_font(get_skia())
+    ((text, x, _y),) = [entry for entry in placed if entry[0].startswith("move")]
+    assert x + caption_size(text, typeface)[0] <= 300.0 - so.BADGE_RADIUS, "flipped to the badge's left"
 
 
 def test_the_prompt_shows_after_a_commit_until_the_comments_are_served(

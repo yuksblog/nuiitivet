@@ -27,9 +27,9 @@ from typing import Any, Optional
 
 from nuiitivet._interaction.perception import visible_rect
 
-from .comment_mode import BADGE_RADIUS
-from .hud import FONT_SIZE, SEPARATOR, color, hud_font, paint_caption, paint_hud
-from .inline_field import paint_field
+from .comment_mode import BADGE_RADIUS, BESIDE_GAP, beside_anchor
+from .hud import FONT_SIZE, SEPARATOR, caption_size, color, hud_font, paint_caption, paint_hud
+from .inline_field import Slot, paint_field
 
 logger = logging.getLogger(__name__)
 
@@ -51,8 +51,6 @@ _BRACKET_WIDTH = 2.5
 PROMPT = "in chat: /nuiitivet-see-comments" + SEPARATOR + "see_comments"
 # Characters of an instruction shown beside its badge before it is cut short.
 _CAPTION_CHARS = 32
-# The field's least size beside a badge; it grows with the text.
-_FIELD_SIZE = (180.0, 24.0)
 
 
 def _enabled() -> bool:
@@ -92,19 +90,20 @@ def paint_comments(app: Any, canvas: Any, width: int, height: int) -> None:
             return
 
         font, typeface = hud_font(skia)
+        window = (float(width), float(height))
         writing = mode.writing if active and mode is not None else None
-        badges = _paint_marks(skia, canvas, app, comments, marks, active, writing, font, typeface)
+        badges = _paint_marks(skia, canvas, app, comments, marks, active, writing, font, typeface, window)
 
         if active and mode is not None and comments is not None:
             if mode.band is not None:
                 _paint_band(skia, canvas, mode.band)
-            _paint_hover(skia, canvas, mode, font, typeface, comments.members(), skip=jump_target)
+            _paint_hover(skia, canvas, mode, font, typeface, comments.members(), window, skip=jump_target)
             _paint_hud(skia, canvas, mode, marks, jump_notice, font, typeface, width, height)
-            _paint_open_field(skia, canvas, app, writing, badges, font, typeface)
+            _paint_open_field(skia, canvas, app, writing, badges, font, typeface, window)
         # Only in a window that shows a mark.
         prompt = PROMPT if unread and badges else None
         if jump_target is not None:
-            _paint_jump(skia, canvas, jump_target, jump_notice, font, typeface)
+            _paint_jump(skia, canvas, jump_target, jump_notice, font, typeface, window)
         elif alone and (prompt or jump_notice):
             _paint_home(skia, canvas, [prompt, jump_notice], font, typeface, width, height)
     except Exception:
@@ -121,6 +120,7 @@ def _paint_marks(
     writing: Any,
     font: Any,
     typeface: Any,
+    window: tuple[float, float],
 ) -> dict[int, tuple[float, float]]:
     """Paint every mark this window owns; return where each one's badge landed, by number."""
     from nuiitivet.widgeting.context_lookup import find_window
@@ -148,17 +148,27 @@ def _paint_marks(
         badges[index] = (rect[0], rect[1])
         instruction = comments.instruction(index) if comments is not None else None
         if instruction and (writing is None or writing.index != index):
-            paint_caption(skia, canvas, _shortened(instruction), font, typeface, *_beside(rect))
+            caption = _shortened(instruction)
+            box = caption_size(caption, typeface)
+            at = Slot.beside(beside_anchor(rect), box, BESIDE_GAP, window).place(box, window)
+            paint_caption(skia, canvas, caption, font, typeface, *at)
     return badges
 
 
 def _paint_open_field(
-    skia: Any, canvas: Any, app: Any, writing: Any, badges: dict[int, tuple[float, float]], font: Any, typeface: Any
+    skia: Any,
+    canvas: Any,
+    app: Any,
+    writing: Any,
+    badges: dict[int, tuple[float, float]],
+    font: Any,
+    typeface: Any,
+    window: tuple[float, float],
 ) -> None:
     """The field open on a mark, beside its badge and above everything else the mode paints."""
     if writing is not None and writing.index in badges:
-        x, y = _beside(badges[writing.index])
-        paint_field(skia, canvas, app, (x, y, *_FIELD_SIZE), writing.field.value, _ACCENT, font, typeface)
+        slot = writing.slot.moved(beside_anchor(badges[writing.index]))
+        paint_field(skia, canvas, app, slot, writing.field.value, _ACCENT, font, typeface, window)
 
 
 def _paint_home(
@@ -249,6 +259,7 @@ def _paint_hover(
     font: Any,
     typeface: Any,
     members: list[Any],
+    window: tuple[float, float],
     *,
     skip: Any = None,
 ) -> None:
@@ -267,12 +278,7 @@ def _paint_hover(
     wash.setColor(color(skia, _ACCENT, 0.16))
     canvas.drawRect(skia.Rect.MakeXYWH(x, y, w, h), wash)
     paint_brackets(skia, canvas, rect, 0.7)
-    paint_caption(skia, canvas, describe_node(candidate), font, typeface, x, max(0.0, y - 22.0))
-
-
-def _beside(at: tuple[float, ...]) -> tuple[float, float]:
-    """Where a caption or field sits next to the badge on ``at``'s corner."""
-    return (at[0] + BADGE_RADIUS + 4.0, at[1] - 10.0)
+    paint_caption(skia, canvas, describe_node(candidate), font, typeface, x, y - 22.0, window)
 
 
 def _shortened(instruction: str) -> str:
@@ -288,6 +294,7 @@ def _paint_jump(
     notice: Optional[str],
     font: Any,
     typeface: Any,
+    window: tuple[float, float],
 ) -> None:
     """Bracket the widget a chorded click would open, and say what the last jump did.
 
@@ -299,7 +306,7 @@ def _paint_jump(
     x, y, _w, _h = rect
     paint_brackets(skia, canvas, rect, 0.8, _JUMP_ACCENT)
     text = notice if notice else describe_node(target)
-    paint_caption(skia, canvas, text, font, typeface, x, max(0.0, y - 22.0))
+    paint_caption(skia, canvas, text, font, typeface, x, y - 22.0, window)
 
 
 def describe_node(node: Any) -> str:

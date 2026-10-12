@@ -65,8 +65,9 @@ def paint_layout_edit(app: Any, canvas: Any, width: int, height: int) -> None:
         jump = getattr(app, "_source_jump", None)
         jump_target = jump.hovered if jump is not None else None
         jump_notice = jump.notice if jump is not None else None
+        window = (float(width), float(height))
         if active and not mode.dragging and jump_target is None:
-            _paint_candidate(skia, canvas, mode, font, typeface)
+            _paint_candidate(skia, canvas, mode, font, typeface, window)
         for ghost in ghosts:
             if ghost.shape == "line":
                 _paint_insertion_line(skia, canvas, ghost.rect, ghost.caption, font, typeface)
@@ -81,7 +82,7 @@ def paint_layout_edit(app: Any, canvas: Any, width: int, height: int) -> None:
             _paint_layers(skia, canvas, layers, font, typeface, width)
         editor = mode.editor if active else None
         if editor is not None:
-            paint_field(skia, canvas, app, editor.rect, editor.value, _ACCENT, font, typeface)
+            paint_field(skia, canvas, app, editor.slot, editor.value, _ACCENT, font, typeface, window)
         if active:
             _paint_hud(skia, canvas, mode, jump_notice, font, typeface, width, height)
         elif notice:
@@ -102,7 +103,9 @@ def paint_layout_edit(app: Any, canvas: Any, width: int, height: int) -> None:
         logger.debug("layout_edit_overlay: paint failed", exc_info=True)
 
 
-def _paint_candidate(skia: Any, canvas: Any, mode: Any, font: Any, typeface: Any) -> None:
+def _paint_candidate(
+    skia: Any, canvas: Any, mode: Any, font: Any, typeface: Any, window: tuple[float, float]
+) -> None:
     """Bracket the widget a corner drag would resize, and name it.
 
     The brackets are the grab zones: a press on one starts the drag.
@@ -118,7 +121,7 @@ def _paint_candidate(skia: Any, canvas: Any, mode: Any, font: Any, typeface: Any
     wash.setColor(color(skia, _ACCENT, 0.12 if candidate is mode.selected else 0.08))
     canvas.drawRect(skia.Rect.MakeXYWH(x, y, w, h), wash)
     paint_brackets(skia, canvas, rect, 1.0 if candidate is mode.selected else 0.8, _ACCENT)
-    paint_caption(skia, canvas, describe_node(candidate), font, typeface, x, max(0.0, y - 22.0))
+    paint_caption(skia, canvas, describe_node(candidate), font, typeface, x, y - 22.0, window)
 
 
 def _paint_ghost(skia: Any, canvas: Any, rect: tuple[float, ...], caption: str, font: Any, typeface: Any) -> None:
