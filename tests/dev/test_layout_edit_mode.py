@@ -1180,72 +1180,24 @@ def test_an_undo_across_two_files_is_refused_when_either_moved(app_file: Path) -
         s.close()
 
 
-# --- the badge's hints ----------------------------------------------------------
+# --- the help and the notice box ----------------------------------------------
 
 
-def test_before_the_pointer_finds_a_widget_the_only_key_is_the_way_out(session: _Session) -> None:
-    assert session.mode.candidate is None
-    assert session.mode.exit == "Esc leave"
-    assert session.mode.hints == ()
+def test_h_shows_the_help_while_it_is_held(session: _Session) -> None:
+    assert session.mode.on_key_press(session.app, "h", 0) is True
+    assert session.mode.help
+
+    assert session.mode.on_key_release(session.app, "h", 0) is True
+
+    assert not session.mode.help and session.mode.active
 
 
-def test_hovering_teaches_the_drags_the_click_and_the_source_jump(session: _Session) -> None:
-    session.hover(50, 20)
+def test_h_types_into_an_open_field_instead(session: _Session) -> None:
+    _editing(session)
 
-    assert session.mode.hints == (
-        "drag a corner resize",
-        "drag reorder / move / align",
-        "click select",
-        "Ctrl+Shift+Click source",
-    )
+    session.mode.on_key_press(session.app, "h", 0)
 
-
-def test_a_selection_adds_the_walk_and_the_delete(session: _Session) -> None:
-    session.hover(50, 20)
-    session.mode.on_mouse_press(session.app, 50, 20)
-    session.mode.on_mouse_release(session.app, 50, 20)
-
-    assert session.mode.hints[-3:] == ("W/S parent/child", "Del/Backspace delete", "Enter edit text")
-
-
-def test_a_corner_drag_offers_only_the_snap_and_the_way_back(session: _Session) -> None:
-    session.hover(50, 20)
-    session.mode.on_mouse_press(session.app, 100, 40)
-    session.mode.on_mouse_motion(session.app, 160, 40)
-
-    assert session.mode.exit == "Esc cancel"
-    assert session.mode.hints == ("WASD nudge", "Alt no snap")
-    session.mode.on_key_press(session.app, "escape", 0)
-
-
-def test_a_body_drag_offers_only_the_way_back(app_file: Path) -> None:
-    s = _Session(app_file, "build_list")
-    try:
-        s.hover(50, 20)
-        s.mode.on_mouse_press(s.app, 50, 20)
-        s.mode.on_mouse_motion(s.app, 50, 70)
-
-        assert s.mode.exit == "Esc cancel"
-        assert s.mode.hints == ()
-        s.mode.on_key_press(s.app, "escape", 0)
-    finally:
-        s.close()
-
-
-def test_undo_is_offered_once_there_is_an_edit_to_undo(session: _Session) -> None:
-    session.hover(250, 150)
-    assert "Ctrl+Z undo" not in session.mode.hints
-    session.hover(50, 20)
-    session.drag_corner((100, 40), (160, 40))
-
-    assert session.mode.hints[-1] == "Ctrl+Z undo"
-
-    session.mode.on_key_press(session.app, "z", MOD_CTRL)
-    assert "Ctrl+Z undo" not in session.mode.hints
-    assert session.mode.hints[-1] == "Ctrl+Shift+Z redo"
-
-    session.mode.on_key_press(session.app, "z", _CHORD)
-    assert "Ctrl+Shift+Z redo" not in session.mode.hints
+    assert not session.mode.help
 
 
 def test_the_pointer_nearing_the_badge_asks_for_a_frame_even_over_the_same_candidate(session: _Session) -> None:
@@ -1260,33 +1212,6 @@ def test_the_pointer_nearing_the_badge_asks_for_a_frame_even_over_the_same_candi
     session.mode.placement.place((200.0, 44.0), (300.0, 200.0), session.mode.pointer)
     session.hover(151, 150)
     assert session.app.invalidated == before + 1, "not one per motion"
-
-
-def test_every_key_the_mode_binds_is_taught_in_some_state(session: _Session) -> None:
-    """The badge is the only place a human can learn these. The layer keys are
-    the one exception: they are taught beside the layer list they act on."""
-    session.hover(250, 150)
-    taught = {session.mode.exit, *session.mode.hints}
-    session.hover(50, 20)
-    taught |= {session.mode.exit, *session.mode.hints}
-    session.mode.on_mouse_press(session.app, 50, 20)
-    session.mode.on_mouse_release(session.app, 50, 20)
-    taught |= {session.mode.exit, *session.mode.hints}
-    session.mode.on_mouse_press(session.app, 100, 40)
-    session.mode.on_mouse_motion(session.app, 160, 40)
-    taught |= {session.mode.exit, *session.mode.hints}
-    session.mode.on_mouse_release(session.app, 160, 40)
-    taught |= {session.mode.exit, *session.mode.hints}
-
-    session.mode.on_key_press(session.app, "z", MOD_CTRL)
-    taught |= {session.mode.exit, *session.mode.hints}
-
-    session.mode.on_key_press(session.app, "enter", 0)
-    taught |= {session.mode.exit, *session.mode.hints}
-
-    keys = ("Esc", "Alt", "WASD", "Ctrl+Z", "Ctrl+Shift+Z", "Del", "W/S", "click", "drag a corner", "drag reorder")
-    for key in (*keys, "Ctrl+Shift+Click", "Enter edit", "Enter write"):
-        assert any(key in hint for hint in taught), key
 
 
 # --- the nudge ------------------------------------------------------------------
@@ -1531,7 +1456,6 @@ def test_enter_opens_a_field_with_the_widgets_text(session: _Session) -> None:
     editor = session.mode.editor
     assert editor is not None and editor.value == TextEditingValue("AAA", TextRange(3, 3))
     assert editor.slot.anchor == (0.0, 0.0) and editor.slot.least == (100.0, 40.0)
-    assert session.mode.exit == "Esc cancel"
 
 
 def test_the_field_over_a_widget_has_the_room_to_the_windows_edge(session: _Session) -> None:
@@ -1542,7 +1466,6 @@ def test_the_field_over_a_widget_has_the_room_to_the_windows_edge(session: _Sess
     assert editor is not None and editor.slot.side == "right"
     assert editor.slot.room == 300.0 - 12.0, "from the widget's left edge to the window's margin"
     assert editor.slot.wrap is not None and editor.slot.wrap < editor.slot.room
-    assert session.mode.hints == ("Enter write", "Shift+←/→ select", "Ctrl+A/C/X/V")
 
 
 def test_typing_and_enter_rewrite_the_literal(session: _Session) -> None:

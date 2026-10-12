@@ -28,6 +28,97 @@ class _Canvas:
         return _record
 
 
+# --- the splash and the sheet -----------------------------------------------
+
+
+class _Clock:
+    def __init__(self) -> None:
+        self.armed: list[tuple[Any, float]] = []
+
+    def schedule_once(self, fn: Any, delay: float) -> None:
+        self.armed.append((fn, delay))
+
+
+class _App:
+    def __init__(self) -> None:
+        self.frames = 0
+
+    def invalidate(self, immediate: bool = False, content: bool = True) -> None:
+        assert content is False, "the glass, not the tree"
+        self.frames += 1
+
+
+def _still(monkeypatch: pytest.MonkeyPatch, since: float) -> None:
+    import time
+
+    monkeypatch.setattr(hud, "_now", lambda: time.monotonic() + since)
+
+
+def test_the_splash_shows_for_a_moment_after_entering_and_its_end_is_a_frame(monkeypatch: pytest.MonkeyPatch) -> None:
+    clock = _Clock()
+    monkeypatch.setattr(hud.runtime, "get_clock", lambda: clock)
+    app = _App()
+    splash = hud.Splash()
+    assert splash.text is None
+
+    splash.show(app, "COMMENT MODE")
+
+    assert splash.text == "COMMENT MODE"
+    ((hide, delay),) = clock.armed
+    assert delay == hud.SPLASH
+
+    hide(0.0)
+
+    assert splash.text is None, "the frame ends it, whatever the clock says"
+    assert app.frames == 1, "the frame that takes the splash away"
+
+
+def test_an_older_frame_does_not_end_a_newer_splash(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Leaving within the entry splash's time arms a second frame; the first must not cut the second short."""
+    clock = _Clock()
+    monkeypatch.setattr(hud.runtime, "get_clock", lambda: clock)
+    app = _App()
+    splash = hud.Splash()
+    splash.show(app, "COMMENT MODE")
+    splash.show(app, "COMMENT MODE off")
+    first, second = (fn for fn, _delay in clock.armed)
+
+    first(0.0)
+    assert splash.text == "COMMENT MODE off"
+
+    second(0.0)
+    assert splash.text is None
+
+
+def test_the_splash_is_drawn_at_the_windows_centre(monkeypatch: pytest.MonkeyPatch) -> None:
+    from nuiitivet.rendering.skia.skia_module import get_skia
+
+    skia = get_skia()
+    font, typeface = hud.hud_font(skia)
+    placed: list[tuple[float, float]] = []
+    monkeypatch.setattr(hud, "paint_caption", lambda _s, _c, _t, _f, _tf, x, y, *a: placed.append((x, y)))
+
+    hud.paint_splash(skia, _Canvas(), "COMMENT MODE", font, typeface, 600.0, 400.0)
+
+    ((x, y),) = placed
+    w, h = hud.caption_size("COMMENT MODE", typeface)
+    assert x == pytest.approx((600.0 - w) / 2.0) and y == pytest.approx((400.0 - h) / 2.0)
+
+
+def test_the_help_sheet_lists_every_row_in_one_box() -> None:
+    from nuiitivet.rendering.skia.skia_module import get_skia
+
+    skia = get_skia()
+    font, typeface = hud.hud_font(skia)
+    canvas = _Canvas()
+    rows = (("W / S", "parent / child"), ("Esc", "leave"))
+
+    hud.paint_sheet(skia, canvas, "COMMENT MODE", rows, font, typeface, 600.0, 400.0)
+
+    assert canvas.calls.count("drawRoundRect") == 1
+    assert canvas.calls.count("drawTextBlob") == 1 + 2 * len(rows), "the title, then a key and a what per row"
+
+
 # --- placement --------------------------------------------------------------
 
 
@@ -109,7 +200,7 @@ def _skia() -> Any:
     return skia
 
 
-def test_the_lines_share_one_box() -> None:
+def test_the_notices_share_one_box() -> None:
     skia = _skia()
     font, typeface = hud.hud_font(skia)
     canvas = _Canvas()
@@ -117,9 +208,7 @@ def test_the_lines_share_one_box() -> None:
     hud.paint_hud(
         skia,
         canvas,
-        mode_line="SELECT",
-        hints=("Esc leave",),
-        notices=[None, "opening app.py:12"],
+        notices=[None, "width is bound to a name", "opening app.py:12"],
         placement=hud.Placement(),
         pointer=None,
         font=font,
@@ -129,7 +218,7 @@ def test_the_lines_share_one_box() -> None:
     )
 
     assert canvas.calls.count("drawRoundRect") == 1
-    assert canvas.calls.count("drawTextBlob") == 3, "the mode line, the hint line, and the one real notice"
+    assert canvas.calls.count("drawTextBlob") == 2, "the two real notices"
 
 
 def test_nothing_to_say_draws_nothing() -> None:
@@ -140,8 +229,6 @@ def test_nothing_to_say_draws_nothing() -> None:
     hud.paint_hud(
         skia,
         canvas,
-        mode_line=None,
-        hints=(),
         notices=[None],
         placement=None,
         pointer=None,
@@ -152,21 +239,6 @@ def test_nothing_to_say_draws_nothing() -> None:
     )
 
     assert canvas.calls == []
-
-
-def test_hints_wrap_instead_of_running_off_a_narrow_window() -> None:
-    """A dev app is often a few hundred pixels wide; a hint off the edge teaches nothing."""
-    from nuiitivet.rendering.skia.font import measure_text_width
-
-    _font, typeface = hud.hud_font(_skia())
-    parts = ("drag a corner resize", "drag reorder / move / align", "click select", "Ctrl+Shift+Click source")
-    limit = 200.0
-
-    lines = hud.wrap_hints(parts, typeface, limit)
-
-    assert len(lines) > 1
-    for line in lines:
-        assert measure_text_width(typeface, hud.FONT_SIZE, line) <= limit
 
 
 # --- captions inside the window -----------------------------------------------
@@ -198,3 +270,17 @@ def test_a_caption_given_the_window_is_drawn_inside_it() -> None:
 
     ((x, y, w, h),) = boxes
     assert x >= hud.MARGIN and y == hud.MARGIN and x + w <= _WINDOW[0] - hud.MARGIN
+
+
+def test_a_caption_with_line_breaks_is_as_wide_as_its_longest_line_and_a_row_per_line() -> None:
+    from nuiitivet.rendering.skia.skia_module import get_skia
+
+    skia = get_skia(raise_if_missing=False)
+    if skia is None:
+        pytest.skip("skia is needed to measure the caption")
+    _font, typeface = hud.hud_font(skia)
+
+    one = hud.caption_size("a long first line", typeface)
+    two = hud.caption_size("a long first line\nshort", typeface)
+
+    assert two[0] == one[0] and two[1] == one[1] * 2

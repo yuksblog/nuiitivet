@@ -1,12 +1,11 @@
-"""The human's comments: the widgets and areas they marked, and what they wrote on each, for the agent to pull.
+"""The human's comments: the marked widgets and areas, with what was written on each, for the agent to pull.
 
-A mark is a node (a widget is the subject) or a region (an area is, whatever
-occupies it), numbered in one sequence; each may carry an instruction, and a
-bare number is a whole comment. Members are held weakly, matched on object
-identity, and re-resolved by structural path after a hot reload, with misses
-counted in ``lost``. A region stores only its rect: what it covers is derived
-on every read. Written on the UI thread and read on HTTP worker threads, so the
-buffer takes a lock.
+A mark is a widget or a region, numbered in one sequence, and may carry an
+instruction; a bare number is a whole comment. Widgets are held weakly,
+matched on object identity, and re-resolved by structural path after a hot
+reload, with misses counted in ``lost``. A region stores only its rect; what
+it covers is derived on every read. Written on the UI thread and read on HTTP
+worker threads, so the buffer takes a lock.
 """
 
 from __future__ import annotations
@@ -167,8 +166,8 @@ class Comments:
 
     # --- marking ----------------------------------------------------------
 
-    def toggle(self, node: Any, *, root: Any = None) -> bool:
-        """Mark ``node``, or remove its mark. Returns ``True`` if it was added.
+    def add(self, node: Any, *, root: Any = None) -> bool:
+        """Mark ``node``. Returns ``True`` if it was added; ``False`` when it was marked already.
 
         Matched on object identity. Without ``root`` the member has no structural
         path and is ``lost`` at the next reload.
@@ -176,12 +175,8 @@ class Comments:
         if node is None:
             return False
         with self._lock:
-            for index, mark in enumerate(self._marks):
-                if isinstance(mark, _Member) and mark.widget() is node:
-                    self._checkpoint()
-                    del self._marks[index]
-                    self._bump()
-                    return False
+            if any(isinstance(mark, _Member) and mark.widget() is node for mark in self._marks):
+                return False
             added = self._make_member(node, root)
             if added is None:
                 return False
@@ -189,6 +184,25 @@ class Comments:
             self._marks.append(added)
             self._bump()
             return True
+
+    def remove(self, index: int) -> bool:
+        """Drop the mark numbered ``index``. Returns ``True`` if there was one."""
+        with self._lock:
+            for position, mark in self._positions():
+                if position == index:
+                    self._checkpoint()
+                    self._marks.remove(mark)
+                    self._bump()
+                    return True
+            return False
+
+    def index_of(self, node: Any) -> Optional[int]:
+        """The number of the mark on ``node``, or ``None`` when it carries none."""
+        with self._lock:
+            for position, mark in self._positions():
+                if isinstance(mark, _Member) and mark.widget() is node:
+                    return position
+            return None
 
     def add_region(self, rect: Rect) -> None:
         """Mark an area of the screen. A zero-area rect is ignored."""
@@ -198,28 +212,6 @@ class Comments:
         with self._lock:
             self._checkpoint()
             self._marks.append(_Region(rect=(x, y, width, height)))
-            self._bump()
-
-    def replace_last(self, node: Any, *, root: Any = None) -> None:
-        """Replace the most recently marked widget with ``node``, keeping its text.
-
-        Regions are skipped, so one drawn afterwards does not end the walk. ``root``
-        as for :meth:`toggle`.
-        """
-        if node is None:
-            return
-        with self._lock:
-            replacement = self._make_member(node, root)
-            if replacement is None:
-                return
-            self._checkpoint()
-            for index in range(len(self._marks) - 1, -1, -1):
-                current = self._marks[index]
-                if isinstance(current, _Member):
-                    self._marks[index] = replace(replacement, instruction=current.instruction)
-                    self._bump()
-                    return
-            self._marks.append(replacement)
             self._bump()
 
     def clear(self) -> None:
@@ -310,16 +302,6 @@ class Comments:
     def regions(self) -> list[Rect]:
         """Return the marked areas, in order."""
         return [mark for _index, kind, mark in self.marks() if kind == "region"]
-
-    def last(self) -> Optional[Any]:
-        """Return the most recently marked widget, skipping regions, or ``None``."""
-        with self._lock:
-            for mark in reversed(self._marks):
-                if isinstance(mark, _Member):
-                    widget = mark.widget()
-                    if widget is not None:
-                        return widget
-        return None
 
     def summary(self) -> dict[str, Any]:
         """Return the roll-up ``status`` carries.
@@ -480,8 +462,7 @@ def _region_payload(index: int, root: Any, rect: Rect, instruction: Optional[str
 
     ``container`` is the innermost node enclosing the region, with its immediate
     children; ``contents`` is the pruned subtree the box crosses, each node tagged
-    ``contained`` or ``clipped``. Both are reported: geometry cannot tell "the gap
-    between these" from "these things".
+    ``contained`` or ``clipped``.
     """
     info: dict[str, Any] = {"index": index}
     if instruction is not None:

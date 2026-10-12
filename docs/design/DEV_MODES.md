@@ -117,13 +117,19 @@ language for opposite directions would mislead:
 | teal (layout edit mode) | a change about to be made to a file |
 | rose (source jump) | a jump, not a mark; under a held chord inside comment mode, amber brackets would read as a mark about to be made |
 
-The badge is the only place a human can learn the keys, and a box that lists
-them all is noise nobody reads. A key is shown only while pressing it would
-do something, and every key appears in some state; the ways out stay on the
-first line, so the line that says the mode is on says how to get off; the
-`Stack` layer keys sit beside the layer list, where the eye is mid-drag; and
-the one box at the bottom dodges and never hides, since a badge that vanished
-would leave the mode's state in doubt, flipping sideways only when narrower
+A mode teaches its keys in one place: the sheet that lists every gesture
+while `H` is held, at the window's centre. Held rather than toggled, so there
+is nothing to close and no second key to remember. On entering, a line at the
+centre names the mode and the key `H`, and on leaving it says how the session
+ended, kept or discarded, each for as long as a tooltip stays, since the
+hands are about to move and a corner is not where the eye is. A switch from
+one mode to the other shows only the entered mode's line, since two at the
+centre would overlap. Nothing
+else lists keys: a key list on screen while the human works covers the app
+they are working on, and the mode's brackets say it is on. The `Stack` layer
+keys are the one exception, beside the layer list, where the eye is mid-drag.
+A notice, a refusal or what a reload reported, sits in one box at the
+bottom-left that dodges the pointer, flipping sideways only when narrower
 than half the window and returning on a wider margin than it left on, so it
 never flickers.
 
@@ -161,6 +167,17 @@ honours `clip_content` when hit testing and exposes the clip to the occlusion
 check, since a decorative shape laid out far larger than its parent and
 clipped to a corner is an ordinary idiom.
 
+`W` / `S` walk the hovered candidate to its parent and back, and `A` / `D`
+along its siblings, before the mark is made: a container its children cover
+has no bare pixel to click, and a row of small widgets is aimed at more
+surely from the keys than with the mouse, so the walk is how they are
+reached, and `Enter` or a click then marks what the walk chose. A mark, once
+made, never moves, so no mark is the current one and all of them are drawn
+alike, as their badges. The walk holds until the pointer travels the few
+pixels that part a click from a drag, since a hand resting on the mouse
+drifts between the key and the click; a move past that is the hand aiming
+again, and the hover takes over wherever it lands.
+
 Reporting uses the visible rect, not the visual rect. "Where is this node"
 and "what of it is on screen" are different questions, and a mark answers the
 second: the visible rect intersects the visual rect with every ancestor clip,
@@ -184,19 +201,22 @@ signal, not a failure.
 
 ### The Field
 
-Writing is offered once per new mark, and the badge is the handle after
-that: `Enter` on a mark just made opens its field, and any other `Enter`
-leaves. A second click on the marked widget already means "unmark it", and a
-region has no widget to click. The offer belongs to the mark: it ends when
-the field has been opened, the mark is gone or a newer mark takes it over,
-never on a key that does nothing here, since `Enter` must still mean what the
-badge says. The field is the one layout edit mode opens over a text literal,
-so neither mode grows a second editor; a click elsewhere keeps the text here
-and drops it there, because only there is a file behind the field. It takes
-several lines, `Shift+Enter` breaking one. The field opens on the side of the
-badge that has room for it. That side holds while the text grows, since a box
-that hopped across mid-sentence would move under the typist's eye. The caption
-beside a badge picks its side the same way.
+A new mark opens its field at once, since the instruction is what the mark
+was made for, and the mark is the handle after that: a click on its widget
+or its badge reopens the field, and `Enter` with no field open leaves. A
+click never removes a mark, since the brackets on a marked widget promise
+the same click as on any other. A press anywhere writes the field and then
+means what it would have meant, so marking several widgets in a row is one
+click each. Reading a mark is a hover on its badge, not a click, so
+rereading several marks opens no field; nothing but the number stays beside
+a mark, since a line of text on every mark covers the app it comments on.
+The field is the one layout edit mode opens over a text literal, so neither
+mode grows a second editor; there a click elsewhere drops the text, because
+only there is a file behind the field. It takes several lines, `Shift+Enter`
+breaking one. The field opens on the side of the badge that has room for it.
+That side holds while the text grows, since a box that hopped across
+mid-sentence would move under the typist's eye. The instruction shown on
+hover picks its side the same way.
 
 ### The Buffer
 
@@ -209,10 +229,9 @@ A session is undoable step by step and as a unit: every change inside a
 session is a step back, and cancel is every step at once, so a cancel scopes
 to one session and clearing is safe to reach for. Undo stops at the session's
 start, since what an earlier session kept is not this one's to take back. The
-keys are layout edit mode's, and `Backspace` is left unbound rather than
-meaning "remove a mark", because next door it deletes a widget from the
-source, and one key must not be harmless in one mode and destructive in its
-sibling.
+keys are layout edit mode's: `Delete` / `Backspace` remove the mark under
+the pointer, on its widget or on its badge, as next door they delete the
+selected widget, so one key takes away the thing the mode is about in both.
 
 Members are held weakly and keyed on object identity, because two anonymous
 siblings resolve to the same identity dict, and keying on that would make
@@ -237,10 +256,10 @@ stays content-free, and the payload is served only on an explicit request.
 mark, since reading several widgets' code in a row must not leave a mark per
 widget, and it does not latch, which is only safe because the overlay
 repaints on every state change: returning from the editor shows the badge
-that says the mode is still on. The hover caption carries `file:line` and
-the HUD lists the gesture, which is what let this be a modifier rather than a
-button; a pressable control would need hit testing inside a registry that
-has none.
+that says the mode is still on. The caption under the held chord carries
+`file:line` and the HUD lists the gesture, which is what let this be a
+modifier rather than a button; a pressable control would need hit testing
+inside a registry that has none.
 
 The editor is handed a URL (`vscode://file/path/to/app.py:171:1`) through
 the platform's standard opener, not a CLI: the line rides inside the URL, so

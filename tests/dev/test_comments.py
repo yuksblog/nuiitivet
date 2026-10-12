@@ -16,14 +16,36 @@ from nuiitivet.testing import mount
 from nuiitivet.widgets.text import TextBase as Text
 
 
-def test_toggle_adds_then_removes() -> None:
+def test_add_marks_a_node_once_and_remove_takes_it_by_number() -> None:
     node = Text("AAA")
     comments = Comments()
 
-    assert comments.toggle(node) is True
+    assert comments.add(node) is True
+    assert comments.add(node) is False, "already marked"
     assert comments.members() == [node]
-    assert comments.toggle(node) is False
+    assert comments.index_of(node) == 1
+
+    assert comments.remove(1) is True
     assert comments.members() == []
+    assert comments.index_of(node) is None
+    assert comments.remove(1) is False
+
+
+def test_remove_renumbers_the_marks_after_it_and_is_one_undo_step() -> None:
+    first, second, third = Text("A"), Text("B"), Text("C")
+    comments = Comments()
+    comments.add(first)
+    comments.add(second)
+    comments.add(third)
+    comments.set_instruction(3, "last")
+    comments.enter()
+
+    assert comments.remove(2) is True
+
+    assert comments.members() == [first, third]
+    assert comments.instruction(2) == "last", "the third mark is now the second"
+    assert comments.undo() is True
+    assert comments.members() == [first, second, third]
 
 
 def test_two_anonymous_siblings_are_marked_independently() -> None:
@@ -35,39 +57,18 @@ def test_two_anonymous_siblings_are_marked_independently() -> None:
     first, second = Text("SAME"), Text("SAME")
     comments = Comments()
 
-    comments.toggle(first)
-    comments.toggle(second)
+    comments.add(first)
+    comments.add(second)
 
     assert comments.members() == [first, second]
-
-
-def test_replace_last_refines_rather_than_appends() -> None:
-    """The ancestor walk: one mark being moved, not several being made."""
-    first, second, walked = Text("A"), Text("B"), Text("C")
-    comments = Comments()
-    comments.toggle(first)
-    comments.toggle(second)
-
-    comments.replace_last(walked)
-
-    assert comments.members() == [first, walked]
-
-
-def test_replace_last_on_an_empty_buffer_marks() -> None:
-    node = Text("A")
-    comments = Comments()
-
-    comments.replace_last(node)
-
-    assert comments.members() == [node]
 
 
 def test_undo_steps_back_through_the_session_and_redo_forward() -> None:
     first, second = Text("A"), Text("B")
     comments = Comments()
     comments.enter()
-    comments.toggle(first)
-    comments.toggle(second)
+    comments.add(first)
+    comments.add(second)
     comments.set_instruction(2, "wider")
 
     assert comments.undo() is True
@@ -84,10 +85,10 @@ def test_undo_steps_back_through_the_session_and_redo_forward() -> None:
 def test_undo_brings_back_a_mark_the_session_removed() -> None:
     first, second = Text("A"), Text("B")
     comments = Comments()
-    comments.toggle(first)
-    comments.toggle(second)
+    comments.add(first)
+    comments.add(second)
     comments.enter()
-    comments.toggle(first)
+    comments.remove(1)
     assert comments.members() == [second]
 
     comments.undo()
@@ -100,7 +101,7 @@ def test_undo_reaches_no_further_than_the_session() -> None:
     leaf = Text("A")
     comments = Comments()
     comments.enter()
-    comments.toggle(leaf)
+    comments.add(leaf)
     comments.commit()
 
     comments.enter()
@@ -113,7 +114,7 @@ def test_undo_reaches_no_further_than_the_session() -> None:
 def test_a_new_change_drops_what_could_be_redone() -> None:
     comments = Comments()
     comments.enter()
-    comments.toggle(Text("A"))
+    comments.add(Text("A"))
     comments.undo()
     assert comments.redoable is True
 
@@ -125,7 +126,7 @@ def test_a_new_change_drops_what_could_be_redone() -> None:
 def test_undo_outside_a_session_does_nothing() -> None:
     leaf = Text("A")
     comments = Comments()
-    comments.toggle(leaf)
+    comments.add(leaf)
 
     assert comments.undo() is False
     assert comments.members() == [leaf]
@@ -139,7 +140,7 @@ def test_seq_bumps_on_every_change() -> None:
 
     comments.enter()
     seen.append(comments.summary()["seq"])
-    comments.toggle(node)
+    comments.add(node)
     seen.append(comments.summary()["seq"])
     comments.commit()
     seen.append(comments.summary()["seq"])
@@ -160,7 +161,7 @@ def test_mode_latches_once() -> None:
 
 def test_summary_counts_nodes_and_regions_separately() -> None:
     comments = Comments()
-    comments.toggle(Text("A"))
+    comments.add(Text("A"))
 
     summary = comments.summary()
 
@@ -172,7 +173,7 @@ def test_a_dead_member_disappears_from_the_members_list() -> None:
     """Members are weak, so a mark never keeps a detached subtree alive."""
     comments = Comments()
     node: Any = Text("A")
-    comments.toggle(node)
+    comments.add(node)
     del node
 
     import gc
@@ -201,7 +202,7 @@ def test_restore_re_resolves_members_by_structural_path() -> None:
         host.layout(300, 200)
         target = old.children[1]
         comments = Comments()
-        comments.toggle(target, root=host.root)
+        comments.add(target, root=host.root)
 
     new = _tree("AFTER")
     with mount(new) as host:
@@ -218,8 +219,8 @@ def test_restore_counts_members_it_could_not_find() -> None:
     with mount(old) as host:
         host.layout(300, 200)
         comments = Comments()
-        comments.toggle(old.children[0], root=host.root)
-        comments.toggle(old.children[1], root=host.root)
+        comments.add(old.children[0], root=host.root)
+        comments.add(old.children[1], root=host.root)
 
     shrunk = Column(children=[_keyed("HEADER", "header")])
     with mount(shrunk) as host:
@@ -237,7 +238,7 @@ def test_see_comments_reports_identity_rect_path_and_scoped_views() -> None:
     with mount(tree) as host:
         host.layout(300, 200)
         comments = Comments()
-        comments.toggle(tree.children[1], root=host.root)
+        comments.add(tree.children[1], root=host.root)
 
         payload = see_comments(host.root, comments)
 
@@ -264,7 +265,7 @@ def test_a_node_is_described_as_itself_not_as_its_keyed_ancestor() -> None:
     with mount(button) as host:
         host.layout(300, 200)
         comments = Comments()
-        comments.toggle(inner, root=host.root)
+        comments.add(inner, root=host.root)
 
         (node,) = see_comments(host.root, comments)["nodes"]
 
@@ -280,7 +281,7 @@ def test_target_is_omitted_when_it_would_restate_the_node() -> None:
     with mount(tree) as host:
         host.layout(300, 200)
         comments = Comments()
-        comments.toggle(tree.children[1], root=host.root)
+        comments.add(tree.children[1], root=host.root)
 
         (node,) = see_comments(host.root, comments)["nodes"]
 
@@ -302,9 +303,9 @@ def test_a_region_is_marked_and_numbered_alongside_nodes() -> None:
     node = Text("A")
     comments = Comments()
 
-    comments.toggle(node)
+    comments.add(node)
     comments.add_region((10.0, 10.0, 40.0, 20.0))
-    comments.toggle(Text("B"))
+    comments.add(Text("B"))
 
     assert [(index, kind) for index, kind, _mark in comments.marks()] == [
         (1, "node"),
@@ -322,24 +323,10 @@ def test_a_zero_area_drag_is_not_a_region() -> None:
     assert comments.regions() == []
 
 
-def test_the_ancestor_walk_skips_regions() -> None:
-    """A walk has no meaning for an area, so one drawn after a node must not put
-    the node out of the walk's reach."""
-    first, walked = Text("A"), Text("B")
-    comments = Comments()
-    comments.toggle(first)
-    comments.add_region((0.0, 0.0, 10.0, 10.0))
-
-    comments.replace_last(walked)
-
-    assert comments.members() == [walked]
-    assert len(comments.regions()) == 1
-
-
 def test_undo_takes_back_whichever_kind_came_last() -> None:
     comments = Comments()
     comments.enter()
-    comments.toggle(Text("A"))
+    comments.add(Text("A"))
     comments.add_region((0.0, 0.0, 10.0, 10.0))
 
     comments.undo()
@@ -350,7 +337,7 @@ def test_undo_takes_back_whichever_kind_came_last() -> None:
 
 def test_summary_counts_the_two_kinds_apart() -> None:
     comments = Comments()
-    comments.toggle(Text("A"))
+    comments.add(Text("A"))
     comments.add_region((0.0, 0.0, 10.0, 10.0))
 
     assert comments.summary()["nodes"] == 1
@@ -365,7 +352,7 @@ def test_a_region_survives_a_reload_untouched() -> None:
         host.layout(300, 200)
         comments = Comments()
         comments.add_region((5.0, 5.0, 50.0, 50.0))
-        comments.toggle(old.children[1], root=host.root)
+        comments.add(old.children[1], root=host.root)
 
     with mount(_tree("AFTER")) as host:
         host.layout(300, 200)
@@ -483,7 +470,7 @@ def test_a_marked_node_carries_where_it_was_built() -> None:
         with mount(tree) as host:
             host.layout(300, 200)
             comments = Comments()
-            comments.toggle(tree.children[1], root=host.root)
+            comments.add(tree.children[1], root=host.root)
 
             (node,) = see_comments(host.root, comments)["nodes"]
     finally:
@@ -500,7 +487,7 @@ def test_the_payload_omits_source_when_nothing_is_recording() -> None:
     with mount(tree) as host:
         host.layout(300, 200)
         comments = Comments()
-        comments.toggle(tree.children[1], root=host.root)
+        comments.add(tree.children[1], root=host.root)
 
         (node,) = see_comments(host.root, comments)["nodes"]
 
@@ -519,8 +506,8 @@ def test_a_node_payload_names_the_owning_window() -> None:
     second = Window(content=second_content).open()
 
     comments = Comments()
-    comments.toggle(main_content, root=app.main_window.root)
-    comments.toggle(second_content, root=second.root)
+    comments.add(main_content, root=app.main_window.root)
+    comments.add(second_content, root=second.root)
 
     nodes = see_comments(app.main_window.root, comments)["nodes"]
 
@@ -532,7 +519,7 @@ def test_a_bare_tree_payload_carries_no_window() -> None:
     with mount(tree) as host:
         host.layout(300, 200)
         comments = Comments()
-        comments.toggle(tree.children[1], root=host.root)
+        comments.add(tree.children[1], root=host.root)
 
         (node,) = see_comments(host.root, comments)["nodes"]
 
@@ -547,7 +534,7 @@ def test_an_instruction_is_written_on_a_mark_by_its_number() -> None:
     with mount(Column(children=[first, second])) as host:
         host.layout(300, 200)
         comments = Comments()
-        comments.toggle(first, root=host.root)
+        comments.add(first, root=host.root)
         comments.add_region((100.0, 100.0, 50.0, 40.0))
 
         assert comments.set_instruction(2, "close this gap") is True
@@ -561,7 +548,7 @@ def test_a_blank_instruction_clears_the_text() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         comments = Comments()
-        comments.toggle(leaf, root=host.root)
+        comments.add(leaf, root=host.root)
         comments.set_instruction(1, "wider")
 
         comments.set_instruction(1, "   ")
@@ -575,8 +562,8 @@ def test_the_payload_carries_the_instruction_and_omits_it_when_there_is_none() -
     with mount(Column(children=[first, second])) as host:
         host.layout(300, 200)
         comments = Comments()
-        comments.toggle(first, root=host.root)
-        comments.toggle(second, root=host.root)
+        comments.add(first, root=host.root)
+        comments.add(second, root=host.root)
         comments.add_region((100.0, 100.0, 50.0, 40.0))
         comments.set_instruction(1, "make this wider")
         comments.set_instruction(3, "close this gap")
@@ -596,7 +583,7 @@ def test_the_summary_counts_marks_that_carry_text() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         comments = Comments()
-        comments.toggle(leaf, root=host.root)
+        comments.add(leaf, root=host.root)
         comments.add_region((100.0, 100.0, 50.0, 40.0))
         before = comments.summary()["seq"]
 
@@ -611,26 +598,12 @@ def test_an_instruction_survives_a_reload_with_its_mark() -> None:
     comments = Comments()
     with mount(_tree("AAA")) as host:
         host.layout(300, 200)
-        comments.toggle(host.root.children[0], root=host.root)
+        comments.add(host.root.children[0], root=host.root)
         comments.set_instruction(1, "wider")
     with mount(_tree("AAA")) as rebuilt:
         rebuilt.layout(300, 200)
 
         assert comments.restore(rebuilt.root) == 1
-        assert comments.instruction(1) == "wider"
-
-
-def test_the_walk_keeps_the_text_on_the_refined_mark() -> None:
-    leaf = Text("AAA")
-    with mount(Column(children=[leaf])) as host:
-        host.layout(300, 200)
-        comments = Comments()
-        comments.toggle(leaf, root=host.root)
-        comments.set_instruction(1, "wider")
-
-        comments.replace_last(host.root, root=host.root)
-
-        assert comments.members() == [host.root]
         assert comments.instruction(1) == "wider"
 
 
@@ -640,7 +613,7 @@ def test_discarding_a_session_restores_the_text_as_it_was() -> None:
         host.layout(300, 200)
         comments = Comments()
         comments.enter()
-        comments.toggle(leaf, root=host.root)
+        comments.add(leaf, root=host.root)
         comments.set_instruction(1, "wider")
         comments.commit()
 
@@ -662,7 +635,7 @@ def test_committed_marks_are_unread_until_the_payload_is_served() -> None:
         assert comments.unread is False
 
         comments.enter()
-        comments.toggle(leaf, root=host.root)
+        comments.add(leaf, root=host.root)
         assert comments.unread is False, "still writing"
         comments.commit()
         assert comments.unread is True
@@ -676,7 +649,7 @@ def test_a_reload_does_not_make_read_marks_unread_again() -> None:
     comments = Comments()
     with mount(_tree("AAA")) as host:
         host.layout(300, 200)
-        comments.toggle(host.root.children[0], root=host.root)
+        comments.add(host.root.children[0], root=host.root)
         see_comments(host.root, comments)
     with mount(_tree("AAA")) as rebuilt:
         rebuilt.layout(300, 200)
@@ -690,7 +663,7 @@ def test_a_session_that_changed_nothing_does_not_prompt_again() -> None:
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         comments = Comments()
-        comments.toggle(leaf, root=host.root)
+        comments.add(leaf, root=host.root)
         see_comments(host.root, comments)
 
         comments.enter()
