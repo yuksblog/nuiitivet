@@ -922,7 +922,7 @@ def test_bridge_serves_the_human_s_designation(tmp_path: Path, dev_run: None) ->
 
     app = _fake_app()
     comments = Comments()
-    comments.toggle(app.root)
+    comments.add(app.root)
     bridge = DevBridge(app, tmp_path, comments=comments)
     bridge.start()
     try:
@@ -962,7 +962,7 @@ def test_status_carries_the_selection_roll_up(tmp_path: Path, dev_run: None) -> 
     app = _fake_app()
     comments = Comments()
     comments.enter()
-    comments.toggle(app.root)
+    comments.add(app.root)
     bridge = DevBridge(app, tmp_path, comments=comments)
     bridge.start()
     try:
@@ -1073,7 +1073,7 @@ def test_bridge_serves_the_instruction_and_counts_it_on_status(tmp_path: Path, d
 
     app = _fake_app()
     comments = Comments()
-    comments.toggle(app.root)
+    comments.add(app.root)
     comments.set_instruction(1, "make this wider")
     bridge = DevBridge(app, tmp_path, comments=comments)
     bridge.start()

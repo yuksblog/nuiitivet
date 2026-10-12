@@ -19,24 +19,30 @@ words together.
 | Gesture | What it does |
 | --- | --- |
 | `Ctrl+Shift+C` | Enter comment mode (`Cmd+Shift+C` on macOS — either accelerator works throughout). |
-| Click | Mark the widget under the cursor. Click it again to remove the mark. |
-| Drag | Mark an **area** instead — a gap, a misaligned band, anywhere with no widget to name. |
-| `Enter` on a mark you just made | Open a field on that mark. `Enter` keeps the text (leave it empty to keep just the number); `Esc` closes the field. `Shift+←/→` selects, `Ctrl+A/C/X/V` (`Cmd` on macOS) select all, copy, cut and paste. |
-| Click a mark's numbered badge | Open its field again, to change or clear the text. |
-| `W` / `S` | Move the newest mark up to its parent, or back down, when the click landed one level off. |
+| Hold `H` | Show every gesture of this mode while the key is down. |
+| Hover | The widget under the cursor gets amber corner brackets and a caption naming it: the one a click would mark. |
+| `W` / `S`, `A` / `D` | Move that choice up to its parent and back down, or along to the widget beside it, when the one you mean is covered by its children or too small to aim at. `Enter` or a click then marks it. |
+| Click | Mark the widget under the cursor; a field opens on the mark. On a marked widget, or on its numbered badge, the field opens again instead, to change or clear the text. |
+| Drag | Mark an **area** instead — a gap, a misaligned band, anywhere with no widget to name. The field opens the same way. |
+| In the field | Type the instruction. `Enter` keeps it (leave it empty to keep just the number); `Shift+Enter` breaks the line; `Esc` closes the field. `Shift+←/→` selects, `Ctrl+A/C/X/V` (`Cmd` on macOS) select all, copy, cut and paste. A click keeps the text and then does what it would have done anyway. |
+| Hover a mark's numbered badge | Read its instruction. Nothing but the number stays beside a mark. |
+| `Delete` / `Backspace` | Remove the mark under the cursor, on its widget or on its badge. `Ctrl+Z` brings it back. |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo and redo what you did in this session — a mark, an unmark, a text. The same keys as layout edit mode. |
 | `Ctrl+Backspace` | Remove every mark, including ones you kept earlier. `Ctrl+Z` brings them back. |
-| `Enter` | Keep everything and leave. |
+| `Enter` | Keep everything and leave. After `W` / `S`, mark the chosen widget instead. |
 | `Esc` | Discard this session and leave — marks and text alike. Anything you kept with `Enter` earlier stays. |
 | `Ctrl+Shift+E` | Keep everything and switch to [layout edit mode](#edit-the-layout-directly-layout-edit-mode). |
 
-Click the widget you mean, or drag a box over the area, then press `Enter`. A
-field opens on the mark; type the instruction and press `Enter` to keep it.
-Press `Enter` once more to leave the mode. Mark as many places as you like
-before leaving: the agent handles them all in one turn, each by its number.
+Click the widget you mean, or drag a box over the area. A field opens on the
+mark; type the instruction and press `Enter` to keep it. Press `Enter` once
+more to leave the mode. Mark as many places as you like before leaving: the
+agent handles them all in one turn, each by its number.
 A mark with no text is fine too — refer to it by number in chat. The text can
 be a problem instead of a change: comment right after it happens, and the
 agent replays what you did in the app to reproduce it before fixing.
+When you enter, the mode's name and `H help` show at the centre for a moment.
+Hold `H` whenever you want the whole list. When you leave, the same spot says
+whether your comments were kept or discarded.
 
 Then, in chat, run the `/nuiitivet-see-comments` skill. It reads your comments
 and does what each one says, answering by number. If the skill is
@@ -56,11 +62,14 @@ shows both until the agent has read the comments.
 Some fixes are not worth asking an agent for: a width or a height, the
 order of two widgets — layout, in short. Layout edit mode lets you make those
 yourself, by dragging the widget on the app's own screen. The dev runner writes
-the change into the source, and hot reload applies it.
+the change into the source, and hot reload applies it. When you enter, the
+mode's name and `H help` show at the centre for a moment, and when you leave
+the same spot says so. Hold `H` whenever you want the whole list.
 
 | Gesture | What it does |
 | --- | --- |
 | `Ctrl+Shift+E` | Enter layout edit mode (`Cmd+Shift+E` on macOS) — `E` for *edit*. Inside comment mode it switches directly, keeping your comments as `Enter` would; `Ctrl+Shift+C` switches back. |
+| Hold `H` | Show every gesture of this mode while the key is down. |
 | Hover | The widget under the cursor gets teal corner brackets and a caption naming it. A label or icon a widget draws for itself counts as that widget. |
 | Click | Select it. `W` / `S` then move to its parent and back, for when the container is what you want to resize. The selection holds while the pointer stays on it — over its children too — and moving off it returns to hover. |
 | Drag a corner bracket | Resize. A dashed **ghost** follows the pointer, captioned with the value that will be written. |

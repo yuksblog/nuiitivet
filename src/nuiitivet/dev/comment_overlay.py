@@ -1,22 +1,12 @@
-"""Human-facing feedback for comment mode and the source jump.
+"""Comment mode's feedback on the glass, and the source jump's.
 
-The visual half of :mod:`nuiitivet.dev.comment_mode`: a pure function of the
-live :class:`~nuiitivet.dev.comments.Comments`, read at paint time. Drawn from
-the live frame paths only, outside the widget tree, so ``describe_tree`` never
-sees a mark and ``screenshot`` never contains one. Amber, against the action
-overlay's indigo: "the human means this", not "the agent did this".
-
-While latched: the HUD badge (:mod:`.hud`), a hover highlight on the pick
-candidate, the newest mark at full strength, earlier ones dimmed to their
-badges, and the field open on a mark. After committing: numbered badges only,
-each with its instruction beside it, cut short, plus one line at the badge's
-home saying what to type in chat until the agent has read the comments.
-Widgets get corner brackets and areas a faint fill, so the two kinds of mark
-stay distinct when they nest.
-
-The source jump (:mod:`nuiitivet.dev.source_jump`) paints here too, in rose:
-brackets and a caption on the widget a chorded click would open, then what the
-jump did.
+A pure function of the mode and the :class:`~nuiitivet.dev.comments.Comments`
+buffer, read at paint time, drawn from the live frame paths only and never
+into the widget tree, so ``describe_tree`` never sees a mark and ``screenshot``
+never contains one. While latched it paints the hover candidate, every mark's
+numbered badge, the instruction under the pointer, the open field and the
+badge; after a commit, the line saying what to type in chat until the agent
+has read the comments; and for the source jump, its brackets and its notice.
 """
 
 from __future__ import annotations
@@ -27,9 +17,21 @@ from typing import Any, Optional
 
 from nuiitivet._interaction.perception import visible_rect
 
-from .comment_mode import BADGE_RADIUS, BESIDE_GAP, beside_anchor
-from .hud import FONT_SIZE, SEPARATOR, caption_size, color, hud_font, paint_caption, paint_hud
-from .inline_field import Slot, paint_field
+from nuiitivet.widgets.text_lines import break_lines
+
+from .comment_mode import BADGE_RADIUS, BESIDE_GAP, FIELD_LEAST, beside_anchor
+from .hud import (
+    FONT_SIZE,
+    SEPARATOR,
+    caption_size,
+    color,
+    hud_font,
+    paint_caption,
+    paint_hud,
+    paint_sheet,
+    paint_splash,
+)
+from .inline_field import Slot, measure, paint_field
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +48,23 @@ _BADGE_INK = (32, 24, 0)
 
 _BRACKET_LEN = 12.0
 _BRACKET_WIDTH = 2.5
-#: What to type in chat, shown until the comments are read. The fallback is the
-#: tool's name, not a sentence: "see the comments" reads as code comments.
+#: What to type in chat, shown until the comments are read.
 PROMPT = "in chat: /nuiitivet-see-comments" + SEPARATOR + "see_comments"
-# Characters of an instruction shown beside its badge before it is cut short.
-_CAPTION_CHARS = 32
+
+#: Every gesture of the mode, for the sheet ``H`` holds open.
+HELP: tuple[tuple[str, str], ...] = (
+    ("Esc", "discard the session and leave"),
+    ("Click", "mark the widget"),
+    ("Drag", "mark an area"),
+    ("W / A / S / D", "walk to the parent, siblings and child"),
+    ("Enter", "mark the walked widget; else keep all and leave"),
+    ("Enter (in the field)", "keep the text"),
+    ("Shift+Enter (in the field)", "new line"),
+    ("Esc (in the field)", "close the field"),
+    ("Delete / Backspace", "remove the mark under the pointer"),
+    ("Ctrl+Z / Ctrl+Shift+Z", "undo / redo"),
+    ("Ctrl+Backspace", "remove every mark"),
+)
 
 
 def _enabled() -> bool:
@@ -80,7 +94,8 @@ def paint_comments(app: Any, canvas: Any, width: int, height: int) -> None:
         # With no mode latched the badge's home is free for the prompt and the jump's notice.
         alone = not active and not (editing is not None and editing.active)
         unread = alone and comments is not None and comments.unread
-        if not active and not marks and jump_target is None and not jump_notice:
+        splash = mode.splash if mode is not None else None
+        if not active and not marks and jump_target is None and not jump_notice and not splash:
             return
 
         from nuiitivet.rendering.skia.skia_module import get_skia
@@ -92,20 +107,26 @@ def paint_comments(app: Any, canvas: Any, width: int, height: int) -> None:
         font, typeface = hud_font(skia)
         window = (float(width), float(height))
         writing = mode.writing if active and mode is not None else None
-        badges = _paint_marks(skia, canvas, app, comments, marks, active, writing, font, typeface, window)
-
-        if active and mode is not None and comments is not None:
+        hovered_badge = mode.hovered_badge if active and mode is not None else None
+        if active and mode is not None:
             if mode.band is not None:
                 _paint_band(skia, canvas, mode.band)
-            _paint_hover(skia, canvas, mode, font, typeface, comments.members(), window, skip=jump_target)
-            _paint_hud(skia, canvas, mode, marks, jump_notice, font, typeface, width, height)
+            # Under the badges: a marked widget hovers like any other, its badge on top.
+            _paint_hover(skia, canvas, mode, font, typeface, window, skip=jump_target)
+        badges = _paint_marks(skia, canvas, app, comments, marks, writing, hovered_badge, font, typeface, window)
+        if active and mode is not None:
+            _paint_hud(skia, canvas, mode, jump_notice, font, typeface, width, height)
             _paint_open_field(skia, canvas, app, writing, badges, font, typeface, window)
+            if mode.help:
+                paint_sheet(skia, canvas, "COMMENT MODE", HELP, font, typeface, *window)
         # Only in a window that shows a mark.
         prompt = PROMPT if unread and badges else None
         if jump_target is not None:
             _paint_jump(skia, canvas, jump_target, jump_notice, font, typeface, window)
         elif alone and (prompt or jump_notice):
             _paint_home(skia, canvas, [prompt, jump_notice], font, typeface, width, height)
+        if splash:
+            paint_splash(skia, canvas, splash, font, typeface, *window)
     except Exception:
         logger.debug("comment_overlay: paint failed", exc_info=True)
 
@@ -116,16 +137,19 @@ def _paint_marks(
     app: Any,
     comments: Any,
     marks: list[tuple[int, str, Any]],
-    active: bool,
     writing: Any,
+    hovered_badge: Optional[int],
     font: Any,
     typeface: Any,
     window: tuple[float, float],
 ) -> dict[int, tuple[float, float]]:
-    """Paint every mark this window owns; return where each one's badge landed, by number."""
+    """Paint every mark this window owns; return where each one's badge landed, by number.
+
+    Nothing but the number sits beside a mark; its instruction shows whole
+    while the pointer rests on the badge.
+    """
     from nuiitivet.widgeting.context_lookup import find_window
 
-    newest_index = marks[-1][0] if marks else None
     badges: dict[int, tuple[float, float]] = {}
     for index, kind, mark in marks:
         if kind != "region":
@@ -137,20 +161,17 @@ def _paint_marks(
         rect = mark if kind == "region" else visible_rect(mark)
         if rect is None:
             continue
-        # Only the newest mark is drawn in full, and only while marking.
-        full = active and index == newest_index
         if kind == "region":
-            # A wash, not an outline: nested with a node's brackets, two strokes would not read.
-            _paint_wash(skia, canvas, rect, 0.22 if full else 0.13)
-        elif full:
-            paint_brackets(skia, canvas, rect, 1.0)
-        _paint_badge(skia, canvas, rect, str(index), font, typeface, 1.0 if full else 0.75)
+            # A wash, so the area reads as one even where it crosses widgets.
+            _paint_wash(skia, canvas, rect, 0.13)
+        _paint_badge(skia, canvas, rect, str(index), font, typeface, 0.75)
         badges[index] = (rect[0], rect[1])
         instruction = comments.instruction(index) if comments is not None else None
-        if instruction and (writing is None or writing.index != index):
-            caption = _shortened(instruction)
-            box = caption_size(caption, typeface)
-            at = Slot.beside(beside_anchor(rect), box, BESIDE_GAP, window).place(box, window)
+        if instruction and index == hovered_badge and (writing is None or writing.index != index):
+            # Wrapped where the field would wrap it, so reading and writing show the same lines.
+            slot = Slot.beside(beside_anchor(rect), FIELD_LEAST, BESIDE_GAP, window)
+            caption = _wrapped(instruction, slot.wrap)
+            at = slot.place(caption_size(caption, typeface), window)
             paint_caption(skia, canvas, caption, font, typeface, *at)
     return badges
 
@@ -174,12 +195,10 @@ def _paint_open_field(
 def _paint_home(
     skia: Any, canvas: Any, notices: list[Optional[str]], font: Any, typeface: Any, width: int, height: int
 ) -> None:
-    """Lines at the badge's home with no mode latched: the read prompt, the jump's notice."""
+    """Lines in the box at the bottom-left with no mode latched: the read prompt, the jump's notice."""
     paint_hud(
         skia,
         canvas,
-        mode_line=None,
-        hints=(),
         notices=notices,
         placement=None,
         pointer=None,
@@ -193,7 +212,7 @@ def _paint_home(
 def paint_brackets(
     skia: Any, canvas: Any, rect: tuple[float, ...], alpha: float, rgb: tuple[int, int, int] = _ACCENT
 ) -> None:
-    """Draw four corner brackets -- "this object", as distinct from "this area"."""
+    """Draw four corner brackets on ``rect``: the mark of a widget."""
     x, y, w, h = rect
     arm = min(_BRACKET_LEN, max(2.0, w / 3.0), max(2.0, h / 3.0))
     paint = skia.Paint(AntiAlias=True)
@@ -207,7 +226,7 @@ def paint_brackets(
 
 
 def _paint_wash(skia: Any, canvas: Any, rect: tuple[float, ...], alpha: float) -> None:
-    """Fill a marked area -- "this region", as distinct from "this object"."""
+    """Fill ``rect`` faintly: the mark of an area."""
     x, y, w, h = rect
     paint = skia.Paint(AntiAlias=True)
     paint.setColor(color(skia, _ACCENT, alpha))
@@ -258,17 +277,18 @@ def _paint_hover(
     mode: Any,
     font: Any,
     typeface: Any,
-    members: list[Any],
     window: tuple[float, float],
     *,
     skip: Any = None,
 ) -> None:
     """Outline the pick candidate and name it, so the human can aim before clicking.
 
-    ``skip`` is the widget the source jump is bracketing, whose caption wins.
+    Nothing while the pointer rests on a badge, where a click reopens the
+    field instead. ``skip`` is the widget the source jump is bracketing, whose
+    caption wins.
     """
     candidate = mode.hovered
-    if candidate is None or candidate is skip or any(candidate is member for member in members):
+    if candidate is None or candidate is skip or mode.hovered_badge is not None:
         return
     rect = visible_rect(candidate)
     if rect is None:
@@ -281,10 +301,10 @@ def _paint_hover(
     paint_caption(skia, canvas, describe_node(candidate), font, typeface, x, y - 22.0, window)
 
 
-def _shortened(instruction: str) -> str:
-    """The instruction as the badge shows it: one line, cut short."""
-    line = instruction.splitlines()[0] if instruction else ""
-    return line if len(line) <= _CAPTION_CHARS else line[: _CAPTION_CHARS - 1] + "…"
+def _wrapped(instruction: str, width: Optional[float]) -> str:
+    """The whole instruction, its own line breaks kept and long lines broken at ``width``."""
+    lines = break_lines(instruction, measure, width)
+    return "\n".join(instruction[line.start : line.end] for line in lines)
 
 
 def _paint_jump(
@@ -305,22 +325,21 @@ def _paint_jump(
         return
     x, y, _w, _h = rect
     paint_brackets(skia, canvas, rect, 0.8, _JUMP_ACCENT)
-    text = notice if notice else describe_node(target)
+    text = notice if notice else describe_node(target, site=True)
     paint_caption(skia, canvas, text, font, typeface, x, y - 22.0, window)
 
 
-def describe_node(node: Any) -> str:
-    """Name a widget the way ``describe_tree`` would, plus where it was built."""
+def describe_node(node: Any, *, site: bool = False) -> str:
+    """Name a widget the way ``describe_tree`` would; with ``site``, add where it was built."""
     from nuiitivet.dev.interaction import resolve_target
 
     identity = resolve_target(node)
     name = identity.get("key") or identity.get("label")
     head = identity.get("type", type(node).__name__)
     label = f"{head}  {name}" if name else str(head)
-    # Where it was built. Shown so the jump gesture is discoverable
-    # without adding anything pressable to a paint-only overlay -- seeing the
-    # location is what tells the human it can be reached. Basename only: the
-    # caption has to stay readable in a window a few hundred pixels wide.
+    if not site:
+        return label
+    # Basename only: the caption has to stay readable in a window a few hundred pixels wide.
     where = _origin(node)
     return f"{label}{SEPARATOR}{where}" if where else label
 
@@ -335,33 +354,20 @@ def _origin(node: Any) -> Optional[str]:
     return f"{os.path.basename(site[0].file)}:{site[0].line}"
 
 
-def _plural(count: int, noun: str) -> str:
-    return f"{count} {noun}" if count == 1 else f"{count} {noun}s"
-
-
 def _paint_hud(
     skia: Any,
     canvas: Any,
     mode: Any,
-    marks: list[tuple[int, str, Any]],
     jump_notice: Optional[str],
     font: Any,
     typeface: Any,
     width: int,
     height: int,
 ) -> None:
-    """The badge while latched: the mode, its counts and exits, then the keys that apply now."""
-    regions = sum(1 for _index, kind, _mark in marks if kind == "region")
-    parts = [_plural(len(marks) - regions, "widget")]
-    if regions:
-        parts.append(_plural(regions, "region"))
-
-    mode_line = SEPARATOR.join(("COMMENT", "for the agent", *parts, mode.exit, "Ctrl+Shift+E edit"))
+    """The box at the bottom-left while latched: the jump's notice, when there is one."""
     paint_hud(
         skia,
         canvas,
-        mode_line=mode_line,
-        hints=mode.hints,
         notices=[jump_notice],
         placement=mode.placement,
         pointer=mode.pointer,

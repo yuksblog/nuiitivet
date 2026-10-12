@@ -1,11 +1,10 @@
 """Mechanics shared by the dev input layers.
 
-Comment mode, layout edit mode and the source jump all sit on the backend's real
-input handlers and read the same things off them: whether the runner's
-``Ctrl+Shift`` prefix is down, whether a press travelled far enough to be a
-drag, which widget the pointer is over, and how to step a chosen widget up to
-its parent and back. Each layer keeps its own meaning for those answers; the
-answers themselves live here so the three agree by construction.
+Comment mode, layout edit mode and the source jump sit on the same real
+input handlers and ask the same questions: is the runner's ``Ctrl+Shift``
+prefix down, did a press travel far enough to be a drag, which widget is
+under the pointer, and which widget is a step up, down or along from it.
+The answers live here so the three agree.
 """
 
 from __future__ import annotations
@@ -14,15 +13,14 @@ import logging
 import weakref
 from typing import Any, Callable, Optional
 
+from nuiitivet._interaction.perception import _visible_children as visible_children
 from nuiitivet._interaction.perception import ancestors, pick_at
 from nuiitivet.input.codes import MOD_CTRL, MOD_META, MOD_SHIFT, resolve_modifiers
 
 logger = logging.getLogger(__name__)
 
 #: Pointer travel, in logical pixels, below which a press/release pair is a
-#: click rather than a drag. Discriminating on *release* is what lets one
-#: gesture serve both: the press handler never has to commit to a reading it
-#: cannot yet make.
+#: click rather than a drag.
 DRAG_THRESHOLD = 4.0
 
 
@@ -60,12 +58,29 @@ def parent_of(node: Any) -> Optional[Any]:
     return chain[0] if chain else None
 
 
+def sibling_of(current: Any, step: int) -> Optional[Any]:
+    """The sibling ``step`` places along from ``current``, or ``None`` past either end.
+
+    Siblings are the parent's children a pick may descend into, in their
+    traversal order, so a hidden page of a ``Deck`` is skipped as a click
+    would skip it.
+    """
+    parent = parent_of(current) if current is not None else None
+    if parent is None:
+        return None
+    kids = visible_children(parent)
+    for index, kid in enumerate(kids):
+        if kid is current:
+            target = index + step
+            return kids[target] if 0 <= target < len(kids) else None
+    return None
+
+
 def child_toward(current: Any, anchor: Any) -> Optional[Any]:
     """The child of ``current`` on the path down to ``anchor``, or ``None``.
 
-    ``down`` is only meaningful as the inverse of ``up``: a node has many
-    children and no way to guess which the human meant, but exactly one lies
-    on the path back to where the walk started.
+    Only that child can be meant: a node has many children, and one lies on
+    the path back to where the walk started.
     """
     if current is None or anchor is None or anchor is current:
         return None

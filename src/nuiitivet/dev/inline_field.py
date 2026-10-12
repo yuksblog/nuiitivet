@@ -1,12 +1,11 @@
 """The text field the dev modes open over the glass.
 
-Layout edit mode opens it over a widget's text literal, comment mode over a
-mark. It never enters the widget tree: the mode feeds it typed text, the input
-method's composition and keys by name, and it runs the editing operations
-``EditableText`` runs. It takes several lines, broken by ``Shift+Enter``, and
-the box grows to fit them inside the window: it wraps a line at the room its
-side of the anchor has, and moves up rather than cross the bottom edge. The
-mode decides what a commit writes to.
+Layout edit mode opens it over a text literal, comment mode on a mark. It
+never enters the widget tree: the mode feeds it typed text, the input
+method's composition and keys by name, and it edits as ``EditableText`` does.
+``Shift+Enter`` breaks a line; the box grows with the text, wraps at the room
+its side of the anchor has, and stays inside the window. The mode decides
+what a commit writes to.
 """
 
 from __future__ import annotations
@@ -197,6 +196,22 @@ class InlineField:
         self.goal_x = None
 
 
+def field_rect(slot: Slot, text: str, window: Size) -> Rect:
+    """The rect a field holding ``text`` takes in its ``slot``.
+
+    The box starts at the slot's least size and grows to fit the text, a line
+    per ``'\\n'`` and per wrap at the slot's room, then is pushed inside the
+    window's margins.
+    """
+    lines = break_lines(text, measure, slot.wrap)
+    box_w = max(slot.least[0], max(measure(text[line.start : line.end]) for line in lines) + _PAD * 2)
+    if slot.room is not None:
+        box_w = min(box_w, max(slot.least[0], slot.room))
+    box_h = max(slot.least[1], _BOX_H + (len(lines) - 1) * _LINE_H)
+    x, y = slot.place((box_w, box_h), window)
+    return (x, y, box_w, box_h)
+
+
 def paint_field(
     skia: Any,
     canvas: Any,
@@ -208,12 +223,10 @@ def paint_field(
     typeface: Any,
     window: Size,
 ) -> Rect:
-    """Draw the field in its ``slot`` and return the rect it took.
+    """Draw the field in its ``slot`` and return the rect it took, as ``field_rect`` gives it.
 
-    The box starts at the slot's least size and grows to fit the text, a line
-    per ``'\\n'`` and per wrap at the slot's room, then is pushed inside the
-    window's margins. The caret's rect is published to the window's IME state,
-    so the candidate window opens beside it.
+    The caret's rect is published to the window's IME state, so the candidate
+    window opens beside it.
     """
     from nuiitivet.rendering.skia.font import make_text_blob, measure_text_width
 
@@ -231,11 +244,7 @@ def paint_field(
     def baseline_of(row: int) -> float:
         return y + _BOX_H / 2.0 + FONT_SIZE / 2.5 + row * _LINE_H
 
-    box_w = max(slot.least[0], max(width_of(text[line.start : line.end]) for line in lines) + pad * 2)
-    if slot.room is not None:
-        box_w = min(box_w, max(slot.least[0], slot.room))
-    box_h = max(slot.least[1], _BOX_H + (len(lines) - 1) * _LINE_H)
-    x, y = slot.place((box_w, box_h), window)
+    x, y, box_w, box_h = field_rect(slot, text, window)
     fill = skia.Paint(AntiAlias=True)
     fill.setColor(skia.Color(*CAPTION_BG))
     canvas.drawRoundRect(skia.Rect.MakeXYWH(x, y, box_w, box_h), 5.0, 5.0, fill)
@@ -277,4 +286,4 @@ def paint_field(
     return (x, y, box_w, box_h)
 
 
-__all__ = ["InlineField", "Outcome", "Side", "Slot", "measure", "paint_field"]
+__all__ = ["InlineField", "Outcome", "Side", "Slot", "field_rect", "measure", "paint_field"]

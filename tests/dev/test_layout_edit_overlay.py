@@ -106,7 +106,7 @@ def test_the_badge_and_the_candidate_paint_while_latched(latched: tuple[_App, La
 
     lo.paint_layout_edit(app, canvas, app.width, app.height)
 
-    assert "drawRoundRect" in canvas.calls, "the badge"
+    assert "drawRoundRect" in canvas.calls, "the splash"
     assert "drawLine" in canvas.calls, "the candidate's brackets"
 
 
@@ -209,7 +209,7 @@ def test_the_candidate_yields_to_the_source_jump_while_its_chord_is_held() -> No
         lo.paint_layout_edit(app, canvas, app.width, app.height)
 
         assert "drawLine" not in canvas.calls and "drawRect" not in canvas.calls
-        assert "drawRoundRect" in canvas.calls, "the badge stays"
+        assert "drawRoundRect" in canvas.calls, "the splash stays"
 
 
 def test_the_env_kill_switch_disables_it(latched: tuple[_App, LayoutEditMode], monkeypatch: pytest.MonkeyPatch) -> None:
@@ -232,24 +232,66 @@ def test_painting_never_raises_on_a_broken_canvas(latched: tuple[_App, LayoutEdi
     lo.paint_layout_edit(app, _Broken(), app.width, app.height)
 
 
-def test_the_badge_names_the_mode_its_exit_and_the_switch(
+def _later(monkeypatch: pytest.MonkeyPatch, seconds: float) -> None:
+    import time
+
+    from nuiitivet.dev import hud
+
+    monkeypatch.setattr(hud, "_now", lambda: time.monotonic() + seconds)
+
+
+def test_the_splash_names_the_mode_and_the_help_key_for_a_moment(
     latched: tuple[_App, LayoutEditMode], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The first line is the one that never goes away, so the way out and the
-    way across live there."""
-    from nuiitivet.dev.hud import SEPARATOR
+    from nuiitivet.dev.hud import SEPARATOR, SPLASH
+
+    app, _mode = latched
+    splashes: list[str] = []
+    monkeypatch.setattr(lo, "paint_splash", lambda _s, _c, text, *a: splashes.append(text))
+
+    lo.paint_layout_edit(app, _Canvas(), app.width, app.height)
+    assert splashes == ["LAYOUT EDIT MODE" + SEPARATOR + "H help"]
+
+    _later(monkeypatch, SPLASH)
+    lo.paint_layout_edit(app, _Canvas(), app.width, app.height)
+    assert len(splashes) == 1, "gone after a tooltip's time"
+
+
+def test_the_leaving_line_paints_after_the_mode_is_off(
+    latched: tuple[_App, LayoutEditMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from nuiitivet.dev.hud import SPLASH
 
     app, mode = latched
-    seen: dict[str, Any] = {}
-    monkeypatch.setattr(lo, "paint_hud", lambda *args, **kwargs: seen.update(kwargs))
+    splashes: list[str] = []
+    _later(monkeypatch, SPLASH)
+    mode.on_key_press(app, "escape", 0)
+    assert not mode.active
+    monkeypatch.undo()
+    monkeypatch.setattr(lo, "paint_splash", lambda _s, _c, text, *a: splashes.append(text))
 
     lo.paint_layout_edit(app, _Canvas(), app.width, app.height)
 
-    assert seen["mode_line"] == SEPARATOR.join(
-        ("LAYOUT EDIT", "release writes the source", "Esc leave", "Ctrl+Shift+C comment")
-    )
-    assert seen["hints"] == mode.hints
-    assert seen["placement"] is mode.placement
+    assert splashes == ["LAYOUT EDIT MODE off"]
+
+
+def test_the_help_sheet_paints_while_h_is_held(
+    latched: tuple[_App, LayoutEditMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app, mode = latched
+    sheets: list[tuple[Any, ...]] = []
+    monkeypatch.setattr(lo, "paint_sheet", lambda *args, **kwargs: sheets.append(args))
+
+    lo.paint_layout_edit(app, _Canvas(), app.width, app.height)
+    assert sheets == []
+
+    mode.on_key_press(app, "h", 0)
+    lo.paint_layout_edit(app, _Canvas(), app.width, app.height)
+    assert len(sheets) == 1 and sheets[0][2] == "LAYOUT EDIT MODE" and sheets[0][3] is lo.HELP
+
+    mode.on_key_release(app, "h", 0)
+    lo.paint_layout_edit(app, _Canvas(), app.width, app.height)
+    assert len(sheets) == 1
 
 
 def test_a_notice_outliving_the_mode_still_paints(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -266,7 +308,7 @@ def test_a_notice_outliving_the_mode_still_paints(monkeypatch: pytest.MonkeyPatc
 
         lo.paint_layout_edit(app, _Canvas(), app.width, app.height)
 
-        assert seen["mode_line"] is None and seen["notices"] == ["width landed at 100, expected 160"]
+        assert seen["notices"] == ["width landed at 100, expected 160"]
 
 
 def test_the_open_field_paints_over_the_widget() -> None:

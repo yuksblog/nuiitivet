@@ -1,23 +1,14 @@
 """Layout edit mode: the human drags a widget, and the runner edits the source.
 
-The sibling of :mod:`.comment_mode`, on the same real input handlers, with the
-opposite division of labour. Comment mode is how the human *says* something to
-the agent; this is how they *do* something with no agent in the loop.
-A corner drag resolves to ``width`` / ``height`` / ``size`` as ``int``,
-``"auto"`` or ``"wt"`` (:mod:`.landing`); a body drag resolves to a slot among
-the widget's siblings, a cell, or another container's children
-(:mod:`.reorder`) -- or, when it keeps the widget's place, to its container's
-alignment (:mod:`.align`). Release writes the keyword, or moves the element,
-in the calls that built them (:mod:`.source_edit`), and the hot reload that
-follows is what applies it. The tree is never touched directly: what is on
-screen always came from the code.
-
-``Delete`` on the selection removes its expression the same way, with no
-confirmation, and ``Enter`` opens a field over its text whose ``Enter``
-rewrites the string literal. Latched on ``Ctrl+Shift+E``, off on ``Esc``. Its chord and
-comment mode's switch directly, each mode closing the other on entry. There is
-no commit: every release writes, so ``Ctrl+Z`` is what "I did not mean that"
-reaches for, and ``Ctrl+Shift+Z`` takes it back.
+Latched on ``Ctrl+Shift+E`` from the same real input handlers as
+:mod:`.comment_mode`; the two chords switch directly between the modes. A
+corner drag resolves to a size (:mod:`.landing`); a body drag to a place
+among the siblings, a cell or another container (:mod:`.reorder`), or, when
+the widget keeps its place, to its container's alignment (:mod:`.align`). A
+release writes it into the call that built the widget (:mod:`.source_edit`),
+and the hot reload applies it. ``Delete`` removes the selection's expression
+and ``Enter`` edits its text literal the same way. Every release writes, so
+``Ctrl+Z`` / ``Ctrl+Shift+Z`` are the way back.
 """
 
 from __future__ import annotations
@@ -36,7 +27,7 @@ from nuiitivet.widgets.text_editing import TextEditingValue
 
 from . import align, landing, reorder
 from .gesture import accel_held, child_toward, chord_held, invalidate, parent_of, pick, travelled, weak
-from .hud import SEPARATOR, Placement
+from .hud import SEPARATOR, Placement, Splash
 from .inline_field import InlineField, Slot
 from .snapshot import Path, path_of, widgets_by_path
 from .source import Frame, construction_frame, site_owner, widgets_built_at
@@ -79,6 +70,9 @@ _COMMENT_KEY = "c"
 _CORNER_GRAB = 10.0
 # Both, since a Mac keyboard has no Delete key.
 _DELETE_KEYS = ("delete", "backspace")
+# The lines at the window's centre on entering and on leaving.
+_SPLASH_ON = "LAYOUT EDIT MODE" + SEPARATOR + "H help"
+_SPLASH_OFF = "LAYOUT EDIT MODE off"
 # Seconds within which a second click on the selection opens its text.
 _DOUBLE_CLICK = 0.4
 # The keys a drag answers to: under the left hand while the right holds the
@@ -257,6 +251,9 @@ class LayoutEditMode:
         self._ghosts: list[Ghost] = []
         self._notice: Optional[str] = None
         self._placement = Placement()
+        self._splash = Splash()
+        # Whether ``H`` is held, showing the sheet that lists every gesture.
+        self._help = False
         self._editing: Optional[_Editing] = None
         # The last click's time and target, so a second one can open its text.
         self._last_click: Optional[tuple[float, Callable[[], Any]]] = None
@@ -289,35 +286,14 @@ class LayoutEditMode:
         return TextEditor(editing.slot.moved((rect[0], rect[1])), editing.field.value)
 
     @property
-    def exit(self) -> str:
-        """What ``Esc`` does right now, for the badge's first line."""
-        return "Esc cancel" if self._drag is not None or self._editing is not None else "Esc leave"
+    def help(self) -> bool:
+        """Whether the sheet listing every gesture is shown: while ``H`` is held."""
+        return self._help
 
     @property
-    def hints(self) -> tuple[str, ...]:
-        """The gestures and keys that mean something right now, for the badge.
-
-        A key appears the moment pressing it would do something, and not
-        before: the badge is the only place a human can learn them, and one
-        that lists everything at once teaches nothing.
-        """
-        drag = self._drag
-        if self._editing is not None:
-            return ("Enter write", "Shift+←/→ select", "Ctrl+A/C/X/V")
-        if isinstance(drag, _Resize):
-            return ("WASD nudge", "Alt no snap")
-        if drag is not None:
-            return ()
-        parts: list[str] = []
-        if self.candidate is not None:
-            parts += ["drag a corner resize", "drag reorder / move / align", "click select", "Ctrl+Shift+Click source"]
-        if self.selected is not None:
-            parts += ["W/S parent/child", "Del/Backspace delete", "Enter edit text"]
-        if self._edits.undoable:
-            parts.append("Ctrl+Z undo")
-        if self._edits.redoable:
-            parts.append("Ctrl+Shift+Z redo")
-        return tuple(parts)
+    def splash(self) -> Optional[str]:
+        """The line at the window's centre just after entering or leaving, or ``None``."""
+        return self._splash.text
 
     @property
     def hovered(self) -> Optional[Any]:
@@ -399,12 +375,18 @@ class LayoutEditMode:
         if self._editing is not None:
             self._edit_key(app, key, modifier_keys)
             return True
+        if key == "h":
+            if not self._help:
+                self._help = True
+                invalidate(app)
+            return True
         if key == "escape":
             if self._drag is not None:
                 self._drag = None
                 invalidate(app)
             else:
                 self.leave(app)
+                self._splash.show(app, _SPLASH_OFF)
         elif key == "z" and chord:
             self._redo(app)
         elif key == "z" and accel:
@@ -424,8 +406,13 @@ class LayoutEditMode:
         return True
 
     def on_key_release(self, app: Any, name: str, modifier_keys: int) -> bool:
-        """Swallow the key-up half while latched. ``True`` when consumed."""
-        return self._active
+        """Swallow the key-up half while latched. ``True`` when consumed. Releasing ``H`` takes the help sheet away."""
+        if not self._active:
+            return False
+        if self._help and str(name).strip().lower() == "h":
+            self._help = False
+            invalidate(app)
+        return True
 
     def on_text(self, app: Any, text: str) -> bool:
         """Type into the open field. ``True`` when consumed; ``False`` with no field open.
@@ -465,6 +452,8 @@ class LayoutEditMode:
         self._app = weak(app)
         self._reset()
         self._placement.reset()
+        self._splash.show(app, _SPLASH_ON)
+        self._help = False
         invalidate(app)
 
     def leave(self, app: Any) -> None:

@@ -1,14 +1,8 @@
-"""Human-facing feedback for layout edit mode.
+"""Layout edit mode's feedback on the glass.
 
-The visual half of :mod:`nuiitivet.dev.layout_edit_mode`, drawn under the same rules
-as :mod:`.comment_overlay`: from the live frame paths only, never from
-``App._render_snapshot``, and as a pure function of the mode's state read at
-paint time.
-
-Its colour is a third family. Comment mode's amber is a note the human wrote,
-the action overlay's indigo is a report of what the agent did, and this
-teal is a change about to be made -- the one of the three that alters a file
-on release, which is why it must never be mistaken for either of the others.
+Drawn under :mod:`.comment_overlay`'s rules: from the live frame paths only,
+never into the widget tree, as a pure function of the mode's state read at
+paint time. Teal, the colour of a change about to be written to a file.
 """
 
 from __future__ import annotations
@@ -18,7 +12,7 @@ from typing import Any, Optional
 
 from nuiitivet._interaction.perception import global_visual_rect
 
-from .hud import SEPARATOR, color, hud_font, paint_caption, paint_hud
+from .hud import color, hud_font, paint_caption, paint_hud, paint_sheet, paint_splash
 from .inline_field import paint_field
 from .comment_overlay import _enabled as _overlays_enabled
 from .comment_overlay import describe_node, paint_brackets
@@ -32,6 +26,19 @@ _LAYERS_WIDTH = 220.0
 _DASH = (6.0, 4.0)
 # Beside the layer list, since the keys act on it; the badge does not repeat them.
 _LAYER_HINT = "W/S/0-9 layer"
+#: Every gesture of the mode, for the sheet ``H`` holds open.
+HELP: tuple[tuple[str, str], ...] = (
+    ("Esc", "leave"),
+    ("Esc (while dragging)", "cancel the drag"),
+    ("Click", "select the widget"),
+    ("Drag a corner", "resize; WASD nudge a pixel, Alt skips the snap"),
+    ("Drag the body", "reorder, move, or align"),
+    ("W / S", "select the parent / child"),
+    ("W / S / 0-9 over a Stack", "pick the layer it lands in"),
+    ("Enter (on the selection)", "edit its text"),
+    ("Delete / Backspace", "remove the selected widget from the source"),
+    ("Ctrl+Z / Ctrl+Shift+Z", "undo / redo"),
+)
 
 
 def paint_layout_edit(app: Any, canvas: Any, width: int, height: int) -> None:
@@ -49,7 +56,8 @@ def paint_layout_edit(app: Any, canvas: Any, width: int, height: int) -> None:
         active = bool(mode.active)
         ghosts = mode.ghosts
         notice = mode.notice
-        if not active and not ghosts and not notice:
+        splash = mode.splash
+        if not active and not ghosts and not notice and not splash:
             return
 
         from nuiitivet.rendering.skia.skia_module import get_skia
@@ -85,12 +93,12 @@ def paint_layout_edit(app: Any, canvas: Any, width: int, height: int) -> None:
             paint_field(skia, canvas, app, editor.slot, editor.value, _ACCENT, font, typeface, window)
         if active:
             _paint_hud(skia, canvas, mode, jump_notice, font, typeface, width, height)
+            if mode.help:
+                paint_sheet(skia, canvas, "LAYOUT EDIT MODE", HELP, font, typeface, *window)
         elif notice:
             paint_hud(
                 skia,
                 canvas,
-                mode_line=None,
-                hints=(),
                 notices=[notice],
                 placement=None,
                 pointer=None,
@@ -99,6 +107,8 @@ def paint_layout_edit(app: Any, canvas: Any, width: int, height: int) -> None:
                 width=width,
                 height=height,
             )
+        if splash:
+            paint_splash(skia, canvas, splash, font, typeface, *window)
     except Exception:
         logger.debug("layout_edit_overlay: paint failed", exc_info=True)
 
@@ -199,13 +209,10 @@ def _paint_layers(skia: Any, canvas: Any, layers: Any, font: Any, typeface: Any,
 def _paint_hud(
     skia: Any, canvas: Any, mode: Any, jump_notice: Optional[str], font: Any, typeface: Any, width: int, height: int
 ) -> None:
-    """The badge that says a release will change the file, with the keys that apply now."""
-    mode_line = SEPARATOR.join(("LAYOUT EDIT", "release writes the source", mode.exit, "Ctrl+Shift+C comment"))
+    """The box at the bottom-left while latched: the mode's notice and the jump's, when there are any."""
     paint_hud(
         skia,
         canvas,
-        mode_line=mode_line,
-        hints=mode.hints,
         notices=[mode.notice, jump_notice],
         placement=mode.placement,
         pointer=mode.pointer,

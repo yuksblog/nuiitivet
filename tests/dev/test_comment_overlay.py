@@ -186,28 +186,72 @@ def test_the_rubber_band_is_drawn_while_dragging(
     assert "drawRect" in canvas.calls
 
 
-def test_the_badge_names_the_mode_its_exit_and_the_switch(
+def _later(monkeypatch: pytest.MonkeyPatch, seconds: float) -> None:
+    import time
+
+    from nuiitivet.dev import hud
+
+    monkeypatch.setattr(hud, "_now", lambda: time.monotonic() + seconds)
+
+
+def test_the_splash_names_the_mode_and_the_help_key_for_a_moment(
     marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The first line is the one that never goes away, so the way out and the
-    way across live there."""
+    from nuiitivet.dev.hud import SPLASH
+
+    app, _mode = marking
+    splashes: list[str] = []
+    monkeypatch.setattr(so, "paint_splash", lambda _s, _c, text, *a: splashes.append(text))
+
+    so.paint_comments(app, _Canvas(), app.width, app.height)
+    assert splashes == ["COMMENT MODE" + SEPARATOR + "H help"]
+
+    _later(monkeypatch, SPLASH)
+    so.paint_comments(app, _Canvas(), app.width, app.height)
+    assert len(splashes) == 1, "gone after a tooltip's time"
+
+
+def test_the_leaving_line_paints_after_the_mode_is_off(
+    marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from nuiitivet.dev.hud import SPLASH
+
     app, mode = marking
-    seen: dict[str, Any] = {}
-    monkeypatch.setattr(so, "paint_hud", lambda *args, **kwargs: seen.update(kwargs))
+    splashes: list[str] = []
+    monkeypatch.setattr(so, "paint_splash", lambda _s, _c, text, *a: splashes.append(text))
+    _later(monkeypatch, SPLASH)
+    _leave(app, mode)
+    monkeypatch.undo()
+    monkeypatch.setattr(so, "paint_splash", lambda _s, _c, text, *a: splashes.append(text))
 
     so.paint_comments(app, _Canvas(), app.width, app.height)
 
-    assert seen["mode_line"] == SEPARATOR.join(
-        ("COMMENT", "for the agent", "1 widget", "Esc discard", "Ctrl+Shift+E edit")
-    )
-    assert seen["hints"] == mode.hints
-    assert seen["placement"] is mode.placement
+    assert splashes == ["COMMENT MODE off" + SEPARATOR + "comments kept"]
 
 
-def test_the_jump_notice_rides_in_the_badge_while_the_mode_is_on(
+def test_the_help_sheet_paints_while_h_is_held(
     marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Two boxes at the same corner would cover each other."""
+    app, mode = marking
+    sheets: list[tuple[Any, ...]] = []
+    monkeypatch.setattr(so, "paint_sheet", lambda *args, **kwargs: sheets.append(args))
+    _close_field(app, mode)
+
+    so.paint_comments(app, _Canvas(), app.width, app.height)
+    assert sheets == []
+
+    mode.on_key_press(app, "h", 0)
+    so.paint_comments(app, _Canvas(), app.width, app.height)
+    assert len(sheets) == 1 and sheets[0][2] == "COMMENT MODE" and sheets[0][3] is so.HELP
+
+    mode.on_key_release(app, "h", 0)
+    so.paint_comments(app, _Canvas(), app.width, app.height)
+    assert len(sheets) == 1
+
+
+def test_the_jump_notice_paints_in_the_box_at_the_bottom_left_while_the_mode_is_on(
+    marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
     from nuiitivet.dev.source_jump import SourceJump
 
     app, _mode = marking
@@ -222,17 +266,12 @@ def test_the_jump_notice_rides_in_the_badge_while_the_mode_is_on(
 
     so.paint_comments(app, _Canvas(), app.width, app.height)
 
-    assert len(calls) == 1, "one badge, not a badge and a loose notice"
+    assert len(calls) == 1, "one box, not a box and a loose notice"
     assert calls[0]["notices"] == [jump.notice]
 
 
-def test_the_hover_caption_shows_where_the_widget_was_built() -> None:
-    """What makes the jump discoverable without anything pressable.
-
-    The overlay is a paint-only registry outside the widget tree; a button would
-    need its own hit testing. Seeing the location is what tells the human it can
-    be reached, and the HUD says how.
-    """
+def test_the_jump_caption_shows_where_the_widget_was_built_and_the_hover_caption_does_not() -> None:
+    """Under the chord the location is the aim; on an ordinary hover it is noise."""
     from nuiitivet.dev import source
 
     source.install()
@@ -242,18 +281,20 @@ def test_the_hover_caption_shows_where_the_widget_was_built() -> None:
             host.layout(300, 200)
             host.settle()
 
-            caption = so.describe_node(leaf)
+            jump_caption = so.describe_node(leaf, site=True)
+            hover_caption = so.describe_node(leaf)
     finally:
         source.uninstall()
 
-    assert "test_comment_overlay.py:" in caption
+    assert "test_comment_overlay.py:" in jump_caption
+    assert SEPARATOR not in hover_caption
 
 
 def test_the_caption_omits_the_location_when_none_was_recorded() -> None:
     """A production-shaped run reads exactly as it did before source capture."""
     leaf = Text("AAA")
 
-    assert SEPARATOR not in so.describe_node(leaf)
+    assert SEPARATOR not in so.describe_node(leaf, site=True)
 
 
 def test_a_node_mark_paints_only_in_its_own_window() -> None:
@@ -270,7 +311,7 @@ def test_a_node_mark_paints_only_in_its_own_window() -> None:
     main_win.root.layout(300, 200)
 
     comments = Comments()
-    comments.toggle(main_content, root=main_win.root)
+    comments.add(main_content, root=main_win.root)
     main_win._comment_mode = CommentMode(comments)
     second._comment_mode = CommentMode(comments)
 
@@ -337,10 +378,15 @@ def test_the_notice_paints_after_the_chord_is_released(monkeypatch: pytest.Monke
 
 
 def _leave(app: _App, mode: CommentMode) -> None:
-    """``Enter`` out of the session, declining the field the fresh mark offers."""
+    """``Enter`` out of the session, first closing the field the new mark opened."""
+    if mode.writing is not None:
+        mode.on_key_press(app, "escape", 0)
     mode.on_key_press(app, "enter", 0)
-    mode.on_key_press(app, "escape", 0)
-    mode.on_key_press(app, "enter", 0)
+
+
+def _close_field(app: _App, mode: CommentMode) -> None:
+    if mode.writing is not None:
+        mode.on_key_press(app, "escape", 0)
 
 
 def _captions(monkeypatch: pytest.MonkeyPatch) -> list[str]:
@@ -363,7 +409,7 @@ def _notices(monkeypatch: pytest.MonkeyPatch) -> list[list[Any]]:
     return seen
 
 
-def test_an_instruction_is_captioned_beside_its_badge(
+def test_nothing_but_the_badge_is_painted_beside_a_mark(
     marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     app, mode = marking
@@ -373,21 +419,48 @@ def test_an_instruction_is_captioned_beside_its_badge(
 
     so.paint_comments(app, _Canvas(), 300, 200)
 
-    assert "make this wider" in captions
+    assert not any("make this wider" in text for text in captions)
 
 
-def test_a_long_instruction_is_cut_short_on_the_badge(
+def test_a_marked_widget_hovers_like_any_other(
     marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """The badge says it is marked; the brackets still say what a click would unmark."""
     app, mode = marking
     captions = _captions(monkeypatch)
-    mode.comments.set_instruction(1, "x" * 80)
-    _leave(app, mode)
+    _close_field(app, mode)
+    rect = so.visible_rect(mode.comments.members()[0])
+    assert rect is not None
+    x, y, w, h = rect
+    mode.on_mouse_motion(app, x + w - 1.0, y + h - 1.0)
+    assert mode.hovered is mode.comments.members()[0]
+    assert mode.hovered_badge is None
+    canvas = _Canvas()
 
-    so.paint_comments(app, _Canvas(), 300, 200)
+    so.paint_comments(app, canvas, 300, 200)
 
-    (caption,) = [text for text in captions if text.startswith("x")]
-    assert len(caption) < 40 and caption.endswith("…")
+    assert "drawLine" in canvas.calls, "the brackets"
+    assert any("AAA" in text for text in captions), "the caption"
+    assert canvas.calls.index("drawLine") < canvas.calls.index("drawCircle"), "the badge paints over the hover"
+
+
+def test_the_hover_steps_aside_while_the_pointer_rests_on_a_badge(
+    marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """There a click reopens the field, so the brackets would promise the wrong thing."""
+    app, mode = marking
+    captions = _captions(monkeypatch)
+    _close_field(app, mode)
+    mode.comments.set_instruction(1, "make this wider")
+    mode.on_mouse_motion(app, 150, 150)
+    mode.on_mouse_motion(app, 2, 2)
+    assert mode.hovered_badge == 1
+    canvas = _Canvas()
+
+    so.paint_comments(app, canvas, 300, 200)
+
+    assert captions == ["make this wider"]
+    assert "drawLine" not in canvas.calls
 
 
 def test_the_open_field_paints_beside_the_badge_in_amber(
@@ -434,8 +507,7 @@ def _open_field_on_a_region(
 ) -> None:
     mode.on_mouse_press(app, *press)
     mode.on_mouse_release(app, *release)
-    mode.on_key_press(app, "enter", 0)
-    assert mode.writing is not None
+    assert mode.writing is not None, "the new region opened its field"
 
 
 def test_a_field_on_a_mark_at_the_right_edge_opens_on_the_badges_left(
@@ -499,8 +571,10 @@ def test_the_caption_beside_a_mark_at_the_right_edge_stays_inside(
     monkeypatch.setattr(so, "paint_caption", fake)
     mode.on_mouse_press(app, 280.0, 20.0)
     mode.on_mouse_release(app, 295.0, 60.0)
+    _close_field(app, mode)
     mode.comments.set_instruction(2, "move this to the left")
-    _leave(app, mode)
+    mode.on_mouse_motion(app, 282.0, 22.0)
+    assert mode.hovered_badge == 2
 
     so.paint_comments(app, _Canvas(), 300, 200)
 
@@ -529,3 +603,70 @@ def test_the_prompt_shows_after_a_commit_until_the_comments_are_served(
 
 def test_the_prompt_names_the_skill_first_and_the_tool_second() -> None:
     assert so.PROMPT == "in chat: /nuiitivet-see-comments  |  see_comments"
+
+
+# --- hovering a badge reads the whole instruction ------------------------------
+
+
+def _placed_captions(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, float, float]]:
+    seen: list[tuple[str, float, float]] = []
+
+    def fake(_skia: Any, _canvas: Any, text: str, _font: Any, _typeface: Any, x: float, y: float, *_a: Any) -> None:
+        seen.append((text, x, y))
+
+    monkeypatch.setattr(so, "paint_caption", fake)
+    return seen
+
+
+def test_hovering_a_badge_shows_the_whole_instruction(
+    marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app, mode = marking
+    captions = _placed_captions(monkeypatch)
+    _close_field(app, mode)
+    mode.comments.set_instruction(1, "x" * 80)
+    mode.on_mouse_motion(app, 2, 2)
+    assert mode.hovered_badge == 1
+
+    so.paint_comments(app, _Canvas(), 300, 200)
+
+    ((text, _x, _y),) = [entry for entry in captions if entry[0].startswith("x")]
+    assert text.replace("\n", "") == "x" * 80 and "…" not in text
+    assert "\n" in text, "wrapped at the field's room, not drawn as one long line"
+
+
+def test_moving_off_the_badge_leaves_only_the_number(
+    marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app, mode = marking
+    captions = _placed_captions(monkeypatch)
+    _close_field(app, mode)
+    mode.comments.set_instruction(1, "x" * 80)
+    mode.on_mouse_motion(app, 2, 2)
+    mode.on_mouse_motion(app, 150, 150)
+    assert mode.hovered_badge is None
+
+    so.paint_comments(app, _Canvas(), 300, 200)
+
+    assert not [entry for entry in captions if entry[0].startswith("x")]
+
+
+def test_a_hovered_multi_line_instruction_keeps_its_lines_inside_the_window(
+    marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from nuiitivet.dev.hud import MARGIN, caption_size, hud_font
+    from nuiitivet.rendering.skia.skia_module import get_skia
+
+    app, mode = marking
+    captions = _placed_captions(monkeypatch)
+    _close_field(app, mode)
+    mode.comments.set_instruction(1, "first line\nsecond line")
+    mode.on_mouse_motion(app, 2, 2)
+
+    so.paint_comments(app, _Canvas(), 300, 200)
+
+    _font, typeface = hud_font(get_skia())
+    ((text, x, y),) = [entry for entry in captions if entry[0].startswith("first")]
+    assert text == "first line\nsecond line"
+    w, h = caption_size(text, typeface)
+    assert x >= MARGIN and y >= MARGIN and x + w <= 300.0 - MARGIN and y + h <= 200.0 - MARGIN

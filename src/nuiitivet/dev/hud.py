@@ -1,17 +1,22 @@
-"""The badge the dev modes share: what it is made of, where it sits, and how it is drawn.
+"""What the dev modes draw to say where they are: the splash, the help sheet, the notices and the captions.
 
-One box, at the bottom-left where app content is thinnest. Its first line
-names the mode and its exits and never goes away, since a latched mode must be
-unmistakable; the hint line below lists only the keys that mean something at
-this moment, so each key appears exactly when pressing it would do something;
-a notice, when there is one, is the last line. The box steps out of the
-pointer's way rather than hiding, and comes back only once the pointer is well
-clear, so it never flickers.
+On entering a mode a line at the window's centre names it and the key that
+opens the help, and on leaving says how it was left, each for as long as a
+tooltip stays. The help sheet lists every
+gesture of the mode while ``H`` is held. A notice sits in a box at the
+bottom-left that steps out of the pointer's way and comes back only once the
+pointer is well clear.
 """
 
 from __future__ import annotations
 
+import logging
+import time
 from typing import Any, Optional
+
+from nuiitivet.observable import runtime
+
+logger = logging.getLogger(__name__)
 
 #: Between the parts of a caption or a hint line. ASCII on purpose: the
 #: overlay draws with the platform's UI font, and a middle dot is missing from
@@ -32,8 +37,54 @@ _RADIUS = 5.0
 _DODGE = 40.0
 _RETURN = 120.0
 
+# Seconds the splash stays after a mode is entered: as long as a tooltip.
+SPLASH = 1.5
+# Between the key column of the help sheet and what each key does.
+_GUTTER = 24.0
+
 Point = tuple[float, float]
 Size = tuple[float, float]
+
+_now = time.monotonic
+
+
+class Splash:
+    """A line at the window's centre for ``SPLASH`` seconds, as a mode is entered or left. One per mode."""
+
+    def __init__(self) -> None:
+        self._since: Optional[float] = None
+        self._text = ""
+        # Which ``show`` the armed frame belongs to; an older one must not end a newer splash.
+        self._serial = 0
+
+    def show(self, app: Any, text: str) -> None:
+        """Show ``text`` from now and arm the frame that takes it away."""
+        self._since = _now()
+        self._text = text
+        self._serial += 1
+        serial = self._serial
+
+        def hide(_dt: float) -> None:
+            # Ends the splash itself: the clock may fire a hair before the time comparison agrees.
+            if serial != self._serial:
+                return
+            self._since = None
+            try:
+                app.invalidate(content=False)
+            except Exception:
+                logger.debug("hud: failed to repaint after the splash", exc_info=True)
+
+        try:
+            runtime.get_clock().schedule_once(hide, SPLASH)
+        except Exception:
+            logger.debug("hud: failed to schedule the splash's end", exc_info=True)
+
+    @property
+    def text(self) -> Optional[str]:
+        """The line a frame painted now shows, or ``None`` once it is gone."""
+        if self._since is not None and _now() - self._since < SPLASH:
+            return self._text
+        return None
 
 
 class Placement:
@@ -94,10 +145,12 @@ def fit_inside(at: Point, box: Size, window: Size) -> Point:
 
 
 def caption_size(text: str, typeface: Any) -> Size:
-    """The box ``paint_caption`` draws for ``text``."""
+    """The box ``paint_caption`` draws for ``text``: as wide as its longest line, a row per ``'\\n'``."""
     from nuiitivet.rendering.skia.font import measure_text_width
 
-    return (measure_text_width(typeface, FONT_SIZE, text) + _PAD * 2, _LINE_HEIGHT)
+    lines = text.split("\n")
+    widest = max(measure_text_width(typeface, FONT_SIZE, line) for line in lines)
+    return (widest + _PAD * 2, _LINE_HEIGHT * len(lines))
 
 
 def _near(pointer: Point, origin: Point, box: Size, margin: float) -> bool:
@@ -125,35 +178,10 @@ def color(skia: Any, rgb: tuple[int, int, int], alpha: float) -> Any:
     return skia.Color(r, g, b, max(0, min(255, int(round(alpha * 255)))))
 
 
-def wrap_hints(parts: tuple[str, ...], typeface: Any, max_width: float) -> list[str]:
-    """Greedily pack ``parts`` into lines that fit ``max_width``.
-
-    Measured rather than split at a fixed point, because the hint has to stay
-    readable in a narrow window -- a dev app is often a few hundred pixels wide,
-    and a hint running off the edge teaches nothing.
-    """
-    from nuiitivet.rendering.skia.font import measure_text_width
-
-    lines: list[str] = []
-    current = ""
-    for part in parts:
-        candidate = f"{current}{SEPARATOR}{part}" if current else part
-        if current and measure_text_width(typeface, FONT_SIZE, candidate) > max_width:
-            lines.append(current)
-            current = part
-        else:
-            current = candidate
-    if current:
-        lines.append(current)
-    return lines
-
-
 def paint_hud(
     skia: Any,
     canvas: Any,
     *,
-    mode_line: Optional[str],
-    hints: tuple[str, ...],
     notices: list[Optional[str]],
     placement: Optional[Placement],
     pointer: Optional[Point],
@@ -162,7 +190,7 @@ def paint_hud(
     width: float,
     height: float,
 ) -> None:
-    """Draw the badge: the mode line, the wrapped hints, then the notices, in one box.
+    """Draw the notices, a line each, in one box at the bottom-left; nothing with none to draw.
 
     Without a ``placement`` the box sits at home, which is what a notice
     outliving its mode gets.
@@ -171,9 +199,7 @@ def paint_hud(
         return
     from nuiitivet.rendering.skia.font import make_text_blob, measure_text_width
 
-    lines = [mode_line] if mode_line else []
-    lines.extend(wrap_hints(hints, typeface, max(80.0, width - MARGIN * 2 - _PAD * 2)))
-    lines.extend(notice for notice in notices if notice)
+    lines = [notice for notice in notices if notice]
     if not lines:
         return
     text_w = max(measure_text_width(typeface, FONT_SIZE, line) for line in lines)
@@ -188,6 +214,15 @@ def paint_hud(
             canvas.drawTextBlob(blob, x + _PAD, y + 2.0 + (index + 1) * _LINE_HEIGHT - 6.0, ink)
 
 
+def paint_splash(skia: Any, canvas: Any, text: str, font: Any, typeface: Any, width: float, height: float) -> None:
+    """Draw ``text`` in a caption box at the window's centre."""
+    if font is None:
+        return
+    box = caption_size(text, typeface)
+    x, y = fit_inside(((width - box[0]) / 2.0, (height - box[1]) / 2.0), box, (width, height))
+    paint_caption(skia, canvas, text, font, typeface, x, y)
+
+
 def paint_caption(
     skia: Any,
     canvas: Any,
@@ -198,7 +233,7 @@ def paint_caption(
     y: float,
     window: Optional[Size] = None,
 ) -> None:
-    """A one-line caption in a dark rounded box with its top-left at ``(x, y)``.
+    """A caption in a dark rounded box with its top-left at ``(x, y)``, a row per ``'\\n'``.
 
     Given the ``window``, the box is pushed inside its margins first.
     """
@@ -206,16 +241,53 @@ def paint_caption(
         return
     from nuiitivet.rendering.skia.font import make_text_blob
 
-    blob = make_text_blob(text, font)
-    if blob is None:
-        return
     box = caption_size(text, typeface)
     if window is not None:
         x, y = fit_inside((x, y), box, window)
     _paint_box(skia, canvas, x, y, box)
     ink = skia.Paint(AntiAlias=True)
     ink.setColor(color(skia, CAPTION_INK, 1.0))
-    canvas.drawTextBlob(blob, x + _PAD, y + _LINE_HEIGHT - 6.0, ink)
+    for row, line in enumerate(text.split("\n")):
+        blob = make_text_blob(line, font)
+        if blob is not None:
+            canvas.drawTextBlob(blob, x + _PAD, y + (row + 1) * _LINE_HEIGHT - 6.0, ink)
+
+
+def paint_sheet(
+    skia: Any,
+    canvas: Any,
+    title: str,
+    rows: tuple[tuple[str, str], ...],
+    font: Any,
+    typeface: Any,
+    width: float,
+    height: float,
+) -> None:
+    """Draw ``title`` and every ``(key, what)`` row in one box at the window's centre."""
+    if font is None:
+        return
+    from nuiitivet.rendering.skia.font import make_text_blob, measure_text_width
+
+    def measure(text: str) -> float:
+        return float(measure_text_width(typeface, FONT_SIZE, text))
+
+    key_w = max(measure(key) for key, _what in rows)
+    what_w = max(measure(what) for _key, what in rows)
+    box: Size = (max(measure(title), key_w + _GUTTER + what_w) + _PAD * 2, (len(rows) + 1) * _LINE_HEIGHT + _PAD * 2)
+    x, y = fit_inside(((width - box[0]) / 2.0, (height - box[1]) / 2.0), box, (width, height))
+    _paint_box(skia, canvas, x, y, box)
+    ink = skia.Paint(AntiAlias=True)
+    ink.setColor(color(skia, CAPTION_INK, 1.0))
+
+    def draw(text: str, at: float, row: int) -> None:
+        blob = make_text_blob(text, font)
+        if blob is not None:
+            canvas.drawTextBlob(blob, at, y + _PAD + (row + 1) * _LINE_HEIGHT - 6.0, ink)
+
+    draw(title, x + _PAD, 0)
+    for row, (key, what) in enumerate(rows, start=1):
+        draw(key, x + _PAD, row)
+        draw(what, x + _PAD + key_w + _GUTTER, row)
 
 
 def _paint_box(skia: Any, canvas: Any, x: float, y: float, box: Size) -> None:
@@ -231,12 +303,15 @@ __all__ = [
     "FONT_SIZE",
     "MARGIN",
     "SEPARATOR",
+    "SPLASH",
     "Placement",
+    "Splash",
     "caption_size",
     "color",
     "fit_inside",
     "hud_font",
     "paint_caption",
     "paint_hud",
-    "wrap_hints",
+    "paint_sheet",
+    "paint_splash",
 ]
