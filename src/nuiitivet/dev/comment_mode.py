@@ -27,7 +27,7 @@ from nuiitivet._interaction.perception import visible_rect
 from .comments import Comments
 from .gesture import accel_held, child_toward, chord_held, invalidate, parent_of, pick, travelled, weak
 from .hud import SEPARATOR, Placement
-from .inline_field import InlineField
+from .inline_field import InlineField, Slot
 from .interaction import InteractionJournal
 
 logger = logging.getLogger(__name__)
@@ -40,16 +40,33 @@ _LAYOUT_KEY = "e"
 #: The numbered badge at a mark's top-left corner. A press inside the disc clicks
 #: it; no slack, since the widget under it may be no taller than the disc.
 BADGE_RADIUS = 10.0
+#: The field's size beside a badge with nothing typed; it grows with the text.
+FIELD_LEAST = (180.0, 24.0)
+#: Between a badge's centre and the box beside it.
+BESIDE_GAP = BADGE_RADIUS + 4.0
 
 Rect = tuple[float, float, float, float]
+Point = tuple[float, float]
+
+
+def beside_anchor(rect: tuple[float, ...]) -> Point:
+    """The point a caption or field beside the badge on ``rect``'s corner opens from."""
+    return (rect[0], rect[1] - 10.0)
 
 
 @dataclass
 class Writing:
-    """The field open over one mark, for the overlay to draw: which mark, and its text."""
+    """The field open over one mark, for the overlay to draw.
+
+    Attributes:
+        index: The mark's number.
+        field: The text under edit.
+        slot: Where the field hangs on the badge, fixed when it opened.
+    """
 
     index: int
     field: InlineField
+    slot: Slot
 
 
 class CommentMode:
@@ -233,8 +250,19 @@ class CommentMode:
     def _open_field(self, app: Any, index: int) -> None:
         if index == len(self._comments.marks()):
             self._fresh = False
-        self._writing = Writing(index, InlineField.open(self._comments.instruction(index) or ""))
+        rect = self._mark_rect(index)
+        window = (float(getattr(app, "width", 0) or 0), float(getattr(app, "height", 0) or 0))
+        slot = Slot.beside(beside_anchor(rect or (0.0, 0.0)), FIELD_LEAST, BESIDE_GAP, window)
+        field = InlineField.open(self._comments.instruction(index) or "", wrap=slot.wrap)
+        self._writing = Writing(index, field, slot)
         invalidate(app)
+
+    def _mark_rect(self, index: int) -> Optional[Rect]:
+        """The on-screen rect of mark ``index``, or ``None`` when it is off screen."""
+        for number, kind, mark in self._comments.marks():
+            if number == index:
+                return mark if kind == "region" else visible_rect(mark)
+        return None
 
     def _write_key(self, app: Any, key: str, modifier_keys: int) -> None:
         writing = self._writing
@@ -415,4 +443,4 @@ def _normalized(a: tuple[float, float], b: tuple[float, float]) -> tuple[float, 
     return (x0, y0, x1 - x0, y1 - y0)
 
 
-__all__ = ["BADGE_RADIUS", "CommentMode", "Writing"]
+__all__ = ["BADGE_RADIUS", "BESIDE_GAP", "FIELD_LEAST", "CommentMode", "Writing", "beside_anchor"]

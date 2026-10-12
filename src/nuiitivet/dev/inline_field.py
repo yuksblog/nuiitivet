@@ -3,8 +3,10 @@
 Layout edit mode opens it over a widget's text literal, comment mode over a
 mark. It never enters the widget tree: the mode feeds it typed text, the input
 method's composition and keys by name, and it runs the editing operations
-``EditableText`` runs. It takes several lines, broken by ``Shift+Enter`` and
-never wrapped: the box grows to fit. The mode decides what a commit writes to.
+``EditableText`` runs. It takes several lines, broken by ``Shift+Enter``, and
+the box grows to fit them inside the window: it wraps a line at the room its
+side of the anchor has, and moves up rather than cross the bottom edge. The
+mode decides what a commit writes to.
 """
 
 from __future__ import annotations
@@ -31,16 +33,74 @@ from nuiitivet.widgets.text_editing import (
 from nuiitivet.widgets.text_lines import break_lines, caret_x, line_of, move_lines
 
 from .gesture import accel_held
-from .hud import CAPTION_BG, CAPTION_INK, FONT_SIZE, color
+from .hud import CAPTION_BG, CAPTION_INK, FONT_SIZE, MARGIN, color, fit_inside
 
+Point = tuple[float, float]
+Size = tuple[float, float]
 Rect = tuple[float, float, float, float]
 
 #: What one key did to the field: it asked to commit, to cancel, or neither.
 Outcome = Optional[Literal["commit", "cancel"]]
+#: Which way a box extends from its anchor.
+Side = Literal["right", "left"]
 
 # The field's height with one line, and what each further line adds.
 _BOX_H = 24.0
 _LINE_H = 16.0
+# Between the box's edge and its text.
+_PAD = 8.0
+
+
+@dataclass(frozen=True)
+class Slot:
+    """Where a field hangs and how far it may grow.
+
+    Attributes:
+        anchor: The point the box opens from.
+        least: The box's size with nothing typed.
+        side: Which way the box extends from ``anchor``.
+        gap: Between ``anchor`` and the box's near edge.
+        room: The box's greatest width; a line wraps inside it. ``None`` never wraps.
+    """
+
+    anchor: Point
+    least: Size
+    side: Side = "right"
+    gap: float = 0.0
+    room: Optional[float] = None
+
+    @classmethod
+    def beside(cls, anchor: Point, least: Size, gap: float, window: Size) -> Slot:
+        """A slot beside ``anchor``: on its right when the least box fits there, else on its left.
+
+        The room is what that side has up to the window's margin, never under
+        the least width. Called once, when the field opens: the side holds
+        while the text grows.
+        """
+        x = anchor[0]
+        if x + gap + least[0] <= window[0] - MARGIN:
+            return cls(anchor, least, "right", gap, max(least[0], window[0] - MARGIN - x - gap))
+        return cls(anchor, least, "left", gap, max(least[0], x - gap - MARGIN))
+
+    @classmethod
+    def over(cls, rect: Rect, window: Size) -> Slot:
+        """A slot over ``rect``, extending right, with the room from its left edge to the window's margin."""
+        x, y, w, h = rect
+        return cls((x, y), (w, h), "right", 0.0, max(w, window[0] - MARGIN - x))
+
+    def moved(self, anchor: Point) -> Slot:
+        """The same slot opening from ``anchor``."""
+        return Slot(anchor, self.least, self.side, self.gap, self.room)
+
+    @property
+    def wrap(self) -> Optional[float]:
+        """The width a line of text wraps at, or ``None``."""
+        return None if self.room is None else max(1.0, self.room - _PAD * 2)
+
+    def place(self, box: Size, window: Size) -> Point:
+        """The top-left of a ``box`` hung here, pushed inside the window's margins."""
+        x = self.anchor[0] + self.gap if self.side == "right" else self.anchor[0] - self.gap - box[0]
+        return fit_inside((x, self.anchor[1]), box, window)
 
 
 def measure(text: str) -> float:
@@ -61,6 +121,8 @@ class InlineField:
     """The text under edit: ``value`` holds the text, the selection whose end is the caret, and the composing range."""
 
     value: TextEditingValue
+    #: The width a line wraps at, the painted box's; ``None`` never wraps.
+    wrap: Optional[float] = None
     # Set by the commit that confirms a composition, which on macOS arrives
     # before that Enter's key press; read once by the next key.
     ime_just_committed: bool = False
@@ -68,10 +130,10 @@ class InlineField:
     goal_x: Optional[float] = None
 
     @classmethod
-    def open(cls, text: str) -> InlineField:
-        """A field holding ``text`` with the caret at its end."""
+    def open(cls, text: str, *, wrap: Optional[float] = None) -> InlineField:
+        """A field holding ``text`` with the caret at its end, its lines wrapping at ``wrap``."""
         caret = TextRange(len(text), len(text))
-        return cls(TextEditingValue(text, caret))
+        return cls(TextEditingValue(text, caret), wrap)
 
     @property
     def text(self) -> str:
@@ -113,7 +175,7 @@ class InlineField:
             return None
         motion = text_motion_for_key(key)
         if motion in (TEXT_MOTION_UP, TEXT_MOTION_DOWN):
-            lines = break_lines(self.value.text, measure)
+            lines = break_lines(self.value.text, measure, self.wrap)
             moved, goal_x = move_lines(
                 self.value, lines, -1 if motion == TEXT_MOTION_UP else 1, measure, goal_x=self.goal_x, select=shift
             )
@@ -139,23 +201,25 @@ def paint_field(
     skia: Any,
     canvas: Any,
     app: Any,
-    rect: Rect,
+    slot: Slot,
     value: TextEditingValue,
     accent: tuple[int, int, int],
     font: Any,
     typeface: Any,
-) -> None:
-    """Draw the field at ``rect``, its least size; the box grows to fit the text, a line per ``'\\n'``.
+    window: Size,
+) -> Rect:
+    """Draw the field in its ``slot`` and return the rect it took.
 
-    The caret's rect is published to the window's IME state, so the candidate
-    window opens beside it.
+    The box starts at the slot's least size and grows to fit the text, a line
+    per ``'\\n'`` and per wrap at the slot's room, then is pushed inside the
+    window's margins. The caret's rect is published to the window's IME state,
+    so the candidate window opens beside it.
     """
     from nuiitivet.rendering.skia.font import make_text_blob, measure_text_width
 
-    x, y, w, h = rect
-    pad = 8.0
+    pad = _PAD
     text, selection = value.text, value.selection
-    lines = break_lines(text, measure)
+    lines = break_lines(text, measure, slot.wrap)
 
     def width_of(s: str) -> float:
         return float(measure_text_width(typeface, FONT_SIZE, s))
@@ -167,8 +231,11 @@ def paint_field(
     def baseline_of(row: int) -> float:
         return y + _BOX_H / 2.0 + FONT_SIZE / 2.5 + row * _LINE_H
 
-    box_w = max(w, max(width_of(text[line.start : line.end]) for line in lines) + pad * 2)
-    box_h = max(h, _BOX_H + (len(lines) - 1) * _LINE_H)
+    box_w = max(slot.least[0], max(width_of(text[line.start : line.end]) for line in lines) + pad * 2)
+    if slot.room is not None:
+        box_w = min(box_w, max(slot.least[0], slot.room))
+    box_h = max(slot.least[1], _BOX_H + (len(lines) - 1) * _LINE_H)
+    x, y = slot.place((box_w, box_h), window)
     fill = skia.Paint(AntiAlias=True)
     fill.setColor(skia.Color(*CAPTION_BG))
     canvas.drawRoundRect(skia.Rect.MakeXYWH(x, y, box_w, box_h), 5.0, 5.0, fill)
@@ -207,6 +274,7 @@ def paint_field(
     ime = getattr(app, "ime", None)
     if ime is not None:
         ime.update_cursor_rect(caret_px, caret_top, 2.0, _BOX_H - 8.0)
+    return (x, y, box_w, box_h)
 
 
-__all__ = ["InlineField", "Outcome", "measure", "paint_field"]
+__all__ = ["InlineField", "Outcome", "Side", "Slot", "measure", "paint_field"]

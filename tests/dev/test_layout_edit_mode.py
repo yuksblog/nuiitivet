@@ -283,6 +283,8 @@ def bare_grid():
 class _App:
     def __init__(self, root: Any = None) -> None:
         self.root = root
+        self.width = 0
+        self.height = 0
         self.invalidated = 0
         self.tree_repaints = 0
         self._comment_mode: Any = None
@@ -1528,8 +1530,18 @@ def test_enter_opens_a_field_with_the_widgets_text(session: _Session) -> None:
 
     editor = session.mode.editor
     assert editor is not None and editor.value == TextEditingValue("AAA", TextRange(3, 3))
-    assert editor.rect == (0.0, 0.0, 100.0, 40.0)
+    assert editor.slot.anchor == (0.0, 0.0) and editor.slot.least == (100.0, 40.0)
     assert session.mode.exit == "Esc cancel"
+
+
+def test_the_field_over_a_widget_has_the_room_to_the_windows_edge(session: _Session) -> None:
+    session.app.width, session.app.height = 300, 200
+    _editing(session)
+
+    editor = session.mode.editor
+    assert editor is not None and editor.slot.side == "right"
+    assert editor.slot.room == 300.0 - 12.0, "from the widget's left edge to the window's margin"
+    assert editor.slot.wrap is not None and editor.slot.wrap < editor.slot.room
     assert session.mode.hints == ("Enter write", "Shift+←/→ select", "Ctrl+A/C/X/V")
 
 
