@@ -121,8 +121,8 @@ A mode teaches its keys in one place: the sheet that lists every gesture
 while `H` is held, at the window's centre. Held rather than toggled, so there
 is nothing to close and no second key to remember. On entering, a line at the
 centre names the mode and the key `H`, and on leaving it says how the session
-ended, kept or discarded, each for as long as a tooltip stays, since the
-hands are about to move and a corner is not where the eye is. A switch from
+ended, kept or discarded, each for a few seconds, since the eye has to find
+the line before it can read it, and a corner is not where the eye is. A switch from
 one mode to the other shows only the entered mode's line, since two at the
 centre would overlap. Nothing
 else lists keys: a key list on screen while the human works covers the app
@@ -138,16 +138,15 @@ never flickers.
 Comment mode records what the human pointed at, as nodes and as regions, and
 what they wrote on each mark, and the bridge serves the result to the agent,
 with a roll-up on `status` and a content-free marker on the interaction
-journal so the agent notices a comment without being told. A comment is a
-mark with an optional instruction: a bare number is a whole comment, and the
-human says what it means in chat, by number.
+journal so the agent notices a comment without being told; the agent's answer
+comes back through the bridge onto the mark. A comment is a mark with a
+thread: a bare number is a whole comment, and the human says what it means in
+chat, by number.
 
-Once a session is committed with marks in it, the badge's home says what to
-type in chat, the skill, then `see_comments` for an agent without it, until
-the agent has read the comments; a hot reload, which changes nothing the
-agent has not seen, does not bring it back. The fallback is the tool's name
-rather than a sentence, because "see the comments" reads to an agent as code
-comments or review comments.
+Once a session is committed with comments the agent has not read, the
+leaving line at the centre also says what to type in chat. It rides on that
+line rather than sitting in the notice box until the agent has read, since a
+box that waits on the agent covers the app for the whole wait.
 
 ### Marks
 
@@ -205,7 +204,9 @@ A new mark opens its field at once, since the instruction is what the mark
 was made for, and the mark is the handle after that: a click on its widget
 or its badge reopens the field, and `Enter` with no field open leaves. A
 click never removes a mark, since the brackets on a marked widget promise
-the same click as on any other. A press anywhere writes the field and then
+the same click as on any other; `Esc` in the field a new mark opened, with
+nothing written yet, removes the mark, since the click was taken back
+before the text the mark was made for. A press anywhere writes the field and then
 means what it would have meant, so marking several widgets in a row is one
 click each. Reading a mark is a hover on its badge, not a click, so
 rereading several marks opens no field; nothing but the number stays beside
@@ -213,10 +214,43 @@ a mark, since a line of text on every mark covers the app it comments on.
 The field is the one layout edit mode opens over a text literal, so neither
 mode grows a second editor; there a click elsewhere drops the text, because
 only there is a file behind the field. It takes several lines, `Shift+Enter`
-breaking one. The field opens on the side of the badge that has room for it.
-That side holds while the text grows, since a box that hopped across
-mid-sentence would move under the typist's eye. The instruction shown on
-hover picks its side the same way.
+breaking one. The thread shows on hover and stays while the field is open on
+its mark, since a reply is written against what was said. Thread and field
+stack under the mark's badge as one block, over every badge, since the
+badge is where the thread was asked for and a tall mark would put its
+bottom edge a screen away; the thread kept to its
+newest rows when the block would not fit, since the reply is written to the
+newest exchange and the field has to stay on screen; the whole thread is the
+agent's through `see_comments`.
+
+### The Thread
+
+A mark is a thread, and the agent answers on it. The human already decided
+where by marking; an answer in chat hands them a number to find on screen
+again, and "not quite, a bit more" would have to be typed in chat or written
+over the first instruction. `answer_comments` appends the agent's line with
+an outcome, `done`, `refused` or `question`; the outcome joins the number on
+the badge as a glyph on a disc of its own colour, green, red or blue, since
+an outcome in the badge's own amber reads as part of the number and is the
+one thing on the mark the human must not miss; the words show only on
+hover, since a line of text on every answered mark would cover the app as a
+line on every mark did. So the human
+sees that the round happened without reading chat, and a `question` waits
+on the mark rather than in chat.
+
+The field edits the human's newest line until the agent answers it, and
+after an answer writes a new line: the answered line is what the agent acted
+on, and rewriting it would detach the answer from what it answered. A reply
+makes the mark the human's turn again, with the thread intact, so the agent
+reads the exchange whole. A `done` mark the next committed session did not
+reply on is dropped at the commit, since the human had the session to
+disagree; a `refused` or `question` mark stays until the human replies or
+removes it, since the request is still open and the judgement is theirs.
+`Enter` never removes a mark on its own, since the brackets promise the same
+click as on any widget and `Delete` is the key that removes. An answer bumps
+no `seq` and sits outside the session's undo, since the agent wrote it; an
+open session's snapshots carry it too, so no step of the human's takes it
+back.
 
 ### The Buffer
 

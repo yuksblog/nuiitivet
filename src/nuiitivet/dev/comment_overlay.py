@@ -3,10 +3,10 @@
 A pure function of the mode and the :class:`~nuiitivet.dev.comments.Comments`
 buffer, read at paint time, drawn from the live frame paths only and never
 into the widget tree, so ``describe_tree`` never sees a mark and ``screenshot``
-never contains one. While latched it paints the hover candidate, every mark's
-numbered badge, the instruction under the pointer, the open field and the
-badge; after a commit, the line saying what to type in chat until the agent
-has read the comments; and for the source jump, its brackets and its notice.
+never contains one. It paints every mark's numbered badge, with a glyph for
+the agent's answer; while latched, the hover candidate, the thread under the
+pointer and the open field; and for the source jump, its brackets and its
+notice.
 """
 
 from __future__ import annotations
@@ -16,22 +16,31 @@ import os
 from typing import Any, Optional
 
 from nuiitivet._interaction.perception import visible_rect
-
+from nuiitivet.material.symbols.material_symbols import Symbols
 from nuiitivet.widgets.text_lines import break_lines
 
-from .comment_mode import BADGE_RADIUS, BESIDE_GAP, FIELD_LEAST, beside_anchor
+from .comment_mode import ANSWER_WIDTH, BADGE_RADIUS, FIELD_LEAST, UNDER_GAP
 from .hud import (
+    CAPTION_INK,
     FONT_SIZE,
+    ICON_GUTTER,
+    LINE_HEIGHT,
+    MARGIN,
+    PAD,
     SEPARATOR,
-    caption_size,
+    Row,
     color,
+    fit_inside,
     hud_font,
     paint_caption,
     paint_hud,
+    paint_rows,
     paint_sheet,
     paint_splash,
+    rows_size,
+    symbol_font,
 )
-from .inline_field import Slot, measure, paint_field
+from .inline_field import field_rect, measure, paint_field
 
 logger = logging.getLogger(__name__)
 
@@ -48,19 +57,35 @@ _BADGE_INK = (32, 24, 0)
 
 _BRACKET_LEN = 12.0
 _BRACKET_WIDTH = 2.5
-#: What to type in chat, shown until the comments are read.
-PROMPT = "in chat: /nuiitivet-see-comments" + SEPARATOR + "see_comments"
+Rect = tuple[float, ...]
+#: The Material Symbols glyph beside the number once the agent has answered, by outcome.
+GLYPHS = {
+    "done": Symbols.check.codepoint,
+    "refused": Symbols.close.codepoint,
+    "question": Symbols.question_mark.codepoint,
+}
+# The glyph's size in the badge.
+_GLYPH_SIZE = 14.0
+#: The disc behind each glyph: green for done, red for refused, blue for a question.
+OUTCOME_COLOURS = {
+    GLYPHS["done"]: (67, 160, 71),
+    GLYPHS["refused"]: (229, 57, 53),
+    GLYPHS["question"]: (30, 136, 229),
+}
+#: The icon leading a thread row, by who wrote the line.
+ICONS = {"human": Symbols.person.codepoint, "agent": Symbols.smart_toy.codepoint}
 
 #: Every gesture of the mode, for the sheet ``H`` holds open.
 HELP: tuple[tuple[str, str], ...] = (
     ("Esc", "discard the session and leave"),
     ("Click", "mark the widget"),
+    ("Click (on a mark)", "edit the text, or reply to the answer"),
     ("Drag", "mark an area"),
     ("W / A / S / D", "walk to the parent, siblings and child"),
     ("Enter", "mark the walked widget; else keep all and leave"),
     ("Enter (in the field)", "keep the text"),
     ("Shift+Enter (in the field)", "new line"),
-    ("Esc (in the field)", "close the field"),
+    ("Esc (in the field)", "close the field; a new mark with nothing written goes too"),
     ("Delete / Backspace", "remove the mark under the pointer"),
     ("Ctrl+Z / Ctrl+Shift+Z", "undo / redo"),
     ("Ctrl+Backspace", "remove every mark"),
@@ -91,9 +116,8 @@ def paint_comments(app: Any, canvas: Any, width: int, height: int) -> None:
         jump_target = jump.hovered if jump is not None else None
         jump_notice = jump.notice if jump is not None else None
         editing = getattr(app, "_layout_edit_mode", None)
-        # With no mode latched the badge's home is free for the prompt and the jump's notice.
+        # With no mode latched the notice box is free for the jump's notice.
         alone = not active and not (editing is not None and editing.active)
-        unread = alone and comments is not None and comments.unread
         splash = mode.splash if mode is not None else None
         if not active and not marks and jump_target is None and not jump_notice and not splash:
             return
@@ -113,18 +137,17 @@ def paint_comments(app: Any, canvas: Any, width: int, height: int) -> None:
                 _paint_band(skia, canvas, mode.band)
             # Under the badges: a marked widget hovers like any other, its badge on top.
             _paint_hover(skia, canvas, mode, font, typeface, window, skip=jump_target)
-        badges = _paint_marks(skia, canvas, app, comments, marks, writing, hovered_badge, font, typeface, window)
+        rects, thread = _paint_marks(skia, canvas, app, comments, marks, writing, hovered_badge, font, typeface)
         if active and mode is not None:
             _paint_hud(skia, canvas, mode, jump_notice, font, typeface, width, height)
-            _paint_open_field(skia, canvas, app, writing, badges, font, typeface, window)
+            # Over every mark: a thread read under another mark's badge is a thread not read.
+            _paint_under_mark(skia, canvas, app, thread, writing, rects, font, typeface, window)
             if mode.help:
                 paint_sheet(skia, canvas, "COMMENT MODE", HELP, font, typeface, *window)
-        # Only in a window that shows a mark.
-        prompt = PROMPT if unread and badges else None
         if jump_target is not None:
             _paint_jump(skia, canvas, jump_target, jump_notice, font, typeface, window)
-        elif alone and (prompt or jump_notice):
-            _paint_home(skia, canvas, [prompt, jump_notice], font, typeface, width, height)
+        elif alone and jump_notice:
+            _paint_home(skia, canvas, [jump_notice], font, typeface, width, height)
         if splash:
             paint_splash(skia, canvas, splash, font, typeface, *window)
     except Exception:
@@ -141,16 +164,18 @@ def _paint_marks(
     hovered_badge: Optional[int],
     font: Any,
     typeface: Any,
-    window: tuple[float, float],
-) -> dict[int, tuple[float, float]]:
-    """Paint every mark this window owns; return where each one's badge landed, by number.
+) -> tuple[dict[int, Rect], Optional[tuple[str, Rect]]]:
+    """Paint every mark this window owns.
 
-    Nothing but the number sits beside a mark; its instruction shows whole
-    while the pointer rests on the badge.
+    Returns each one's rect, by number, and the thread to paint last with the
+    rect of its mark: the mark whose field is open, else the one whose badge
+    the pointer rests on, or ``None``. Nothing but the number sits beside a
+    mark, joined by the answer's glyph once the agent has answered.
     """
     from nuiitivet.widgeting.context_lookup import find_window
 
-    badges: dict[int, tuple[float, float]] = {}
+    rects: dict[int, Rect] = {}
+    thread_to_paint: Optional[tuple[Any, Rect]] = None
     for index, kind, mark in marks:
         if kind != "region":
             # The buffer spans windows: a node's mark paints only in the window
@@ -164,38 +189,89 @@ def _paint_marks(
         if kind == "region":
             # A wash, so the area reads as one even where it crosses widgets.
             _paint_wash(skia, canvas, rect, 0.13)
-        _paint_badge(skia, canvas, rect, str(index), font, typeface, 0.75)
-        badges[index] = (rect[0], rect[1])
-        instruction = comments.instruction(index) if comments is not None else None
-        if instruction and index == hovered_badge and (writing is None or writing.index != index):
-            # Wrapped where the field would wrap it, so reading and writing show the same lines.
-            slot = Slot.beside(beside_anchor(rect), FIELD_LEAST, BESIDE_GAP, window)
-            caption = _wrapped(instruction, slot.wrap)
-            at = slot.place(caption_size(caption, typeface), window)
-            paint_caption(skia, canvas, caption, font, typeface, *at)
-    return badges
+        outcome = comments.outcome(index) if comments is not None else None
+        _paint_badge(skia, canvas, rect, str(index), GLYPHS.get(outcome or ""), font, typeface, 1.0)
+        rects[index] = tuple(rect)
+        thread = comments.thread(index) if comments is not None else ()
+        # The thread of the mark being written on, so the reply is written with the exchange in view;
+        # else the one under the pointer.
+        shown = writing.index if writing is not None else hovered_badge
+        if thread and index == shown:
+            thread_to_paint = (thread, tuple(rect))
+    return (rects, thread_to_paint)
 
 
-def _paint_open_field(
+def _paint_under_mark(
     skia: Any,
     canvas: Any,
     app: Any,
+    thread: Optional[tuple[Any, Rect]],
     writing: Any,
-    badges: dict[int, tuple[float, float]],
+    rects: dict[int, Rect],
     font: Any,
     typeface: Any,
     window: tuple[float, float],
 ) -> None:
-    """The field open on a mark, beside its badge and above everything else the mode paints."""
-    if writing is not None and writing.index in badges:
-        slot = writing.slot.moved(beside_anchor(badges[writing.index]))
-        paint_field(skia, canvas, app, slot, writing.field.value, _ACCENT, font, typeface, window)
+    """The thread, then the open field, stacked under the mark's badge, or above it when the window ends there.
+
+    ``thread`` is the lines and the rect of the mark whose thread shows; the
+    field is the one open on that mark, or on a mark with no thread yet. Laid
+    out as one block, so the field never lands on the thread it answers; a
+    thread taller than the room keeps its newest rows.
+    """
+    if thread is not None:
+        lines, rect = thread
+    elif writing is not None and writing.index in rects:
+        lines, rect = (), rects[writing.index]
+    else:
+        return
+    x, y, _w, h = rect
+    field = writing if writing is not None and writing.index in rects else None
+    field_w = field_h = 0.0
+    if field is not None:
+        _fx, _fy, field_w, field_h = field_rect(field.slot.moved((x, 0.0)), field.field.text, window)
+    rows: list[Row] = []
+    if lines:
+        wrap = max(FIELD_LEAST[0], window[0] - MARGIN - x) - PAD * 2 - ICON_GUTTER
+        room = window[1] - MARGIN * 2 - (UNDER_GAP + field_h if field is not None else 0.0)
+        rows = _tail(_thread_rows(lines, wrap), max(1, int(room // LINE_HEIGHT)))
+    thread_box = rows_size(rows, typeface) if rows else (0.0, 0.0)
+    block_w, block_h = max(thread_box[0], field_w), thread_box[1]
+    if field is not None:
+        block_h += (UNDER_GAP if rows else 0.0) + field_h
+    top = y + BADGE_RADIUS + UNDER_GAP
+    if top + block_h > window[1] - MARGIN:
+        top = y - BADGE_RADIUS - UNDER_GAP - block_h
+    x, top = fit_inside((x, top), (block_w, block_h), window)
+    if rows:
+        paint_rows(skia, canvas, rows, font, typeface, x, top)
+        top += thread_box[1] + UNDER_GAP
+    if field is not None:
+        paint_field(skia, canvas, app, field.slot.moved((x, top)), field.field.value, _ACCENT, font, typeface, window)
+
+
+def _thread_rows(lines: Any, wrap: float) -> list[Row]:
+    """The thread as rows: each line's first row led by its writer's icon, its wrapped rest under it."""
+    rows: list[Row] = []
+    for line in lines:
+        for row, text in enumerate(_wrapped(line.text, wrap).split("\n")):
+            rows.append((ICONS[line.by] if row == 0 else None, text))
+    return rows
+
+
+def _tail(rows: list[Row], fit: int) -> list[Row]:
+    """The newest ``fit`` rows, the first of them a count of what is cut, when ``rows`` do not all fit."""
+    if len(rows) <= fit:
+        return rows
+    kept = rows[-(fit - 1) :] if fit > 1 else rows[-1:]
+    cut = len(rows) - len(kept)
+    return [(None, f"… {cut} earlier row{'' if cut == 1 else 's'}")] + kept
 
 
 def _paint_home(
     skia: Any, canvas: Any, notices: list[Optional[str]], font: Any, typeface: Any, width: int, height: int
 ) -> None:
-    """Lines in the box at the bottom-left with no mode latched: the read prompt, the jump's notice."""
+    """Lines in the box at the bottom-left with no mode latched: the jump's notice."""
     paint_hud(
         skia,
         canvas,
@@ -249,11 +325,16 @@ def _paint_badge(
     canvas: Any,
     rect: tuple[float, ...],
     label: str,
+    glyph: Optional[str],
     font: Any,
     typeface: Any,
     alpha: float,
 ) -> None:
-    """Draw the numbered pin at a mark's top-left corner; the number is the payload's ``index``."""
+    """Draw the numbered pin at a mark's top-left corner; the number is the payload's ``index``.
+
+    With a ``glyph`` a second disc joins the pin on its right, in the outcome's
+    colour, the glyph bold and light on it.
+    """
     x, y, _w, _h = rect
     disc = skia.Paint(AntiAlias=True)
     disc.setColor(color(skia, _ACCENT, alpha))
@@ -262,13 +343,28 @@ def _paint_badge(
         return
     from nuiitivet.rendering.skia.font import make_text_blob, measure_text_width
 
-    blob = make_text_blob(label, font)
-    if blob is None:
-        return
-    text_w = measure_text_width(typeface, FONT_SIZE, label)
     ink = skia.Paint(AntiAlias=True)
     ink.setColor(color(skia, _BADGE_INK, alpha))
-    canvas.drawTextBlob(blob, x - text_w / 2.0, y + FONT_SIZE / 2.5, ink)
+    blob = make_text_blob(label, font)
+    if blob is not None:
+        text_w = measure_text_width(typeface, FONT_SIZE, label)
+        canvas.drawTextBlob(blob, x - text_w / 2.0, y + FONT_SIZE / 2.5, ink)
+    if glyph is None:
+        return
+    centre = x + BADGE_RADIUS + ANSWER_WIDTH / 2.0 - 2.0
+    disc.setColor(color(skia, OUTCOME_COLOURS[glyph], alpha))
+    canvas.drawCircle(centre, y, BADGE_RADIUS, disc)
+    icon_font, icon_typeface = symbol_font(_GLYPH_SIZE)
+    blob = make_text_blob(glyph, icon_font) if icon_font is not None else None
+    if blob is not None:
+        # Stroked as well as filled, which is what makes the glyph bold.
+        bold = skia.Paint(AntiAlias=True)
+        bold.setColor(color(skia, CAPTION_INK, alpha))
+        bold.setStyle(skia.Paint.kStrokeAndFill_Style)
+        bold.setStrokeWidth(1.0)
+        # An icon glyph stands on the baseline and rises its size; centred on its disc.
+        glyph_w = measure_text_width(icon_typeface, _GLYPH_SIZE, glyph)
+        canvas.drawTextBlob(blob, centre - glyph_w / 2.0, y + _GLYPH_SIZE / 2.0, bold)
 
 
 def _paint_hover(
@@ -301,10 +397,10 @@ def _paint_hover(
     paint_caption(skia, canvas, describe_node(candidate), font, typeface, x, y - 22.0, window)
 
 
-def _wrapped(instruction: str, width: Optional[float]) -> str:
-    """The whole instruction, its own line breaks kept and long lines broken at ``width``."""
-    lines = break_lines(instruction, measure, width)
-    return "\n".join(instruction[line.start : line.end] for line in lines)
+def _wrapped(text: str, width: Optional[float]) -> str:
+    """The whole ``text``, its own line breaks kept and long lines broken at ``width``."""
+    lines = break_lines(text, measure, width)
+    return "\n".join(text[line.start : line.end] for line in lines)
 
 
 def _paint_jump(
@@ -379,7 +475,8 @@ def _paint_hud(
 
 
 __all__ = [
-    "PROMPT",
+    "GLYPHS",
+    "ICONS",
     "describe_node",
     "paint_brackets",
     "paint_comments",

@@ -22,14 +22,15 @@ words together.
 | Hold `H` | Show every gesture of this mode while the key is down. |
 | Hover | The widget under the cursor gets amber corner brackets and a caption naming it: the one a click would mark. |
 | `W` / `S`, `A` / `D` | Move that choice up to its parent and back down, or along to the widget beside it, when the one you mean is covered by its children or too small to aim at. `Enter` or a click then marks it. |
-| Click | Mark the widget under the cursor; a field opens on the mark. On a marked widget, or on its numbered badge, the field opens again instead, to change or clear the text. |
+| Click | Mark the widget under the cursor; a field opens on the mark. On a marked widget, or on its numbered badge, the field opens again instead: on your text, to change or clear it, or empty once the agent has answered, to reply. |
 | Drag | Mark an **area** instead — a gap, a misaligned band, anywhere with no widget to name. The field opens the same way. |
-| In the field | Type the instruction. `Enter` keeps it (leave it empty to keep just the number); `Shift+Enter` breaks the line; `Esc` closes the field. `Shift+←/→` selects, `Ctrl+A/C/X/V` (`Cmd` on macOS) select all, copy, cut and paste. A click keeps the text and then does what it would have done anyway. |
-| Hover a mark's numbered badge | Read its instruction. Nothing but the number stays beside a mark. |
+| In the field | Type the instruction. `Enter` keeps it (leave it empty to keep just the number); `Shift+Enter` breaks the line; `Esc` closes the field, and on a mark you just made with nothing written yet, removes the mark too (`Ctrl+Z` brings it back). `Shift+←/→` selects, `Ctrl+A/C/X/V` (`Cmd` on macOS) select all, copy, cut and paste. A click keeps the text and then does what it would have done anyway. |
+| Hover a mark's numbered badge | Read its thread under the badge: your lines and the agent's, each led by an icon for who wrote it. A thread taller than the window shows its newest lines and counts the rest. Nothing but the number stays beside a mark. |
+| The badge | Once the agent has answered, a coloured disc joins the number: green with a check mark for done, red with a cross for refused, blue with a question mark for a question to you. Hover to read the line. |
 | `Delete` / `Backspace` | Remove the mark under the cursor, on its widget or on its badge. `Ctrl+Z` brings it back. |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | Undo and redo what you did in this session — a mark, an unmark, a text. The same keys as layout edit mode. |
 | `Ctrl+Backspace` | Remove every mark, including ones you kept earlier. `Ctrl+Z` brings them back. |
-| `Enter` | Keep everything and leave. After `W` / `S`, mark the chosen widget instead. |
+| `Enter` | Keep everything and leave. A `done` mark you did not reply on is dropped; every other mark stays. After `W` / `S`, mark the chosen widget instead. |
 | `Esc` | Discard this session and leave — marks and text alike. Anything you kept with `Enter` earlier stays. |
 | `Ctrl+Shift+E` | Keep everything and switch to [layout edit mode](#edit-the-layout-directly-layout-edit-mode). |
 
@@ -42,14 +43,20 @@ be a problem instead of a change: comment right after it happens, and the
 agent replays what you did in the app to reproduce it before fixing.
 When you enter, the mode's name and `H help` show at the centre for a moment.
 Hold `H` whenever you want the whole list. When you leave, the same spot says
-whether your comments were kept or discarded.
+whether your comments were kept or discarded, and, while the agent has
+comments to read, what to type in chat.
 
-Then, in chat, run the `/nuiitivet-see-comments` skill. It reads your comments
-and does what each one says, answering by number. If the skill is
+Then, in chat, run the `/nuiitivet-see-comments` skill. It reads your comments,
+does what each one says, and writes its answer on each mark: `done` and what
+it did, `refused` and why, or a `question` for you. If the skill is
 [not installed](install_skills.md), type `see_comments` instead: that names the dev bridge tool
 directly, so the agent calls it. Either works; the skill is the better
-habit, since your chat completes it for you. The badge at the bottom-left
-shows both until the agent has read the comments.
+habit, since your chat completes it for you.
+To answer back, enter comment mode again, click the mark, type and press
+`Enter`: your reply joins the thread, the icon goes, and the agent reads the
+whole thread next time. A `refused` or a `question` waits for that reply;
+remove the mark with `Delete` if you accept the refusal. A `done` mark you
+leave alone is dropped when you next leave the mode with `Enter`.
 
 > **Privacy note.** `interaction_log` records neither coordinates nor typed
 > content, because it records ambiently. A comment may carry both, and your

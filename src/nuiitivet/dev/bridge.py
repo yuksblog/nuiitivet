@@ -50,7 +50,7 @@ from .interaction import InteractionJournal
 from .journal import ReloadJournal
 from .perception import describe_state, describe_tree
 from . import profiling
-from .comments import Comments, see_comments
+from .comments import OUTCOMES, Comments, see_comments
 from .runtime_capture import RuntimeLogCapture
 from .runtime_journal import RuntimeJournal
 from .session import current_dev_session
@@ -349,15 +349,37 @@ def _build_status(
     }
 
 
-def _serve_comments(app: Any, window_spec: Any, comments: Optional[Comments]) -> dict[str, Any]:
-    """Read the comments, then repaint: the overlay's prompt to read them is over."""
-    payload = see_comments(_resolve_window(app, window_spec).root, comments)
+def _answer_comments(app: Any, comments: Optional[Comments], answers: Any) -> dict[str, Any]:
+    """Write the agent's answers on their marks, then repaint; return the numbers answered.
+
+    All or nothing: a malformed answer, an unknown number or an unknown outcome
+    is a ``ValueError`` before any mark is written.
+    """
+    if comments is None:
+        raise ValueError("comments are not enabled on this bridge")
+    if not isinstance(answers, list) or not answers:
+        raise ValueError("answers must be a non-empty list of {index, outcome, text}")
+    live = {index for index, _kind, _mark in comments.marks()}
+    parsed: list[tuple[int, str, str]] = []
+    for answer in answers:
+        if not isinstance(answer, dict):
+            raise ValueError("each answer must be {index, outcome, text}")
+        index, outcome, text = answer.get("index"), answer.get("outcome"), answer.get("text", "")
+        if not isinstance(index, int) or index not in live:
+            raise ValueError(f"no comment is numbered {index!r}")
+        if outcome not in OUTCOMES:
+            raise ValueError(f"outcome must be one of {', '.join(OUTCOMES)}, not {outcome!r}")
+        if not isinstance(text, str):
+            raise ValueError("text must be a string")
+        parsed.append((index, outcome, text))
+    for index, outcome, text in parsed:
+        comments.answer(index, outcome, text)
     for window in getattr(app, "windows", None) or (app,):
         try:
-            window.invalidate()
+            window.invalidate(content=False)
         except Exception:
-            logger.debug("dev bridge: invalidate after see_comments failed", exc_info=True)
-    return payload
+            logger.debug("dev bridge: invalidate after answer_comments failed", exc_info=True)
+    return {"answered": [index for index, _outcome, _text in parsed]}
 
 
 def _run_wait_for(marshaller: _UIThreadMarshaller, body: dict[str, Any]) -> dict[str, Any]:
@@ -559,6 +581,12 @@ def _make_handler(
                             body.get("modifiers", 0),
                         )
                     )
+                elif path == "/answer_comments":
+                    # The agent -> human half of a comment: written on the UI
+                    # thread, where the mode reads the buffer.
+                    result = marshaller.call_on_ui_thread(
+                        lambda app: _answer_comments(app, comments, body.get("answers"))
+                    )
                 elif path == "/wait_for":
                     # Its own worker-thread poll loop; it marshals each poll onto
                     # the UI thread rather than running as one UI-thread job.
@@ -637,7 +665,7 @@ def _make_handler(
                     self._send_json(
                         200,
                         marshaller.call_on_ui_thread(
-                            lambda app: _serve_comments(app, window_spec, comments)
+                            lambda app: see_comments(_resolve_window(app, window_spec).root, comments)
                         ),
                     )
                 elif path == "/screenshot":

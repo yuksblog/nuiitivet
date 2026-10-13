@@ -1074,7 +1074,7 @@ def test_bridge_serves_the_instruction_and_counts_it_on_status(tmp_path: Path, d
     app = _fake_app()
     comments = Comments()
     comments.add(app.root)
-    comments.set_instruction(1, "make this wider")
+    comments.write(1, "make this wider")
     bridge = DevBridge(app, tmp_path, comments=comments)
     bridge.start()
     try:
@@ -1085,7 +1085,43 @@ def test_bridge_serves_the_instruction_and_counts_it_on_status(tmp_path: Path, d
             assert comments.unread is True
             (node,) = client.see_comments()["nodes"]
 
-            assert node["instruction"] == "make this wider"
+            assert node["thread"] == [{"by": "human", "text": "make this wider"}]
             assert comments.unread is False
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_writes_the_agents_answers_on_their_marks_or_none_of_them(tmp_path: Path, dev_run: None) -> None:
+    """The agent -> human half of a comment: an answer lands on the mark, and a bad batch lands nowhere."""
+    from nuiitivet.dev.comments import Comments
+
+    app = _fake_app()
+    comments = Comments()
+    comments.add(app.root)
+    comments.add_region((0.0, 0.0, 10.0, 10.0))
+    comments.write(1, "make this wider")
+    bridge = DevBridge(app, tmp_path, comments=comments)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            seq = client.status()["comments"]["seq"]
+
+            result = client.answer_comments(
+                [
+                    {"index": 1, "outcome": "done", "text": "240 wide now"},
+                    {"index": 2, "outcome": "question", "text": "which gap?"},
+                ]
+            )
+
+            assert result == {"answered": [1, 2]}
+            assert comments.outcome(1) == "done" and comments.outcome(2) == "question"
+            assert client.status()["comments"]["seq"] == seq, "an answer is nothing new for the agent to read"
+
+            with pytest.raises(RuntimeError, match="no comment is numbered 3"):
+                client.answer_comments([{"index": 1, "outcome": "refused"}, {"index": 3, "outcome": "done"}])
+            assert comments.outcome(1) == "done", "nothing of the refused batch was written"
+            with pytest.raises(RuntimeError, match="outcome"):
+                client.answer_comments([{"index": 1, "outcome": "maybe", "text": ""}])
     finally:
         bridge.shutdown()

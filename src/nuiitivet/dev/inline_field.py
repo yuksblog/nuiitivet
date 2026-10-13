@@ -4,8 +4,8 @@ Layout edit mode opens it over a text literal, comment mode on a mark. It
 never enters the widget tree: the mode feeds it typed text, the input
 method's composition and keys by name, and it edits as ``EditableText`` does.
 ``Shift+Enter`` breaks a line; the box grows with the text, wraps at the room
-its side of the anchor has, and stays inside the window. The mode decides
-what a commit writes to.
+between its anchor and the window's margin, and stays inside the window. The
+mode decides what a commit writes to.
 """
 
 from __future__ import annotations
@@ -69,17 +69,14 @@ class Slot:
     room: Optional[float] = None
 
     @classmethod
-    def beside(cls, anchor: Point, least: Size, gap: float, window: Size) -> Slot:
-        """A slot beside ``anchor``: on its right when the least box fits there, else on its left.
+    def under(cls, rect: Rect, least: Size, gap: float, window: Size) -> Slot:
+        """A slot ``gap`` under ``rect``, extending right from its left edge.
 
-        The room is what that side has up to the window's margin, never under
-        the least width. Called once, when the field opens: the side holds
-        while the text grows.
+        The room runs from that edge to the window's margin, never under the
+        least width.
         """
-        x = anchor[0]
-        if x + gap + least[0] <= window[0] - MARGIN:
-            return cls(anchor, least, "right", gap, max(least[0], window[0] - MARGIN - x - gap))
-        return cls(anchor, least, "left", gap, max(least[0], x - gap - MARGIN))
+        x, y, _w, h = rect
+        return cls((x, y + h + gap), least, "right", 0.0, max(least[0], window[0] - MARGIN - x))
 
     @classmethod
     def over(cls, rect: Rect, window: Size) -> Slot:
