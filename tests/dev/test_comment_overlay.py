@@ -226,7 +226,8 @@ def test_the_leaving_line_paints_after_the_mode_is_off(
 
     so.paint_comments(app, _Canvas(), app.width, app.height)
 
-    assert splashes == ["COMMENT MODE off" + SEPARATOR + "comments kept"]
+    kept = "COMMENT MODE off" + SEPARATOR + "comments kept"
+    assert splashes == [kept + "\nin chat: /nuiitivet-see-comments"], "unread: a second line says what to type"
 
 
 def test_the_help_sheet_paints_while_h_is_held(
@@ -378,15 +379,16 @@ def test_the_notice_paints_after_the_chord_is_released(monkeypatch: pytest.Monke
 
 
 def _leave(app: _App, mode: CommentMode) -> None:
-    """``Enter`` out of the session, first closing the field the new mark opened."""
+    """``Enter`` out of the session, first keeping the empty field the new mark opened."""
     if mode.writing is not None:
-        mode.on_key_press(app, "escape", 0)
+        mode.on_key_press(app, "enter", 0)
     mode.on_key_press(app, "enter", 0)
 
 
 def _close_field(app: _App, mode: CommentMode) -> None:
+    """Keep the empty field a new mark opened: ``Esc`` there would take the mark back."""
     if mode.writing is not None:
-        mode.on_key_press(app, "escape", 0)
+        mode.on_key_press(app, "enter", 0)
 
 
 def _captions(monkeypatch: pytest.MonkeyPatch) -> list[str]:
@@ -397,6 +399,21 @@ def _captions(monkeypatch: pytest.MonkeyPatch) -> list[str]:
 
     monkeypatch.setattr(so, "paint_caption", fake)
     return seen
+
+
+def _threads(monkeypatch: pytest.MonkeyPatch) -> list[tuple[list[Any], float, float]]:
+    """Record every thread box painted: its rows and where it landed."""
+    seen: list[tuple[list[Any], float, float]] = []
+
+    def fake(_skia: Any, _canvas: Any, rows: list[Any], _font: Any, _typeface: Any, x: float, y: float) -> None:
+        seen.append((rows, x, y))
+
+    monkeypatch.setattr(so, "paint_rows", fake)
+    return seen
+
+
+def _text(rows: list[Any]) -> str:
+    return "\n".join(text for _icon, text in rows)
 
 
 def _notices(monkeypatch: pytest.MonkeyPatch) -> list[list[Any]]:
@@ -414,7 +431,7 @@ def test_nothing_but_the_badge_is_painted_beside_a_mark(
 ) -> None:
     app, mode = marking
     captions = _captions(monkeypatch)
-    mode.comments.set_instruction(1, "make this wider")
+    mode.comments.write(1, "make this wider")
     _leave(app, mode)
 
     so.paint_comments(app, _Canvas(), 300, 200)
@@ -450,8 +467,9 @@ def test_the_hover_steps_aside_while_the_pointer_rests_on_a_badge(
     """There a click reopens the field, so the brackets would promise the wrong thing."""
     app, mode = marking
     captions = _captions(monkeypatch)
+    threads = _threads(monkeypatch)
     _close_field(app, mode)
-    mode.comments.set_instruction(1, "make this wider")
+    mode.comments.write(1, "make this wider")
     mode.on_mouse_motion(app, 150, 150)
     mode.on_mouse_motion(app, 2, 2)
     assert mode.hovered_badge == 1
@@ -459,11 +477,11 @@ def test_the_hover_steps_aside_while_the_pointer_rests_on_a_badge(
 
     so.paint_comments(app, canvas, 300, 200)
 
-    assert captions == ["make this wider"]
+    assert captions == [] and [rows for rows, _x, _y in threads] == [[(so.ICONS["human"], "make this wider")]]
     assert "drawLine" not in canvas.calls
 
 
-def test_the_open_field_paints_beside_the_badge_in_amber(
+def test_the_open_field_paints_under_the_mark_in_amber(
     marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     app, mode = marking
@@ -472,12 +490,39 @@ def test_the_open_field_paints_beside_the_badge_in_amber(
     mode.on_mouse_press(app, 2, 2)
     mode.on_mouse_release(app, 2, 2)
     assert mode.writing is not None
+    rect = so.visible_rect(mode.comments.members()[0])
+    assert rect is not None
 
     so.paint_comments(app, _Canvas(), 300, 200)
 
     ((_skia, _canvas, _app, slot, value, accent, _font, _typeface, window),) = painted
-    assert slot.side == "right" and slot.gap > so.BADGE_RADIUS and value is mode.writing.field.value
+    assert slot.side == "right" and slot.anchor == (max(rect[0], 12.0), rect[1] + so.BADGE_RADIUS + so.UNDER_GAP)
+    assert value is mode.writing.field.value
     assert accent == so._ACCENT and window == (300.0, 200.0)
+
+
+def test_the_open_field_sits_under_the_thread(
+    marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from nuiitivet.dev.hud import LINE_HEIGHT
+
+    app, mode = marking
+    painted: list[tuple[Any, ...]] = []
+    monkeypatch.setattr(so, "paint_field", lambda *args, **kwargs: painted.append(args))
+    _close_field(app, mode)
+    mode.comments.write(1, "make this wider")
+    mode.comments.answer(1, "question", "how wide?")
+    mode.on_mouse_press(app, 2, 2)
+    mode.on_mouse_release(app, 2, 2)
+    assert mode.writing is not None
+    rect = so.visible_rect(mode.comments.members()[0])
+    assert rect is not None
+
+    so.paint_comments(app, _Canvas(), 300, 200)
+
+    thread_h = LINE_HEIGHT * 2
+    ((_skia, _canvas, _app, slot, *_rest),) = painted
+    assert slot.anchor == (max(rect[0], 12.0), rect[1] + so.BADGE_RADIUS + so.UNDER_GAP + thread_h + so.UNDER_GAP)
 
 
 # --- the field stays inside the window ----------------------------------------
@@ -510,7 +555,7 @@ def _open_field_on_a_region(
     assert mode.writing is not None, "the new region opened its field"
 
 
-def test_a_field_on_a_mark_at_the_right_edge_opens_on_the_badges_left(
+def test_a_field_on_a_mark_at_the_right_edge_is_pushed_inside(
     marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     app, mode = marking
@@ -519,9 +564,8 @@ def test_a_field_on_a_mark_at_the_right_edge_opens_on_the_badges_left(
 
     so.paint_comments(app, _Canvas(), 300, 200)
 
-    assert mode.writing is not None and mode.writing.slot.side == "left"
     (rect,) = rects
-    assert _inside(rect, (300.0, 200.0)) and rect[0] + rect[2] < 280.0
+    assert _inside(rect, (300.0, 200.0)) and rect[1] >= 20.0 + so.BADGE_RADIUS + so.UNDER_GAP
 
 
 def test_typing_past_the_room_wraps_and_keeps_the_side(
@@ -541,6 +585,64 @@ def test_typing_past_the_room_wraps_and_keeps_the_side(
     assert mode.writing.slot.side == "right"
 
 
+def test_a_tall_thread_and_its_field_near_the_bottom_rise_together_without_overlapping(
+    marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from nuiitivet.dev.hud import LINE_HEIGHT
+
+    app, mode = marking
+    rects = _field_rects(monkeypatch)
+    threads = _threads(monkeypatch)
+    _open_field_on_a_region(app, mode, (100.0, 150.0), (160.0, 170.0))
+    _close_field(app, mode)
+    for turn in range(3):
+        mode.comments.write(2, f"round {turn}")
+        mode.comments.answer(2, "question", "and then?")
+    mode.on_mouse_press(app, 102.0, 152.0)
+    mode.on_mouse_release(app, 102.0, 152.0)
+    assert mode.writing is not None and mode.writing.index == 2
+
+    so.paint_comments(app, _Canvas(), 300, 200)
+
+    ((rows, _tx, ty),) = threads
+    (field,) = rects
+    assert len(rows) == 6, "every row still fits"
+    assert field[1] >= ty + LINE_HEIGHT * 6 + so.UNDER_GAP, "the field under the thread, both risen above the mark"
+    assert _inside(field, (300.0, 200.0)) and ty >= 0.0
+
+
+def test_a_thread_taller_than_the_room_keeps_its_newest_rows_under_a_count_of_the_rest(
+    marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from nuiitivet.dev.hud import LINE_HEIGHT, MARGIN
+
+    app, mode = marking
+    threads = _threads(monkeypatch)
+    _close_field(app, mode)
+    for turn in range(9):
+        mode.comments.write(1, f"round {turn}")
+        mode.comments.answer(1, "question", f"and then {turn}?")
+    mode.on_mouse_motion(app, 150, 150)
+    mode.on_mouse_motion(app, 2, 2)
+    assert mode.hovered_badge == 1
+
+    so.paint_comments(app, _Canvas(), 300, 200)
+
+    ((rows, _x, y),) = threads
+    fit = int((200.0 - MARGIN * 2) // LINE_HEIGHT)
+    assert len(rows) == fit and y >= MARGIN and y + LINE_HEIGHT * fit <= 200.0 - MARGIN
+    assert rows[0] == (None, f"… {18 - fit + 1} earlier rows")
+    assert rows[-1] == (so.ICONS["agent"], "and then 8?"), "the newest line is the one replied to"
+
+    mode.on_mouse_press(app, 2, 2)
+    mode.on_mouse_release(app, 2, 2)
+    assert mode.writing is not None
+    threads.clear()
+    so.paint_comments(app, _Canvas(), 300, 200)
+    ((rows, _x, _y),) = threads
+    assert len(rows) < fit, "the field takes its share of the room first"
+
+
 def test_a_field_at_the_bottom_edge_moves_up_as_its_lines_grow(
     marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -556,117 +658,211 @@ def test_a_field_at_the_bottom_edge_moves_up_as_its_lines_grow(
     assert rects[-1][1] < rects[0][1], "the box moved up to stay inside"
 
 
-def test_the_caption_beside_a_mark_at_the_right_edge_stays_inside(
+def test_the_thread_sits_under_its_mark_and_above_it_only_where_the_window_ends(
     marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from nuiitivet.dev.hud import caption_size, hud_font
-    from nuiitivet.rendering.skia.skia_module import get_skia
+    from nuiitivet.dev.hud import LINE_HEIGHT, MARGIN
 
     app, mode = marking
-    placed: list[tuple[str, float, float]] = []
-
-    def fake(_skia: Any, _canvas: Any, text: str, _font: Any, _typeface: Any, x: float, y: float, *_a: Any) -> None:
-        placed.append((text, x, y))
-
-    monkeypatch.setattr(so, "paint_caption", fake)
-    mode.on_mouse_press(app, 280.0, 20.0)
+    threads = _threads(monkeypatch)
+    mode.on_mouse_press(app, 200.0, 20.0)
     mode.on_mouse_release(app, 295.0, 60.0)
     _close_field(app, mode)
-    mode.comments.set_instruction(2, "move this to the left")
-    mode.on_mouse_motion(app, 282.0, 22.0)
+    mode.comments.write(2, "move this to the left")
+    mode.on_mouse_motion(app, 202.0, 22.0)
     assert mode.hovered_badge == 2
 
     so.paint_comments(app, _Canvas(), 300, 200)
+    ((_rows, x, y),) = threads
+    assert y >= 20.0 + so.BADGE_RADIUS + so.UNDER_GAP and 12.0 <= x <= 200.0, "under the badge, inside the window"
 
-    _font, typeface = hud_font(get_skia())
-    ((text, x, _y),) = [entry for entry in placed if entry[0].startswith("move")]
-    assert x + caption_size(text, typeface)[0] <= 300.0 - so.BADGE_RADIUS, "flipped to the badge's left"
+    mode.on_mouse_press(app, 200.0, 175.0)
+    mode.on_mouse_release(app, 295.0, 195.0)
+    _close_field(app, mode)
+    mode.comments.write(3, "and this one")
+    mode.on_mouse_motion(app, 150.0, 150.0)
+    mode.on_mouse_motion(app, 202.0, 177.0)
+    threads.clear()
+    so.paint_comments(app, _Canvas(), 300, 200)
+
+    ((rows, _x, y),) = threads
+    assert y + LINE_HEIGHT * len(rows) <= 175.0 - so.BADGE_RADIUS - so.UNDER_GAP, "no room under: above the badge"
+    assert y >= MARGIN
 
 
-def test_the_prompt_shows_after_a_commit_until_the_comments_are_served(
+def test_the_thread_paints_over_every_badge(marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch) -> None:
+    app, mode = marking
+    order: list[str] = []
+    monkeypatch.setattr(so, "_paint_badge", lambda *_a, **_k: order.append("badge"))
+    monkeypatch.setattr(so, "paint_rows", lambda *_a, **_k: order.append("thread"))
+    mode.on_mouse_press(app, 100.0, 100.0)
+    mode.on_mouse_release(app, 150.0, 150.0)
+    _close_field(app, mode)
+    mode.comments.write(1, "make this wider")
+    mode.on_mouse_motion(app, 150.0, 150.0)
+    mode.on_mouse_motion(app, 2.0, 2.0)
+    assert mode.hovered_badge == 1
+
+    so.paint_comments(app, _Canvas(), 300, 200)
+
+    assert order == ["badge", "badge", "thread"]
+
+
+def test_nothing_sits_in_the_notice_box_after_a_commit(
     marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """What to type in chat rides on the leaving line; the box would cover the app for the whole wait."""
     app, mode = marking
     notices = _notices(monkeypatch)
+    _leave(app, mode)
+
     so.paint_comments(app, _Canvas(), 300, 200)
-    assert so.PROMPT not in notices[-1], "no prompt while still marking"
+
+    assert notices == []
+
+
+# --- the badge shows the agent's answer ---------------------------------------
+
+
+def _badges(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, Any]]:
+    seen: list[tuple[str, Any]] = []
+
+    def fake(_skia: Any, _canvas: Any, _rect: Any, label: str, glyph: Any, *_args: Any) -> None:
+        seen.append((label, glyph))
+
+    monkeypatch.setattr(so, "_paint_badge", fake)
+    return seen
+
+
+def test_the_badge_walks_every_state(marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch) -> None:
+    """The number alone until the agent answers, then its glyph; the answer's words only on hover."""
+    app, mode = marking
+    badges = _badges(monkeypatch)
+    captions = _captions(monkeypatch)
+    threads = _threads(monkeypatch)
+    _close_field(app, mode)
+    mode.comments.write(1, "make this wider")
+    mode.on_mouse_motion(app, 150, 150)
+
+    so.paint_comments(app, _Canvas(), 300, 200)
+    assert badges[-1] == ("1", None)
 
     _leave(app, mode)
     so.paint_comments(app, _Canvas(), 300, 200)
-    assert notices[-1] == [so.PROMPT, None]
+    assert badges[-1] == ("1", None), "kept looks no different: the agent has not acted yet"
 
-    mode.comments.served()
-    notices.clear()
+    for outcome in ("done", "refused", "question"):
+        mode.comments.answer(1, outcome, "a line")
+        so.paint_comments(app, _Canvas(), 300, 200)
+        assert badges[-1] == ("1", so.GLYPHS[outcome])
+    assert not any("a line" in text for text in captions) and threads == []
+
+
+def test_the_answer_glyphs_are_material_symbols_the_packaged_font_carries() -> None:
+    from nuiitivet.dev.hud import symbol_font
+
+    _font, typeface = symbol_font(14.0)
+    assert typeface is not None
+    assert all(typeface.unicharToGlyph(ord(glyph)) != 0 for glyph in so.GLYPHS.values())
+
+
+def test_the_glyph_is_part_of_the_badge_under_the_pointer(marking: tuple[_App, CommentMode]) -> None:
+    app, mode = marking
+    _close_field(app, mode)
+    beyond = so.BADGE_RADIUS + so.ANSWER_WIDTH - 1.0
+    mode.on_mouse_motion(app, beyond, 0.0)
+    assert mode.hovered_badge is None, "a plain disc ends at its radius"
+
+    mode.comments.answer(1, "done", "")
+    mode.on_mouse_motion(app, 150.0, 150.0)
+    mode.on_mouse_motion(app, beyond, 0.0)
+
+    assert mode.hovered_badge == 1
+
+
+def test_hovering_an_answered_badge_shows_the_whole_thread_and_the_open_field_keeps_it(
+    marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app, mode = marking
+    threads = _threads(monkeypatch)
+    _close_field(app, mode)
+    mode.comments.write(1, "make this wider")
+    mode.comments.answer(1, "question", "how wide?")
+    mode.on_mouse_motion(app, 150, 150)
+    mode.on_mouse_motion(app, 2, 2)
+    assert mode.hovered_badge == 1
+    thread = [(so.ICONS["human"], "make this wider"), (so.ICONS["agent"], "how wide?")]
+
     so.paint_comments(app, _Canvas(), 300, 200)
-    assert notices == [], "read: the prompt is gone, and nothing else needs the badge"
+    assert threads[-1][0] == thread
+
+    mode.on_mouse_press(app, 2, 2)
+    mode.on_mouse_release(app, 2, 2)
+    assert mode.writing is not None
+    mode.on_mouse_motion(app, 150, 150)
+    threads.clear()
+    so.paint_comments(app, _Canvas(), 300, 200)
+    assert [rows for rows, _x, _y in threads] == [thread], "the reply is written with the exchange in view"
 
 
-def test_the_prompt_names_the_skill_first_and_the_tool_second() -> None:
-    assert so.PROMPT == "in chat: /nuiitivet-see-comments  |  see_comments"
-
-
-# --- hovering a badge reads the whole instruction ------------------------------
-
-
-def _placed_captions(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, float, float]]:
-    seen: list[tuple[str, float, float]] = []
-
-    def fake(_skia: Any, _canvas: Any, text: str, _font: Any, _typeface: Any, x: float, y: float, *_a: Any) -> None:
-        seen.append((text, x, y))
-
-    monkeypatch.setattr(so, "paint_caption", fake)
-    return seen
+# --- hovering a badge reads the whole thread -----------------------------------
 
 
 def test_hovering_a_badge_shows_the_whole_instruction(
     marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     app, mode = marking
-    captions = _placed_captions(monkeypatch)
+    threads = _threads(monkeypatch)
     _close_field(app, mode)
-    mode.comments.set_instruction(1, "x" * 80)
+    mode.comments.write(1, "x" * 80)
     mode.on_mouse_motion(app, 2, 2)
     assert mode.hovered_badge == 1
 
     so.paint_comments(app, _Canvas(), 300, 200)
 
-    ((text, _x, _y),) = [entry for entry in captions if entry[0].startswith("x")]
-    assert text.replace("\n", "") == "x" * 80 and "…" not in text
-    assert "\n" in text, "wrapped at the field's room, not drawn as one long line"
+    ((rows, _x, _y),) = threads
+    assert _text(rows).replace("\n", "") == "x" * 80 and "…" not in _text(rows)
+    assert len(rows) > 1, "wrapped at the room, not drawn as one long row"
+    assert [icon for icon, _t in rows] == [so.ICONS["human"]] + [None] * (len(rows) - 1), "one icon per line"
 
 
 def test_moving_off_the_badge_leaves_only_the_number(
     marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     app, mode = marking
-    captions = _placed_captions(monkeypatch)
+    threads = _threads(monkeypatch)
     _close_field(app, mode)
-    mode.comments.set_instruction(1, "x" * 80)
+    mode.comments.write(1, "x" * 80)
     mode.on_mouse_motion(app, 2, 2)
     mode.on_mouse_motion(app, 150, 150)
     assert mode.hovered_badge is None
 
     so.paint_comments(app, _Canvas(), 300, 200)
 
-    assert not [entry for entry in captions if entry[0].startswith("x")]
+    assert threads == []
 
 
 def test_a_hovered_multi_line_instruction_keeps_its_lines_inside_the_window(
     marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from nuiitivet.dev.hud import MARGIN, caption_size, hud_font
-    from nuiitivet.rendering.skia.skia_module import get_skia
-
     app, mode = marking
-    captions = _placed_captions(monkeypatch)
+    from nuiitivet.dev.hud import MARGIN
+
+    threads = _threads(monkeypatch)
     _close_field(app, mode)
-    mode.comments.set_instruction(1, "first line\nsecond line")
+    mode.comments.write(1, "first line\nsecond line")
     mode.on_mouse_motion(app, 2, 2)
 
     so.paint_comments(app, _Canvas(), 300, 200)
 
-    _font, typeface = hud_font(get_skia())
-    ((text, x, y),) = [entry for entry in captions if entry[0].startswith("first")]
-    assert text == "first line\nsecond line"
-    w, h = caption_size(text, typeface)
-    assert x >= MARGIN and y >= MARGIN and x + w <= 300.0 - MARGIN and y + h <= 200.0 - MARGIN
+    ((rows, x, y),) = threads
+    assert rows == [(so.ICONS["human"], "first line"), (None, "second line")]
+    assert x >= MARGIN and y >= MARGIN, "pushed inside the window's margins"
+
+
+def test_the_thread_icons_are_material_symbols_the_packaged_font_carries() -> None:
+    from nuiitivet.dev.hud import symbol_font
+
+    _font, typeface = symbol_font(14.0)
+    assert typeface is not None
+    assert all(typeface.unicharToGlyph(ord(icon)) != 0 for icon in so.ICONS.values())

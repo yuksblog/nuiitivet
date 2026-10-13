@@ -9,7 +9,8 @@ Subcommands::
     python -m nuiitivet.dev status                  # is the app up & healthy?
     python -m nuiitivet.dev describe-tree           # dump the running app's tree
     python -m nuiitivet.dev describe-state          # dump the running app's observable state
-    python -m nuiitivet.dev see-comments      # dump what the human pointed at and wrote
+    python -m nuiitivet.dev see-comments            # dump what the human pointed at and wrote
+    python -m nuiitivet.dev answer-comments 2 done "widened to 240"  # answer on the mark
     python -m nuiitivet.dev reload-log              # dump recent hot-reload events
     python -m nuiitivet.dev interaction-log          # dump the human's recent UI actions
     python -m nuiitivet.dev runtime-log             # dump recent log output & exceptions
@@ -70,6 +71,7 @@ _SUBCOMMANDS = frozenset(
         "describe-tree",
         "describe-state",
         "see-comments",
+        "answer-comments",
         "reload-log",
         "interaction-log",
         "click",
@@ -169,6 +171,16 @@ def _build_parser() -> argparse.ArgumentParser:
     subparsers.add_parser(
         "see-comments",
         help="Print what the human marked in the running app's comment mode, as JSON.",
+    )
+
+    answer_comments = subparsers.add_parser(
+        "answer-comments",
+        help="Write an answer on one comment, for the human to read on its mark.",
+    )
+    answer_comments.add_argument("index", type=int, help="The comment's number, as see-comments reports it.")
+    answer_comments.add_argument("outcome", choices=("done", "refused", "question"))
+    answer_comments.add_argument(
+        "text", nargs="?", default="", help="One short line: the reason for a refusal, the question itself."
     )
 
     reload_log = subparsers.add_parser(
@@ -532,7 +544,7 @@ def _run(args: argparse.Namespace) -> int:
         bridge.start()
         print(
             f"[nuiitivet.dev] dev bridge listening on 127.0.0.1:{bridge.port} "
-            "(status / describe-tree / describe-state / see-comments / screenshot / click / scroll / "
+            "(status / describe-tree / describe-state / see-comments / answer-comments / screenshot / click / scroll / "
             "scroll-into-view / type / key / wait-for / interaction-log / runtime-log).",
             file=sys.stderr,
         )
@@ -577,6 +589,19 @@ def _see_comments() -> int:
     try:
         client = BridgeClient.discover()
         payload = client.see_comments()
+    except (BridgeNotFoundError, OSError, RuntimeError) as exc:
+        print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
+        return 1
+    import json
+
+    print(json.dumps(payload, indent=2))
+    return 0
+
+
+def _answer_comments(args: argparse.Namespace) -> int:
+    try:
+        client = BridgeClient.discover()
+        payload = client.answer_comments([{"index": args.index, "outcome": args.outcome, "text": args.text}])
     except (BridgeNotFoundError, OSError, RuntimeError) as exc:
         print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
         return 1
@@ -779,6 +804,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return _describe_state(args)
     if args.command == "see-comments":
         return _see_comments()
+    if args.command == "answer-comments":
+        return _answer_comments(args)
     if args.command == "reload-log":
         return _reload_log(args)
     if args.command == "interaction-log":

@@ -71,7 +71,8 @@ _SERVER_INSTRUCTIONS = (
     "'python -m nuiitivet.skills install'. Which tool answers which question: is "
     "the app up and healthy -- `status`; what is on screen, and what can I target "
     "-- `describe_tree`; is the state behind the tree right -- `describe_state`; "
-    "what did the human point at in the app, and write there -- `see_comments`; "
+    "what did the human point at in the app, and write there -- `see_comments`, "
+    "answered on the mark with `answer_comments`; "
     "did the code hot-reload under me -- `reload_log`; what did the human do in "
     "the app -- `interaction_log`; why did an action do nothing -- `runtime_log` "
     "(`set_runtime_log_verbose` records every occurrence of a repeated error); a "
@@ -198,11 +199,12 @@ def build_server() -> "FastMCP":
         and when they say "this is wrong" without naming a widget.
 
         ``nodes`` and ``regions`` share one numbering: ``index`` is the badge on the
-        human's screen. ``instruction`` is what they wrote, in their words -- a change
-        to make, or a problem they saw. Reproduce a problem before editing;
-        `interaction_log` holds their steps. A mark without ``instruction`` is still a
-        comment: they say what they mean in chat, by number. Answer every comment in
-        one turn, by number: ``comment 2: refused``, with the reason.
+        human's screen. ``thread`` is the comment's lines in order, each ``by`` the
+        human or the agent: theirs is a change to make, or a problem they saw, in
+        their words; yours is an earlier answer. Act on the newest human line.
+        Reproduce a problem before editing; `interaction_log` holds their steps. An
+        empty ``thread`` is still a comment: they say what they mean in chat, by
+        number. Answer every comment with `answer_comments` in the same turn.
 
         A region is an area, not a widget. ``container`` is the widget enclosing the
         box and ``contents`` is what the box crosses: "the gap between these things" is
@@ -210,6 +212,19 @@ def build_server() -> "FastMCP":
         is painted there.
         """
         return _client().see_comments()
+
+    @tool
+    def answer_comments(answers: list[dict[str, Any]]) -> dict[str, Any]:
+        """Write your answer on each comment, where the human reads it: on the mark in the app.
+
+        One entry per comment, ``{"index", "outcome", "text"}``. ``outcome`` is
+        ``done``, ``refused`` or ``question``; ``text`` is one short line in your words:
+        what you did, the reason for a refusal, the question itself. A ``question`` is
+        how you ask the human about a mark; their reply comes back in that comment's
+        ``thread``. An unknown ``index`` or ``outcome`` refuses the whole call and
+        writes nothing.
+        """
+        return _client().answer_comments(answers)
 
     @tool
     def reload_log(limit: Optional[int] = None) -> dict[str, Any]:

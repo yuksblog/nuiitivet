@@ -1,11 +1,12 @@
-"""The human's comments: the marked widgets and areas, with what was written on each, for the agent to pull.
+"""The human's comments: the marked widgets and areas, each with its thread, for the agent to pull and answer.
 
-A mark is a widget or a region, numbered in one sequence, and may carry an
-instruction; a bare number is a whole comment. Widgets are held weakly,
-matched on object identity, and re-resolved by structural path after a hot
-reload, with misses counted in ``lost``. A region stores only its rect; what
-it covers is derived on every read. Written on the UI thread and read on HTTP
-worker threads, so the buffer takes a lock.
+A mark is a widget or a region, numbered in one sequence, and carries a
+thread: the human's lines and the agent's answers in order; a bare number is
+a whole comment. Widgets are held weakly, matched on object identity, and
+re-resolved by structural path after a hot reload, with misses counted in
+``lost``. A region stores only its rect; what it covers is derived on every
+read. Written on the UI thread and read on HTTP worker threads, so the buffer
+takes a lock.
 """
 
 from __future__ import annotations
@@ -34,6 +35,9 @@ logger = logging.getLogger(__name__)
 
 Rect = tuple[float, float, float, float]
 
+#: What an agent's answer can say about a comment.
+OUTCOMES = ("done", "refused", "question")
+
 
 def _weak_ref(obj: Any) -> Optional[Callable[[], Any]]:
     """Return a weak reference to ``obj``, or ``None`` if it cannot take one."""
@@ -41,6 +45,32 @@ def _weak_ref(obj: Any) -> Optional[Callable[[], Any]]:
         return weakref.ref(obj)
     except TypeError:
         return None
+
+
+@dataclass(frozen=True)
+class Line:
+    """One line of a mark's thread.
+
+    Attributes:
+        by: ``"human"`` or ``"agent"``.
+        text: The line itself.
+        outcome: On an agent's line, one of :data:`OUTCOMES`; ``None`` on the human's.
+    """
+
+    by: str
+    text: str
+    outcome: Optional[str] = None
+
+    def payload(self) -> dict[str, Any]:
+        """The line as ``see_comments`` serves it."""
+        info: dict[str, Any] = {"by": self.by}
+        if self.outcome is not None:
+            info["outcome"] = self.outcome
+        info["text"] = self.text
+        return info
+
+
+Thread = tuple[Line, ...]
 
 
 @dataclass
@@ -53,8 +83,8 @@ class _Member:
     identity: dict[str, Any]
     #: Structural path, for finding the member again after a reload.
     path: Optional[Path]
-    #: ``None`` when the number is the whole comment.
-    instruction: Optional[str] = None
+    #: Empty when the number is the whole comment.
+    thread: Thread = ()
 
     def widget(self) -> Optional[Any]:
         return self.ref()
@@ -65,7 +95,22 @@ class _Region:
     """One marked area: the rect the human drew."""
 
     rect: Rect
-    instruction: Optional[str] = None
+    thread: Thread = ()
+
+
+def _outcome(mark: Any) -> Optional[str]:
+    """The outcome of the agent's answer that ends the thread, or ``None`` while the human's turn stands."""
+    if mark.thread and mark.thread[-1].by == "agent":
+        return mark.thread[-1].outcome
+    return None
+
+
+def _same(a: Any, b: Any) -> bool:
+    """Whether two mark records, possibly from different snapshots, are the same mark."""
+    if isinstance(a, _Member) and isinstance(b, _Member):
+        widget = a.widget()
+        return widget is not None and widget is b.widget()
+    return isinstance(a, _Region) and isinstance(b, _Region) and a.rect == b.rect
 
 
 @dataclass
@@ -109,10 +154,15 @@ class Comments:
             self._seq += 1
 
     def commit(self) -> None:
-        """Latch comment mode off, keeping what the session marked and wrote."""
+        """Latch comment mode off, keeping what the session marked and wrote.
+
+        A mark the agent answered ``done`` and the session did not reply on is
+        dropped; every other mark is kept.
+        """
         with self._lock:
             if not self._active:
                 return
+            self._marks = [mark for mark in self._marks if _outcome(mark) != "done"]
             self._pending = None
             self._history, self._future = [], []
             self._active = False
@@ -224,29 +274,78 @@ class Comments:
             self._lost = 0
             self._bump()
 
-    def set_instruction(self, index: int, text: str) -> bool:
-        """Write ``text`` on the mark numbered ``index``; blank text clears it.
+    def write(self, index: int, text: str) -> bool:
+        """Write ``text`` as the human's newest line on the mark numbered ``index``.
 
-        Returns ``False`` when no live mark has that number.
+        A human line ending the thread is replaced, and blank text removes it;
+        after an agent's answer the text is a new line, and blank text changes
+        nothing. Returns ``False`` when no live mark has that number.
         """
-        instruction = text.strip() or None
+        line = text.strip()
         with self._lock:
             for position, mark in self._positions():
-                if position == index:
-                    if mark.instruction != instruction:
-                        self._checkpoint()
-                        self._marks[self._marks.index(mark)] = replace(mark, instruction=instruction)
-                        self._bump()
-                    return True
+                if position != index:
+                    continue
+                thread = mark.thread[:-1] if self.editable_line(index) is not None else mark.thread
+                if line:
+                    thread = thread + (Line("human", line),)
+                if thread != mark.thread:
+                    self._checkpoint()
+                    self._marks[self._marks.index(mark)] = replace(mark, thread=thread)
+                    self._bump()
+                return True
             return False
 
-    def instruction(self, index: int) -> Optional[str]:
-        """What is written on the mark numbered ``index``, or ``None``."""
+    def editable_line(self, index: int) -> Optional[str]:
+        """The human's line ending the thread on mark ``index``, which the field opens with, or ``None``."""
+        with self._lock:
+            thread = self.thread(index)
+            if thread and thread[-1].by == "human":
+                return thread[-1].text
+            return None
+
+    def thread(self, index: int) -> Thread:
+        """The lines on the mark numbered ``index``, oldest first; empty for a bare mark or no such mark."""
         with self._lock:
             for position, mark in self._positions():
                 if position == index:
-                    return mark.instruction
+                    return mark.thread
+            return ()
+
+    def outcome(self, index: int) -> Optional[str]:
+        """The outcome of the agent's answer that ends the thread on mark ``index``.
+
+        ``"done"``, ``"refused"`` or ``"question"``; ``None`` while the human's
+        turn stands, or when no mark has that number.
+        """
+        with self._lock:
+            for position, mark in self._positions():
+                if position == index:
+                    return _outcome(mark)
             return None
+
+    # --- answering --------------------------------------------------------
+
+    def answer(self, index: int, outcome: str, text: str) -> bool:
+        """Append the agent's answer to the thread on mark ``index``. ``False`` when there is no such mark.
+
+        ``seq`` does not bump, since the agent wrote it, and the answer is not
+        the human's to undo: an open session's history carries it too.
+        """
+        if outcome not in OUTCOMES:
+            raise ValueError(f"outcome must be one of {', '.join(OUTCOMES)}, not {outcome!r}")
+        line = Line("agent", text.strip(), outcome)
+        with self._lock:
+            for position, mark in self._positions():
+                if position != index:
+                    continue
+                self._marks = _answered(self._marks, mark, line)
+                if self._pending is not None:
+                    self._pending = _answered(self._pending, mark, line)
+                self._history = [_answered(marks, mark, line) for marks in self._history]
+                self._future = [_answered(marks, mark, line) for marks in self._future]
+                return True
+            return False
 
     def _positions(self) -> list[tuple[int, Any]]:
         """Every live mark with its on-screen number."""
@@ -316,7 +415,7 @@ class Comments:
                 "committed": not self._active,
                 "nodes": nodes,
                 "regions": len(self._marks) - nodes,
-                "instructions": sum(1 for mark in self._marks if mark.instruction is not None),
+                "instructions": sum(1 for mark in self._marks if any(line.by == "human" for line in mark.thread)),
             }
 
     # --- read receipts ----------------------------------------------------
@@ -385,9 +484,14 @@ def _remap(marks: list[Any], by_path: dict[Path, Any]) -> tuple[list[Any], int, 
         if ref is None:
             lost += 1
             continue
-        kept.append(_Member(ref=ref, identity=resolve_target(widget), path=mark.path, instruction=mark.instruction))
+        kept.append(replace(mark, ref=ref, identity=resolve_target(widget)))
         restored += 1
     return (kept, restored, lost)
+
+
+def _answered(marks: list[Any], mark: Any, line: Line) -> list[Any]:
+    """``marks`` with ``line`` appended to the thread of the record that is ``mark``."""
+    return [replace(entry, thread=entry.thread + (line,)) if _same(entry, mark) else entry for entry in marks]
 
 
 def _type_path(node: Any) -> list[str]:
@@ -418,11 +522,9 @@ def _brief(node: Any, *, relation: Optional[str] = None) -> dict[str, Any]:
     return info
 
 
-def _node_payload(index: int, widget: Any, instruction: Optional[str]) -> dict[str, Any]:
-    info: dict[str, Any] = {"index": index}
-    if instruction is not None:
-        # First: the one field in the human's own words.
-        info["instruction"] = instruction
+def _node_payload(index: int, widget: Any, thread: Thread) -> dict[str, Any]:
+    # The thread first: the human's own words, and what was answered already.
+    info: dict[str, Any] = {"index": index, "thread": [line.payload() for line in thread]}
     own = own_identity(widget)
     info.update(own)
     # The ``window=`` selector for follow-up calls; absent for a tree no Window owns.
@@ -457,16 +559,14 @@ def _contents_payload(entry: tuple[Any, Optional[str], list[Any]]) -> dict[str, 
     return info
 
 
-def _region_payload(index: int, root: Any, rect: Rect, instruction: Optional[str]) -> dict[str, Any]:
+def _region_payload(index: int, root: Any, rect: Rect, thread: Thread) -> dict[str, Any]:
     """Describe an area from the tree as it is now.
 
     ``container`` is the innermost node enclosing the region, with its immediate
     children; ``contents`` is the pruned subtree the box crosses, each node tagged
     ``contained`` or ``clipped``.
     """
-    info: dict[str, Any] = {"index": index}
-    if instruction is not None:
-        info["instruction"] = instruction
+    info: dict[str, Any] = {"index": index, "thread": [line.payload() for line in thread]}
     info["rect"] = [round(value, 2) for value in rect]
     container = enclosing_container(root, rect)
     if container is None:
@@ -488,10 +588,10 @@ def see_comments(root: Any, comments: Optional[Comments]) -> dict[str, Any]:
     """Return the payload the ``see_comments`` tool serves, and count it as read.
 
     ``nodes`` and ``regions`` are independent lists sharing one ``index``
-    sequence, the number on the badge. A member carries ``instruction`` only when
-    the human wrote one. Each node carries ``describe_tree`` / ``describe_state``
-    scoped to it; each region is derived from the current tree. Call on the UI
-    thread.
+    sequence, the number on the badge. Each carries its ``thread``, the human's
+    lines and the agent's answers in order, empty for a bare mark. Each node
+    carries ``describe_tree`` / ``describe_state`` scoped to it; each region is
+    derived from the current tree. Call on the UI thread.
     """
     if comments is None:
         return {"seq": 0, "committed": True, "nodes": [], "regions": [], "lost_marks": 0}
@@ -500,11 +600,11 @@ def see_comments(root: Any, comments: Optional[Comments]) -> dict[str, Any]:
     nodes: list[dict[str, Any]] = []
     regions: list[dict[str, Any]] = []
     for index, kind, mark in comments.marks():
-        instruction = comments.instruction(index)
+        thread = comments.thread(index)
         if kind == "region":
-            regions.append(_region_payload(index, root, mark, instruction))
+            regions.append(_region_payload(index, root, mark, thread))
         else:
-            nodes.append(_node_payload(index, mark, instruction))
+            nodes.append(_node_payload(index, mark, thread))
     comments.served()
 
     return {
@@ -516,4 +616,4 @@ def see_comments(root: Any, comments: Optional[Comments]) -> dict[str, Any]:
     }
 
 
-__all__ = ["Comments", "see_comments"]
+__all__ = ["OUTCOMES", "Comments", "Line", "see_comments"]

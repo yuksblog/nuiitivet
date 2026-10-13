@@ -42,17 +42,17 @@ def _click(mode: CommentMode, app: _App, x: float, y: float) -> None:
 
 
 def _leave(mode: CommentMode, app: _App) -> None:
-    """``Enter`` out of the session, first closing the field a new mark opened."""
+    """``Enter`` out of the session, first keeping the empty field a new mark opened."""
     if mode.writing is not None:
-        mode.on_key_press(app, "escape", 0)
+        mode.on_key_press(app, "enter", 0)
     mode.on_key_press(app, "enter", 0)
 
 
 def _mark(mode: CommentMode, app: _App, x: float, y: float) -> None:
-    """Click, then close the field the new mark opened, for the tests about the mark itself."""
+    """Click, then keep the empty field the new mark opened, for the tests about the mark itself."""
     _click(mode, app, x, y)
     if mode.writing is not None:
-        mode.on_key_press(app, "escape", 0)
+        mode.on_key_press(app, "enter", 0)
 
 
 def _walk(mode: CommentMode, app: _App, key: str, at: tuple[float, float] = (2.0, 2.0)) -> None:
@@ -240,7 +240,7 @@ def test_delete_removes_the_mark_whose_badge_is_under_the_pointer() -> None:
         mode.on_key_press(app, "c", _ENTER)
         mode.on_mouse_press(app, 100, 100)
         mode.on_mouse_release(app, 160, 140)
-        mode.on_key_press(app, "escape", 0)
+        mode.on_key_press(app, "enter", 0)
         assert comments.regions() == [(100.0, 100.0, 60.0, 40.0)]
         mode.on_mouse_motion(app, 102, 101)
         assert mode.hovered_badge == 1
@@ -929,7 +929,7 @@ def test_ctrl_backspace_clears_every_designation() -> None:
         _mark(mode, app, 2, rect[3] + 2)
         mode.on_mouse_press(app, 100, 100)
         mode.on_mouse_release(app, 160, 150)
-        mode.on_key_press(app, "escape", 0)  # closes the field the region opened
+        mode.on_key_press(app, "enter", 0)  # keeps the empty field the region opened
         assert len(mode.comments.marks()) == 3
 
         mode.on_key_press(app, "backspace", MOD_CTRL)
@@ -1027,7 +1027,7 @@ def test_typing_then_enter_writes_the_instruction_and_leaves_a_marker() -> None:
 
         assert mode.writing is None
         assert mode.active, "writing does not end the session"
-        assert mode.comments.instruction(1) == "wider"
+        assert mode.comments.editable_line(1) == "wider"
         assert [event.kind for event in journal.recent()[before:]] == ["comment"]
 
 
@@ -1041,7 +1041,25 @@ def test_escape_closes_the_field_without_writing() -> None:
 
         assert mode.writing is None
         assert mode.active, "Esc closed the field, not the session"
-        assert mode.comments.instruction(1) is None
+        assert mode.comments.editable_line(1) is None
+        assert len(mode.comments.members()) == 1, "an existing mark's field: the mark stays"
+
+
+def test_escape_on_a_new_marks_empty_field_takes_the_mark_back() -> None:
+    leaf = Text("AAAAAAAA")
+    with mount(Column(children=[leaf])) as host:
+        host.layout(300, 200)
+        app = _App(host.root)
+        mode = CommentMode(Comments())
+        mode.on_key_press(app, "c", _ENTER)
+        _click(mode, app, 2, 2)
+        assert mode.writing is not None and mode.writing.new
+        mode.on_text(app, "wid")
+
+        mode.on_key_press(app, "escape", 0)
+
+        assert mode.writing is None and mode.comments.members() == []
+        assert mode.comments.undo() is True and mode.comments.members() == [leaf]
 
 
 def test_a_click_elsewhere_writes_the_field_and_then_marks_as_usual() -> None:
@@ -1058,7 +1076,7 @@ def test_a_click_elsewhere_writes_the_field_and_then_marks_as_usual() -> None:
 
         _click(mode, app, rect[0] + rect[2] / 2, rect[1] + rect[3] / 2)
 
-        assert mode.comments.instruction(1) == "wider"
+        assert mode.comments.editable_line(1) == "wider"
         assert mode.comments.members() == [first, second], "the click went on to mark the second"
         assert mode.writing is not None and mode.writing.index == 2
 
@@ -1072,12 +1090,12 @@ def test_shift_enter_breaks_the_line_in_the_field_and_enter_writes_both() -> Non
         mode.on_key_press(app, "enter", MOD_SHIFT)
 
         assert mode.writing is not None
-        assert mode.comments.instruction(1) is None
+        assert mode.comments.editable_line(1) is None
         mode.on_text(app, "and taller")
         mode.on_key_press(app, "enter", 0)
 
         assert mode.writing is None
-        assert mode.comments.instruction(1) == "wider\nand taller"
+        assert mode.comments.editable_line(1) == "wider\nand taller"
 
 
 def test_a_new_mark_opens_its_field_at_once() -> None:
@@ -1089,7 +1107,7 @@ def test_a_new_mark_opens_its_field_at_once() -> None:
 def test_a_drag_opens_the_field_on_the_region() -> None:
     mode, app, host, _leaf = _marked()
     with host:
-        mode.on_key_press(app, "escape", 0)
+        mode.on_key_press(app, "enter", 0)
 
         mode.on_mouse_press(app, 100, 100)
         mode.on_mouse_release(app, 160, 150)
@@ -1107,7 +1125,7 @@ def test_mark_write_leave_is_click_type_enter_enter() -> None:
         mode.on_key_press(app, "enter", 0)
 
         assert not mode.active
-        assert mode.comments.instruction(1) == "wider"
+        assert mode.comments.editable_line(1) == "wider"
 
 
 def test_escape_closes_the_field_and_enter_then_leaves() -> None:
@@ -1169,6 +1187,39 @@ def test_the_field_reopens_on_the_text_already_written() -> None:
         _click(mode, app, 2, 2)
 
         assert mode.writing is not None and mode.writing.field.text == "wider"
+
+
+def test_after_an_answer_the_field_opens_empty_and_enter_replies() -> None:
+    mode, app, host, _leaf = _marked()
+    with host:
+        _click(mode, app, 2, 2)
+        mode.on_text(app, "wider")
+        mode.on_key_press(app, "enter", 0)
+        mode.comments.answer(1, "question", "how wide?")
+
+        _click(mode, app, 2, 2)
+        assert mode.writing is not None and mode.writing.field.text == ""
+        mode.on_text(app, "240")
+        mode.on_key_press(app, "enter", 0)
+
+        assert [line.text for line in mode.comments.thread(1)] == ["wider", "how wide?", "240"]
+        assert mode.comments.outcome(1) is None, "the human's turn again"
+
+
+def test_the_leaving_line_says_what_to_type_in_chat_while_the_comments_are_unread() -> None:
+    from nuiitivet.dev.hud import SEPARATOR
+
+    mode, app, host, _leaf = _marked()
+    with host:
+        _leave(mode, app)
+        kept = "COMMENT MODE off" + SEPARATOR + "comments kept"
+        assert mode.splash == kept + "\nin chat: /nuiitivet-see-comments"
+
+        mode.comments.served()
+        mode.on_key_press(app, "c", _ENTER)
+        _leave(mode, app)
+
+        assert mode.splash == "COMMENT MODE off" + SEPARATOR + "comments kept", "nothing new for the agent"
 
 
 def test_the_mode_keys_are_the_fields_while_it_is_open() -> None:

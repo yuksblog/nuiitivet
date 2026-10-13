@@ -315,6 +315,14 @@ class BridgeClient:
         payload: dict[str, Any] = json.loads(body.decode("utf-8"))
         return payload
 
+    def answer_comments(self, answers: list[dict[str, Any]]) -> dict[str, Any]:
+        """Write an answer on each comment named: ``{index, outcome, text}`` per entry.
+
+        ``outcome`` is ``"done"``, ``"refused"`` or ``"question"``. An unknown
+        number or outcome is refused as a whole, with nothing written.
+        """
+        return self._post("/answer_comments", {"answers": answers})
+
     def describe_state(
         self, include_animations: bool = False, *, window: Optional[int] = None
     ) -> dict[str, Any]:

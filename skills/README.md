@@ -13,7 +13,7 @@ in the repository so framework users can adopt them.
 | --- | --- |
 | [`nuiitivet-app/`](nuiitivet-app/) | **Build** Nuiitivet apps with the correct idioms (Observable state, modifiers, Navigator/Overlay), plus a linter that flags leaked Flutter/React/Rx patterns. |
 | [`nuiitivet-debug/`](nuiitivet-debug/) | **Run, hot-reload, inspect, and drive** a running app — the dev runner and the dev-bridge / MCP tools (`status`, `describe_tree`, `screenshot`, `click`, `scroll_into_view`, `wait_for`) for the see → act → verify loop. |
-| [`nuiitivet-see-comments/`](nuiitivet-see-comments/) | **Read and act on the comments** the user left in the running app (comment mode): `/nuiitivet-see-comments`, or `see_comments` in chat. Falls back to the CLI when the MCP server is not registered. |
+| [`nuiitivet-see-comments/`](nuiitivet-see-comments/) | **Read, act on and answer the comments** the user left in the running app (comment mode): `/nuiitivet-see-comments`, or `see_comments` in chat; the answer lands on the mark. Falls back to the CLI when the MCP server is not registered. |
 
 `nuiitivet-app` *writes* the code; `nuiitivet-debug` *runs and debugs* what was
 written; `nuiitivet-see-comments` *acts on what the user pointed at*. They are

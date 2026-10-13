@@ -1,9 +1,8 @@
 """What the dev modes draw to say where they are: the splash, the help sheet, the notices and the captions.
 
 On entering a mode a line at the window's centre names it and the key that
-opens the help, and on leaving says how it was left, each for as long as a
-tooltip stays. The help sheet lists every
-gesture of the mode while ``H`` is held. A notice sits in a box at the
+opens the help, and on leaving says how it was left, each for a few seconds.
+The help sheet lists every gesture of the mode while ``H`` is held. A notice sits in a box at the
 bottom-left that steps out of the pointer's way and comes back only once the
 pointer is well clear.
 """
@@ -29,18 +28,20 @@ MARGIN = 12.0
 CAPTION_BG = (28, 24, 14, 220)
 CAPTION_INK = (250, 244, 230)
 
-_PAD = 8.0
-_LINE_HEIGHT = 20.0
+PAD = 8.0
+LINE_HEIGHT = 20.0
 _RADIUS = 5.0
 # The pointer this close to the badge moves it; only this far from the badge's
 # home brings it back. The gap between the two is what keeps it from flickering.
 _DODGE = 40.0
 _RETURN = 120.0
 
-# Seconds the splash stays after a mode is entered: as long as a tooltip.
-SPLASH = 1.5
+# Seconds the splash stays after a mode is entered or left: long enough to find and read the line.
+SPLASH = 3.0
 # Between the key column of the help sheet and what each key does.
 _GUTTER = 24.0
+# The icon font the badges' answer glyphs come from: the one the Icon widget draws by default.
+_SYMBOLS_FILE = "MaterialSymbolsRounded[FILL,GRAD,opsz,wght].ttf"
 
 Point = tuple[float, float]
 Size = tuple[float, float]
@@ -150,7 +151,7 @@ def caption_size(text: str, typeface: Any) -> Size:
 
     lines = text.split("\n")
     widest = max(measure_text_width(typeface, FONT_SIZE, line) for line in lines)
-    return (widest + _PAD * 2, _LINE_HEIGHT * len(lines))
+    return (widest + PAD * 2, LINE_HEIGHT * len(lines))
 
 
 def _near(pointer: Point, origin: Point, box: Size, margin: float) -> bool:
@@ -170,6 +171,31 @@ def hud_font(skia: Any) -> tuple[Any, Any]:
 
     typeface = get_typeface(family_candidates=get_default_font_fallbacks(), fallback_to_default=True)
     return (make_font(typeface, FONT_SIZE), typeface)
+
+
+# The Material Symbols typeface, read from the package once; ``False`` once a read failed.
+_symbols: Any = None
+
+
+def symbol_font(size: float) -> tuple[Any, Any]:
+    """The packaged Material Symbols ``(font, typeface)`` at ``size``; ``(None, None)`` when it cannot be read."""
+    global _symbols
+    if _symbols is None:
+        try:
+            import importlib.resources as resources
+
+            from nuiitivet.rendering.skia.font import typeface_from_bytes
+
+            data = resources.files("nuiitivet.material").joinpath("symbols").joinpath(_SYMBOLS_FILE).read_bytes()
+            _symbols = typeface_from_bytes(data) or False
+        except Exception:
+            logger.debug("hud: the symbols font could not be read", exc_info=True)
+            _symbols = False
+    if not _symbols:
+        return (None, None)
+    from nuiitivet.rendering.skia.font import make_font
+
+    return (make_font(_symbols, size), _symbols)
 
 
 def color(skia: Any, rgb: tuple[int, int, int], alpha: float) -> Any:
@@ -203,7 +229,7 @@ def paint_hud(
     if not lines:
         return
     text_w = max(measure_text_width(typeface, FONT_SIZE, line) for line in lines)
-    box: Size = (text_w + _PAD * 2, len(lines) * _LINE_HEIGHT + 4.0)
+    box: Size = (text_w + PAD * 2, len(lines) * LINE_HEIGHT + 4.0)
     x, y = (placement or Placement()).place(box, (width, height), pointer)
     _paint_box(skia, canvas, x, y, box)
     ink = skia.Paint(AntiAlias=True)
@@ -211,7 +237,7 @@ def paint_hud(
     for index, line in enumerate(lines):
         blob = make_text_blob(line, font)
         if blob is not None:
-            canvas.drawTextBlob(blob, x + _PAD, y + 2.0 + (index + 1) * _LINE_HEIGHT - 6.0, ink)
+            canvas.drawTextBlob(blob, x + PAD, y + 2.0 + (index + 1) * LINE_HEIGHT - 6.0, ink)
 
 
 def paint_splash(skia: Any, canvas: Any, text: str, font: Any, typeface: Any, width: float, height: float) -> None:
@@ -250,7 +276,7 @@ def paint_caption(
     for row, line in enumerate(text.split("\n")):
         blob = make_text_blob(line, font)
         if blob is not None:
-            canvas.drawTextBlob(blob, x + _PAD, y + (row + 1) * _LINE_HEIGHT - 6.0, ink)
+            canvas.drawTextBlob(blob, x + PAD, y + (row + 1) * LINE_HEIGHT - 6.0, ink)
 
 
 def paint_sheet(
@@ -273,7 +299,7 @@ def paint_sheet(
 
     key_w = max(measure(key) for key, _what in rows)
     what_w = max(measure(what) for _key, what in rows)
-    box: Size = (max(measure(title), key_w + _GUTTER + what_w) + _PAD * 2, (len(rows) + 1) * _LINE_HEIGHT + _PAD * 2)
+    box: Size = (max(measure(title), key_w + _GUTTER + what_w) + PAD * 2, (len(rows) + 1) * LINE_HEIGHT + PAD * 2)
     x, y = fit_inside(((width - box[0]) / 2.0, (height - box[1]) / 2.0), box, (width, height))
     _paint_box(skia, canvas, x, y, box)
     ink = skia.Paint(AntiAlias=True)
@@ -282,12 +308,49 @@ def paint_sheet(
     def draw(text: str, at: float, row: int) -> None:
         blob = make_text_blob(text, font)
         if blob is not None:
-            canvas.drawTextBlob(blob, at, y + _PAD + (row + 1) * _LINE_HEIGHT - 6.0, ink)
+            canvas.drawTextBlob(blob, at, y + PAD + (row + 1) * LINE_HEIGHT - 6.0, ink)
 
-    draw(title, x + _PAD, 0)
+    draw(title, x + PAD, 0)
     for row, (key, what) in enumerate(rows, start=1):
-        draw(key, x + _PAD, row)
-        draw(what, x + _PAD + key_w + _GUTTER, row)
+        draw(key, x + PAD, row)
+        draw(what, x + PAD + key_w + _GUTTER, row)
+
+
+#: A row of a thread: the icon glyph that leads it, or ``None`` on a continuation row, and its text.
+Row = tuple[Optional[str], str]
+#: The column the row icons take, left of the text.
+ICON_GUTTER = 20.0
+_ICON_SIZE = 14.0
+
+
+def rows_size(rows: list[Row], typeface: Any) -> Size:
+    """The box ``paint_rows`` draws for ``rows``: the icon column plus the widest text, a row each."""
+    from nuiitivet.rendering.skia.font import measure_text_width
+
+    widest = max(measure_text_width(typeface, FONT_SIZE, text) for _icon, text in rows)
+    return (ICON_GUTTER + widest + PAD * 2, LINE_HEIGHT * len(rows))
+
+
+def paint_rows(skia: Any, canvas: Any, rows: list[Row], font: Any, typeface: Any, x: float, y: float) -> None:
+    """A dark rounded box with its top-left at ``(x, y)``, a row each, the icon in a column left of the text."""
+    if font is None:
+        return
+    from nuiitivet.rendering.skia.font import make_text_blob
+
+    _paint_box(skia, canvas, x, y, rows_size(rows, typeface))
+    ink = skia.Paint(AntiAlias=True)
+    ink.setColor(color(skia, CAPTION_INK, 1.0))
+    icon_font, _icon_typeface = symbol_font(_ICON_SIZE)
+    for row, (icon, text) in enumerate(rows):
+        top = y + row * LINE_HEIGHT
+        if icon is not None and icon_font is not None:
+            blob = make_text_blob(icon, icon_font)
+            if blob is not None:
+                # An icon glyph stands on the baseline and rises its size; centred on the row.
+                canvas.drawTextBlob(blob, x + PAD, top + (LINE_HEIGHT + _ICON_SIZE) / 2.0, ink)
+        blob = make_text_blob(text, font)
+        if blob is not None:
+            canvas.drawTextBlob(blob, x + PAD + ICON_GUTTER, top + LINE_HEIGHT - 6.0, ink)
 
 
 def _paint_box(skia: Any, canvas: Any, x: float, y: float, box: Size) -> None:
@@ -301,10 +364,14 @@ __all__ = [
     "CAPTION_BG",
     "CAPTION_INK",
     "FONT_SIZE",
+    "ICON_GUTTER",
+    "LINE_HEIGHT",
     "MARGIN",
+    "PAD",
     "SEPARATOR",
     "SPLASH",
     "Placement",
+    "Row",
     "Splash",
     "caption_size",
     "color",
@@ -312,6 +379,9 @@ __all__ = [
     "hud_font",
     "paint_caption",
     "paint_hud",
+    "paint_rows",
     "paint_sheet",
     "paint_splash",
+    "rows_size",
+    "symbol_font",
 ]

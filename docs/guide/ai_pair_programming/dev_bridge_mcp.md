@@ -82,7 +82,8 @@ What is worth knowing as the human in the loop:
   shortcut keys and scrolls; a burst of typing collapses to one content-free
   marker, so field text never leaks.
 - **A comment is the one thing that runs from you to the agent.** Everything
-  else reports what the app is; a comment reports what you *mean*.
+  else reports what the app is; a comment reports what you *mean*. The agent
+  answers on the mark, and you reply there.
 - **A silent failure surfaces in the app's error log.** A handler that raises is
   swallowed to keep the app alive, so the screen looks unchanged; the agent
   finds the traceback there, and so can you: `python -m nuiitivet.dev runtime-log`.
@@ -128,6 +129,7 @@ python -m nuiitivet.dev describe-tree
 python -m nuiitivet.dev describe-state
 python -m nuiitivet.dev describe-state --include-animations
 python -m nuiitivet.dev see-comments
+python -m nuiitivet.dev answer-comments 2 done "widened to 240"
 python -m nuiitivet.dev reload-log
 python -m nuiitivet.dev interaction-log
 python -m nuiitivet.dev runtime-log

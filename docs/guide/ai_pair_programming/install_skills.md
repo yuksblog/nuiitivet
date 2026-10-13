@@ -17,7 +17,7 @@ is Claude's, `.claude/skills/`; for another agent, pass its directory with
 | --- | --- |
 | `nuiitivet-app` | The agent writes idiomatic Nuiitivet. The API *resembles* Flutter, SwiftUI / Compose and Rx, so left alone it writes valid Python with their habits — `setState`, `Padding` / `SizedBox` wrappers, `subscribe()` to push a value into a widget |
 | `nuiitivet-debug` | The agent runs your app under hot reload, reads the running tree, drives it, and checks its own change before it answers — instead of guessing from a screenshot or racing a spinner |
-| `nuiitivet-see-comments` | `/nuiitivet-see-comments` in chat: the agent reads the comments you [wrote on the app](on_screen_modes.md#write-instructions-on-the-app-comment-mode) and handles every one in a turn, answering by number: `comment 1: done` |
+| `nuiitivet-see-comments` | `/nuiitivet-see-comments` in chat: the agent reads the comments you [wrote on the app](on_screen_modes.md#write-instructions-on-the-app-comment-mode), handles every one in a turn, and writes its answer on each mark |
 
 The skills follow the **Agent Skills** open standard (a `SKILL.md`, plus
 references and scripts), so the same directories work across agents — only

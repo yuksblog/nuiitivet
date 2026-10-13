@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
+import pytest
+
 from nuiitivet.dev.comments import Comments, see_comments
 from nuiitivet.layout.column import Column
 from nuiitivet.testing import mount
@@ -37,13 +39,13 @@ def test_remove_renumbers_the_marks_after_it_and_is_one_undo_step() -> None:
     comments.add(first)
     comments.add(second)
     comments.add(third)
-    comments.set_instruction(3, "last")
+    comments.write(3, "last")
     comments.enter()
 
     assert comments.remove(2) is True
 
     assert comments.members() == [first, third]
-    assert comments.instruction(2) == "last", "the third mark is now the second"
+    assert comments.editable_line(2) == "last", "the third mark is now the second"
     assert comments.undo() is True
     assert comments.members() == [first, second, third]
 
@@ -69,16 +71,16 @@ def test_undo_steps_back_through_the_session_and_redo_forward() -> None:
     comments.enter()
     comments.add(first)
     comments.add(second)
-    comments.set_instruction(2, "wider")
+    comments.write(2, "wider")
 
     assert comments.undo() is True
-    assert comments.instruction(2) is None, "the text went, the mark stayed"
+    assert comments.editable_line(2) is None, "the text went, the mark stayed"
     assert comments.undo() is True
     assert comments.members() == [first]
 
     assert comments.redo() is True
     assert comments.redo() is True
-    assert comments.members() == [first, second] and comments.instruction(2) == "wider"
+    assert comments.members() == [first, second] and comments.editable_line(2) == "wider"
     assert comments.redo() is False
 
 
@@ -537,10 +539,10 @@ def test_an_instruction_is_written_on_a_mark_by_its_number() -> None:
         comments.add(first, root=host.root)
         comments.add_region((100.0, 100.0, 50.0, 40.0))
 
-        assert comments.set_instruction(2, "close this gap") is True
-        assert comments.instruction(1) is None
-        assert comments.instruction(2) == "close this gap"
-        assert comments.set_instruction(3, "nothing here") is False
+        assert comments.write(2, "close this gap") is True
+        assert comments.editable_line(1) is None
+        assert comments.editable_line(2) == "close this gap"
+        assert comments.write(3, "nothing here") is False
 
 
 def test_a_blank_instruction_clears_the_text() -> None:
@@ -549,15 +551,15 @@ def test_a_blank_instruction_clears_the_text() -> None:
         host.layout(300, 200)
         comments = Comments()
         comments.add(leaf, root=host.root)
-        comments.set_instruction(1, "wider")
+        comments.write(1, "wider")
 
-        comments.set_instruction(1, "   ")
+        comments.write(1, "   ")
 
-        assert comments.instruction(1) is None
+        assert comments.editable_line(1) is None
         assert comments.summary()["instructions"] == 0
 
 
-def test_the_payload_carries_the_instruction_and_omits_it_when_there_is_none() -> None:
+def test_the_payload_carries_each_marks_thread_with_who_wrote_every_line() -> None:
     first, second = Text("AAA"), Text("BBB")
     with mount(Column(children=[first, second])) as host:
         host.layout(300, 200)
@@ -565,17 +567,129 @@ def test_the_payload_carries_the_instruction_and_omits_it_when_there_is_none() -
         comments.add(first, root=host.root)
         comments.add(second, root=host.root)
         comments.add_region((100.0, 100.0, 50.0, 40.0))
-        comments.set_instruction(1, "make this wider")
-        comments.set_instruction(3, "close this gap")
+        comments.write(1, "make this wider")
+        comments.answer(1, "done", "240 wide now")
+        comments.write(1, "a bit more")
+        comments.write(3, "close this gap")
 
         payload = see_comments(host.root, comments)
 
         one, two = payload["nodes"]
-        assert one["instruction"] == "make this wider"
-        assert list(one)[:2] == ["index", "instruction"], "the human's words come first"
-        assert "instruction" not in two
+        assert one["thread"] == [
+            {"by": "human", "text": "make this wider"},
+            {"by": "agent", "outcome": "done", "text": "240 wide now"},
+            {"by": "human", "text": "a bit more"},
+        ]
+        assert list(one)[:2] == ["index", "thread"], "the words come first"
+        assert two["thread"] == [], "a bare mark is still a comment"
         (region,) = payload["regions"]
-        assert region["instruction"] == "close this gap"
+        assert region["thread"] == [{"by": "human", "text": "close this gap"}]
+
+
+# --- the thread ---------------------------------------------------------------
+
+
+def _one_mark() -> tuple[Comments, Any]:
+    leaf = Text("AAA")
+    comments = Comments()
+    comments.enter()
+    comments.add(leaf)
+    return (comments, leaf)
+
+
+def test_writing_after_an_answer_is_a_new_line_and_blank_text_then_changes_nothing() -> None:
+    comments, _leaf = _one_mark()
+    comments.write(1, "wider")
+    comments.answer(1, "done", "240 wide now")
+    assert comments.editable_line(1) is None, "the answered line is not the field's to edit"
+
+    comments.write(1, "   ")
+    assert len(comments.thread(1)) == 2
+
+    comments.write(1, "a bit more")
+    comments.write(1, "a lot more")
+
+    assert [line.text for line in comments.thread(1)] == ["wider", "240 wide now", "a lot more"]
+    assert comments.editable_line(1) == "a lot more"
+
+
+def test_an_answer_does_not_bump_seq_and_is_refused_for_a_mark_that_is_not_there() -> None:
+    comments, _leaf = _one_mark()
+    before = comments.summary()["seq"]
+
+    assert comments.answer(1, "refused", "it is bound to a name") is True
+    assert comments.answer(2, "done", "") is False
+
+    assert comments.summary()["seq"] == before, "the agent wrote it; nothing new for the agent to read"
+    with pytest.raises(ValueError):
+        comments.answer(1, "maybe", "")
+
+
+def test_the_outcome_is_the_answer_that_ends_the_thread() -> None:
+    comments, _leaf = _one_mark()
+    assert comments.outcome(1) is None
+    comments.commit()
+
+    comments.answer(1, "question", "which column?")
+    assert comments.outcome(1) == "question"
+
+    comments.enter()
+    comments.write(1, "the left one")
+    assert comments.outcome(1) is None, "a reply is the human's turn again"
+    assert comments.outcome(2) is None
+
+
+def test_a_done_mark_is_dropped_by_the_next_commit_unless_the_session_replied_on_it() -> None:
+    first, second, third = Text("A"), Text("B"), Text("C")
+    comments = Comments()
+    comments.enter()
+    comments.add(first)
+    comments.add(second)
+    comments.add(third)
+    comments.commit()
+    comments.answer(1, "done", "")
+    comments.answer(2, "done", "")
+    comments.answer(3, "refused", "")
+
+    comments.enter()
+    comments.write(2, "not quite")
+    comments.commit()
+
+    assert comments.members() == [second, third]
+
+
+def test_an_answer_survives_undo_redo_and_discard_in_an_open_session() -> None:
+    """The answer is not the human's change, so no step of theirs takes it back."""
+    comments, _leaf = _one_mark()
+    comments.write(1, "wider")
+    comments.commit()
+    comments.enter()
+    comments.add_region((0.0, 0.0, 10.0, 10.0))
+    comments.write(2, "this gap")
+
+    comments.answer(1, "done", "240 wide now")
+    comments.answer(2, "question", "which gap?")
+
+    comments.undo()
+    assert comments.outcome(1) == "done" and comments.outcome(2) == "question"
+    comments.redo()
+    assert comments.outcome(2) == "question"
+    comments.discard()
+    assert comments.outcome(1) == "done" and comments.marks()[1:] == []
+
+
+def test_a_thread_survives_a_reload_with_its_mark() -> None:
+    comments = Comments()
+    with mount(_tree("AAA")) as host:
+        host.layout(300, 200)
+        comments.add(host.root.children[0], root=host.root)
+        comments.write(1, "wider")
+        comments.answer(1, "done", "240 wide now")
+    with mount(_tree("AAA")) as rebuilt:
+        rebuilt.layout(300, 200)
+
+        assert comments.restore(rebuilt.root) == 1
+        assert [line.by for line in comments.thread(1)] == ["human", "agent"]
 
 
 def test_the_summary_counts_marks_that_carry_text() -> None:
@@ -587,7 +701,7 @@ def test_the_summary_counts_marks_that_carry_text() -> None:
         comments.add_region((100.0, 100.0, 50.0, 40.0))
         before = comments.summary()["seq"]
 
-        comments.set_instruction(2, "close this gap")
+        comments.write(2, "close this gap")
 
         summary = comments.summary()
         assert summary["instructions"] == 1
@@ -599,12 +713,12 @@ def test_an_instruction_survives_a_reload_with_its_mark() -> None:
     with mount(_tree("AAA")) as host:
         host.layout(300, 200)
         comments.add(host.root.children[0], root=host.root)
-        comments.set_instruction(1, "wider")
+        comments.write(1, "wider")
     with mount(_tree("AAA")) as rebuilt:
         rebuilt.layout(300, 200)
 
         assert comments.restore(rebuilt.root) == 1
-        assert comments.instruction(1) == "wider"
+        assert comments.editable_line(1) == "wider"
 
 
 def test_discarding_a_session_restores_the_text_as_it_was() -> None:
@@ -614,14 +728,14 @@ def test_discarding_a_session_restores_the_text_as_it_was() -> None:
         comments = Comments()
         comments.enter()
         comments.add(leaf, root=host.root)
-        comments.set_instruction(1, "wider")
+        comments.write(1, "wider")
         comments.commit()
 
         comments.enter()
-        comments.set_instruction(1, "narrower")
+        comments.write(1, "narrower")
         comments.discard()
 
-        assert comments.instruction(1) == "wider"
+        assert comments.editable_line(1) == "wider"
 
 
 # --- read receipts ----------------------------------------------------------
@@ -671,6 +785,6 @@ def test_a_session_that_changed_nothing_does_not_prompt_again() -> None:
         assert comments.unread is False
 
         comments.enter()
-        comments.set_instruction(1, "wider")
+        comments.write(1, "wider")
         comments.commit()
         assert comments.unread is True

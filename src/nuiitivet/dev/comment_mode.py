@@ -3,8 +3,8 @@
 Latched on ``Ctrl+Shift+C`` from the backend's real input handlers, which the
 agent's synthesized actions bypass, so a comment is always the human's. While
 latched every event is consumed: a click or a drag marks, the keys walk the
-candidate and edit a mark's text, and nothing reaches the app. The marks live
-in :mod:`.comments`; ``H`` held lists the keys.
+candidate and edit a mark's newest line, and nothing reaches the app. The
+marks and their threads live in :mod:`.comments`; ``H`` held lists the keys.
 """
 
 from __future__ import annotations
@@ -31,24 +31,23 @@ _LAYOUT_KEY = "e"
 #: The numbered badge at a mark's top-left corner. A press inside the disc clicks
 #: it; no slack, since the widget under it may be no taller than the disc.
 BADGE_RADIUS = 10.0
+#: What an answered mark's badge grows to the right, for the answer's glyph.
+ANSWER_WIDTH = 20.0
 # Both, since a Mac keyboard has no Delete key.
 _DELETE_KEYS = ("delete", "backspace")
 # The lines at the window's centre on entering, and on leaving either way.
 _SPLASH_ON = "COMMENT MODE" + SEPARATOR + "H help"
 _SPLASH_KEPT = "COMMENT MODE off" + SEPARATOR + "comments kept"
 _SPLASH_DISCARDED = "COMMENT MODE off" + SEPARATOR + "comments discarded"
-#: The field's size beside a badge with nothing typed; it grows with the text.
+# A second line under the kept line while the agent has comments to read: the skill's name, which chat completes.
+_PROMPT = "in chat: /nuiitivet-see-comments"
+#: The field's size with nothing typed; it grows with the text.
 FIELD_LEAST = (180.0, 24.0)
-#: Between a badge's centre and the box beside it.
-BESIDE_GAP = BADGE_RADIUS + 4.0
+#: Between a mark and the thread under it, and between the thread and the field.
+UNDER_GAP = 6.0
 
 Rect = tuple[float, float, float, float]
 Point = tuple[float, float]
-
-
-def beside_anchor(rect: tuple[float, ...]) -> Point:
-    """The point a caption or field beside the badge on ``rect``'s corner opens from."""
-    return (rect[0], rect[1] - 10.0)
 
 
 @dataclass
@@ -58,12 +57,15 @@ class Writing:
     Attributes:
         index: The mark's number.
         field: The text under edit.
-        slot: Where the field hangs on the badge, fixed when it opened.
+        slot: Where the field hangs under the badge, fixed when it opened.
+        new: Opened by the gesture that made the mark; ``Esc`` on it with
+            nothing written removes the mark too.
     """
 
     index: int
     field: InlineField
     slot: Slot
+    new: bool = False
 
 
 class CommentMode:
@@ -91,7 +93,7 @@ class CommentMode:
         # Where the pointer was when the walk began; a move past the drag
         # threshold from there ends the walk.
         self._walk_from: Optional[tuple[float, float]] = None
-        # The badge under the cursor, whose whole instruction the overlay shows.
+        # The badge under the cursor, whose whole thread the overlay shows.
         self._hovered_badge: Optional[int] = None
         # The rect a drag has swept so far, for the overlay's rubber band.
         self._band: Optional[tuple[float, float, float, float]] = None
@@ -195,7 +197,8 @@ class CommentMode:
                 self._mark(app, self.hovered)
             else:
                 self._commit(app)
-                self._splash.show(app, _SPLASH_KEPT)
+                prompt = "\n" + _PROMPT if self._comments.unread else ""
+                self._splash.show(app, _SPLASH_KEPT + prompt)
         elif key == "z" and chord:
             self._stepped(app, self._comments.redo())
         elif key == "z" and accel_held(modifier_keys):
@@ -259,16 +262,17 @@ class CommentMode:
 
     # --- the field --------------------------------------------------------
 
-    def _open_field(self, app: Any, index: int) -> None:
+    def _open_field(self, app: Any, index: int, *, new: bool = False) -> None:
+        """Open the field on mark ``index``: on the human's unanswered line, or empty after an answer."""
         rect = self._mark_rect(index)
-        slot = Slot.beside(beside_anchor(rect or (0.0, 0.0)), FIELD_LEAST, BESIDE_GAP, _window(app))
-        field = InlineField.open(self._comments.instruction(index) or "", wrap=slot.wrap)
-        self._writing = Writing(index, field, slot)
+        slot = Slot.under(rect or (0.0, 0.0, 0.0, 0.0), FIELD_LEAST, UNDER_GAP, _window(app))
+        field = InlineField.open(self._comments.editable_line(index) or "", wrap=slot.wrap)
+        self._writing = Writing(index, field, slot, new)
         invalidate(app)
 
     def _open_newest(self, app: Any) -> None:
         """Open the field on the mark just made."""
-        self._open_field(app, len(self._comments.marks()))
+        self._open_field(app, len(self._comments.marks()), new=True)
 
     def _mark_under_pointer(self) -> Optional[int]:
         """The number of the mark the pointer rests on, by its badge or by its widget, or ``None``."""
@@ -298,24 +302,41 @@ class CommentMode:
             return
         if outcome == "cancel":
             self._writing = None
+            if writing.new and not self._comments.thread(writing.index):
+                # A click taken back at once: the mark was made for the text that never came.
+                self._comments.remove(writing.index)
+                self._changed(app)
+                return
         invalidate(app)
 
     def _write(self, app: Any) -> None:
-        """Close the field, keeping its text on the mark."""
+        """Close the field, keeping its text as the human's newest line on the mark."""
         writing, self._writing = self._writing, None
         if writing is None:
             return
-        self._comments.set_instruction(writing.index, writing.field.text)
+        before = self._comments.thread(writing.index)
+        self._comments.write(writing.index, writing.field.text)
+        if self._comments.thread(writing.index) == before:
+            # Nothing written: no journal marker for a field closed as it opened.
+            invalidate(app)
+            return
         self._changed(app)
 
     def _badge_at(self, x: float, y: float) -> Optional[int]:
-        """The number of the mark whose badge is under ``(x, y)``, or ``None``."""
+        """The number of the mark whose badge is under ``(x, y)``, or ``None``.
+
+        An answered mark's badge is the disc plus the glyph's extent to its right.
+        """
         for index, kind, mark in reversed(self._comments.marks()):
             rect = mark if kind == "region" else visible_rect(mark)
             if rect is None:
                 continue
-            if (rect[0] - x) ** 2 + (rect[1] - y) ** 2 <= BADGE_RADIUS**2:
+            cx, cy = rect[0], rect[1]
+            if (cx - x) ** 2 + (cy - y) ** 2 <= BADGE_RADIUS**2:
                 return index
+            if self._comments.outcome(index) is not None and cx <= x <= cx + BADGE_RADIUS + ANSWER_WIDTH:
+                if abs(cy - y) <= BADGE_RADIUS:
+                    return index
         return None
 
     def _enter(self, app: Any) -> None:
@@ -505,4 +526,4 @@ def _normalized(a: tuple[float, float], b: tuple[float, float]) -> tuple[float, 
     return (x0, y0, x1 - x0, y1 - y0)
 
 
-__all__ = ["BADGE_RADIUS", "BESIDE_GAP", "FIELD_LEAST", "CommentMode", "Writing", "beside_anchor"]
+__all__ = ["ANSWER_WIDTH", "BADGE_RADIUS", "FIELD_LEAST", "UNDER_GAP", "CommentMode", "Writing"]
