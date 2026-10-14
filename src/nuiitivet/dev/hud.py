@@ -1,7 +1,7 @@
 """What the dev modes draw to say where they are: the splash, the help sheet, the notices and the captions.
 
 On entering a mode a line at the window's centre names it and the key that
-opens the help, and on leaving says how it was left, each for a few seconds.
+opens the help, and on leaving says how it was left, each for a moment.
 The help sheet lists every gesture of the mode while ``H`` is held. A notice sits in a box at the
 bottom-left that steps out of the pointer's way and comes back only once the
 pointer is well clear.
@@ -36,8 +36,8 @@ _RADIUS = 5.0
 _DODGE = 40.0
 _RETURN = 120.0
 
-# Seconds the splash stays after a mode is entered or left: long enough to find and read the line.
-SPLASH = 3.0
+# Seconds the splash stays after a mode is entered or left: long enough to read the line, short enough not to wait on.
+SPLASH = 1.5
 # Between the key column of the help sheet and what each key does.
 _GUTTER = 24.0
 # The icon font the badges' answer glyphs come from: the one the Icon widget draws by default.

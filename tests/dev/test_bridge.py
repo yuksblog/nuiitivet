@@ -970,7 +970,7 @@ def test_status_carries_the_selection_roll_up(tmp_path: Path, dev_run: None) -> 
             client = BridgeClient("127.0.0.1", _port_of(bridge))
 
             summary = client.status()["comments"]
-            assert summary["committed"] is False
+            assert summary["sent"] == 0
             assert summary["nodes"] == 1
             assert summary["regions"] == 0
             assert summary["seq"] > 0
@@ -1068,7 +1068,7 @@ def test_get_carries_the_bridge_reason_for_an_unknown_window(
 
 
 def test_bridge_serves_the_instruction_and_counts_it_on_status(tmp_path: Path, dev_run: None) -> None:
-    """The human's words ride with the mark, and reading them is the read receipt."""
+    """The human's words ride with the mark."""
     from nuiitivet.dev.comments import Comments
 
     app = _fake_app()
@@ -1082,11 +1082,86 @@ def test_bridge_serves_the_instruction_and_counts_it_on_status(tmp_path: Path, d
             client = BridgeClient("127.0.0.1", _port_of(bridge))
 
             assert client.status()["comments"]["instructions"] == 1
-            assert comments.unread is True
             (node,) = client.see_comments()["nodes"]
 
             assert node["thread"] == [{"by": "human", "text": "make this wider"}]
-            assert comments.unread is False
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_wait_comments_returns_on_a_send_and_times_out_otherwise(tmp_path: Path, dev_run: None) -> None:
+    """The agent's wait for the human's hand-over, on the worker thread, released by the send on the UI thread."""
+    from nuiitivet.dev.comments import Comments
+
+    app = _fake_app()
+    comments = Comments()
+    comments.add(app.root)
+    bridge = DevBridge(app, tmp_path, comments=comments)
+    bridge.start()
+
+    def send_later() -> None:
+        time.sleep(0.1)
+        comments.send()
+
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            result = client.wait_comments(timeout=0.1)
+            assert result["satisfied"] is False and result["timed_out"] is True
+            assert result["sent"] == 0
+
+            worker = threading.Thread(target=send_later)
+            worker.start()
+            result = client.wait_comments(since=0, timeout=2.0)
+            worker.join()
+            assert result["satisfied"] is True and result["sent"] > 0
+            sent = result["sent"]
+
+            assert client.wait_comments(since=0, timeout=0.0)["satisfied"] is True, "a send already in satisfies"
+            assert client.wait_comments(since=sent, timeout=0.0)["satisfied"] is False
+            assert client.see_comments()["sent"] == sent
+            with pytest.raises(RuntimeError, match="since"):
+                client.wait_comments(since=-1, timeout=0.0)
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_shutdown_releases_a_waiting_wait_comments(tmp_path: Path, dev_run: None) -> None:
+    """A worker holding the condition must not keep the app from going down."""
+    from nuiitivet.dev.comments import Comments
+
+    app = _fake_app()
+    comments = Comments()
+    bridge = DevBridge(app, tmp_path, comments=comments)
+    bridge.start()
+    outcomes: list[Any] = []
+
+    def wait() -> None:
+        client = BridgeClient("127.0.0.1", _port_of(bridge))
+        try:
+            outcomes.append(client.wait_comments(timeout=30.0))
+        except Exception as exc:  # the connection may close under the request
+            outcomes.append(exc)
+
+    with _Pump(bridge):
+        waiter = threading.Thread(target=wait)
+        waiter.start()
+        time.sleep(0.1)
+        bridge.shutdown()
+        waiter.join(timeout=5.0)
+
+    assert not waiter.is_alive()
+    assert outcomes and (isinstance(outcomes[0], Exception) or outcomes[0]["satisfied"] is False)
+
+
+def test_bridge_wait_comments_without_a_buffer_is_400(tmp_path: Path, dev_run: None) -> None:
+    bridge = DevBridge(_fake_app(), tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            with pytest.raises(RuntimeError, match="not enabled"):
+                client.wait_comments(timeout=0.0)
     finally:
         bridge.shutdown()
 

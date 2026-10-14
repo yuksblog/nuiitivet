@@ -81,6 +81,8 @@ _WAIT_FOR_DEFAULT_MIN_INTERVAL = 0.005
 # Cap on one sleep, as a share of the time left. Uncapped, a 1.4 s poll against
 # a 3 s timeout sleeps 1.4 s and leaves room for a single further attempt.
 _WAIT_FOR_REMAINING_SHARE = 4.0
+# How long one ``/wait_comments`` holds its worker thread before answering with a timeout.
+_WAIT_COMMENTS_DEFAULT_TIMEOUT = 300.0
 
 
 class _UIThreadMarshaller:
@@ -382,6 +384,36 @@ def _answer_comments(app: Any, comments: Optional[Comments], answers: Any) -> di
     return {"answered": [index for index, _outcome, _text in parsed]}
 
 
+def _run_wait_comments(comments: Optional[Comments], body: dict[str, Any]) -> dict[str, Any]:
+    """Block on the HTTP worker thread until the human sends the comments, or the timeout passes.
+
+    ``since`` is the ``sent`` the caller last saw, so a send that came in before
+    the call still satisfies it; omitted, the wait is for the next send.
+    Returns a structured result, never raising on the timeout: ``satisfied``
+    is the outcome, ``sent`` the ``seq`` the human last sent, and ``waited``
+    the seconds spent.
+
+    Raises:
+        ValueError: If comments are not enabled, or ``since`` / ``timeout`` are invalid.
+    """
+    if comments is None:
+        raise ValueError("comments are not enabled on this bridge")
+    since = body.get("since")
+    if since is None:
+        since = comments.summary()["sent"]
+    if isinstance(since, bool) or not isinstance(since, int) or since < 0:
+        raise ValueError(f"since must be a non-negative integer, not {since!r}")
+    timeout = max(0.0, float(body.get("timeout", _WAIT_COMMENTS_DEFAULT_TIMEOUT)))
+    started = time.monotonic()
+    satisfied = comments.wait(since, timeout)
+    return {
+        "satisfied": satisfied,
+        "timed_out": not satisfied,
+        "sent": comments.summary()["sent"],
+        "waited": round(time.monotonic() - started, 3),
+    }
+
+
 def _run_wait_for(marshaller: _UIThreadMarshaller, body: dict[str, Any]) -> dict[str, Any]:
     """Poll a tree condition until it holds or the timeout elapses.
 
@@ -591,6 +623,10 @@ def _make_handler(
                     # Its own worker-thread poll loop; it marshals each poll onto
                     # the UI thread rather than running as one UI-thread job.
                     result = _run_wait_for(marshaller, body)
+                elif path == "/wait_comments":
+                    # Blocks this worker thread on the buffer's condition; the
+                    # send that releases it comes from the UI thread.
+                    result = _run_wait_comments(comments, body)
                 elif path == "/runtime_log/verbose":
                     # A process-wide de-dup toggle -- no UI-thread hop, no app
                     # state touched. Absent when the bridge runs without capture
@@ -825,7 +861,9 @@ class DevBridge:
             logger.debug("dev bridge: failed to write discovery file", exc_info=True)
 
     def shutdown(self) -> None:
-        """Stop serving, remove the discovery file, and release the drain."""
+        """Stop serving, remove the discovery file, and release the drain and every waiting worker."""
+        if self._comments is not None:
+            self._comments.close()
         if self._server is not None:
             try:
                 self._server.shutdown()

@@ -72,7 +72,8 @@ _SERVER_INSTRUCTIONS = (
     "the app up and healthy -- `status`; what is on screen, and what can I target "
     "-- `describe_tree`; is the state behind the tree right -- `describe_state`; "
     "what did the human point at in the app, and write there -- `see_comments`, "
-    "answered on the mark with `answer_comments`; "
+    "answered on the mark with `answer_comments`; has the human sent new comments "
+    "-- `wait_for_comments`, which blocks until they press Send; "
     "did the code hot-reload under me -- `reload_log`; what did the human do in "
     "the app -- `interaction_log`; why did an action do nothing -- `runtime_log` "
     "(`set_runtime_log_verbose` records every occurrence of a repeated error); a "
@@ -152,9 +153,9 @@ def build_server() -> "FastMCP":
           intentionally solid screen also reads blank.
         - ``windows``: pass an ``id`` as ``window`` to the other tools; omitted, they
           address the main window.
-        - ``comments``: a ``seq`` you have not seen means the human left a comment
-          since your last turn -- call `see_comments`. ``committed: false`` means they
-          are still writing.
+        - ``comments``: a ``sent`` you have not seen means the human sent comments
+          since your last turn -- call `see_comments`. A ``seq`` above ``sent`` is
+          what they are still writing.
         """
         return _client().status()
 
@@ -194,17 +195,20 @@ def build_server() -> "FastMCP":
     def see_comments() -> dict[str, Any]:
         """Return the human's comments: the widgets and areas they marked in the app, and what they wrote on each.
 
-        The one channel from the human to you. Call it when the human says
-        `see_comments`, when `status` reports a `comments` ``seq`` you have not seen,
-        and when they say "this is wrong" without naming a widget.
+        The one channel from the human to you. Call it when `wait_for_comments`
+        returns satisfied, when the human says `see_comments`, when `status` reports
+        a `comments` ``sent`` you have not seen, and when they say "this is wrong"
+        without naming a widget. ``sent`` is the ``since`` for the next wait.
 
         ``nodes`` and ``regions`` share one numbering: ``index`` is the badge on the
-        human's screen. ``thread`` is the comment's lines in order, each ``by`` the
-        human or the agent: theirs is a change to make, or a problem they saw, in
-        their words; yours is an earlier answer. Act on the newest human line.
-        Reproduce a problem before editing; `interaction_log` holds their steps. An
-        empty ``thread`` is still a comment: they say what they mean in chat, by
-        number. Answer every comment with `answer_comments` in the same turn.
+        human's screen. ``awaiting`` marks the comments they sent and you have not
+        answered: act on those, and leave the rest, which they are still writing.
+        ``thread`` is the comment's lines in order, each ``by`` the human or the
+        agent: theirs is a change to make, or a problem they saw, in their words;
+        yours is an earlier answer. Act on the newest human line. Reproduce a
+        problem before editing; `interaction_log` holds their steps. An empty
+        ``thread`` is still a comment: they say what they mean in chat, by number.
+        Answer every awaiting comment with `answer_comments` in the same turn.
 
         A region is an area, not a widget. ``container`` is the widget enclosing the
         box and ``contents`` is what the box crosses: "the gap between these things" is
@@ -225,6 +229,19 @@ def build_server() -> "FastMCP":
         writes nothing.
         """
         return _client().answer_comments(answers)
+
+    @tool
+    def wait_for_comments(since: Optional[int] = None, timeout: Optional[float] = None) -> dict[str, Any]:
+        """Block until the human presses Send in comment mode, then call `see_comments`.
+
+        How you wait for the human's next round instead of being told in chat. Pass
+        the ``sent`` from your last `see_comments` as ``since``: a send that came in
+        meanwhile returns at once. Omitted, the wait is for the next send. Returns
+        after ``timeout`` seconds (default 300) with ``satisfied: false``, not an
+        error; call again to keep waiting. Only a send satisfies it: leaving the
+        mode does not.
+        """
+        return _client().wait_comments(since=since, timeout=timeout)
 
     @tool
     def reload_log(limit: Optional[int] = None) -> dict[str, Any]:

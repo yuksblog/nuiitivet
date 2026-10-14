@@ -90,6 +90,7 @@ def _fake_client() -> Any:
         },
     ]
     client.answer_comments.return_value = {"answered": [2]}
+    client.wait_comments.return_value = {"satisfied": True, "timed_out": False, "sent": 7, "waited": 1.5}
     client.set_runtime_log_verbose.return_value = True
     client.wait_for.return_value = {
         "satisfied": True,
@@ -141,6 +142,7 @@ def test_build_server_registers_the_tools() -> None:
         "describe_state",
         "see_comments",
         "answer_comments",
+        "wait_for_comments",
         "reload_log",
         "interaction_log",
         "runtime_log",
@@ -377,6 +379,15 @@ def test_wait_for_forwards_condition() -> None:
     client.wait_for.assert_called_once_with(
         key=None, label="Saved", text=None, present=False, timeout=2.0, window=None
     )
+
+
+def test_wait_for_comments_forwards_since_and_timeout() -> None:
+    client = _fake_client()
+    with mock.patch.object(BridgeClient, "discover", return_value=client):
+        server = mcp_server.build_server()
+        result = _call(server, "wait_for_comments", {"since": 3, "timeout": 60.0})
+    assert result["satisfied"] is True and result["sent"] == 7
+    client.wait_comments.assert_called_once_with(since=3, timeout=60.0)
 
 
 def test_tool_surfaces_bridge_not_found() -> None:

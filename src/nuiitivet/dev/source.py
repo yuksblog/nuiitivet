@@ -1,31 +1,10 @@
-"""Where a widget was constructed.
+"""Where a widget was constructed: the user frames that were executing when it was built.
 
-A mark answers "which widget is this". It stops one step short of
-the question that follows it every time: *which line of code built this?* In an
-app that passes no ``key=`` -- which is most apps -- the alternative is a chain
-of anonymous types twenty levels deep and a grep.
-
-Flutter needs ``--track-widget-creation``, a compile-time transform, because Dart
-cannot introspect frames this way at runtime. Python can, and two things here
-make it cheap:
-
-* **One chokepoint.** Every widget reaches :meth:`Widget.__init__` -- verified,
-  not assumed: of 150 ``Widget`` subclasses, 142 define their own ``__init__``
-  and every one of them calls ``super()``.
-* **An established idiom.** :func:`nuiitivet.testing._leaks._capture_site`
-  already walks raw frames rather than calling ``traceback.extract_stack``, and
-  records the reason: ``extract_stack`` builds ``FrameSummary`` objects and reads
-  source lines for *every* frame, far too much for a per-construction path.
-
-The wrap is installed by the dev runner and never by the framework itself, so a
-production launch pays nothing at all -- not even a flag check on the
-construction path. That is the same gating the rest of the bridge uses, and it is
-strictly better than needing a special build mode.
-
-**Hot reload composes with this for free.** Sites are captured at construction
-and a reload reconstructs the whole tree, so after an edit shifts line numbers
-the tree already carries the new ones. There is no invalidation step, and no way
-for a site to go stale.
+Recorded by a wrap on ``Widget.__init__`` that the dev runner installs; with no
+dev session nothing is recorded. A site is the innermost user frames, outside
+the package and outside any install directory, each with the span of the call
+that was executing. Sites are captured at construction, so a reload rebuilds
+them with the tree.
 """
 
 from __future__ import annotations
@@ -42,18 +21,12 @@ from nuiitivet.widgeting.widget import Widget
 logger = logging.getLogger(__name__)
 
 # Frames climbed before giving up, so a pathological stack cannot turn a
-# per-construction path into an unbounded walk.
-#
-# Not a guess: at 40 this silently lost 9 of 421 nodes in the hero sample, whose
-# user frame sat at depth 41-42 -- Material widgets built during layout, several
-# composed layers below the ``build()`` that asked for them. The headroom is
-# deliberate, and the cost of it is paid only by a widget that has no user frame
-# at all, which no real app produces.
+# per-construction path into an unbounded walk. A Material widget built during
+# layout sits over forty frames below the ``build()`` that asked for it.
 _MAX_DEPTH = 150
 
-# User frames kept. Three covered every observed case -- a widget built
-# in a helper, called from another helper, called from ``build()`` -- and the
-# limit trades payload size against the caller's ability to choose among them.
+# User frames kept: a widget built in a helper, called from another helper,
+# called from ``build()``. More would cost payload on every mark.
 _MAX_FRAMES = 3
 
 _PACKAGE_ROOT = os.path.dirname(os.path.abspath(nuiitivet.__file__)) + os.sep
@@ -128,9 +101,7 @@ def _is_user_file(filename: str) -> bool:
     return known
 
 
-# Sites are shared far more than they are distinct: in the spike, 441 resolved
-# widgets held 145 distinct sites, because one helper builds fourteen cards.
-# Interning turns a per-widget field into a pointer into a small table.
+# Interned: one helper builds many widgets, which would otherwise each carry a copy of one site.
 _interned: dict[Site, Site] = {}
 
 _original: Optional[Callable[..., None]] = None
@@ -188,10 +159,7 @@ def site_of(node: Any) -> Site:
     """Return ``node``'s construction site, or ``()`` when it has none.
 
     Empty for every widget when capture was never installed, and for anything
-    built with no user frame within :data:`_MAX_DEPTH` -- which no widget in the
-    hero sample now is. Probed by name, like ``visual_offset`` /
-    ``is_visually_empty``, so nothing outside dev has to know the attribute
-    exists.
+    built with no user frame within :data:`_MAX_DEPTH`.
     """
     site = getattr(node, "_source_site", None)
     return site if isinstance(site, tuple) else ()
@@ -237,15 +205,9 @@ def is_installed() -> bool:
 def payload(node: Any) -> Optional[list[dict[str, Any]]]:
     """``node``'s construction site as JSON, innermost first, or ``None``.
 
-    The innermost frame is flagged ``target``: it is where the widget is
-    literally constructed, which is the one place an editor can jump to and the
-    same choice Flutter's creation location makes. The rest are kept because a
-    rectangle's two readings have an exact analogue here -- "change every tile"
-    wants the helper, "change this one" wants the call site, and only the caller
-    knows which was meant.
-
-    Paths are relative to the working directory when they sit under it, since
-    that is how both the guide and the agent refer to files.
+    The innermost frame is flagged ``target``: where the widget is constructed,
+    the one place an editor can open. Paths are relative to the working
+    directory when they sit under it.
     """
     site = site_of(node)
     if not site:

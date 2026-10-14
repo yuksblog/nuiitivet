@@ -11,6 +11,7 @@ Subcommands::
     python -m nuiitivet.dev describe-state          # dump the running app's observable state
     python -m nuiitivet.dev see-comments            # dump what the human pointed at and wrote
     python -m nuiitivet.dev answer-comments 2 done "widened to 240"  # answer on the mark
+    python -m nuiitivet.dev wait-comments           # one line per Send the human presses
     python -m nuiitivet.dev reload-log              # dump recent hot-reload events
     python -m nuiitivet.dev interaction-log          # dump the human's recent UI actions
     python -m nuiitivet.dev runtime-log             # dump recent log output & exceptions
@@ -72,6 +73,7 @@ _SUBCOMMANDS = frozenset(
         "describe-state",
         "see-comments",
         "answer-comments",
+        "wait-comments",
         "reload-log",
         "interaction-log",
         "click",
@@ -179,6 +181,25 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     answer_comments.add_argument("index", type=int, help="The comment's number, as see-comments reports it.")
     answer_comments.add_argument("outcome", choices=("done", "refused", "question"))
+    wait_comments = subparsers.add_parser(
+        "wait-comments",
+        help="Print one line each time the human presses Send in comment mode; runs until the app stops.",
+    )
+    wait_comments.add_argument(
+        "--since",
+        type=int,
+        default=None,
+        metavar="SENT",
+        help="The 'sent' last seen; a Send after it prints at once. Default: the next Send.",
+    )
+    wait_comments.add_argument(
+        "--timeout",
+        type=float,
+        default=None,
+        metavar="SECONDS",
+        help="How long each wait on the bridge lasts before it is renewed (default 300).",
+    )
+    wait_comments.add_argument("--once", action="store_true", help="Exit after the first line.")
     answer_comments.add_argument(
         "text", nargs="?", default="", help="One short line: the reason for a refusal, the question itself."
     )
@@ -544,8 +565,8 @@ def _run(args: argparse.Namespace) -> int:
         bridge.start()
         print(
             f"[nuiitivet.dev] dev bridge listening on 127.0.0.1:{bridge.port} "
-            "(status / describe-tree / describe-state / see-comments / answer-comments / screenshot / click / scroll / "
-            "scroll-into-view / type / key / wait-for / interaction-log / runtime-log).",
+            "(status / describe-tree / describe-state / see-comments / answer-comments / wait-comments / screenshot / "
+            "click / scroll / scroll-into-view / type / key / wait-for / interaction-log / runtime-log).",
             file=sys.stderr,
         )
         try:
@@ -609,6 +630,30 @@ def _answer_comments(args: argparse.Namespace) -> int:
 
     print(json.dumps(payload, indent=2))
     return 0
+
+
+def _wait_comments(args: argparse.Namespace) -> int:
+    """Print one JSON line per Send, renewing the wait on each timeout, until the bridge goes away."""
+    import json
+
+    try:
+        client = BridgeClient.discover()
+    except (BridgeNotFoundError, OSError, RuntimeError) as exc:
+        print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
+        return 1
+    since = args.since
+    while True:
+        try:
+            result = client.wait_comments(since=since, timeout=args.timeout)
+        except (BridgeNotFoundError, OSError, RuntimeError) as exc:
+            print(f"[nuiitivet.dev] {exc}", file=sys.stderr)
+            return 1
+        since = result["sent"]
+        if not result["satisfied"]:
+            continue
+        print(json.dumps(result), flush=True)
+        if args.once:
+            return 0
 
 
 def _describe_state(args: argparse.Namespace) -> int:
@@ -806,6 +851,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return _see_comments()
     if args.command == "answer-comments":
         return _answer_comments(args)
+    if args.command == "wait-comments":
+        return _wait_comments(args)
     if args.command == "reload-log":
         return _reload_log(args)
     if args.command == "interaction-log":

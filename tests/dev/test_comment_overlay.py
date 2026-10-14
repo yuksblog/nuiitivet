@@ -122,17 +122,20 @@ def test_the_env_kill_switch_disables_it(
     assert canvas.calls == []
 
 
-def test_a_committed_mark_still_marks_the_screen(
-    marking: tuple[_App, CommentMode]
+def test_marks_wait_unseen_while_the_mode_is_off(
+    marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Leaving commits, so the badges survive the mode being switched off."""
+    """Leaving keeps every mark, but the human left to use the app, so no badge sits on it."""
     app, mode = marking
-    mode.on_key_press(app, "enter", 0)
-    canvas = _Canvas()
+    badges = _badges(monkeypatch)
+    _leave(app, mode)
 
-    so.paint_comments(app, canvas, app.width, app.height)
+    so.paint_comments(app, _Canvas(), app.width, app.height)
 
-    assert canvas.calls, "committed marks keep their numbered badges"
+    assert badges == [] and mode.comments.marks(), "kept, not shown"
+    mode.on_key_press(app, "c", _ENTER)
+    so.paint_comments(app, _Canvas(), app.width, app.height)
+    assert [label for label, _glyph in badges] == ["1"], "back on entering"
 
 
 def test_painting_never_raises_on_a_broken_canvas(
@@ -226,8 +229,7 @@ def test_the_leaving_line_paints_after_the_mode_is_off(
 
     so.paint_comments(app, _Canvas(), app.width, app.height)
 
-    kept = "COMMENT MODE off" + SEPARATOR + "comments kept"
-    assert splashes == [kept + "\nin chat: /nuiitivet-see-comments"], "unread: a second line says what to type"
+    assert splashes == ["COMMENT MODE off" + SEPARATOR + "unsent comments"]
 
 
 def test_the_help_sheet_paints_while_h_is_held(
@@ -298,7 +300,7 @@ def test_the_caption_omits_the_location_when_none_was_recorded() -> None:
     assert SEPARATOR not in so.describe_node(leaf, site=True)
 
 
-def test_a_node_mark_paints_only_in_its_own_window() -> None:
+def test_a_node_mark_paints_only_in_its_own_window(monkeypatch: pytest.MonkeyPatch) -> None:
     """The comment buffer is shared across windows; the rect must not ghost into
     windows that do not contain the node."""
     from nuiitivet.layout.container import Container
@@ -312,16 +314,18 @@ def test_a_node_mark_paints_only_in_its_own_window() -> None:
     main_win.root.layout(300, 200)
 
     comments = Comments()
+    comments.enter()
     comments.add(main_content, root=main_win.root)
     main_win._comment_mode = CommentMode(comments)
     second._comment_mode = CommentMode(comments)
 
+    painted_on: list[Any] = []
+    monkeypatch.setattr(so, "_paint_badge", lambda _skia, canvas, *_args: painted_on.append(canvas))
     own_canvas, foreign_canvas = _Canvas(), _Canvas()
     so.paint_comments(main_win, own_canvas, 300, 200)
     so.paint_comments(second, foreign_canvas, 300, 200)
 
-    assert own_canvas.calls
-    assert foreign_canvas.calls == []
+    assert painted_on == [own_canvas], "the badge in its own window only; the send button is every window's"
 
 
 # --- the source jump ---------------------------------------------------------
@@ -379,10 +383,10 @@ def test_the_notice_paints_after_the_chord_is_released(monkeypatch: pytest.Monke
 
 
 def _leave(app: _App, mode: CommentMode) -> None:
-    """``Enter`` out of the session, first keeping the empty field the new mark opened."""
+    """``Esc`` out of the session, first keeping the empty field the new mark opened."""
     if mode.writing is not None:
         mode.on_key_press(app, "enter", 0)
-    mode.on_key_press(app, "enter", 0)
+    mode.on_key_press(app, "escape", 0)
 
 
 def _close_field(app: _App, mode: CommentMode) -> None:
@@ -708,10 +712,10 @@ def test_the_thread_paints_over_every_badge(marking: tuple[_App, CommentMode], m
     assert order == ["badge", "badge", "thread"]
 
 
-def test_nothing_sits_in_the_notice_box_after_a_commit(
+def test_nothing_sits_in_the_notice_box_after_leaving(
     marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """What to type in chat rides on the leaving line; the box would cover the app for the whole wait."""
+    """The agent is waiting on the send; a box that waits on the agent would cover the app for the whole wait."""
     app, mode = marking
     notices = _notices(monkeypatch)
     _leave(app, mode)
@@ -747,9 +751,9 @@ def test_the_badge_walks_every_state(marking: tuple[_App, CommentMode], monkeypa
     so.paint_comments(app, _Canvas(), 300, 200)
     assert badges[-1] == ("1", None)
 
-    _leave(app, mode)
+    mode.comments.send()
     so.paint_comments(app, _Canvas(), 300, 200)
-    assert badges[-1] == ("1", None), "kept looks no different: the agent has not acted yet"
+    assert badges[-1] == ("1", so.AWAITING_GLYPH), "sent: an hourglass where the answer will land"
 
     for outcome in ("done", "refused", "question"):
         mode.comments.answer(1, outcome, "a line")
@@ -764,6 +768,7 @@ def test_the_answer_glyphs_are_material_symbols_the_packaged_font_carries() -> N
     _font, typeface = symbol_font(14.0)
     assert typeface is not None
     assert all(typeface.unicharToGlyph(ord(glyph)) != 0 for glyph in so.GLYPHS.values())
+    assert typeface.unicharToGlyph(ord(so.AWAITING_GLYPH)) != 0
 
 
 def test_the_glyph_is_part_of_the_badge_under_the_pointer(marking: tuple[_App, CommentMode]) -> None:
@@ -858,6 +863,67 @@ def test_a_hovered_multi_line_instruction_keeps_its_lines_inside_the_window(
     ((rows, x, y),) = threads
     assert rows == [(so.ICONS["human"], "first line"), (None, "second line")]
     assert x >= MARGIN and y >= MARGIN, "pushed inside the window's margins"
+
+
+# --- the send button ------------------------------------------------------------
+
+
+def _sends(monkeypatch: pytest.MonkeyPatch) -> list[bool]:
+    seen: list[bool] = []
+
+    def fake(_skia: Any, _canvas: Any, raised: bool, *_args: Any) -> None:
+        seen.append(raised)
+
+    monkeypatch.setattr(so, "_paint_send", fake)
+    return seen
+
+
+def test_the_send_button_sinks_out_of_the_way_and_rises_to_the_pointer(
+    marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from nuiitivet.dev.hud import SPLASH
+
+    app, mode = marking
+    sends = _sends(monkeypatch)
+    _close_field(app, mode)
+    _later(monkeypatch, SPLASH)
+
+    so.paint_comments(app, _Canvas(), 300, 200)
+    assert sends == [False], "sunk to its edge, out of the app's way, a mark to send or not"
+
+    mode.on_mouse_motion(app, 280, 195)
+    so.paint_comments(app, _Canvas(), 300, 200)
+    assert sends[-1] is True, "the pointer on its edge raises it"
+
+    _leave(app, mode)
+    so.paint_comments(app, _Canvas(), 300, 200)
+    assert len(sends) == 2, "no button with the mode off"
+
+
+def test_the_send_button_shows_itself_while_the_entering_line_does(
+    marking: tuple[_App, CommentMode], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from nuiitivet.dev.hud import SPLASH
+
+    app, mode = marking
+    sends = _sends(monkeypatch)
+    _close_field(app, mode)
+    mode.comments.send()
+
+    so.paint_comments(app, _Canvas(), 300, 200)
+    assert sends == [True]
+
+    _later(monkeypatch, SPLASH)
+    so.paint_comments(app, _Canvas(), 300, 200)
+    assert sends == [True, False], "gone with the line"
+
+
+def test_the_send_glyph_is_a_material_symbol_the_packaged_font_carries() -> None:
+    from nuiitivet.dev.hud import symbol_font
+
+    _font, typeface = symbol_font(14.0)
+    assert typeface is not None
+    assert typeface.unicharToGlyph(ord(so.SEND_GLYPH)) != 0
 
 
 def test_the_thread_icons_are_material_symbols_the_packaged_font_carries() -> None:

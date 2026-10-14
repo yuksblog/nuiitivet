@@ -37,6 +37,7 @@ from urllib.request import (
 from .bridge import (
     DISCOVERY_DIRNAME,
     DISCOVERY_FILENAME,
+    _WAIT_COMMENTS_DEFAULT_TIMEOUT,
     _WAIT_FOR_DEFAULT_TIMEOUT,
 )
 
@@ -322,6 +323,24 @@ class BridgeClient:
         number or outcome is refused as a whole, with nothing written.
         """
         return self._post("/answer_comments", {"answers": answers})
+
+    def wait_comments(
+        self, *, since: Optional[int] = None, timeout: Optional[float] = None
+    ) -> dict[str, Any]:
+        """Block until the human sends the comments, or ``timeout`` seconds pass.
+
+        ``since`` is the ``sent`` last seen, from ``see_comments`` or ``status``;
+        a send after it returns at once. Omitted, the wait is for the next send.
+        Returns the bridge's ``satisfied`` / ``timed_out`` / ``sent`` / ``waited``
+        result, and never raises on a plain timeout.
+        """
+        payload: dict[str, Any] = {}
+        if since is not None:
+            payload["since"] = since
+        if timeout is not None:
+            payload["timeout"] = timeout
+        server_deadline = timeout if timeout is not None else _WAIT_COMMENTS_DEFAULT_TIMEOUT
+        return self._post("/wait_comments", payload, timeout=self._timeout + max(0.0, server_deadline))
 
     def describe_state(
         self, include_animations: bool = False, *, window: Optional[int] = None
