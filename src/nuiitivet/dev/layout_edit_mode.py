@@ -447,7 +447,7 @@ class LayoutEditMode:
     def _enter(self, app: Any) -> None:
         other = getattr(app, "_comment_mode", None)
         if other is not None and other.active:
-            other.commit(app)
+            other.leave(app)
         self._active = True
         self._app = weak(app)
         self._reset()

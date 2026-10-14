@@ -219,6 +219,15 @@ def test_wait_for_subcommand_absent_and_timeout() -> None:
     assert args.timeout == 5.0
 
 
+def test_wait_comments_subcommand() -> None:
+    args = _parse_args(["wait-comments"])
+    assert args.command == "wait-comments"
+    assert args.since is None and args.timeout is None and args.once is False
+
+    args = _parse_args(["wait-comments", "--since", "4", "--timeout", "30", "--once"])
+    assert args.since == 4 and args.timeout == 30.0 and args.once is True
+
+
 def test_mcp_subcommand() -> None:
     args = _parse_args(["mcp"])
     assert args.command == "mcp"

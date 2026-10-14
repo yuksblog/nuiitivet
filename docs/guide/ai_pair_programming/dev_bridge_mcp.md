@@ -130,6 +130,7 @@ python -m nuiitivet.dev describe-state
 python -m nuiitivet.dev describe-state --include-animations
 python -m nuiitivet.dev see-comments
 python -m nuiitivet.dev answer-comments 2 done "widened to 240"
+python -m nuiitivet.dev wait-comments                     # one line per Send, until the app stops
 python -m nuiitivet.dev reload-log
 python -m nuiitivet.dev interaction-log
 python -m nuiitivet.dev runtime-log

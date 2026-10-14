@@ -1,6 +1,6 @@
 ---
 name: nuiitivet-debug
-description: Run, hot-reload, inspect, drive, and debug a running Nuiitivet app. Covers launching under hot reload (`python -m nuiitivet.dev`) and the dev bridge / MCP server that lets a coding agent check and drive the live app (`status`, `describe_tree`, `describe_state`, `see_comments`, `reload_log`, `interaction_log`, `runtime_log`, `screenshot`, `click`, `scroll`, `scroll_into_view`, `type`, `key`, `wait_for`, `profile_start`, `profile_stop`). Use whenever there is a Nuiitivet app to run, verify, or debug — the see → act → verify half of the loop. To *write* the widget code, use the nuiitivet-app skill.
+description: Run, hot-reload, inspect, drive, and debug a running Nuiitivet app. Covers launching under hot reload (`python -m nuiitivet.dev`) and the dev bridge / MCP server that lets a coding agent check and drive the live app (`status`, `describe_tree`, `describe_state`, `see_comments`, `answer_comments`, `wait_for_comments`, `reload_log`, `interaction_log`, `runtime_log`, `screenshot`, `click`, `scroll`, `scroll_into_view`, `type`, `key`, `wait_for`, `profile_start`, `profile_stop`). Use whenever there is a Nuiitivet app to run, verify, or debug — the see → act → verify half of the loop. To *write* the widget code, use the nuiitivet-app skill.
 ---
 
 # Running & Debugging Nuiitivet Apps
@@ -28,7 +28,7 @@ What the human handed you decides where you enter the loop.
 | --- | --- |
 | A change to make ("make it wider", "move it below the title") | **Edit** |
 | A problem they saw ("nothing happens", "the total is wrong after deleting a row") | **See** |
-| Comments they left in the running app in comment mode — they type `see_comments`, or refer to one by its number, e.g. "fix comment 2", "no. 2 of comment mode is too narrow" | **See** — each comment is one of the two above |
+| Comments they left in the running app in comment mode — they pressed Send there and your watch reported it, they type `see_comments`, or they refer to one by its number, e.g. "fix comment 2", "no. 2 of comment mode is too narrow" | **See** — each comment is one of the two above; the nuiitivet-see-comments skill carries the reading, the answering and the wait for the next Send |
 
 For a problem, do not edit until you have observed the symptom.
 
@@ -77,7 +77,7 @@ top to bottom. What each tool returns is in its own description.
 | What did the human do in the app between my turns? | `interaction_log` — before trusting a tree you read earlier |
 | The human reported a problem — which steps led to it? | `interaction_log` |
 | The human says `see_comments`, "this is wrong", or "look at this part" without naming a widget? | `see_comments` — before guessing from a screenshot |
-| `status` reports a `comments` whose `seq` you haven't seen? | `see_comments` |
+| `status` reports a `comments` whose `sent` you haven't seen? | `see_comments` |
 | A **human reported** a visual problem AND tree + state don't explain it? | first re-check `describe_tree`, then `describe_state`; **only if the cause still isn't clear**, `screenshot` — scoped to the widget they named; the whole frame only when the problem has no widget to name |
 | A **human reported** jank or slowness ("this screen stutters", "typing feels heavy")? | `profile_start` → reproduce the interaction (drive it, or ask the human to) → `profile_stop`. Stop it when done: recording slows the frames |
 

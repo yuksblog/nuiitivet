@@ -98,15 +98,14 @@ def test_undo_brings_back_a_mark_the_session_removed() -> None:
     assert comments.members() == [first, second], "back in its place, not appended"
 
 
-def test_undo_reaches_no_further_than_the_session() -> None:
-    """What an earlier session kept is not this one's to undo."""
+def test_undo_reaches_no_further_than_the_last_send() -> None:
+    """What the agent was sent is not the human's to undo."""
     leaf = Text("A")
     comments = Comments()
     comments.enter()
     comments.add(leaf)
-    comments.commit()
 
-    comments.enter()
+    comments.send()
 
     assert comments.undoable is False
     assert comments.undo() is False
@@ -144,7 +143,7 @@ def test_seq_bumps_on_every_change() -> None:
     seen.append(comments.summary()["seq"])
     comments.add(node)
     seen.append(comments.summary()["seq"])
-    comments.commit()
+    comments.leave()
     seen.append(comments.summary()["seq"])
 
     assert seen == sorted(set(seen)), f"seq must strictly increase, got {seen}"
@@ -294,7 +293,7 @@ def test_see_comments_without_a_buffer_is_an_empty_payload() -> None:
     """The bridge runs without one in tests; that reads as nothing marked."""
     payload = see_comments(None, None)
 
-    assert payload == {"seq": 0, "committed": True, "nodes": [], "regions": [], "lost_marks": 0}
+    assert payload == {"seq": 0, "sent": 0, "nodes": [], "regions": [], "lost_marks": 0}
 
 
 # --- regions ---------------------------------------------------------
@@ -580,7 +579,7 @@ def test_the_payload_carries_each_marks_thread_with_who_wrote_every_line() -> No
             {"by": "agent", "outcome": "done", "text": "240 wide now"},
             {"by": "human", "text": "a bit more"},
         ]
-        assert list(one)[:2] == ["index", "thread"], "the words come first"
+        assert list(one)[:3] == ["index", "awaiting", "thread"], "the words come first"
         assert two["thread"] == [], "a bare mark is still a comment"
         (region,) = payload["regions"]
         assert region["thread"] == [{"by": "human", "text": "close this gap"}]
@@ -628,42 +627,39 @@ def test_an_answer_does_not_bump_seq_and_is_refused_for_a_mark_that_is_not_there
 def test_the_outcome_is_the_answer_that_ends_the_thread() -> None:
     comments, _leaf = _one_mark()
     assert comments.outcome(1) is None
-    comments.commit()
+    comments.send()
 
     comments.answer(1, "question", "which column?")
     assert comments.outcome(1) == "question"
 
-    comments.enter()
     comments.write(1, "the left one")
     assert comments.outcome(1) is None, "a reply is the human's turn again"
     assert comments.outcome(2) is None
 
 
-def test_a_done_mark_is_dropped_by_the_next_commit_unless_the_session_replied_on_it() -> None:
-    first, second, third = Text("A"), Text("B"), Text("C")
+def test_an_answered_mark_stays_until_the_human_removes_it() -> None:
+    """Whatever the outcome: the human has Delete, and the agent's done is not a verdict on the mark."""
+    first, second = Text("A"), Text("B")
     comments = Comments()
     comments.enter()
     comments.add(first)
     comments.add(second)
-    comments.add(third)
-    comments.commit()
+    comments.send()
     comments.answer(1, "done", "")
-    comments.answer(2, "done", "")
-    comments.answer(3, "refused", "")
+    comments.answer(2, "refused", "")
 
-    comments.enter()
     comments.write(2, "not quite")
-    comments.commit()
+    comments.send()
+    comments.leave()
 
-    assert comments.members() == [second, third]
+    assert comments.members() == [first, second]
 
 
-def test_an_answer_survives_undo_redo_and_discard_in_an_open_session() -> None:
+def test_an_answer_survives_undo_and_redo() -> None:
     """The answer is not the human's change, so no step of theirs takes it back."""
     comments, _leaf = _one_mark()
     comments.write(1, "wider")
-    comments.commit()
-    comments.enter()
+    comments.send()
     comments.add_region((0.0, 0.0, 10.0, 10.0))
     comments.write(2, "this gap")
 
@@ -674,8 +670,6 @@ def test_an_answer_survives_undo_redo_and_discard_in_an_open_session() -> None:
     assert comments.outcome(1) == "done" and comments.outcome(2) == "question"
     comments.redo()
     assert comments.outcome(2) == "question"
-    comments.discard()
-    assert comments.outcome(1) == "done" and comments.marks()[1:] == []
 
 
 def test_a_thread_survives_a_reload_with_its_mark() -> None:
@@ -721,7 +715,8 @@ def test_an_instruction_survives_a_reload_with_its_mark() -> None:
         assert comments.editable_line(1) == "wider"
 
 
-def test_discarding_a_session_restores_the_text_as_it_was() -> None:
+def test_leaving_keeps_everything_and_the_next_session_goes_on_from_there() -> None:
+    """Back from a look at the app, or from layout edit mode, with the undo history intact."""
     leaf = Text("AAA")
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
@@ -729,62 +724,118 @@ def test_discarding_a_session_restores_the_text_as_it_was() -> None:
         comments.enter()
         comments.add(leaf, root=host.root)
         comments.write(1, "wider")
-        comments.commit()
+        comments.leave()
+        assert comments.members() == [leaf] and comments.editable_line(1) == "wider"
 
         comments.enter()
-        comments.write(1, "narrower")
-        comments.discard()
+        comments.undo()
 
-        assert comments.editable_line(1) == "wider"
+        assert comments.members() == [leaf] and comments.editable_line(1) is None
 
-
-# --- read receipts ----------------------------------------------------------
+# --- sending -----------------------------------------------------------------
 
 
-def test_committed_marks_are_unread_until_the_payload_is_served() -> None:
+def test_a_send_takes_what_changed_and_nothing_twice() -> None:
+    comments, _leaf = _one_mark()
+    assert comments.unsent is True
+
+    assert comments.send() is True
+
+    assert comments.unsent is False
+    assert comments.summary()["sent"] == comments.summary()["seq"]
+    assert comments.send() is False, "nothing new for the agent"
+    comments.write(1, "wider")
+    assert comments.unsent is True
+
+
+def test_the_payload_says_which_marks_await_an_answer() -> None:
     leaf = Text("AAA")
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
         comments = Comments()
-        assert comments.unread is False
-
-        comments.enter()
         comments.add(leaf, root=host.root)
-        assert comments.unread is False, "still writing"
-        comments.commit()
-        assert comments.unread is True
+        comments.add_region((100.0, 100.0, 50.0, 40.0))
+        comments.send()
+        comments.answer(2, "done", "")
 
-        see_comments(host.root, comments)
+        payload = see_comments(host.root, comments)
 
-        assert comments.unread is False
+        assert payload["nodes"][0]["awaiting"] is True
+        assert payload["regions"][0]["awaiting"] is False
 
 
-def test_a_reload_does_not_make_read_marks_unread_again() -> None:
+def test_a_sent_mark_awaits_an_answer_until_one_comes_or_the_human_writes_again() -> None:
+    first, second = Text("A"), Text("B")
     comments = Comments()
-    with mount(_tree("AAA")) as host:
-        host.layout(300, 200)
-        comments.add(host.root.children[0], root=host.root)
-        see_comments(host.root, comments)
-    with mount(_tree("AAA")) as rebuilt:
-        rebuilt.layout(300, 200)
-        comments.restore(rebuilt.root)
+    comments.enter()
+    comments.add(first)
+    comments.add(second)
+    assert not comments.awaiting(1) and not comments.awaiting(2), "not sent yet"
 
-        assert comments.unread is False
+    comments.send()
+
+    assert comments.awaiting(1) and comments.awaiting(2)
+    comments.answer(1, "done", "")
+    assert not comments.awaiting(1), "answered"
+    comments.write(2, "wider")
+    assert not comments.awaiting(2), "changed since the send, so not sent yet"
+    comments.send()
+    assert comments.awaiting(2) and not comments.awaiting(1), "an answered mark is not asked again"
+    assert comments.awaiting(3) is False
 
 
-def test_a_session_that_changed_nothing_does_not_prompt_again() -> None:
-    leaf = Text("AAA")
-    with mount(Column(children=[leaf])) as host:
-        host.layout(300, 200)
-        comments = Comments()
-        comments.add(leaf, root=host.root)
-        see_comments(host.root, comments)
+def test_undoing_a_reply_leaves_the_mark_as_it_was_sent() -> None:
+    comments, _leaf = _one_mark()
+    comments.send()
+    comments.write(1, "a reply")
+    assert not comments.awaiting(1)
 
-        comments.enter()
-        comments.discard()
-        assert comments.unread is False
+    comments.undo()
 
-        comments.enter()
-        comments.write(1, "wider")
-        comments.commit()
-        assert comments.unread is True
+    assert comments.awaiting(1)
+
+
+def test_wait_returns_on_a_send_and_times_out_otherwise() -> None:
+    import threading
+
+    comments, _leaf = _one_mark()
+    sent = comments.summary()["sent"]
+    assert comments.wait(sent, 0.02) is False
+
+    woke: list[bool] = []
+    waiter = threading.Thread(target=lambda: woke.append(comments.wait(sent, 5.0)))
+    waiter.start()
+    comments.send()
+    waiter.join(timeout=5.0)
+
+    assert woke == [True]
+    assert comments.wait(sent, 0.0) is True, "a send before the call satisfies it at once"
+
+
+def test_leaving_does_not_wake_a_wait() -> None:
+    """Only a send is the human's hand-over."""
+    import threading
+
+    comments, _leaf = _one_mark()
+    sent = comments.summary()["sent"]
+    woke: list[bool] = []
+    waiter = threading.Thread(target=lambda: woke.append(comments.wait(sent, 0.2)))
+    waiter.start()
+    comments.leave()
+    comments.enter()
+    waiter.join(timeout=5.0)
+
+    assert woke == [False]
+
+
+def test_closing_releases_a_wait() -> None:
+    import threading
+
+    comments, _leaf = _one_mark()
+    woke: list[bool] = []
+    waiter = threading.Thread(target=lambda: woke.append(comments.wait(0, 30.0)))
+    waiter.start()
+    comments.close()
+    waiter.join(timeout=5.0)
+
+    assert not waiter.is_alive() and woke == [False]

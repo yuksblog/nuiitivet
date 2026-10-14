@@ -2,17 +2,19 @@
 
 A mark is a widget or a region, numbered in one sequence, and carries a
 thread: the human's lines and the agent's answers in order; a bare number is
-a whole comment. Widgets are held weakly, matched on object identity, and
-re-resolved by structural path after a hot reload, with misses counted in
-``lost``. A region stores only its rect; what it covers is derived on every
-read. Written on the UI thread and read on HTTP worker threads, so the buffer
-takes a lock.
+a whole comment. The human sends the marks to the agent; a send ends the undo
+session and wakes whoever waits on the buffer. Widgets are held weakly,
+matched on object identity, and re-resolved by structural path after a hot
+reload, with misses counted in ``lost``. A region stores only its rect; what
+it covers is derived on every read. Written on the UI thread and read on HTTP
+worker threads, so the buffer takes a lock.
 """
 
 from __future__ import annotations
 
 import logging
 import threading
+import time
 import weakref
 from dataclasses import dataclass, field, replace
 from typing import Any, Callable, Optional
@@ -85,6 +87,8 @@ class _Member:
     path: Optional[Path]
     #: Empty when the number is the whole comment.
     thread: Thread = ()
+    #: Sent, and no answer yet.
+    awaiting: bool = False
 
     def widget(self) -> Optional[Any]:
         return self.ref()
@@ -96,6 +100,7 @@ class _Region:
 
     rect: Rect
     thread: Thread = ()
+    awaiting: bool = False
 
 
 def _outcome(mark: Any) -> Optional[str]:
@@ -117,23 +122,28 @@ def _same(a: Any, b: Any) -> bool:
 class Comments:
     """The comment buffer for one running app.
 
-    The marks in order, whether comment mode is on, and a ``seq`` that bumps on
-    every change so a poll of ``status`` notices one.
+    The marks in order, whether comment mode is on, a ``seq`` that bumps on
+    every change so a poll of ``status`` notices one, and ``sent``, the ``seq``
+    the human last sent to the agent.
     """
 
     _marks: list[Any] = field(default_factory=list)
-    #: The marks at session start, for :meth:`discard`; ``None`` outside a session.
-    _pending: Optional[list[Any]] = None
-    #: Snapshots behind and ahead of the marks, for undo and redo. Empty outside a session.
+    #: Snapshots behind and ahead of the marks, for undo and redo. Cleared by a send.
     _history: list[list[Any]] = field(default_factory=list)
     _future: list[list[Any]] = field(default_factory=list)
     _seq: int = 0
-    #: ``seq`` at the last change to the marks, and at the last full read.
+    #: ``seq`` at the last change to the marks, and at the last send.
     _changed_seq: int = 0
-    _served_seq: int = 0
+    _sent_seq: int = 0
     _active: bool = False
     _lost: int = 0
+    #: ``True`` once the app is going down, so a wait returns instead of holding its thread.
+    _closed: bool = False
     _lock: threading.RLock = field(default_factory=threading.RLock)
+    _sent: threading.Condition = field(init=False)
+
+    def __post_init__(self) -> None:
+        self._sent = threading.Condition(self._lock)
 
     # --- mode -------------------------------------------------------------
 
@@ -144,48 +154,65 @@ class Comments:
             return self._active
 
     def enter(self) -> None:
-        """Latch comment mode on. The marks as they stand are what :meth:`discard` returns to."""
+        """Latch comment mode on. The marks, and what can be undone, are as they were left."""
         with self._lock:
             if self._active:
                 return
-            self._pending = list(self._marks)
-            self._history, self._future = [], []
             self._active = True
             self._seq += 1
 
-    def commit(self) -> None:
-        """Latch comment mode off, keeping what the session marked and wrote.
-
-        A mark the agent answered ``done`` and the session did not reply on is
-        dropped; every other mark is kept.
-        """
+    def leave(self) -> None:
+        """Latch comment mode off. Every mark stays, sent or not, for the next session to go on from."""
         with self._lock:
             if not self._active:
                 return
-            self._marks = [mark for mark in self._marks if _outcome(mark) != "done"]
-            self._pending = None
-            self._history, self._future = [], []
             self._active = False
             self._seq += 1
 
-    def discard(self) -> None:
-        """Latch comment mode off, returning the marks to where the session started.
+    def send(self) -> bool:
+        """Send the marks to the agent: wake every :meth:`wait` and end the undo session.
 
-        ``seq`` bumps: a reader mid-session may have seen a mark this removes.
+        Every mark without an answer is ``awaiting`` one from here on.
+        ``False``, and nothing done, when nothing changed since the last send.
         """
         with self._lock:
-            if not self._active:
-                return
-            self._seq += 1
-            if self._pending is not None and self._pending != self._marks:
-                self._marks = self._pending
-                self._changed_seq = self._seq
-            self._pending = None
+            if not self.unsent:
+                return False
+            self._marks = [replace(mark, awaiting=True) if _outcome(mark) is None else mark for mark in self._marks]
+            self._sent_seq = self._seq
             self._history, self._future = [], []
-            self._active = False
+            self._sent.notify_all()
+            return True
+
+    @property
+    def unsent(self) -> bool:
+        """Whether the marks changed since the last send."""
+        with self._lock:
+            return self._changed_seq > self._sent_seq
+
+    def wait(self, since: int, timeout: float) -> bool:
+        """Block until a send leaves ``sent`` above ``since``, or ``timeout`` seconds pass.
+
+        ``True`` on a send, ``False`` on the timeout or once the buffer is
+        closed. Call off the UI thread: the send comes from it.
+        """
+        deadline = time.monotonic() + max(0.0, timeout)
+        with self._sent:
+            while self._sent_seq <= since and not self._closed:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return False
+                self._sent.wait(remaining)
+            return self._sent_seq > since
+
+    def close(self) -> None:
+        """Release every :meth:`wait`, as the app goes down."""
+        with self._sent:
+            self._closed = True
+            self._sent.notify_all()
 
     def undo(self) -> bool:
-        """Step the open session back one change. ``False`` when there is none to undo."""
+        """Step the marks back one change, no further than the last send. ``False`` when there is none to undo."""
         return self._step(self._history, self._future)
 
     def redo(self) -> bool:
@@ -194,7 +221,7 @@ class Comments:
 
     @property
     def undoable(self) -> bool:
-        """Whether the open session has a change to undo."""
+        """Whether there is a change since the last send to undo."""
         with self._lock:
             return bool(self._history)
 
@@ -291,7 +318,7 @@ class Comments:
                     thread = thread + (Line("human", line),)
                 if thread != mark.thread:
                     self._checkpoint()
-                    self._marks[self._marks.index(mark)] = replace(mark, thread=thread)
+                    self._marks[self._marks.index(mark)] = replace(mark, thread=thread, awaiting=False)
                     self._bump()
                 return True
             return False
@@ -312,6 +339,14 @@ class Comments:
                     return mark.thread
             return ()
 
+    def awaiting(self, index: int) -> bool:
+        """Whether mark ``index`` was sent and has no answer yet; ``False`` too when no mark has that number."""
+        with self._lock:
+            for position, mark in self._positions():
+                if position == index:
+                    return bool(mark.awaiting)
+            return False
+
     def outcome(self, index: int) -> Optional[str]:
         """The outcome of the agent's answer that ends the thread on mark ``index``.
 
@@ -330,7 +365,7 @@ class Comments:
         """Append the agent's answer to the thread on mark ``index``. ``False`` when there is no such mark.
 
         ``seq`` does not bump, since the agent wrote it, and the answer is not
-        the human's to undo: an open session's history carries it too.
+        the human's to undo: the undo history carries it too.
         """
         if outcome not in OUTCOMES:
             raise ValueError(f"outcome must be one of {', '.join(OUTCOMES)}, not {outcome!r}")
@@ -340,8 +375,6 @@ class Comments:
                 if position != index:
                     continue
                 self._marks = _answered(self._marks, mark, line)
-                if self._pending is not None:
-                    self._pending = _answered(self._pending, mark, line)
                 self._history = [_answered(marks, mark, line) for marks in self._history]
                 self._future = [_answered(marks, mark, line) for marks in self._future]
                 return True
@@ -357,10 +390,9 @@ class Comments:
         return out
 
     def _checkpoint(self) -> None:
-        """Snapshot the marks ahead of a change, inside a session."""
-        if self._active:
-            self._history.append(list(self._marks))
-            self._future = []
+        """Snapshot the marks ahead of a change, for undo."""
+        self._history.append(list(self._marks))
+        self._future = []
 
     def _bump(self) -> None:
         self._seq += 1
@@ -405,34 +437,18 @@ class Comments:
     def summary(self) -> dict[str, Any]:
         """Return the roll-up ``status`` carries.
 
-        ``seq``, ``committed`` (false while comment mode is on), and separate counts
+        ``seq``, ``sent``, the ``seq`` the human last sent, and separate counts
         of nodes, regions and marks with text.
         """
         with self._lock:
             nodes = sum(1 for mark in self._marks if isinstance(mark, _Member))
             return {
                 "seq": self._seq,
-                "committed": not self._active,
+                "sent": self._sent_seq,
                 "nodes": nodes,
                 "regions": len(self._marks) - nodes,
                 "instructions": sum(1 for mark in self._marks if any(line.by == "human" for line in mark.thread)),
             }
-
-    # --- read receipts ----------------------------------------------------
-
-    @property
-    def unread(self) -> bool:
-        """Whether the marks changed since the agent last read them.
-
-        ``False`` while a session is open, and unaffected by a hot reload.
-        """
-        with self._lock:
-            return not self._active and bool(self._marks) and self._changed_seq > self._served_seq
-
-    def served(self) -> None:
-        """Record that the full payload was just read."""
-        with self._lock:
-            self._served_seq = self._seq
 
     # --- hot reload -------------------------------------------------------
 
@@ -453,10 +469,8 @@ class Comments:
 
             kept, restored, lost = _remap(self._marks, by_path)
             self._marks = kept
-            # The snapshots hold the old objects too; unmapped, a discard or an
-            # undo after a reload would bring back members that are gone.
-            if self._pending is not None:
-                self._pending = _remap(self._pending, by_path)[0]
+            # The snapshots hold the old objects too; unmapped, an undo after a
+            # reload would bring back members that are gone.
             self._history = [_remap(marks, by_path)[0] for marks in self._history]
             self._future = [_remap(marks, by_path)[0] for marks in self._future]
             self._lost = lost
@@ -490,8 +504,11 @@ def _remap(marks: list[Any], by_path: dict[Path, Any]) -> tuple[list[Any], int, 
 
 
 def _answered(marks: list[Any], mark: Any, line: Line) -> list[Any]:
-    """``marks`` with ``line`` appended to the thread of the record that is ``mark``."""
-    return [replace(entry, thread=entry.thread + (line,)) if _same(entry, mark) else entry for entry in marks]
+    """``marks`` with ``line`` appended to the thread of the record that is ``mark``, which awaits no more."""
+    return [
+        replace(entry, thread=entry.thread + (line,), awaiting=False) if _same(entry, mark) else entry
+        for entry in marks
+    ]
 
 
 def _type_path(node: Any) -> list[str]:
@@ -522,9 +539,9 @@ def _brief(node: Any, *, relation: Optional[str] = None) -> dict[str, Any]:
     return info
 
 
-def _node_payload(index: int, widget: Any, thread: Thread) -> dict[str, Any]:
+def _node_payload(index: int, widget: Any, thread: Thread, awaiting: bool) -> dict[str, Any]:
     # The thread first: the human's own words, and what was answered already.
-    info: dict[str, Any] = {"index": index, "thread": [line.payload() for line in thread]}
+    info: dict[str, Any] = {"index": index, "awaiting": awaiting, "thread": [line.payload() for line in thread]}
     own = own_identity(widget)
     info.update(own)
     # The ``window=`` selector for follow-up calls; absent for a tree no Window owns.
@@ -559,14 +576,14 @@ def _contents_payload(entry: tuple[Any, Optional[str], list[Any]]) -> dict[str, 
     return info
 
 
-def _region_payload(index: int, root: Any, rect: Rect, thread: Thread) -> dict[str, Any]:
+def _region_payload(index: int, root: Any, rect: Rect, thread: Thread, awaiting: bool) -> dict[str, Any]:
     """Describe an area from the tree as it is now.
 
     ``container`` is the innermost node enclosing the region, with its immediate
     children; ``contents`` is the pruned subtree the box crosses, each node tagged
     ``contained`` or ``clipped``.
     """
-    info: dict[str, Any] = {"index": index, "thread": [line.payload() for line in thread]}
+    info: dict[str, Any] = {"index": index, "awaiting": awaiting, "thread": [line.payload() for line in thread]}
     info["rect"] = [round(value, 2) for value in rect]
     container = enclosing_container(root, rect)
     if container is None:
@@ -585,31 +602,33 @@ def _region_payload(index: int, root: Any, rect: Rect, thread: Thread) -> dict[s
 
 
 def see_comments(root: Any, comments: Optional[Comments]) -> dict[str, Any]:
-    """Return the payload the ``see_comments`` tool serves, and count it as read.
+    """Return the payload the ``see_comments`` tool serves.
 
     ``nodes`` and ``regions`` are independent lists sharing one ``index``
     sequence, the number on the badge. Each carries its ``thread``, the human's
-    lines and the agent's answers in order, empty for a bare mark. Each node
-    carries ``describe_tree`` / ``describe_state`` scoped to it; each region is
-    derived from the current tree. Call on the UI thread.
+    lines and the agent's answers in order, empty for a bare mark, and
+    ``awaiting``, whether it was sent and has no answer yet. Each node carries
+    ``describe_tree`` / ``describe_state`` scoped to it; each region is derived
+    from the current tree. ``sent`` is what a wait for the next send starts
+    from. Call on the UI thread.
     """
     if comments is None:
-        return {"seq": 0, "committed": True, "nodes": [], "regions": [], "lost_marks": 0}
+        return {"seq": 0, "sent": 0, "nodes": [], "regions": [], "lost_marks": 0}
 
     summary = comments.summary()
     nodes: list[dict[str, Any]] = []
     regions: list[dict[str, Any]] = []
     for index, kind, mark in comments.marks():
         thread = comments.thread(index)
+        awaiting = comments.awaiting(index)
         if kind == "region":
-            regions.append(_region_payload(index, root, mark, thread))
+            regions.append(_region_payload(index, root, mark, thread, awaiting))
         else:
-            nodes.append(_node_payload(index, mark, thread))
-    comments.served()
+            nodes.append(_node_payload(index, mark, thread, awaiting))
 
     return {
         "seq": summary["seq"],
-        "committed": summary["committed"],
+        "sent": summary["sent"],
         "nodes": nodes,
         "regions": regions,
         "lost_marks": comments.lost,

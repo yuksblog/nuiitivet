@@ -24,39 +24,41 @@ words together.
 | `W` / `S`, `A` / `D` | Move that choice up to its parent and back down, or along to the widget beside it, when the one you mean is covered by its children or too small to aim at. `Enter` or a click then marks it. |
 | Click | Mark the widget under the cursor; a field opens on the mark. On a marked widget, or on its numbered badge, the field opens again instead: on your text, to change or clear it, or empty once the agent has answered, to reply. |
 | Drag | Mark an **area** instead — a gap, a misaligned band, anywhere with no widget to name. The field opens the same way. |
-| In the field | Type the instruction. `Enter` keeps it (leave it empty to keep just the number); `Shift+Enter` breaks the line; `Esc` closes the field, and on a mark you just made with nothing written yet, removes the mark too (`Ctrl+Z` brings it back). `Shift+←/→` selects, `Ctrl+A/C/X/V` (`Cmd` on macOS) select all, copy, cut and paste. A click keeps the text and then does what it would have done anyway. |
+| In the field | Type the instruction. `Enter` keeps it (leave it empty to keep just the number); `Ctrl+Enter` keeps it and sends; `Shift+Enter` breaks the line; `Esc` closes the field, and on a mark you just made with nothing written yet, removes the mark too (`Ctrl+Z` brings it back). `Shift+←/→` selects, `Ctrl+A/C/X/V` (`Cmd` on macOS) select all, copy, cut and paste. A click keeps the text and then does what it would have done anyway. |
+| `Ctrl+Enter`, or **Send**, the button at the bottom-right | Send your comments to the agent. The button hides below the window's edge with a sliver showing; bring the pointer to the sliver and it stands up. A click there also keeps the field you were typing in. |
+| The badge | After **Send**, a grey disc with an hourglass joins the number of every mark the agent has not answered yet. The answer replaces it with a coloured disc: green with a check mark for done, red with a cross for refused, blue with a question mark for a question to you. Hover to read the line. |
 | Hover a mark's numbered badge | Read its thread under the badge: your lines and the agent's, each led by an icon for who wrote it. A thread taller than the window shows its newest lines and counts the rest. Nothing but the number stays beside a mark. |
-| The badge | Once the agent has answered, a coloured disc joins the number: green with a check mark for done, red with a cross for refused, blue with a question mark for a question to you. Hover to read the line. |
 | `Delete` / `Backspace` | Remove the mark under the cursor, on its widget or on its badge. `Ctrl+Z` brings it back. |
-| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo and redo what you did in this session — a mark, an unmark, a text. The same keys as layout edit mode. |
-| `Ctrl+Backspace` | Remove every mark, including ones you kept earlier. `Ctrl+Z` brings them back. |
-| `Enter` | Keep everything and leave. A `done` mark you did not reply on is dropped; every other mark stays. After `W` / `S`, mark the chosen widget instead. |
-| `Esc` | Discard this session and leave — marks and text alike. Anything you kept with `Enter` earlier stays. |
-| `Ctrl+Shift+E` | Keep everything and switch to [layout edit mode](#edit-the-layout-directly-layout-edit-mode). |
+| `Ctrl+Z` / `Ctrl+Shift+Z` | Undo and redo what you did since you last sent — a mark, an unmark, a text. The same keys as layout edit mode. |
+| `Ctrl+Backspace` | Remove every mark, sent ones included. `Ctrl+Z` brings them back. |
+| `Esc` | Leave. The marks go off the screen but stay, sent or not; enter again and they are back as you left them. |
+| `Ctrl+Shift+E` | Switch to [layout edit mode](#edit-the-layout-directly-layout-edit-mode), your marks kept. |
 
 Click the widget you mean, or drag a box over the area. A field opens on the
-mark; type the instruction and press `Enter` to keep it. Press `Enter` once
-more to leave the mode. Mark as many places as you like before leaving: the
-agent handles them all in one turn, each by its number.
+mark; type the instruction and press `Enter` to keep it. Mark as many places
+as you like, then press `Ctrl+Enter` or the **Send** button: the agent
+handles them all in one turn, each by its number.
 A mark with no text is fine too — refer to it by number in chat. The text can
 be a problem instead of a change: comment right after it happens, and the
 agent replays what you did in the app to reproduce it before fixing.
-When you enter, the mode's name and `H help` show at the centre for a moment.
-Hold `H` whenever you want the whole list. When you leave, the same spot says
-whether your comments were kept or discarded, and, while the agent has
-comments to read, what to type in chat.
 
-Then, in chat, run the `/nuiitivet-see-comments` skill. It reads your comments,
-does what each one says, and writes its answer on each mark: `done` and what
-it did, `refused` and why, or a `question` for you. If the skill is
-[not installed](install_skills.md), type `see_comments` instead: that names the dev bridge tool
-directly, so the agent calls it. Either works; the skill is the better
-habit, since your chat completes it for you.
-To answer back, enter comment mode again, click the mark, type and press
-`Enter`: your reply joins the thread, the icon goes, and the agent reads the
-whole thread next time. A `refused` or a `question` waits for that reply;
-remove the mark with `Delete` if you accept the refusal. A `done` mark you
-leave alone is dropped when you next leave the mode with `Enter`.
+The agent answers each **Send** while its watch runs: in chat,
+`/nuiitivet-see-comments watch`, once per session, before or after your first
+Send. It does what each comment says, writes its answer on the mark, `done`
+and what it did, `refused` and why, or a `question` for you, and waits for
+the next Send; no chat message is needed. Without the watch,
+`/nuiitivet-see-comments` reads them once, and without the skill
+[installed](install_skills.md), `see_comments` does.
+
+Stay in the mode: the hourglass on each mark turns into the answer. To answer
+back, click the mark, type, press `Enter`, and press **Send** again: your
+reply joins the thread, and the agent reads the whole thread. A `refused` or a
+`question` waits for that reply; remove the mark with `Delete` if you accept
+the refusal, and a `done` mark the same way once you have seen it.
+
+Press `Esc` when you want the app back. The line at the centre says so, and
+`unsent comments` if you left something the agent has not seen; the marks
+return with the mode.
 
 > **Privacy note.** `interaction_log` records neither coordinates nor typed
 > content, because it records ambiently. A comment may carry both, and your
@@ -75,7 +77,7 @@ the same spot says so. Hold `H` whenever you want the whole list.
 
 | Gesture | What it does |
 | --- | --- |
-| `Ctrl+Shift+E` | Enter layout edit mode (`Cmd+Shift+E` on macOS) — `E` for *edit*. Inside comment mode it switches directly, keeping your comments as `Enter` would; `Ctrl+Shift+C` switches back. |
+| `Ctrl+Shift+E` | Enter layout edit mode (`Cmd+Shift+E` on macOS) — `E` for *edit*. Inside comment mode it switches directly, your marks kept; `Ctrl+Shift+C` switches back. |
 | Hold `H` | Show every gesture of this mode while the key is down. |
 | Hover | The widget under the cursor gets teal corner brackets and a caption naming it. A label or icon a widget draws for itself counts as that widget. |
 | Click | Select it. `W` / `S` then move to its parent and back, for when the container is what you want to resize. The selection holds while the pointer stays on it — over its children too — and moving off it returns to hover. |

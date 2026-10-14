@@ -1,10 +1,12 @@
-"""Comment mode: the human marks widgets and areas on the running app and writes on each mark.
+"""Comment mode: the human marks widgets and areas on the running app, writes on each mark, and sends them.
 
 Latched on ``Ctrl+Shift+C`` from the backend's real input handlers, which the
 agent's synthesized actions bypass, so a comment is always the human's. While
 latched every event is consumed: a click or a drag marks, the keys walk the
-candidate and edit a mark's newest line, and nothing reaches the app. The
-marks and their threads live in :mod:`.comments`; ``H`` held lists the keys.
+candidate and edit a mark's newest line, the button at the bottom-right or
+``Ctrl+Enter`` sends the marks to the agent, and nothing reaches the app. ``Esc`` leaves with every
+mark in place, so the next session goes on from there. The marks and their
+threads live in :mod:`.comments`; ``H`` held lists the keys.
 """
 
 from __future__ import annotations
@@ -17,7 +19,7 @@ from nuiitivet._interaction.perception import visible_rect
 
 from .comments import Comments
 from .gesture import accel_held, child_toward, chord_held, invalidate, parent_of, pick, sibling_of, travelled, weak
-from .hud import SEPARATOR, Placement, Splash
+from .hud import MARGIN, SEPARATOR, Placement, Splash
 from .inline_field import InlineField, Slot
 from .interaction import InteractionJournal
 
@@ -35,16 +37,22 @@ BADGE_RADIUS = 10.0
 ANSWER_WIDTH = 20.0
 # Both, since a Mac keyboard has no Delete key.
 _DELETE_KEYS = ("delete", "backspace")
-# The lines at the window's centre on entering, and on leaving either way.
+# The lines at the window's centre on entering, on leaving, and on a send.
 _SPLASH_ON = "COMMENT MODE" + SEPARATOR + "H help"
-_SPLASH_KEPT = "COMMENT MODE off" + SEPARATOR + "comments kept"
-_SPLASH_DISCARDED = "COMMENT MODE off" + SEPARATOR + "comments discarded"
-# A second line under the kept line while the agent has comments to read: the skill's name, which chat completes.
-_PROMPT = "in chat: /nuiitivet-see-comments"
+_SPLASH_OFF = "COMMENT MODE off"
+_SPLASH_UNSENT = _SPLASH_OFF + SEPARATOR + "unsent comments"
+_SPLASH_SENT = "comments sent"
+_SPLASH_NOTHING = "nothing new to send"
 #: The field's size with nothing typed; it grows with the text.
 FIELD_LEAST = (180.0, 24.0)
 #: Between a mark and the thread under it, and between the thread and the field.
 UNDER_GAP = 6.0
+#: The send button's size, at the window's bottom-right corner when raised.
+SEND_SIZE = (82.0, 30.0)
+#: How much of the button shows above the window's bottom edge while it hides.
+SEND_PEEK = 8.0
+#: The pointer this close to the button's sunk edge raises it; this far off the raised button sinks it again.
+SEND_REACH = 12.0
 
 Rect = tuple[float, float, float, float]
 Point = tuple[float, float]
@@ -104,6 +112,8 @@ class CommentMode:
         self._help = False
         # The field open over a mark, or ``None``.
         self._writing: Optional[Writing] = None
+        # Whether the pointer is within reach of the send button.
+        self._near_send = False
 
     @property
     def comments(self) -> Comments:
@@ -163,8 +173,17 @@ class CommentMode:
 
     @property
     def splash(self) -> Optional[str]:
-        """The line at the window's centre just after entering or leaving, or ``None``."""
+        """The line at the window's centre just after entering, leaving or sending, or ``None``."""
         return self._splash.text
+
+    @property
+    def send_raised(self) -> bool:
+        """Whether the send button stands up to be pressed, or hides but for its edge.
+
+        Up while the pointer is near it, and while the splash shows, so
+        entering the mode shows it once.
+        """
+        return self._near_send or self.splash is not None
 
     # --- keys -------------------------------------------------------------
 
@@ -181,6 +200,11 @@ class CommentMode:
 
         if key == _LAYOUT_KEY and chord and getattr(app, "_layout_edit_mode", None) is not None:
             return False
+        if key == "enter" and accel_held(modifier_keys):
+            # The send key of every chat box: from the field it keeps the text and sends in one press.
+            self._write(app)
+            self._send(app)
+            return True
         if self._writing is not None:
             self._write_key(app, key, modifier_keys)
             return True
@@ -190,15 +214,11 @@ class CommentMode:
                 invalidate(app)
             return True
         if key == "escape":
-            self._discard(app)
-            self._splash.show(app, _SPLASH_DISCARDED)
+            self._leave(app)
+            self._splash.show(app, _SPLASH_UNSENT if self._comments.unsent else _SPLASH_OFF)
         elif key == "enter":
             if self.walked:
                 self._mark(app, self.hovered)
-            else:
-                self._commit(app)
-                prompt = "\n" + _PROMPT if self._comments.unread else ""
-                self._splash.show(app, _SPLASH_KEPT + prompt)
         elif key == "z" and chord:
             self._stepped(app, self._comments.redo())
         elif key == "z" and accel_held(modifier_keys):
@@ -325,7 +345,7 @@ class CommentMode:
     def _badge_at(self, x: float, y: float) -> Optional[int]:
         """The number of the mark whose badge is under ``(x, y)``, or ``None``.
 
-        An answered mark's badge is the disc plus the glyph's extent to its right.
+        A sent or answered mark's badge is the disc plus the glyph's extent to its right.
         """
         for index, kind, mark in reversed(self._comments.marks()):
             rect = mark if kind == "region" else visible_rect(mark)
@@ -334,7 +354,8 @@ class CommentMode:
             cx, cy = rect[0], rect[1]
             if (cx - x) ** 2 + (cy - y) ** 2 <= BADGE_RADIUS**2:
                 return index
-            if self._comments.outcome(index) is not None and cx <= x <= cx + BADGE_RADIUS + ANSWER_WIDTH:
+            wide = self._comments.outcome(index) is not None or self._comments.awaiting(index)
+            if wide and cx <= x <= cx + BADGE_RADIUS + ANSWER_WIDTH:
                 if abs(cy - y) <= BADGE_RADIUS:
                     return index
         return None
@@ -350,32 +371,45 @@ class CommentMode:
         self._hovered_badge = None
         self._band = None
         self._writing = None
+        self._near_send = False
         self._placement.reset()
         self._splash.show(app, _SPLASH_ON)
         self._help = False
         self._changed(app, note=False)
 
-    def commit(self, app: Any) -> None:
-        """Keep the session's work and leave, as ``Enter`` does. No-op when off."""
+    def leave(self, app: Any) -> None:
+        """Switch the mode off with every mark in place, as ``Esc`` does. No-op when off."""
         if self.active:
-            self._commit(app)
+            self._leave(app)
 
-    def _commit(self, app: Any) -> None:
-        self._comments.commit()
-        self._reset(app)
-
-    def _discard(self, app: Any) -> None:
-        self._comments.discard()
-        self._reset(app)
-
-    def _reset(self, app: Any) -> None:
+    def _leave(self, app: Any) -> None:
+        self._comments.leave()
         self._press = None
         self._picked = None
         self._walked = None
         self._hovered_badge = None
         self._band = None
         self._writing = None
+        self._near_send = False
         self._changed(app)
+
+    # --- sending ----------------------------------------------------------
+
+    def _send(self, app: Any) -> None:
+        """Send the marks to the agent, as the button and ``Ctrl+Enter`` do, and say so at the centre.
+
+        With nothing new since the last send, say that instead.
+        """
+        sent = self._comments.send()
+        self._splash.show(app, _SPLASH_SENT if sent else _SPLASH_NOTHING)
+        invalidate(app)
+
+    def _send_at(self, x: float, y: float, app: Any) -> bool:
+        """Whether ``(x, y)`` is on the send button, which counts only while it is raised."""
+        if not self.send_raised:
+            return False
+        bx, by, bw, bh = send_button_rect(_window(app))
+        return bx <= x <= bx + bw and by <= y <= by + bh
 
     # --- pointer ----------------------------------------------------------
 
@@ -395,9 +429,10 @@ class CommentMode:
     def on_mouse_release(self, app: Any, x: float, y: float, modifier_keys: int = 0) -> bool:
         """Resolve the gesture. ``True`` when consumed.
 
-        A click on a badge opens that mark's field; any other click marks the
-        candidate, or reopens the field on a widget already marked; a drag marks
-        the area it swept. A new mark opens its field at once.
+        A click on the send button sends; one on a badge opens that mark's
+        field; any other click marks the candidate, or reopens the field on a
+        widget already marked; a drag marks the area it swept. A new mark opens
+        its field at once.
         """
         if not self.active:
             return False
@@ -410,6 +445,9 @@ class CommentMode:
             self._comments.add_region(_normalized(press, (float(x), float(y))))
             self._changed(app)
             self._open_newest(app)
+            return True
+        if self._send_at(press[0], press[1], app):
+            self._send(app)
             return True
         badge = self._badge_at(press[0], press[1])
         if badge is not None:
@@ -445,6 +483,10 @@ class CommentMode:
             return False
         self._pointer = (float(x), float(y))
         if self._placement.crosses(self._pointer):
+            invalidate(app)
+        near = _near_send(self._pointer, _window(app), self._near_send)
+        if near != self._near_send:
+            self._near_send = near
             invalidate(app)
         if self._press is not None and self._writing is None:
             band = _normalized(self._press, (float(x), float(y)))
@@ -515,8 +557,29 @@ class CommentMode:
 
 
 def _window(app: Any) -> tuple[float, float]:
-    """The window's size, for placing the field; zero where the app has none."""
+    """The window's size, for placing the field and the send button; zero where the app has none."""
     return (float(getattr(app, "width", 0) or 0), float(getattr(app, "height", 0) or 0))
+
+
+def send_button_rect(window: tuple[float, float]) -> Rect:
+    """The send button's rect when raised: inside the margins at the window's bottom-right corner."""
+    w, h = SEND_SIZE
+    return (window[0] - MARGIN - w, window[1] - MARGIN - h, w, h)
+
+
+def _near_send(pointer: Point, window: tuple[float, float], raised: bool) -> bool:
+    """Whether ``pointer`` reaches the send button: its sunk edge, or, once ``raised``, the button itself.
+
+    The sunk edge is the target, so a widget at the window's bottom-right
+    stays markable; the raised button holds while the pointer climbs onto it.
+    """
+    x, y, w, _h = send_button_rect(window)
+    px, py = pointer
+    if not x - SEND_REACH <= px <= x + w + SEND_REACH:
+        return False
+    if raised and py >= y - SEND_REACH:
+        return True
+    return py >= window[1] - SEND_PEEK - SEND_REACH
 
 
 def _normalized(a: tuple[float, float], b: tuple[float, float]) -> tuple[float, float, float, float]:
@@ -526,4 +589,14 @@ def _normalized(a: tuple[float, float], b: tuple[float, float]) -> tuple[float, 
     return (x0, y0, x1 - x0, y1 - y0)
 
 
-__all__ = ["ANSWER_WIDTH", "BADGE_RADIUS", "FIELD_LEAST", "UNDER_GAP", "CommentMode", "Writing"]
+__all__ = [
+    "ANSWER_WIDTH",
+    "BADGE_RADIUS",
+    "FIELD_LEAST",
+    "SEND_PEEK",
+    "SEND_SIZE",
+    "UNDER_GAP",
+    "CommentMode",
+    "Writing",
+    "send_button_rect",
+]

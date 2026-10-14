@@ -22,6 +22,8 @@ class _App:
 
     def __init__(self, root: Any = None) -> None:
         self.root = root
+        self.width = 300
+        self.height = 200
         self.invalidated = 0
         self.tree_repaints = 0
 
@@ -42,10 +44,22 @@ def _click(mode: CommentMode, app: _App, x: float, y: float) -> None:
 
 
 def _leave(mode: CommentMode, app: _App) -> None:
-    """``Enter`` out of the session, first keeping the empty field a new mark opened."""
+    """``Esc`` out of the session, first keeping the empty field a new mark opened."""
     if mode.writing is not None:
         mode.on_key_press(app, "enter", 0)
-    mode.on_key_press(app, "enter", 0)
+    mode.on_key_press(app, "escape", 0)
+
+
+def _send(mode: CommentMode, app: _App) -> None:
+    """Click the send button, first keeping the empty field a new mark opened."""
+    from nuiitivet.dev.comment_mode import send_button_rect
+
+    if mode.writing is not None:
+        mode.on_key_press(app, "enter", 0)
+    x, y, w, h = send_button_rect((app.width, app.height))
+    mode.on_mouse_motion(app, x + w / 2, app.height - 1)  # the sunk edge raises it
+    mode.on_mouse_motion(app, x + w / 2, y + h / 2)
+    _click(mode, app, x + w / 2, y + h / 2)
 
 
 def _mark(mode: CommentMode, app: _App, x: float, y: float) -> None:
@@ -94,8 +108,8 @@ def test_the_wrong_chord_does_not_enter() -> None:
     assert comments.active is False
 
 
-def test_enter_commits_and_leaves() -> None:
-    """Enter keeps the session's work; the mark outlives the mode."""
+def test_escape_leaves_with_the_mark_in_place() -> None:
+    """The mark outlives the mode; the next session goes on from it."""
     root = Column(children=[Text("AAA")])
     with mount(root) as host:
         host.layout(300, 200)
@@ -316,22 +330,79 @@ def test_entering_shows_the_splash_for_a_moment(monkeypatch: pytest.MonkeyPatch)
         assert not mode.splash
 
 
-def test_leaving_shows_how_the_session_ended(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_leaving_says_whether_anything_is_unsent(monkeypatch: pytest.MonkeyPatch) -> None:
     from nuiitivet.dev.hud import SEPARATOR, SPLASH
 
     mode, app, host = _latched()
     with host:
         _later(monkeypatch, SPLASH)
         assert mode.splash is None
-        mode.on_key_press(app, "enter", 0)
+        mode.on_key_press(app, "escape", 0)
         assert not mode.active
-        assert mode.splash == "COMMENT MODE off" + SEPARATOR + "comments kept"
+        assert mode.splash == "COMMENT MODE off"
 
         mode.on_key_press(app, "c", _ENTER)
+        _mark(mode, app, 2, 2)
         monkeypatch.undo()
         _later(monkeypatch, SPLASH)
         mode.on_key_press(app, "escape", 0)
-        assert mode.splash == "COMMENT MODE off" + SEPARATOR + "comments discarded"
+        assert mode.splash == "COMMENT MODE off" + SEPARATOR + "unsent comments"
+
+
+def test_the_send_button_sends_and_says_so(monkeypatch: pytest.MonkeyPatch) -> None:
+    from nuiitivet.dev.hud import SPLASH
+
+    mode, app, host = _latched()
+    with host:
+        _mark(mode, app, 2, 2)
+
+        _send(mode, app)
+
+        assert mode.active, "sending is not leaving"
+        assert mode.splash == "comments sent" and mode.comments.unsent is False
+        monkeypatch.undo()
+        _later(monkeypatch, SPLASH)
+        _send(mode, app)
+        assert mode.splash == "nothing new to send"
+
+
+def test_the_send_button_counts_only_while_raised(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Sunk to its edge it is out of the way, and a click where it would stand is a click on the app."""
+    from nuiitivet.dev.comment_mode import send_button_rect
+    from nuiitivet.dev.hud import SPLASH
+
+    mode, app, host = _latched()
+    with host:
+        _mark(mode, app, 2, 2)
+        _later(monkeypatch, SPLASH)
+        assert not mode.send_raised, "pointer away and splash gone; something unsent does not raise it"
+        x, y, w, h = send_button_rect((app.width, app.height))
+
+        _click(mode, app, x + w / 2, y + h / 2)
+
+        assert mode.splash is None and len(mode.comments.marks()) == 2, "the click marked what was under it"
+
+
+def test_the_send_button_rises_from_its_edge_and_holds_while_the_pointer_climbs_onto_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from nuiitivet.dev.comment_mode import SEND_PEEK, SEND_REACH, send_button_rect
+    from nuiitivet.dev.hud import SPLASH
+
+    mode, app, host = _latched()
+    with host:
+        _later(monkeypatch, SPLASH)
+        x, y, w, h = send_button_rect((app.width, app.height))
+        cx = x + w / 2
+        mode.on_mouse_motion(app, cx, y + h / 2)
+        assert not mode.send_raised, "where the raised button would be is still the app"
+
+        mode.on_mouse_motion(app, cx, app.height - SEND_PEEK - SEND_REACH)
+        assert mode.send_raised, "the sunk edge is the target"
+        mode.on_mouse_motion(app, cx, y + h / 2)
+        assert mode.send_raised, "and it holds while the pointer climbs onto it"
+        mode.on_mouse_motion(app, cx, y - SEND_REACH - 1)
+        assert not mode.send_raised, "off the raised button it sinks again"
 
 
 def test_switching_to_layout_edit_mode_shows_no_leaving_line(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -569,14 +640,14 @@ def test_the_sideways_walk_holds_by_the_same_drift() -> None:
         assert mode.hovered is first and not mode.walked
 
 
-def test_enter_without_a_walk_still_leaves() -> None:
+def test_enter_without_a_walk_does_nothing() -> None:
     mode, app, host = _latched()
     with host:
         mode.on_mouse_motion(app, 2, 2)
 
         mode.on_key_press(app, "enter", 0)
 
-        assert not mode.active
+        assert mode.active and mode.comments.marks() == []
 
 
 # --- journal ----------------------------------------------------------------
@@ -629,7 +700,7 @@ def test_every_designation_change_asks_for_a_frame() -> None:
             lambda: mode.on_key_press(app, "s", 0),
             lambda: _mark(mode, app, 2, 2),
             lambda: mode.on_key_press(app, "z", MOD_CTRL),
-            lambda: mode.on_key_press(app, "enter", 0),
+            lambda: mode.on_key_press(app, "escape", 0),
         ):
             before = app.invalidated
             act()
@@ -799,16 +870,16 @@ def test_leaving_clears_an_abandoned_band() -> None:
         mode.on_mouse_press(app, 10, 10)
         mode.on_mouse_motion(app, 60, 40)
 
-        mode.on_key_press(app, "enter", 0)
+        mode.on_key_press(app, "escape", 0)
 
         assert mode.band is None
 
 
-# --- committing and discarding ---------------------------------------
+# --- leaving and sending ---------------------------------------------
 
 
-def test_escape_discards_the_session() -> None:
-    """Esc means "undo what I was doing" everywhere; it means that here too."""
+def test_escape_leaves_the_marks_in_place() -> None:
+    """Leaving is a look at the app, not a verdict on the session: Delete and Ctrl+Z take marks back."""
     leaf = Text("AAA")
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
@@ -817,56 +888,18 @@ def test_escape_discards_the_session() -> None:
         comments = mode.comments
         mode.on_key_press(app, "c", _ENTER)
         _mark(mode, app, 2, 2)
-        assert comments.members() == [leaf]
+        mode.on_mouse_press(app, 100, 100)
+        mode.on_mouse_release(app, 160, 150)
+        mode.on_key_press(app, "enter", 0)  # keeps the empty field the region opened
 
         mode.on_key_press(app, "escape", 0)
 
         assert comments.active is False
-        assert comments.members() == []
+        assert comments.members() == [leaf] and len(comments.regions()) == 1
 
 
-def test_escape_rolls_back_only_the_session() -> None:
-    """Re-entering to add one more mark and then changing your mind must not
-    take the earlier marks with it."""
-    first, second = Text("AAA"), Text("BBBBBBBB")
-    with mount(Column(children=[first, second])) as host:
-        host.layout(300, 200)
-        app = _App(host.root)
-        mode = CommentMode(Comments())
-        first_rect = first.global_layout_rect
-        assert first_rect is not None
-
-        mode.on_key_press(app, "c", _ENTER)
-        _mark(mode, app, 2, 2)
-        _leave(mode, app)
-
-        mode.on_key_press(app, "c", _ENTER)
-        _mark(mode, app, 2, first_rect[3] + 2)
-        assert len(mode.comments.members()) == 2
-        mode.on_key_press(app, "escape", 0)
-
-        assert mode.comments.members() == [first]
-
-
-def test_escape_discards_regions_too() -> None:
-    with mount(Column(children=[Text("AAA")])) as host:
-        host.layout(300, 200)
-        app = _App(host.root)
-        mode = CommentMode(Comments())
-        mode.on_key_press(app, "c", _ENTER)
-        mode.on_mouse_press(app, 10, 10)
-        mode.on_mouse_release(app, 60, 40)
-        assert mode.comments.regions()
-        mode.on_key_press(app, "escape", 0)  # closes the field the region opened
-
-        mode.on_key_press(app, "escape", 0)
-
-        assert mode.comments.regions() == []
-
-
-def test_a_discarded_session_still_moves_seq() -> None:
-    """Marks go live as they are made, so a rollback is a state change an
-    agent that read mid-session has to be able to notice."""
+def test_leaving_still_moves_seq() -> None:
+    """An agent polling status sees the mode go off, as it saw it come on."""
     leaf = Text("AAA")
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
@@ -881,19 +914,8 @@ def test_a_discarded_session_still_moves_seq() -> None:
         assert mode.comments.summary()["seq"] > before
 
 
-def test_discarding_outside_a_session_changes_nothing() -> None:
-    node = Text("AAA")
-    comments = Comments()
-    comments.add(node)
-
-    comments.discard()
-
-    assert comments.members() == [node]
-
-
-def test_a_reload_mid_session_keeps_the_fallback_resolvable() -> None:
-    """Cancelling after a reload must not restore members whose referents are
-    already gone -- the snapshot holds the old objects too."""
+def test_undo_after_a_reload_brings_back_no_member_that_is_gone() -> None:
+    """The snapshots hold the old objects too, so they are re-resolved with the marks."""
     old = Column(children=[Text("HEADER", key="header")])
     with mount(old) as host:
         host.layout(300, 200)
@@ -901,8 +923,7 @@ def test_a_reload_mid_session_keeps_the_fallback_resolvable() -> None:
         mode = CommentMode(Comments())
         mode.on_key_press(app, "c", _ENTER)
         mode.comments.add(old.children[0], root=host.root)
-        mode.on_key_press(app, "enter", 0)
-        mode.on_key_press(app, "c", _ENTER)
+        mode.comments.write(1, "wider")
 
     rebuilt = Column(children=[Text("HEADER", key="header")])
     with mount(rebuilt) as host:
@@ -910,9 +931,10 @@ def test_a_reload_mid_session_keeps_the_fallback_resolvable() -> None:
         mode.comments.restore(host.root)
         app = _App(host.root)
 
-        mode.on_key_press(app, "escape", 0)
+        mode.on_key_press(app, "z", MOD_CTRL)
 
         assert mode.comments.members() == [rebuilt.children[0]]
+        assert mode.comments.editable_line(1) is None
 
 
 def test_ctrl_backspace_clears_every_designation() -> None:
@@ -937,7 +959,7 @@ def test_ctrl_backspace_clears_every_designation() -> None:
         assert mode.comments.marks() == []
 
 
-def test_clearing_is_a_session_operation_so_escape_undoes_it() -> None:
+def test_clearing_is_one_undo_step() -> None:
     """Which is what makes a destructive key safe to reach for."""
     leaf = Text("AAA")
     with mount(Column(children=[leaf])) as host:
@@ -951,13 +973,13 @@ def test_clearing_is_a_session_operation_so_escape_undoes_it() -> None:
         mode.on_key_press(app, "c", _ENTER)
         mode.on_key_press(app, "backspace", MOD_CTRL)
         assert mode.comments.members() == []
-        mode.on_key_press(app, "escape", 0)
+        mode.on_key_press(app, "z", MOD_CTRL)
 
         assert mode.comments.members() == [leaf]
 
 
-def test_a_committed_designation_can_still_be_cleared() -> None:
-    """The gap that prompted the key: after Enter there was no way back."""
+def test_a_sent_mark_can_still_be_cleared() -> None:
+    """What was sent is past undoing, not past removing; the removal is a new change, and undoable."""
     leaf = Text("AAA")
     with mount(Column(children=[leaf])) as host:
         host.layout(300, 200)
@@ -965,13 +987,13 @@ def test_a_committed_designation_can_still_be_cleared() -> None:
         mode = CommentMode(Comments())
         mode.on_key_press(app, "c", _ENTER)
         _mark(mode, app, 2, 2)
-        _leave(mode, app)
+        _send(mode, app)
+        assert mode.comments.undo() is False
 
-        mode.on_key_press(app, "c", _ENTER)
         mode.on_key_press(app, "backspace", MOD_CTRL)
-        mode.on_key_press(app, "enter", 0)
 
         assert mode.comments.members() == []
+        assert mode.comments.undo() is True and mode.comments.members() == [leaf]
 
 
 def test_text_motions_are_swallowed_while_latched() -> None:
@@ -1115,27 +1137,28 @@ def test_a_drag_opens_the_field_on_the_region() -> None:
         assert mode.writing is not None and mode.writing.index == 2
 
 
-def test_mark_write_leave_is_click_type_enter_enter() -> None:
+def test_mark_write_leave_is_click_type_enter_escape() -> None:
     mode, app, host, _leaf = _marked()
     with host:
         mode.on_text(app, "wider")
         mode.on_key_press(app, "enter", 0)
         assert mode.active and mode.writing is None
 
-        mode.on_key_press(app, "enter", 0)
+        mode.on_key_press(app, "escape", 0)
 
         assert not mode.active
         assert mode.comments.editable_line(1) == "wider"
 
 
-def test_escape_closes_the_field_and_enter_then_leaves() -> None:
+def test_escape_closes_the_field_and_escape_again_leaves() -> None:
     """The pointer still on the mark does not reopen its field: only the badge does."""
     mode, app, host, _leaf = _marked()
     with host:
+        mode.on_text(app, "wider")
         mode.on_key_press(app, "escape", 0)
         assert mode.active and mode.writing is None
 
-        mode.on_key_press(app, "enter", 0)
+        mode.on_key_press(app, "escape", 0)
 
         assert not mode.active
 
@@ -1173,7 +1196,7 @@ def test_clicks_in_a_row_mark_each_widget_and_a_click_on_a_marked_one_opens_its_
         assert mode.writing is not None and mode.writing.index == 1
         assert mode.comments.members() == [first, second]
         mode.on_key_press(app, "escape", 0)
-        mode.on_key_press(app, "enter", 0)
+        mode.on_key_press(app, "escape", 0)
         assert not mode.active
 
 
@@ -1206,20 +1229,45 @@ def test_after_an_answer_the_field_opens_empty_and_enter_replies() -> None:
         assert mode.comments.outcome(1) is None, "the human's turn again"
 
 
-def test_the_leaving_line_says_what_to_type_in_chat_while_the_comments_are_unread() -> None:
-    from nuiitivet.dev.hud import SEPARATOR
+def test_the_hourglass_is_part_of_the_badge_under_the_pointer() -> None:
+    from nuiitivet.dev.comment_mode import ANSWER_WIDTH, BADGE_RADIUS
 
     mode, app, host, _leaf = _marked()
     with host:
-        _leave(mode, app)
-        kept = "COMMENT MODE off" + SEPARATOR + "comments kept"
-        assert mode.splash == kept + "\nin chat: /nuiitivet-see-comments"
+        _send(mode, app)
 
-        mode.comments.served()
-        mode.on_key_press(app, "c", _ENTER)
-        _leave(mode, app)
+        mode.on_mouse_motion(app, BADGE_RADIUS + ANSWER_WIDTH - 1, 0)
 
-        assert mode.splash == "COMMENT MODE off" + SEPARATOR + "comments kept", "nothing new for the agent"
+        assert mode.hovered_badge == 1
+
+
+@pytest.mark.parametrize("accel", [MOD_CTRL, MOD_META])
+def test_ctrl_enter_sends_and_from_the_field_keeps_the_text_first(accel: int) -> None:
+    mode, app, host, _leaf = _marked()
+    with host:
+        mode.on_text(app, "wider")
+
+        mode.on_key_press(app, "enter", accel)
+
+        assert mode.writing is None and mode.comments.editable_line(1) == "wider"
+        assert mode.comments.unsent is False and mode.splash == "comments sent"
+        assert mode.active
+
+        mode.comments.write(1, "a bit more")
+        mode.on_key_press(app, "enter", accel)
+        assert mode.comments.unsent is False, "with no field open it sends as well"
+
+
+def test_a_press_on_the_send_button_writes_the_open_field_first() -> None:
+    """One click sends what was being typed; the field need not be closed first."""
+    mode, app, host, _leaf = _marked()
+    with host:
+        mode.on_text(app, "wider")
+
+        _send(mode, app)
+
+        assert mode.writing is None and mode.comments.editable_line(1) == "wider"
+        assert mode.comments.unsent is False
 
 
 def test_the_mode_keys_are_the_fields_while_it_is_open() -> None:
