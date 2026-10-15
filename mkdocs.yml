@@ -206,12 +206,15 @@ nav:
           - Material Widgets: guide/design-system/material_widgets.md
           - Theme Extensions: guide/design-system/theme_extensions.md
           - Font Configuration: guide/design-system/font_configuration.md
-      - AI pair-programming:
-          - guide/ai_pair_programming/index.md
-          - Install the skills: guide/ai_pair_programming/install_skills.md
-          - Hot Reload: guide/ai_pair_programming/hot_reload.md
-          - The on-screen modes: guide/ai_pair_programming/on_screen_modes.md
-          - Dev Bridge MCP: guide/ai_pair_programming/dev_bridge_mcp.md
+      - With a coding agent:
+          - guide/coding_agent/index.md
+          - Set up: guide/coding_agent/setup.md
+          - Hot Reload: guide/coding_agent/hot_reload.md
+          - Comment mode: guide/coding_agent/comment_mode.md
+          - Layout edit mode: guide/coding_agent/layout_edit_mode.md
+          - Source jump: guide/coding_agent/source_jump.md
+          - The skills: guide/coding_agent/skills.md
+          - The dev bridge: guide/coding_agent/dev_bridge.md
       - Testing:
           - guide/testing/index.md
           - Testing a widget: guide/testing/widgets.md

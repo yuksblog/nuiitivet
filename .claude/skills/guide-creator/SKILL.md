@@ -39,6 +39,26 @@ the surprise goes where the reader would hit it. Written from the code
 instead, a page names every argument in the order of the signature and
 answers none of the reader's questions first.
 
+**Each level is one shape, chosen by the reader's question there.** "Then
+what?" makes the level a sequence, its headings the steps. "Which one?" makes
+it a set, its headings the choices, led by a line or a table that picks among
+them; a set whose choices are a few lines each is tabs, not headings. The
+same holds one level down: a step's section holds a set when the step has
+several ways, and a choice's section holds a sequence when the choice has
+steps. A heading of a sequence names one action, and its section carries
+that action and nothing else: not the step before it, not a key the reader
+presses only in another case. A choice that opens at one step, the keys that
+reach a covered widget, a drag that resizes or reorders, is a set one level
+below that step, never a sibling of the steps. A level that mixes steps with
+their cases is what makes a page a flat run of headings. The reference
+sections sit outside the spine, last, and are shaped the same inside: a
+reference that holds several lists is a set, one heading per list.
+
+**A sequence's headings are numbered; a set's are not.** `## 1. Enter the
+mode`, `## 2. Mark the place`: the number says the reader does every sibling
+in order, and its absence says they pick one. A level with a single step
+takes no number.
+
 **Each heading names what the reader wants to do there.** A reader scans the
 table of contents for their problem; a clever heading hides it.
 
@@ -49,10 +69,29 @@ table of contents for their problem; a clever heading hides it.
 | Wrapping operators compose into the chain | Waiting for the typing to settle |
 | Two things that are not this | Restricting and reshaping the text itself |
 | The one trap | If the field will not accept typing |
+| *(a gesture table as the first section)* | the round first; "Every gesture" last |
+| Mark the place *(enter, click, walk, or drag)* | Enter the mode / Mark the place, with Aim at a covered widget a level below |
+
+**The opening says what the thing is.** One or two sentences, then the code
+or the first step. Where that sentence does not carry the intent, say when
+the reader is stuck and how this gets them out: "Telling an agent *where* is
+the hard part of telling it what to do; comment mode puts the instruction on
+the app itself." A summary of the page, a list of its features, or a remark a
+section will make again is not an opening: the reader came for the thing,
+and the headings carry the rest.
 
 **Open with working code, not a principle.** The shortest complete example
 first; comments carry the point (`# bind this` / `# use this`). Prose after,
 only for what the code cannot show.
+
+**A reference closes the page.** A table or list that enumerates a
+vocabulary, every gesture, every command, every option, is a dictionary: the
+reader can use it only once they know what the feature is and how one round
+of it goes. It sits after the procedure, as the page's last section, under a
+heading such as "Every gesture". The one table that opens a page is a
+chooser, the "You want to… / Read" table of a hub, since there the reader's
+first act is to choose. A page written table-first hands the reader the keys
+before the actions they belong to.
 
 **Every snippet runs.** Execute each one before shipping, the inline ones too.
 A snippet that drifted from the API is worse than none.
@@ -181,6 +220,10 @@ also" lists are an N×N job. The rules that keep it linear:
 **"Next Steps" is the reading order, not a see-also list.** It carries the next
 page in the section's `index.md` order, plus the section overview, nothing
 else. A page the reader has passed, or one four steps ahead, is not there.
+The reading order is the order of use: setup once, then the pages in the
+order a round meets them, with a reference page, the CLI, every command,
+last. The section index is the one page that opens with a table, the
+chooser.
 
 **A body link earns its sentence.** Link sideways where the page stops short
 and names what continues ("that second case ... is Background Work"), or where
@@ -203,11 +246,25 @@ the design.
 Add the page to the `nav` in `mkdocs.yml` and to the section `index.md`
 reading order. Then fix the **Next Steps** of the page it now follows.
 
+## Review by a Fresh Reader
+
+The author's own reread misses what the author folded in: a step holding
+three actions, an opening that summarises the page, a key the reader presses
+only in another case. Before the draft reaches the user, hand it to a
+subagent that has no other context: this skill file and the page, nothing
+else, with the instruction to hold every item of the checklist below against
+the page and report each miss by heading and sentence. Fix what it finds,
+then present. A page the agent passes is not finished; a page it has not
+read is not reviewed.
+
 ## Checklist
 
 - [ ] No design rationale, no doctrine headings — the reader is a user
 - [ ] The outline was written in the reply before the edit, each level marked sequence or set; every heading in the diff is one of its nodes and names a task; `grep -n '^#' docs/guide/<page>.md`, read top to bottom: a sequence with no missing step, a set with no overlapping choice, on the whole page
-- [ ] Opens with working code
+- [ ] Each level is one shape, sequence or set; a step carries one action, and its ways sit one level below it; no level mixes steps with cases
+- [ ] Sequence headings are numbered, set headings are not
+- [ ] Opens with what the thing is, in a sentence or two, then the code or the first step; no summary of the page
+- [ ] Every table or list that enumerates a vocabulary sits after the procedure it serves, as the page's last section; the only table that opens a page is a chooser on a hub
 - [ ] Every snippet executed, including inline ones
 - [ ] Short sentences, one fact each, dense throughout; a fact repeated only where two places are far apart
 - [ ] Each sentence checked against `docs/design/` and the docstrings, both open beside the draft; what either already says is deleted
@@ -222,3 +279,4 @@ reading order. Then fix the **Next Steps** of the page it now follows.
 - [ ] Next Steps carries only the next page plus the overview; no back-link, no see-also callout
 - [ ] One entrance to a concept page; many only to a lookup page
 - [ ] `uv run mkdocs build --strict` passes
+- [ ] A fresh-context subagent, given only this skill and the page, held the checklist against it, and its findings are fixed

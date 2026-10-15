@@ -363,7 +363,7 @@ uv add nuiitivet
 uv add --dev 'nuiitivet[dev]'
 ```
 
-`[dev]` is the extra the [dev bridge](docs/guide/ai_pair_programming/dev_bridge_mcp.md)'s
+`[dev]` is the extra the [dev bridge](docs/guide/coding_agent/dev_bridge.md)'s
 MCP server needs. Plain `nuiitivet` is enough to *run* an app, but building with
 an AI effectively requires the extra — install it up front.
 
@@ -379,7 +379,7 @@ project skills directory, `.claude/skills/`; point `--dest` at another
 agent's. Re-run it after upgrading nuiitivet. The other channels — the
 Claude Code plugin (which also wires up the dev bridge MCP server) and copying
 by hand — are covered in the
-[install page](docs/guide/ai_pair_programming/install_skills.md).
+[Set up](docs/guide/coding_agent/setup.md#2-install-the-skills) page.
 
 Finally, register the dev bridge's MCP server with your agent, so it can see
 and drive the app. Add this to your MCP host's configuration:
@@ -396,8 +396,8 @@ and drive the app. Add this to your MCP host's configuration:
 ```
 
 The Claude Code plugin does this for you.
-[Dev Bridge MCP](docs/guide/ai_pair_programming/dev_bridge_mcp.md) has the
-details, Windows paths included.
+[Set up](docs/guide/coding_agent/setup.md) has the details, Windows paths
+included.
 
 ### 3.3 Your first app
 
@@ -450,7 +450,7 @@ the source jump — turns on here.
 python -m nuiitivet.dev run app.py
 ```
 
-See [AI pair-programming](docs/guide/ai_pair_programming/index.md) for the full
+See [With a coding agent](docs/guide/coding_agent/index.md) for the full
 workflow.
 
 ---
@@ -492,7 +492,7 @@ README live there as runnable modules under [samples/readme/](samples/readme/).
 | Guide | Summary |
 | ----- | ------- |
 | [Concurrency](docs/guide/concurrency.md) | Choosing a concurrency tool, and safe UI updates from background work. |
-| [AI pair-programming](docs/guide/ai_pair_programming/index.md) | Refine and Debug with a coding agent: the on-screen modes, hot reload, the dev bridge, and the skills. |
+| [With a coding agent](docs/guide/coding_agent/index.md) | Refine and Debug with a coding agent: the on-screen modes, hot reload, the dev bridge, and the skills. |
 | [Packaging](docs/guide/packaging/index.md) | Ship your app to users. |
 
 ---
