@@ -12,7 +12,7 @@ On top of that environment sit the two objects you write tests against:
 | --- | --- | --- |
 | Unit | one widget | [`mount()`](widgets.md) |
 | Integration | a screen: state, tree, input | [`AppHarness`](screens.md) |
-| E2E | the running process | [the dev bridge](../ai_pair_programming/dev_bridge_mcp.md) |
+| E2E | the running process | [the dev bridge](../coding_agent/dev_bridge.md) |
 
 Targeting is by `key` at every level and the action verbs are the dev bridge's,
 one for one, so what you learn at any level carries to the others. This page

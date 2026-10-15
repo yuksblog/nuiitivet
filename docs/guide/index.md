@@ -35,13 +35,16 @@ the whole toolkit in one import. Only `nuiitivet.material` is available today.
 - [Modifiers](modifiers/index.md)
 - [Web](web/index.md)
 
-## AI pair-programming
+## With a coding agent
 
-- [Overview](ai_pair_programming/index.md)
-- [Install the skills](ai_pair_programming/install_skills.md)
-- [Hot Reload](ai_pair_programming/hot_reload.md)
-- [The on-screen modes](ai_pair_programming/on_screen_modes.md)
-- [Dev Bridge MCP](ai_pair_programming/dev_bridge_mcp.md)
+- [Overview](coding_agent/index.md)
+- [Set up](coding_agent/setup.md)
+- [Hot Reload](coding_agent/hot_reload.md)
+- [Comment mode](coding_agent/comment_mode.md)
+- [Layout edit mode](coding_agent/layout_edit_mode.md)
+- [Source jump](coding_agent/source_jump.md)
+- [The skills](coding_agent/skills.md)
+- [The dev bridge](coding_agent/dev_bridge.md)
 
 ## Advanced
 
