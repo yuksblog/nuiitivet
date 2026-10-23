@@ -675,6 +675,234 @@ def _spell_alignment(value: Spelled, like: Optional[str]) -> str:
     return f"({quote}{value[0]}{quote}, {quote}{value[1]}{quote})"
 
 
+# --- spacing and presets -----------------------------------------------------
+
+#: A ``padding`` or ``gap`` as it is written: one int, an ``(h, v)`` pair, or
+#: ``(left, top, right, bottom)``.
+Spacing = Union[int, tuple[int, ...]]
+
+
+def written_spacing(text: str, site: Frame, keyword: str) -> Union[None, Spacing, Refusal]:
+    """The ``padding`` or ``gap`` written on the call at ``site``, ``None`` when absent, or a refusal.
+
+    The value is an int or a tuple of ints. A value that is a name or an
+    expression -- an observable among them -- has no literal to write over.
+    """
+    found = _keyword_node(text, site, keyword)
+    if isinstance(found, Refusal):
+        return found
+    _tree, _call, node = found
+    if node is None:
+        return None
+    spacing = _spacing_literal(node)
+    if spacing is None:
+        return Refusal(f"{keyword} is bound to {_segment(text, node)}")
+    return spacing
+
+
+def plan_spacing(text: str, site: Frame, keyword: str, value: Spacing) -> Union[tuple[SpanEdit, ...], Refusal]:
+    """The spans that set ``keyword`` on the call at ``site`` to ``value``, in the shape ``value`` has.
+
+    An int is written bare, a tuple in the brackets the old value used. An
+    absent keyword is inserted after the last argument. A value that is not
+    a literal is refused.
+    """
+    return _plan_keyword(text, site, keyword, _spacing_literal, lambda old: spell_spacing(value, old))
+
+
+@dataclass(frozen=True)
+class Preset:
+    """A preset as it is written: ``nv.ButtonStyle.filled("s")``, or ``nv.TypeScale.BODY_MEDIUM``.
+
+    Attributes:
+        base: The class the preset hangs off, as spelled: ``nv.ButtonStyle``.
+        name: The preset's name: ``filled``.
+        size: The size token passed, or ``None`` when none is.
+        called: Whether the preset is called; a type-scale role is an attribute.
+        size_keyword: Whether the size is passed as ``size=``.
+    """
+
+    base: str
+    name: str
+    size: Optional[str] = None
+    called: bool = True
+    size_keyword: bool = False
+
+    def spell(self, like: Optional[str] = None) -> str:
+        """The preset as source, its size in the quotes ``like`` used."""
+        head = f"{self.base}.{self.name}"
+        if not self.called:
+            return head
+        if self.size is None:
+            return f"{head}()"
+        quote = _quote_in(like)
+        size = f"{quote}{self.size}{quote}"
+        return f"{head}(size={size})" if self.size_keyword else f"{head}({size})"
+
+
+def written_preset(text: str, site: Frame, keyword: str, companion: str) -> Union[None, Preset, Refusal]:
+    """The preset of ``companion`` written as ``keyword`` on the call at ``site``, ``None`` when absent, or a refusal.
+
+    A preset is a classmethod of ``companion`` called with no argument or
+    one size token (``ButtonStyle.filled("m")``), or an attribute of it
+    (``TypeScale.TITLE_LARGE``); ``companion`` may carry a module prefix
+    there. A name, a ``copy_with(...)`` or a constructor has no preset to
+    write over.
+    """
+    found = _keyword_node(text, site, keyword)
+    if isinstance(found, Refusal):
+        return found
+    _tree, _call, node = found
+    if node is None:
+        return None
+    preset = _preset_literal(node, companion)
+    if preset is None:
+        return Refusal(f"{keyword} is bound to {_segment(text, node)}")
+    return preset
+
+
+def plan_preset(text: str, site: Frame, keyword: str, preset: Preset) -> Union[tuple[SpanEdit, ...], Refusal]:
+    """The spans that set ``keyword`` on the call at ``site`` to ``preset``.
+
+    Whatever expression the keyword holds is replaced, a written preset's
+    size in the quotes it used. An absent keyword is inserted after the
+    last argument.
+    """
+    return _plan_keyword(text, site, keyword, lambda node: node, preset.spell)
+
+
+def companion_name(text: str, site: Frame, companion: str) -> Union[str, Refusal]:
+    """How ``companion``, a class beside the one called at ``site``, is spelled there.
+
+    ``nv.Button`` gives ``nv.ButtonStyle``. A bare class name gives a bare companion, which the module must bind --
+    an import or an assignment at its top level -- since the edit adds no
+    import of its own.
+    """
+    located = _locate(text, site)
+    if located is None:
+        return _not_found(site)
+    tree, call = located
+    func = call.func
+    # A constructor classmethod (``Column.builder(...)``) is called on the
+    # class, one attribute up.
+    if isinstance(func, ast.Attribute) and func.attr[:1].islower():
+        func = func.value
+    if isinstance(func, ast.Attribute):
+        return f"{_segment(text, func.value)}.{companion}"
+    if isinstance(func, ast.Name):
+        if _binds_name(tree, companion):
+            return companion
+        return Refusal(f"{companion} is not imported in {os.path.basename(site.file)}")
+    return Refusal(f"{_segment(text, func)} is not a class name; {companion} cannot be spelled beside it")
+
+
+def _keyword_node(
+    text: str, site: Frame, keyword: str
+) -> Union[tuple[ast.Module, ast.Call, Optional[ast.expr]], Refusal]:
+    """The module, the call at ``site``, and the value ``keyword`` is given there, ``None`` when it is not."""
+    located = _locate(text, site)
+    if located is None:
+        return _not_found(site)
+    tree, call = located
+    return (tree, call, next((kw.value for kw in call.keywords if kw.arg == keyword), None))
+
+
+def _plan_keyword(
+    text: str,
+    site: Frame,
+    keyword: str,
+    literal: Callable[[ast.expr], Optional[Any]],
+    spell: Callable[[Optional[str]], str],
+) -> Union[tuple[SpanEdit, ...], Refusal]:
+    """Replace the literal ``keyword`` is given on the call at ``site`` with ``spell(old)``.
+
+    An absent keyword is inserted after the last argument. ``literal`` reads
+    the value a node spells; a node it cannot read is refused, and so is an
+    absent keyword that a ``**`` splat may supply.
+    """
+    found = _keyword_node(text, site, keyword)
+    if isinstance(found, Refusal):
+        return found
+    _tree, call, node = found
+    offsets = _Offsets(text)
+    if node is None:
+        splat = next((kw for kw in call.keywords if kw.arg is None), None)
+        if splat is not None:
+            return Refusal(f"{keyword} may come through **{_segment(text, splat.value)}")
+        at, prefix = _insertion_point(text, call, offsets)
+        return (SpanEdit(at, at, f"{prefix}{keyword}={spell(None)}"),)
+    if literal(node) is None:
+        return Refusal(f"{keyword} is bound to {_segment(text, node)}")
+    start, end = _span_of(offsets, node)
+    old = text[start:end]
+    return (SpanEdit(start, end, spell(old), replaces=old),)
+
+
+def _not_found(site: Frame) -> Refusal:
+    return Refusal(f"the call at {os.path.basename(site.file)}:{site.line} could not be found")
+
+
+def _spacing_literal(node: ast.expr) -> Optional[Spacing]:
+    if _is_int(node):
+        return int(node.value)  # type: ignore[attr-defined]
+    if isinstance(node, (ast.Tuple, ast.List)) and len(node.elts) in (2, 4) and all(_is_int(e) for e in node.elts):
+        return tuple(int(e.value) for e in node.elts)  # type: ignore[attr-defined]
+    return None
+
+
+def _is_int(node: ast.expr) -> bool:
+    return isinstance(node, ast.Constant) and isinstance(node.value, int) and not isinstance(node.value, bool)
+
+
+def spell_spacing(value: Spacing, like: Optional[str] = None) -> str:
+    """``value`` as source: an int bare, a tuple in the brackets ``like`` used, parentheses by default."""
+    if isinstance(value, int):
+        return str(value)
+    inside = ", ".join(str(side) for side in value)
+    return f"[{inside}]" if like and like.startswith("[") else f"({inside})"
+
+
+def _preset_literal(node: ast.expr, companion: str) -> Optional[Preset]:
+    if isinstance(node, ast.Attribute):
+        base = _dotted(node.value)
+        return Preset(base, node.attr, called=False) if base is not None and _is_class(base, companion) else None
+    if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+        return None
+    base = _dotted(node.func.value)
+    if base is None or not _is_class(base, companion) or len(node.args) + len(node.keywords) > 1:
+        return None
+    if node.keywords and node.keywords[0].arg != "size":
+        return None
+    size_node = node.args[0] if node.args else (node.keywords[0].value if node.keywords else None)
+    if size_node is not None and not (isinstance(size_node, ast.Constant) and isinstance(size_node.value, str)):
+        return None
+    size = str(size_node.value) if size_node is not None else None  # type: ignore[attr-defined]
+    return Preset(base, node.func.attr, size, True, bool(node.keywords))
+
+
+def _is_class(base: str, companion: str) -> bool:
+    """Whether ``base`` spells ``companion``, with or without a module prefix."""
+    return base == companion or base.endswith(f".{companion}")
+
+
+def _dotted(node: ast.expr) -> Optional[str]:
+    """``a.b.c`` for a chain of names, or ``None`` for anything else -- a call in the chain included."""
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        head = _dotted(node.value)
+        return f"{head}.{node.attr}" if head is not None else None
+    return None
+
+
+def _quote_in(like: Optional[str]) -> str:
+    """The first quote character in ``like``, or a double quote."""
+    for char in like or "":
+        if char in "'\"":
+            return char
+    return '"'
+
+
 def children_list(text: str, site: Frame, role: str) -> Union[ast.List, Refusal]:
     """The ``children`` list literal written on the call at ``site``, or why there is none.
 
@@ -1065,6 +1293,12 @@ class EditLog:
             return _check_placed(instances[0], expected, edit.child)
         if edit.kind == "align":
             return _check_aligned(instances[0], expected)
+        if edit.kind == "spacing":
+            return _check_spacing(instances[0], expected)
+        if edit.kind == "preset":
+            keyword = next(iter(edit.after))
+            spelled = edit.before.get(keyword, "") if undone else edit.after[keyword]
+            return _check_preset(instances[0], keyword, str(spelled))
         rect = getattr(instances[0], "layout_rect", None)
         if rect is None:
             return None
@@ -1179,6 +1413,31 @@ def _check_deleted(container: Any, edit: Edit, undone: bool) -> Optional[str]:
     if remaining != expected:
         return f"{edit.parent_layout} still has {remaining} children, expected {expected}"
     return None
+
+
+def _check_spacing(node: Any, expected: Mapping[str, Any]) -> Optional[str]:
+    """Whether ``node``'s gap, or its padding on every side, is what the edit wrote."""
+    from nuiitivet.layout.metrics import normalize_padding
+
+    if "gap" in expected:
+        gap, want = int(getattr(node, "gap", 0)), int(expected["gap"])
+        return None if gap == want else f"gap landed at {gap}, expected {want}"
+    sides = tuple(normalize_padding(getattr(node, "padding", 0)))
+    wanted = tuple(int(expected[side]) for side in ("left", "top", "right", "bottom"))
+    return None if sides == wanted else f"padding landed at {sides}, expected {wanted}"
+
+
+def _check_preset(node: Any, keyword: str, spelled: str) -> Optional[str]:
+    """Whether ``node``'s ``keyword`` is the preset named ``spelled`` (``filled s``). An empty name checks nothing."""
+    from .presets import family_of, value_of
+
+    family = family_of(node)
+    if not spelled or family is None:
+        return None
+    name, _sep, size = spelled.partition(" ")
+    if getattr(node, keyword, None) == value_of(family, name, size or None):
+        return None
+    return f"{keyword} is not {spelled} after the reload"
 
 
 def _check_text(node: Any, text: str) -> Optional[str]:
@@ -1321,11 +1580,14 @@ __all__ = [
     "EditLog",
     "Refusal",
     "SNAP_BAND",
+    "Preset",
     "SpanEdit",
+    "Spacing",
     "Value",
     "apply_spans",
     "cell_refusal",
     "children_list",
+    "companion_name",
     "discarded_keywords",
     "grid_item_name",
     "host_child_refusal",
@@ -1337,6 +1599,11 @@ __all__ = [
     "plan_keywords",
     "plan_move",
     "plan_move_across",
+    "plan_preset",
+    "plan_spacing",
+    "spell_spacing",
     "still_applies",
     "written_alignment",
+    "written_preset",
+    "written_spacing",
 ]

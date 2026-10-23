@@ -124,6 +124,6 @@ sent or not, and come back with the mode. The line at the centre says
 
 ## Next Steps
 
-- [Layout edit mode](layout_edit_mode.md) — fix a size, an order or an
-  alignment yourself, by dragging.
+- [Layout edit mode](layout_edit_mode.md) — fix a size, an order, a spacing
+  or a style yourself, on the screen.
 - [With a coding agent](index.md) — the section overview.

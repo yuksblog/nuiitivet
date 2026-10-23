@@ -6,16 +6,18 @@ corner drag resolves to a size (:mod:`.landing`); a body drag to a place
 among the siblings, a cell or another container (:mod:`.reorder`), or, when
 the widget keeps its place, to its container's alignment (:mod:`.align`). A
 release writes it into the call that built the widget (:mod:`.source_edit`),
-and the hot reload applies it. ``Delete`` removes the selection's expression
-and ``Enter`` edits its text literal the same way. Every release writes, so
-``Ctrl+Z`` / ``Ctrl+Shift+Z`` are the way back.
+and the hot reload applies it. A selected container carries handles for its
+``padding`` and ``gap`` (:mod:`.spacing`), and ``V`` lists the style presets
+a widget can take (:mod:`.presets`). ``Delete`` removes the selection's
+expression and ``Enter`` edits its text literal the same way. Every release
+writes, so ``Ctrl+Z`` / ``Ctrl+Shift+Z`` are the way back.
 """
 
 from __future__ import annotations
 
 import logging
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Callable, Optional, Union
 
 from nuiitivet._interaction.perception import ancestors, global_visual_rect
@@ -25,20 +27,25 @@ from nuiitivet.layout.grid import Grid
 from nuiitivet.layout.stack import Stack
 from nuiitivet.widgets.text_editing import TextEditingValue
 
-from . import align, landing, reorder
+from . import align, landing, reorder, spacing, toolbar
 from .gesture import accel_held, child_toward, chord_held, invalidate, parent_of, pick, travelled, weak
 from .hud import SEPARATOR, Placement, Splash
-from .inline_field import InlineField, Slot
+from .inline_field import InlineField, Slot, measure
+from .presets import Family, family_of
+from .toolbar import Box, Toolbar
 from .snapshot import Path, path_of, widgets_by_path
 from .source import Frame, construction_frame, site_owner, widgets_built_at
 from .source_edit import (
     SNAP_BAND,
     Edit,
     EditLog,
+    Preset,
     Refusal,
+    Spacing,
     Value,
     cell_refusal,
     children_list,
+    companion_name,
     discarded_keywords,
     grid_item_name,
     host_child_refusal,
@@ -49,9 +56,14 @@ from .source_edit import (
     plan_keywords,
     plan_move,
     plan_move_across,
+    plan_preset,
+    plan_spacing,
     plan_text,
+    spell_spacing,
     text_literal,
     written_alignment,
+    written_preset,
+    written_spacing,
 )
 
 logger = logging.getLogger(__name__)
@@ -78,6 +90,10 @@ _DOUBLE_CLICK = 0.4
 # The keys a drag answers to: under the left hand while the right holds the
 # mouse. During a corner drag each moves the grabbed corner one pixel.
 _NUDGE_KEYS = {"w": (0.0, -1.0), "a": (-1.0, 0.0), "s": (0.0, 1.0), "d": (1.0, 0.0)}
+# What a select box shows for a value the source does not spell as a preset.
+_CUSTOM = "custom"
+# The labels of the select boxes, by what they write.
+_BOX_LABELS = {"style": "style", "size": "size", "type_scale": "type scale"}
 
 
 @dataclass
@@ -87,7 +103,8 @@ class Ghost:
     A resize's ghost is a ``"rect"``, the proposed one. A reorder's is a
     ``"line"`` -- the insertion line, given as a rect with no thickness on the
     axis it crosses -- under a ``"wash"`` over the list the child would land
-    in; in a grid the line is a ``"cell"``, the one it would take.
+    in; in a grid the line is a ``"cell"``, the one it would take. A spacing
+    drag's is a ``"band"``, the padding or gap at its proposed thickness.
     """
 
     rect: Rect
@@ -113,6 +130,47 @@ class _Editing:
     node: Callable[[], Any]
     field: InlineField
     slot: Slot
+
+
+@dataclass
+class _Spacing:
+    node: Any
+    handle: spacing.Handle
+    # The value as the source spells it, ``None`` when the keyword is absent;
+    # and as the live widget holds it, every side or the gap.
+    written: Optional[Spacing]
+    sides: tuple[int, int, int, int]
+    gap: int
+    start: tuple[float, float]
+    # Every widget built from the same site, the held one included.
+    instances: list[Any]
+    # How many padding handles the selection shows: the shape the release writes.
+    count: int
+    value: int = 0
+    snap: bool = True
+    pointer: tuple[float, float] = (0.0, 0.0)
+    nudged: bool = False
+
+    @property
+    def proposed(self) -> Spacing:
+        """The value the release writes: the gap, or the padding in the shape its handles stand for."""
+        if self.handle.keyword == "gap":
+            return self.value
+        return spacing.respelled(self.sides, self.handle.side, self.value, self.count)
+
+
+@dataclass
+class _Presets:
+    """What the source says about the selection's presets, read once per selection."""
+
+    family: Family
+    # The preset class as the source spells it beside the widget, or why it
+    # cannot be spelled there.
+    base: Union[str, Refusal]
+    # The preset written; ``None`` when the keyword is absent; a refusal when
+    # the value is not a preset -- shown as ``custom``, and overwritten by a
+    # pick.
+    written: Union[Preset, None, Refusal]
 
 
 @dataclass
@@ -215,7 +273,7 @@ class LayerList:
     own: Optional[int]
 
 
-_Drag = Union[_Resize, _Move]
+_Drag = Union[_Resize, _Move, _Spacing]
 
 
 class LayoutEditMode:
@@ -257,6 +315,18 @@ class LayoutEditMode:
         self._editing: Optional[_Editing] = None
         # The last click's time and target, so a second one can open its text.
         self._last_click: Optional[tuple[float, Callable[[], Any]]] = None
+        # The spacing handle under the pointer, for the overlay to tint its region.
+        self._handle: Optional[spacing.Handle] = None
+        # The padding shape the selection shows, by the widget it was read or
+        # clicked for; another selection reads its own.
+        self._shape: Optional[tuple[Callable[[], Any], int]] = None
+        # The selection's presets as the source has them, by the widget they
+        # were read for.
+        self._presets: Optional[tuple[Callable[[], Any], _Presets]] = None
+        # The toolbar box whose list is open, and the row highlighted in it.
+        self._menu: Optional[tuple[int, int]] = None
+        # The window's size as of the last event, which places the toolbar.
+        self._window: tuple[float, float] = (0.0, 0.0)
 
     # --- state for the overlay -------------------------------------------
 
@@ -286,6 +356,96 @@ class LayoutEditMode:
         return TextEditor(editing.slot.moved((rect[0], rect[1])), editing.field.value)
 
     @property
+    def handles(self) -> list[spacing.Handle]:
+        """The spacing handles on the candidate, the selection or else the hover; none during another drag.
+
+        The one under the pointer, or in hand, is filled along with every
+        handle that moves with it. While one is held, those are where the
+        drag has taken them.
+        """
+        drag = self._drag
+        if isinstance(drag, _Spacing):
+            found = spacing.handles(drag.node, drag.count, (drag.handle, drag.value))
+            return _lit(found, drag.handle, drag.count)
+        candidate = self.candidate
+        if candidate is None or drag is not None:
+            return []
+        count = self._shape_of(candidate)
+        return _lit(spacing.handles(candidate, count), self._handle, count)
+
+    @property
+    def held(self) -> Optional[spacing.Handle]:
+        """The handle a drag holds, where the drag has taken it, or ``None``."""
+        drag = self._drag
+        if not isinstance(drag, _Spacing):
+            return None
+        moved = spacing.moved(drag.node, drag.handle, drag.value, drag.count)
+        return moved[0] if moved is not None else drag.handle
+
+    @property
+    def handle(self) -> Optional[tuple[spacing.Handle, list[Rect]]]:
+        """The handle under the pointer and the bands it changes, or ``None``; none while a drag is in flight."""
+        candidate, handle = self.candidate, self._handle
+        if candidate is None or handle is None or self._drag is not None:
+            return None
+        region = spacing.region(candidate, handle, self._shape_of(candidate))
+        return (handle, region) if region else None
+
+    def _shape_of(self, node: Any) -> int:
+        """How many padding handles ``node`` shows: as clicked, else as its source spells the padding.
+
+        Read from the source once per selection, since the handles are
+        asked for at every paint.
+        """
+        cached = self._shape
+        if cached is not None and cached[0]() is node:
+            return cached[1]
+        located = _source_of(node, "this widget")
+        written = written_spacing(located[1], located[0], "padding") if not isinstance(located, Refusal) else None
+        count = spacing.shape_of(written if not isinstance(written, Refusal) else None)
+        self._shape = (weak(node) or (lambda: None), count)
+        return count
+
+    @property
+    def toolbar(self) -> Optional[Toolbar]:
+        """The bar over the selection: its name and a select box per preset. ``None`` when it has no presets."""
+        selected = self.selected
+        presets = self._presets_of(selected) if selected is not None else None
+        anchor = global_visual_rect(selected) if presets is not None else None
+        if presets is None or anchor is None:
+            return None
+        family, written = presets.family, presets.written
+        boxes: list[Box] = []
+        if isinstance(written, Refusal):
+            name, size = _CUSTOM, _CUSTOM
+            current: Optional[int] = None
+        elif written is None:
+            name, size = f"{family.default[0]} (default)", f"{family.default[1]} (default)"
+            current = None
+        else:
+            name = written.name
+            size = written.size if written.size is not None else f"{family.default[1]} (default)"
+            current = family.names.index(name) if name in family.names else None
+        boxes.append(Box(_BOX_LABELS[family.keyword], name, family.names, current))
+        if family.sizes:
+            written_size = written.size if isinstance(written, Preset) else None
+            at = family.sizes.index(written_size) if written_size in family.sizes else None
+            boxes.append(Box(_BOX_LABELS["size"], size, family.sizes, at))
+        open_box, highlighted = self._menu if self._menu is not None else (None, 0)
+        return Toolbar(_type_name(selected), tuple(boxes), anchor, open_box, highlighted)
+
+    @property
+    def caption(self) -> Optional[str]:
+        """What the caption over the candidate says: its type, or ``None`` with no candidate.
+
+        The type alone: it tells a button from the label it builds, which
+        is what a drag needs to know, and nothing in this mode is done by
+        name.
+        """
+        candidate = self.candidate
+        return _type_name(candidate) if candidate is not None else None
+
+    @property
     def help(self) -> bool:
         """Whether the sheet listing every gesture is shown: while ``H`` is held."""
         return self._help
@@ -304,16 +464,22 @@ class LayoutEditMode:
     def selected(self) -> Optional[Any]:
         """The widget a click chose, walked by ``W`` / ``S``.
 
-        Held only while the pointer stays on it: a selection exists so a
-        container can be grabbed through its children, and moving off it is
-        how it is released.
+        Kept until another click chooses something else, or nothing. The
+        toolbar is its, and so are ``Enter`` and ``Delete``.
         """
         return self._selected() if self._selected is not None else None
 
     @property
     def candidate(self) -> Optional[Any]:
-        """The widget a drag would edit: the selection, else the hover."""
-        return self.selected or self.hovered
+        """The widget a drag would edit: the selection while the pointer is on it, else the hover.
+
+        A selection exists so a container can be grabbed through its
+        children; off it, the pointer means what it is over.
+        """
+        selected, pointer = self.selected, self._pointer
+        if selected is not None and (pointer is None or _on(selected, *pointer)):
+            return selected
+        return self.hovered
 
     @property
     def dragging(self) -> bool:
@@ -327,6 +493,8 @@ class LayoutEditMode:
             return self._resize_ghosts(self._drag)
         if isinstance(self._drag, _Move):
             return self._move_ghosts(self._drag)
+        if isinstance(self._drag, _Spacing):
+            return self._spacing_ghosts(self._drag)
         if self._edits.pending is None:
             self._ghosts = []
         return list(self._ghosts)
@@ -375,6 +543,9 @@ class LayoutEditMode:
         if self._editing is not None:
             self._edit_key(app, key, modifier_keys)
             return True
+        if self._menu is not None:
+            self._menu_key(app, key)
+            return True
         if key == "h":
             if not self._help:
                 self._help = True
@@ -383,6 +554,11 @@ class LayoutEditMode:
         if key == "escape":
             if self._drag is not None:
                 self._drag = None
+                invalidate(app)
+            elif self.selected is not None:
+                # The selection, and the bar with it, go first; the mode
+                # only on a second press.
+                self._select(None, None)
                 invalidate(app)
             else:
                 self.leave(app)
@@ -397,6 +573,8 @@ class LayoutEditMode:
             self._open_editor(app)
         elif isinstance(self._drag, _Resize) and key in _NUDGE_KEYS:
             self._nudge(app, self._drag, key, modifier_keys)
+        elif isinstance(self._drag, _Spacing) and key in _NUDGE_KEYS:
+            self._nudge_spacing(app, self._drag, key, modifier_keys)
         elif isinstance(self._drag, _Move) and self._drag.stack is not None:
             self._pick_layer(app, self._drag, key)
         elif key == "w":
@@ -471,6 +649,9 @@ class LayoutEditMode:
         self._drag = None
         self._hover = None
         self._editing = None
+        self._menu = None
+        self._presets = None
+        self._handle = None
         self._last_click = None
         self._select(None, None)
 
@@ -489,9 +670,12 @@ class LayoutEditMode:
         app = self._app() if self._app is not None else None
         if not self._active or app is None:
             return
-        # The field held a widget of the old tree; the text it showed is gone
-        # with it.
+        # The field and the list held a widget of the old tree; what they
+        # showed is gone with it.
         self._editing = None
+        self._menu = None
+        self._presets = None
+        self._handle = None
         root = getattr(app, "root", None)
         selected = None
         if root is not None and self._selected_path is not None:
@@ -517,8 +701,14 @@ class LayoutEditMode:
         self._clear_notice()
         # A click away from the field abandons it; only Enter writes.
         self._editing = None
+        if self._press_toolbar(app, float(x), float(y)):
+            return True
         candidate = self.candidate
         if candidate is not None:
+            handle = spacing.handle_at(candidate, float(x), float(y), self._shape_of(candidate))
+            if handle is not None:
+                self._begin_spacing(app, candidate, handle, float(x), float(y), modifier_keys)
+                return True
             corner = _corner_at(candidate, float(x), float(y))
             if corner is not None:
                 self._begin_resize(app, candidate, corner, float(x), float(y), modifier_keys)
@@ -540,6 +730,9 @@ class LayoutEditMode:
             return True
         if isinstance(drag, _Move):
             self._finish_move(app, drag, float(x), float(y))
+            return True
+        if isinstance(drag, _Spacing):
+            self._finish_spacing(app, drag, float(x), float(y), modifier_keys)
             return True
         if press is None:
             return True
@@ -569,18 +762,129 @@ class LayoutEditMode:
         if isinstance(self._drag, _Move):
             self._update_move(app, self._drag, float(x), float(y))
             return True
+        if isinstance(self._drag, _Spacing):
+            self._update_spacing(app, self._drag, float(x), float(y), modifier_keys)
+            return True
         if self._press is not None:
             return True
-        selected = self.selected
-        if selected is not None and not _on(selected, float(x), float(y)):
-            self._select(None, None)
-            invalidate(app)
+        if self._hover_toolbar(app, float(x), float(y)):
+            return True
         candidate = _target(app, float(x), float(y))
+        selected = self.selected
+        grab = selected if selected is not None and _on(selected, float(x), float(y)) else candidate
+        handle = spacing.handle_at(grab, float(x), float(y), self._shape_of(grab)) if grab is not None else None
+        if handle != self._handle:
+            self._handle = handle
+            invalidate(app)
         if candidate is self.hovered:
             return True
         self._hover = weak(candidate)
         invalidate(app)
         return True
+
+    # --- the toolbar --------------------------------------------------------
+
+    def _press_toolbar(self, app: Any, x: float, y: float) -> bool:
+        """A press on the bar: open or close a box's list, write the row under the pointer, or nothing on the bar.
+
+        A press anywhere else closes an open list. ``True`` when the bar took the press.
+        """
+        self._window = _window_of(app)
+        bar = self.toolbar
+        found = toolbar.hit(bar, measure, self._window, x, y) if bar is not None else None
+        if bar is None or found is None:
+            self._menu = None
+            return False
+        what, index = found
+        if what == "row":
+            open_box = self._menu[0] if self._menu is not None else 0
+            self._menu = None
+            self._commit_box(app, open_box, index)
+        elif what == "box":
+            self._menu = None if self._menu is not None and self._menu[0] == index else (index, _row_of(bar, index))
+        invalidate(app)
+        return True
+
+    def _hover_toolbar(self, app: Any, x: float, y: float) -> bool:
+        """Over a box or the open list: highlight the row under the pointer, and hover nothing beneath."""
+        self._window = _window_of(app)
+        bar = self.toolbar
+        found = toolbar.hit(bar, measure, self._window, x, y) if bar is not None else None
+        if found is None:
+            return False
+        if found[0] == "row" and self._menu is not None and self._menu[1] != found[1]:
+            self._menu = (self._menu[0], found[1])
+            invalidate(app)
+        if self._hover is not None or self._handle is not None:
+            self._hover = None
+            self._handle = None
+            invalidate(app)
+        return True
+
+    def _menu_key(self, app: Any, key: str) -> None:
+        """One key on an open list: a step, a write, or a close."""
+        assert self._menu is not None
+        open_box, highlighted = self._menu
+        bar = self.toolbar
+        if bar is None:
+            self._menu = None
+        elif key == "escape":
+            self._menu = None
+        elif key in ("w", "up"):
+            self._menu = (open_box, max(0, highlighted - 1))
+        elif key in ("s", "down"):
+            self._menu = (open_box, min(len(bar.boxes[open_box].options) - 1, highlighted + 1))
+        elif key == "enter":
+            self._menu = None
+            self._commit_box(app, open_box, highlighted)
+        invalidate(app)
+
+    def _presets_of(self, node: Any) -> Optional[_Presets]:
+        """What the source says about ``node``'s presets, or ``None`` for a widget with none.
+
+        Read once per selection, since the toolbar is asked for at every
+        paint. A source that cannot be located leaves the toolbar out.
+        """
+        cached = self._presets
+        if cached is not None and cached[0]() is node:
+            return cached[1]
+        family = family_of(node)
+        located = _source_of(node, "this widget")
+        if family is None or isinstance(located, Refusal):
+            return None
+        frame, text = located
+        written = written_preset(text, frame, family.keyword, family.companion)
+        base = written.base if isinstance(written, Preset) else companion_name(text, frame, family.companion)
+        presets = _Presets(family, base, written)
+        self._presets = (weak(node) or (lambda: None), presets)
+        return presets
+
+    def _commit_box(self, app: Any, box: int, row: int) -> None:
+        """Write the preset the row of ``box`` stands for, the other box's value kept."""
+        node = self.selected
+        presets = self._presets_of(node) if node is not None else None
+        if node is None or presets is None:
+            return
+        family, written = presets.family, presets.written
+        if isinstance(presets.base, Refusal):
+            self._notice = presets.base.reason
+            invalidate(app)
+            return
+        name = written.name if isinstance(written, Preset) and written.name in family.names else family.default[0]
+        size = written.size if isinstance(written, Preset) else None
+        size_keyword = written.size_keyword if isinstance(written, Preset) else False
+        if box == 0:
+            name = family.names[row]
+        else:
+            size = family.sizes[row]
+        preset = Preset(presets.base, name, size, family.called, size_keyword and size is not None)
+        rect = global_visual_rect(node) or (0.0, 0.0, 0.0, 0.0)
+        named = _named(name, size)
+        ghost = Ghost(rect, f"{family.keyword} {named}")
+        if self._write(app, self._plan_preset(node, presets, preset, named), [ghost]):
+            # The widget keeps its path through the reload, so it stays selected.
+            self._select(node, getattr(app, "root", None))
+        invalidate(app)
 
     # --- the resize drag --------------------------------------------------
 
@@ -1212,6 +1516,141 @@ class LayoutEditMode:
         self._write(app, self._plan_text(node, text), [Ghost(rect, f'text "{text}"')])
         invalidate(app)
 
+    # --- the spacing drag ---------------------------------------------------
+
+    def _begin_spacing(self, app: Any, node: Any, handle: spacing.Handle, x: float, y: float, mods: int) -> None:
+        """Take hold of a padding side or a gap. A value the source cannot give is a badge, and no drag."""
+        located = _source_of(node, "this widget")
+        if isinstance(located, Refusal):
+            self._notice = located.reason
+            invalidate(app)
+            return
+        frame, text = located
+        written = written_spacing(text, frame, handle.keyword)
+        if isinstance(written, Refusal):
+            self._notice = written.reason
+            invalidate(app)
+            return
+        root = getattr(app, "root", None)
+        instances = widgets_built_at(root, frame, type(node).__name__) if root is not None else []
+        sides, gap = spacing.sides_of(node), spacing.gap_of(node)
+        drag = _Spacing(node, handle, written, sides, gap, (x, y), instances or [node], self._shape_of(node))
+        self._update_spacing(app, drag, x, y, mods)
+        self._drag = drag
+
+    def _update_spacing(self, app: Any, drag: _Spacing, x: float, y: float, mods: int) -> None:
+        if drag.nudged:
+            x, y = drag.pointer
+        else:
+            drag.pointer = (x, y)
+        drag.snap = not (resolve_modifiers(int(mods)) & MOD_ALT) and not drag.nudged
+        base = drag.gap if drag.handle.keyword == "gap" else drag.sides[spacing.SIDES.index(drag.handle.side)]
+        drag.value = spacing.landing(drag.handle, base, x - drag.start[0], y - drag.start[1], snap=drag.snap)
+        invalidate(app)
+
+    def _nudge_spacing(self, app: Any, drag: _Spacing, key: str, mods: int) -> None:
+        """Move the held side or gap one pixel; from the first press the keys are the pointer, off the grid."""
+        dx, dy = _NUDGE_KEYS[key]
+        px, py = drag.pointer
+        drag.pointer = (px + dx, py + dy)
+        drag.nudged = True
+        self._update_spacing(app, drag, px + dx, py + dy, mods)
+
+    def _finish_spacing(self, app: Any, drag: _Spacing, x: float, y: float, mods: int) -> None:
+        self._update_spacing(app, drag, x, y, mods)
+        if not drag.nudged and not travelled(drag.start, x, y):
+            # A click on a padding handle turns the shape: one handle, two, four.
+            if drag.handle.keyword == "padding":
+                self._shape = (weak(drag.node) or (lambda: None), spacing.next_shape(drag.count))
+                self._handle = spacing.handle_at(drag.node, x, y, spacing.next_shape(drag.count))
+            invalidate(app)
+            return
+        if self._write(app, self._plan_spacing(drag), self._spacing_ghosts(drag)):
+            # The container keeps its path, so it stays selected for the next handle.
+            self._select(drag.node, getattr(app, "root", None))
+        invalidate(app)
+
+    def _plan_spacing(self, drag: _Spacing) -> Edit | Refusal:
+        """The edit a finished spacing drag asks for, or why there is none."""
+        keyword, proposed = drag.handle.keyword, drag.proposed
+        current: Spacing = drag.gap if keyword == "gap" else drag.sides
+        if _measured(keyword, proposed) == _measured(keyword, current):
+            return Refusal("unchanged")
+        located = _source_of(drag.node, "this widget")
+        if isinstance(located, Refusal):
+            return located
+        frame, text = located
+        spans = plan_spacing(text, frame, keyword, proposed)
+        if isinstance(spans, Refusal):
+            return spans
+        return Edit(
+            kind="spacing",
+            file=frame.file,
+            site=frame,
+            parent_layout="",
+            before=_measured(keyword, current),
+            after={keyword: spell_spacing(proposed)},
+            expected=_measured(keyword, proposed),
+            instances=len(drag.instances),
+            spans=spans,
+            widget=type(drag.node).__name__,
+        )
+
+    def _spacing_ghosts(self, drag: _Spacing) -> list[Ghost]:
+        """The bands the spacing will take, one per side that moves, and what a gap moves.
+
+        One set per instance; the held side's band carries the caption.
+        After a gap, every later child is drawn where the new gap puts it.
+        """
+        ghosts: list[Ghost] = []
+        caption = _spacing_caption(drag)
+        for node in drag.instances:
+            own = node is drag.node
+            moved = spacing.moved(node, drag.handle, drag.value, drag.count)
+            if moved is not None:
+                bands = moved[1]
+                ghosts.append(Ghost(bands[0], caption if own else "", shape="band"))
+                ghosts.extend(Ghost(band, "", shape="band") for band in bands[1:])
+            if drag.handle.keyword == "padding":
+                continue
+            shift = drag.value - drag.gap
+            for index, child in enumerate(reorder.siblings(node)):
+                child_rect = global_visual_rect(child)
+                if child_rect is None or index == 0:
+                    continue
+                x, y, w, h = child_rect
+                shifted = (x + shift * index, y, w, h) if drag.handle.side == "width" else (x, y + shift * index, w, h)
+                ghosts.append(Ghost(shifted, ""))
+        return ghosts
+
+    def _plan_preset(self, node: Any, presets: _Presets, preset: Preset, named: str) -> Edit | Refusal:
+        """The edit a pick asks for, or why there is none. A value that is not a preset is overwritten."""
+        family, written = presets.family, presets.written
+        before = _named(written.name, written.size) if isinstance(written, Preset) else ""
+        if before == named:
+            return Refusal("unchanged")
+        located = _source_of(node, "this widget")
+        if isinstance(located, Refusal):
+            return located
+        frame, text = located
+        spans = plan_preset(text, frame, family.keyword, preset)
+        if isinstance(spans, Refusal):
+            return spans
+        root = self._root()
+        instances = widgets_built_at(root, frame, type(node).__name__) if root is not None else []
+        return Edit(
+            kind="preset",
+            file=frame.file,
+            site=frame,
+            parent_layout="",
+            before={family.keyword: before},
+            after={family.keyword: named},
+            expected={},
+            instances=len(instances) or 1,
+            spans=spans,
+            widget=type(node).__name__,
+        )
+
     def _plan_text(self, node: Any, value: str) -> Edit | Refusal:
         """The edit the field asks for, or why there is none."""
         located = _source_of(node, "this widget")
@@ -1523,6 +1962,46 @@ def _cell_caption(drag: _Move, grid: Any, cell: reorder.Cell, instances: int, in
     return SEPARATOR.join(parts)
 
 
+def _lit(handles: list[spacing.Handle], under: Optional[spacing.Handle], count: int) -> list[spacing.Handle]:
+    """``handles`` with every one that moves with ``under`` filled; all outlined when nothing is under the pointer."""
+    if under is None:
+        return handles
+    return [replace(h, filled=True) if h.moves_with(under, count) else h for h in handles]
+
+
+def _spacing_caption(drag: _Spacing) -> str:
+    """The value that will be written, the instance count past one, and whether snapping is off."""
+    parts = [f"{drag.handle.keyword} {spell_spacing(drag.proposed)}"]
+    if len(drag.instances) > 1:
+        parts.append(f"{len(drag.instances)} widgets")
+    if not drag.snap:
+        parts.append("no snap")
+    return SEPARATOR.join(parts)
+
+
+def _measured(keyword: str, value: Spacing) -> dict[str, int]:
+    """What the reload check reads back: the gap, or every padding side."""
+    if keyword == "gap":
+        return {"gap": int(value) if isinstance(value, int) else 0}
+    return dict(zip(spacing.SIDES, spacing.every_side(value)))
+
+
+def _window_of(app: Any) -> tuple[float, float]:
+    """The window's size, ``(0, 0)`` when the app does not say."""
+    return (float(getattr(app, "width", 0) or 0), float(getattr(app, "height", 0) or 0))
+
+
+def _row_of(bar: Toolbar, box: int) -> int:
+    """The row a box's list opens on: the one the source holds, else the first."""
+    current = bar.boxes[box].current
+    return current if current is not None else 0
+
+
+def _named(name: str, size: Optional[str]) -> str:
+    """A preset for a caption, a badge and the reload check: ``filled s``, or the name alone."""
+    return f"{name} {size}" if size else name
+
+
 def _caption(drag: _Resize) -> str:
     """The landing values, the instance count past one, and whether snapping is off."""
     parts: list[str] = []
@@ -1598,13 +2077,20 @@ def _move_caption(drag: _Move) -> str:
 
 
 def _name(node: Any) -> str:
-    """A widget's type and its key or label, as ``describe_tree`` names it."""
+    """A widget's type and its key or label, as ``describe_tree`` names it; for a badge that tells siblings apart."""
     from .interaction import resolve_target
 
     identity = resolve_target(node)
     name = identity.get("key") or identity.get("label")
     head = identity.get("type", type(node).__name__)
     return f"{head} {name}" if name else str(head)
+
+
+def _type_name(node: Any) -> str:
+    """A widget's type as ``describe_tree`` names it."""
+    from .interaction import resolve_target
+
+    return str(resolve_target(node).get("type", type(node).__name__))
 
 
 def _target(app: Any, x: float, y: float) -> Optional[Any]:

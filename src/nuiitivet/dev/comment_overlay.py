@@ -57,6 +57,9 @@ _BADGE_INK = (32, 24, 0)
 
 _BRACKET_LEN = 12.0
 _BRACKET_WIDTH = 2.5
+#: Characters of a key or label the caption shows before cutting it short; a
+#: Text's label is its whole text, which is on screen already.
+LABEL_MAX = 24
 Rect = tuple[float, ...]
 #: The Material Symbols glyph beside the number once the agent has answered, by outcome.
 GLYPHS = {
@@ -471,11 +474,13 @@ def _paint_jump(
 
 
 def describe_node(node: Any, *, site: bool = False) -> str:
-    """Name a widget the way ``describe_tree`` would; with ``site``, add where it was built."""
+    """Name a widget the way ``describe_tree`` would, a long label cut short; with ``site``, add where it was built."""
     from nuiitivet.dev.interaction import resolve_target
 
     identity = resolve_target(node)
     name = identity.get("key") or identity.get("label")
+    if name and len(name) > LABEL_MAX:
+        name = name[: LABEL_MAX - 1] + "…"
     head = identity.get("type", type(node).__name__)
     label = f"{head}  {name}" if name else str(head)
     if not site:
@@ -522,6 +527,7 @@ def _paint_hud(
 __all__ = [
     "AWAITING_GLYPH",
     "GLYPHS",
+    "LABEL_MAX",
     "ICONS",
     "SEND_GLYPH",
     "describe_node",

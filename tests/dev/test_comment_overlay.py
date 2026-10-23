@@ -300,6 +300,16 @@ def test_the_caption_omits_the_location_when_none_was_recorded() -> None:
     assert SEPARATOR not in so.describe_node(leaf, site=True)
 
 
+def test_the_caption_cuts_a_long_label_short() -> None:
+    """A Text's label is its whole text, which is on screen already; the caption keeps its head."""
+    short = Text("Drag a handle")
+    long = Text("Drag a spacing handle, or click a button for its bar.")
+
+    assert so.describe_node(short).endswith("  Drag a handle")
+    assert so.describe_node(long).endswith("Drag a spacing handle, …")
+    assert len(so.describe_node(long).split("  ", 1)[1]) == so.LABEL_MAX
+
+
 def test_a_node_mark_paints_only_in_its_own_window(monkeypatch: pytest.MonkeyPatch) -> None:
     """The comment buffer is shared across windows; the rect must not ghost into
     windows that do not contain the node."""

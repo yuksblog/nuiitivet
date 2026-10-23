@@ -14,7 +14,7 @@ from typing import Any, Iterator
 
 import pytest
 
-from nuiitivet.dev import landing, source
+from nuiitivet.dev import landing
 from nuiitivet.dev.layout_edit_mode import LayoutEditMode
 from nuiitivet.dev.comment_mode import CommentMode
 from nuiitivet.dev.comments import Comments
@@ -37,7 +37,10 @@ from nuiitivet.layout.grid import Grid, GridItem
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.stack import Stack
 from nuiitivet.layout.uniform_flow import UniformFlow
+from nuiitivet.material.buttons import Button
+from nuiitivet.material.styles.button_style import ButtonStyle
 from nuiitivet.modifiers.border import border
+from nuiitivet.theme.type_scale import TypeScale
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.text import TextBase as Text
 
@@ -263,6 +266,43 @@ def build_flow_align():
 
 def build_uniform_align():
     return UniformFlow(children=[t("AAA"), small("BBB")], columns=2, width=300, item_alignment="start")
+
+
+def build_spaced():
+    return Column(children=[t("AAA"), t("BBB")], padding=8, gap=8)
+
+
+def build_pair_padding():
+    return Column(children=[t("AAA"), t("BBB")], padding=(8, 4), gap=8)
+
+
+def build_nested_spaced():
+    return Column(children=[Column(children=[t("AAA")], padding=8, gap=0)], gap=0)
+
+
+def build_bound_gap():
+    g = 8
+    return Column(children=[t("AAA"), t("BBB")], padding=8, gap=g)
+
+
+def build_unspaced():
+    return Column(children=[t("AAA"), t("BBB")])
+
+
+def build_button():
+    return Column(children=[Button("Go", style=ButtonStyle.filled("s"))], gap=0)
+
+
+def build_bare_button():
+    return Column(children=[Button("Go")], gap=0)
+
+
+def build_custom_button():
+    return Column(children=[Button("Go", style=ButtonStyle.filled("s").copy_with(elevation=2))], gap=0)
+
+
+def build_text_role():
+    return Column(children=[Text("AAA", width=100, height=40, type_scale=TypeScale.BODY_MEDIUM)], gap=0)
 '''
 
 _SIDE = '''
@@ -295,23 +335,6 @@ class _App:
         self.tree_repaints += int(content)
 
 
-@pytest.fixture
-def app_file(tmp_path: Path) -> Iterator[Path]:
-    """A user module on disk, imported with site capture on."""
-    path = tmp_path / "layout_app.py"
-    path.write_text(_APP, encoding="utf-8")
-    (tmp_path / "layout_side.py").write_text(_SIDE, encoding="utf-8")
-    sys.path.insert(0, str(tmp_path))
-    source.install()
-    try:
-        yield path
-    finally:
-        source.uninstall()
-        sys.path.remove(str(tmp_path))
-        sys.modules.pop("layout_app", None)
-        sys.modules.pop("layout_side", None)
-
-
 def _load(path: Path) -> Any:
     """Import ``path`` as ``layout_app`` from its text, so an edit that kept the
     file's size and mtime second is not served from a stale bytecode cache."""
@@ -335,6 +358,7 @@ class _Session:
         self.root = self.host.__enter__().root
         self.host.layout(width, 200)
         self.app = _App(self.root)
+        self.app.width, self.app.height = width, 200
         self.app._layout_edit_mode = self.mode
         self.mode.on_key_press(self.app, "e", _CHORD)
 
@@ -484,9 +508,9 @@ def test_a_click_selects_and_the_arrows_walk_the_tree(session: _Session) -> None
     assert session.mode.selected is session.leaf()
 
 
-def test_moving_off_the_selection_releases_it_and_hover_takes_over(session: _Session) -> None:
-    """A selection exists to reach a container through its children; leaving
-    it is how it ends, so hover never gets stuck behind a click."""
+def test_moving_off_the_selection_keeps_it_and_hover_drives_the_candidate(session: _Session) -> None:
+    """The selection is the toolbar's and Enter's until another click; off it,
+    the pointer means what it is over, so hover never gets stuck behind a click."""
     session.hover(50, 20)
     session.mode.on_mouse_press(session.app, 50, 20)
     session.mode.on_mouse_release(session.app, 50, 20)
@@ -494,8 +518,12 @@ def test_moving_off_the_selection_releases_it_and_hover_takes_over(session: _Ses
 
     session.hover(200, 150)
 
-    assert session.mode.selected is None
-    assert session.mode.candidate is session.column, "hover drives the candidate again"
+    assert session.mode.selected is session.leaf()
+    assert session.mode.candidate is session.column, "hover drives the candidate"
+
+    session.mode.on_mouse_press(session.app, 400, 300)
+    session.mode.on_mouse_release(session.app, 400, 300)
+    assert session.mode.selected is None, "a click on nothing clears it"
 
 
 def test_the_selection_survives_the_pointer_crossing_its_children(session: _Session) -> None:
@@ -512,7 +540,7 @@ def test_the_selection_survives_the_pointer_crossing_its_children(session: _Sess
     assert session.mode.candidate is session.column, "the corner grab zone counts as on it"
 
     session.hover(50, 260)
-    assert session.mode.selected is None
+    assert session.mode.selected is session.column and session.mode.candidate is None
 
 
 # --- the corner drag ------------------------------------------------------------
@@ -878,13 +906,14 @@ def test_a_body_drag_along_a_row_reorders_too(app_file: Path) -> None:
 
 def test_a_container_wrapped_by_a_modifier_moves_as_its_wrapped_element(app_file: Path) -> None:
     """Pressing a Column's own padding grabs the Column; the ``.modifier()`` box around it is
-    the list element, so the whole expression moves. The pointer lands past the
-    other Column, over the Row, since inside it the drag would read as a move
-    into it."""
+    the list element, so the whole expression moves. The press keeps clear of
+    the edge's midpoint, where the padding handle is. The pointer lands past
+    the other Column, over the Row, since inside it the drag would read as a
+    move into it."""
     s = _Session(app_file, "build_wrapped")
     try:
-        s.hover(60, 5)
-        s.drag_body((60, 5), (250, 5))
+        s.hover(20, 5)
+        s.drag_body((20, 5), (250, 5))
 
         text = s.text()
         line = text[text.index("return Row", text.index("def build_wrapped")) :].splitlines()[0]
@@ -2324,3 +2353,419 @@ def test_the_reload_check_finds_the_child_where_the_alignment_put_it(app_file: P
             assert s.edits.after_reload([host.root]) is None
     finally:
         s.close()
+
+
+# --- the spacing handles ---------------------------------------------------------
+
+
+@pytest.fixture
+def spaced(app_file: Path) -> Iterator[_Session]:
+    """``build_spaced``: a column of two tiles with ``padding=8, gap=8``, filling 300 by 200, its column selected."""
+    s = _Session(app_file, "build_spaced")
+    try:
+        _select(s, 50, 20)
+        s.mode.on_key_press(s.app, "w", 0)
+        assert s.mode.selected is s.column
+        yield s
+    finally:
+        s.close()
+
+
+def _selected_column(app_file: Path, factory: str) -> _Session:
+    s = _Session(app_file, factory)
+    _select(s, 50, 20)
+    s.mode.on_key_press(s.app, "w", 0)
+    assert s.mode.selected is s.column
+    return s
+
+
+def test_handles_show_on_the_hover_and_stay_on_the_selection(app_file: Path) -> None:
+    s = _Session(app_file, "build_spaced")
+    try:
+        assert s.mode.handles == [], "nothing under the pointer yet"
+        s.hover(50, 20)
+        assert [h.keyword for h in s.mode.handles] == ["padding"] * 4, "a Text takes a padding, never a gap"
+        _select(s, 50, 20)
+        assert [h.keyword for h in s.mode.handles] == ["padding"] * 4
+
+        s.mode.on_key_press(s.app, "w", 0)
+
+        kinds = [(h.keyword, h.side, h.index, h.filled) for h in s.mode.handles]
+        assert kinds == [
+            ("padding", "left", 0, False),
+            ("padding", "top", 0, False),
+            ("padding", "right", 0, False),
+            ("padding", "bottom", 0, False),
+            ("gap", "height", 0, False),
+        ], "all outlined until the pointer reaches one"
+        assert s.mode.handles[0].rect == (-3.0, 88.0, 6.0, 24.0), "on the column's left edge, mid-height"
+        assert s.mode.handles[2].rect == (297.0, 88.0, 6.0, 24.0), "on its right edge"
+        assert s.mode.handles[4].rect == (138.0, 49.0, 24.0, 6.0), "centred in the gap between the tiles"
+    finally:
+        s.close()
+
+
+def _filled(s: _Session) -> list[str]:
+    """The sides whose handles are filled: the ones that move with the handle under the pointer."""
+    return [h.side for h in s.mode.handles if h.keyword == "padding" and h.filled]
+
+
+def test_hovering_a_handle_fills_every_handle_that_moves_with_it_and_a_click_turns_how_many(spaced: _Session) -> None:
+    assert _filled(spaced) == []
+    spaced.hover(300, 100)
+    assert _filled(spaced) == ["left", "top", "right", "bottom"], "an int padding: every side moves"
+
+    spaced.mode.on_mouse_press(spaced.app, 300, 100)
+    spaced.mode.on_mouse_release(spaced.app, 300, 100)
+    assert _filled(spaced) == ["left", "right"], "a pair: the horizontal sides move"
+    hovered = spaced.mode.handle
+    assert hovered is not None and hovered[0].side == "right", "the right handle is still under the pointer"
+
+    spaced.mode.on_mouse_press(spaced.app, 300, 100)
+    spaced.mode.on_mouse_release(spaced.app, 300, 100)
+    assert _filled(spaced) == ["right"], "four: the side alone"
+
+    spaced.mode.on_mouse_press(spaced.app, 300, 100)
+    spaced.mode.on_mouse_release(spaced.app, 300, 100)
+    assert _filled(spaced) == ["left", "top", "right", "bottom"], "and round again"
+    assert spaced.mode.selected is spaced.column and spaced.reloads == []
+
+    spaced.hover(150, 100)
+    assert _filled(spaced) == [], "outlined again once the pointer leaves"
+
+
+def test_any_handle_turns_the_shape_and_drags_its_fellows_along(spaced: _Session) -> None:
+    spaced.hover(0, 100)
+    hovered = spaced.mode.handle
+    assert hovered is not None and hovered[0].side == "left"
+    assert len(hovered[1]) == 4, "it moves with every side"
+
+    spaced.mode.on_mouse_press(spaced.app, 0, 100)
+    spaced.mode.on_mouse_release(spaced.app, 0, 100)
+    assert _filled(spaced) == ["left", "right"]
+
+    spaced.mode.on_mouse_press(spaced.app, 0, 100)
+    spaced.mode.on_mouse_motion(spaced.app, -12, 100)
+    assert _filled(spaced) == ["left", "right"], "filled through the drag"
+    spaced.mode.on_mouse_release(spaced.app, -12, 100)
+
+    assert "padding=(20, 8), gap=8" in spaced.text(), "the left side is the pair's horizontal value"
+
+
+def test_every_gap_handle_fills_and_rides_along_since_a_gap_is_one_value(app_file: Path) -> None:
+    s = _selected_column(app_file, "build_list")
+    try:
+        s.hover(150, 40)
+        gaps = [h for h in s.mode.handles if h.keyword == "gap"]
+        assert [(h.index, h.filled) for h in gaps] == [(0, True), (1, True)]
+        hovered = s.mode.handle
+        assert hovered is not None and hovered[1] == [(0.0, 40.0, 300.0, 0.0)], "the hovered gap alone is the region"
+
+        s.mode.on_mouse_press(s.app, 150, 40)
+        s.mode.on_mouse_motion(s.app, 150, 52)
+        gaps = [h for h in s.mode.handles if h.keyword == "gap"]
+        assert [(h.rect, h.filled) for h in gaps] == [
+            ((138.0, 43.0, 24.0, 6.0), True),
+            ((138.0, 95.0, 24.0, 6.0), True),
+        ], "each gap handle sits in its gap at the new width, the later one moved on"
+        assert [(g.rect, g.shape) for g in s.mode.ghosts] == [
+            ((0.0, 40.0, 300.0, 12.0), "band"),
+            ((0.0, 92.0, 300.0, 12.0), "band"),
+            ((0.0, 52.0, 100.0, 40.0), "rect"),
+            ((0.0, 104.0, 100.0, 40.0), "rect"),
+        ]
+        s.mode.on_mouse_release(s.app, 150, 52)
+
+        assert "], gap=12)" in s.text()[s.text().index("def build_list") :].splitlines()[1]
+    finally:
+        s.close()
+
+
+def test_a_hovered_widgets_handle_can_be_dragged_without_a_click(app_file: Path) -> None:
+    s = _Session(app_file, "build_nested_spaced")
+    try:
+        s.hover(112, 28)
+        assert s.mode.selected is None and s.mode.hovered is s.column.children[0]
+        hovered = s.mode.handle
+        assert hovered is not None and hovered[0].side == "right"
+
+        s.drag_corner((112, 28), (124, 28))
+
+        assert 'Column(children=[t("AAA")], padding=20, gap=0)' in s.text()
+    finally:
+        s.close()
+
+
+def test_the_shape_starts_as_the_source_spells_the_padding(app_file: Path) -> None:
+    s = _selected_column(app_file, "build_pair_padding")
+    try:
+        s.hover(300, 100)
+        assert _filled(s) == ["left", "right"]
+        s.hover(150, 200)
+        assert _filled(s) == ["top", "bottom"]
+    finally:
+        s.close()
+
+
+def test_hovering_a_handle_names_the_band_it_changes(spaced: _Session) -> None:
+    spaced.hover(150, 52)
+    hovered = spaced.mode.handle
+    assert hovered is not None and hovered[0].keyword == "gap"
+    assert hovered[1] == [(0.0, 48.0, 300.0, 8.0)], "the gap, across the column"
+
+    spaced.hover(300, 100)
+    hovered = spaced.mode.handle
+    assert hovered is not None and hovered[0].side == "right"
+    assert hovered[1] == [
+        (0.0, 0.0, 8.0, 200.0),
+        (0.0, 0.0, 300.0, 8.0),
+        (292.0, 0.0, 8.0, 200.0),
+        (0.0, 192.0, 300.0, 8.0),
+    ], "one handle moves every side, so every band lights"
+
+    spaced.hover(150, 100)
+    assert spaced.mode.handle is None
+
+
+def test_dragging_the_gap_handle_writes_the_gap_on_the_grid(spaced: _Session) -> None:
+    spaced.hover(150, 52)
+
+    spaced.mode.on_mouse_press(spaced.app, 150, 52)
+    spaced.mode.on_mouse_motion(spaced.app, 150, 61)
+    assert spaced.mode.dragging
+    assert [(g.rect, g.caption, g.shape) for g in spaced.mode.ghosts] == [
+        ((0.0, 48.0, 300.0, 16.0), "gap 16", "band"),
+        ((8.0, 64.0, 100.0, 40.0), "", "rect"),
+    ], "the gap at its new thickness, and the second tile where it lands"
+    assert len(spaced.mode.handles) == 5, "the handles stay through the drag"
+    held = spaced.mode.held
+    assert held is not None and held.rect == (138.0, 53.0, 24.0, 6.0), "the held one rides on the band's far edge"
+    assert spaced.mode.handles[4].rect == held.rect and spaced.mode.handles[4].filled, "filled while in hand"
+    assert spaced.mode.handle is None
+    spaced.mode.on_mouse_release(spaced.app, 150, 61)
+
+    assert 'Column(children=[t("AAA"), t("BBB")], padding=8, gap=16)' in spaced.text()
+    assert spaced.reloads == [str(spaced.path)]
+    pending = spaced.edits.pending
+    assert pending is not None and pending.kind == "spacing" and pending.expected == {"gap": 16}
+    assert spaced.mode.selected is spaced.column, "the column stays selected for the next handle"
+
+
+def test_pulling_a_padding_side_outward_grows_it_and_keeps_an_int_padding_as_one_int(spaced: _Session) -> None:
+    """The column fills its window, so the band grows in from the edge, and the handle stays on it."""
+    spaced.hover(300, 100)
+
+    spaced.mode.on_mouse_press(spaced.app, 300, 100)
+    spaced.mode.on_mouse_motion(spaced.app, 312, 100)
+    ghosts = [(g.rect, g.caption, g.shape) for g in spaced.mode.ghosts]
+    assert ghosts == [
+        ((280.0, 0.0, 20.0, 200.0), "padding 20", "band"),
+        ((0.0, 0.0, 20.0, 200.0), "", "band"),
+        ((0.0, 0.0, 300.0, 20.0), "", "band"),
+        ((0.0, 180.0, 300.0, 20.0), "", "band"),
+    ], "the held side first, then every side that moves with it"
+    held = spaced.mode.held
+    assert held is not None and held.rect == (297.0, 88.0, 6.0, 24.0), "the edge does not move, so neither does it"
+    spaced.mode.on_mouse_release(spaced.app, 312, 100)
+
+    assert "padding=20, gap=8" in spaced.text()
+    pending = spaced.edits.pending
+    assert pending is not None and pending.expected == {"left": 20, "top": 20, "right": 20, "bottom": 20}
+
+
+def test_on_an_axis_that_sizes_to_its_content_the_band_grows_out_and_the_handle_rides_on_it(app_file: Path) -> None:
+    s = _Session(app_file, "build_nested_spaced")
+    try:
+        _select(s, 50, 20)
+        s.mode.on_key_press(s.app, "w", 0)
+        inner = s.column.children[0]
+        assert s.mode.selected is inner
+        assert s.mode.handles[2].rect == (113.0, 16.0, 6.0, 24.0), "on the inner column's right edge"
+        s.hover(116, 28)
+
+        s.mode.on_mouse_press(s.app, 116, 28)
+        s.mode.on_mouse_motion(s.app, 128, 28)
+        ghosts = [(g.rect, g.caption, g.shape) for g in s.mode.ghosts]
+        assert ghosts == [
+            ((108.0, 0.0, 20.0, 56.0), "padding 20", "band"),
+            ((-12.0, 0.0, 20.0, 56.0), "", "band"),
+            ((0.0, -12.0, 116.0, 20.0), "", "band"),
+            ((0.0, 48.0, 116.0, 20.0), "", "band"),
+        ], "out of the content's edge on every side"
+        held = s.mode.held
+        assert held is not None and held.rect == (125.0, 16.0, 6.0, 24.0), "the handle rides out with the band"
+        riding = [h.rect for h in s.mode.handles if h.keyword == "padding"]
+        assert riding == [
+            (-15.0, 16.0, 6.0, 24.0),
+            (46.0, -15.0, 24.0, 6.0),
+            (125.0, 16.0, 6.0, 24.0),
+            (46.0, 65.0, 24.0, 6.0),
+        ], "the outlined handles ride out on their bands too"
+        s.mode.on_mouse_release(s.app, 128, 28)
+
+        assert "Column(children=[t(\"AAA\")], padding=20, gap=0)" in s.text()
+    finally:
+        s.close()
+
+
+def test_pushing_a_padding_side_inward_shrinks_it_to_nothing_at_the_content(spaced: _Session) -> None:
+    spaced.hover(300, 100)
+
+    spaced.drag_corner((300, 100), (280, 100))
+
+    assert "padding=0, gap=8" in spaced.text(), "the content's edge is the zero; past it stays zero"
+
+
+def test_two_handles_write_the_pair(spaced: _Session) -> None:
+    spaced.hover(300, 100)
+    spaced.mode.on_mouse_press(spaced.app, 300, 100)
+    spaced.mode.on_mouse_release(spaced.app, 300, 100)
+
+    spaced.drag_corner((300, 100), (312, 100))
+
+    assert "padding=(20, 8), gap=8" in spaced.text()
+
+
+def test_four_handles_write_the_held_side_alone(app_file: Path) -> None:
+    s = _selected_column(app_file, "build_pair_padding")
+    try:
+        s.hover(300, 100)
+        s.mode.on_mouse_press(s.app, 300, 100)
+        s.mode.on_mouse_release(s.app, 300, 100)
+        assert _filled(s) == ["right"]
+
+        s.drag_corner((300, 100), (312, 100))
+
+        assert "padding=(8, 4, 20, 4), gap=8" in s.text()
+    finally:
+        s.close()
+
+
+def test_one_handle_folds_a_four_tuple_into_one_int(app_file: Path) -> None:
+    s = _selected_column(app_file, "build_pair_padding")
+    try:
+        s.hover(300, 100)
+        s.mode.on_mouse_press(s.app, 300, 100)
+        s.mode.on_mouse_release(s.app, 300, 100)
+        s.mode.on_mouse_press(s.app, 300, 100)
+        s.mode.on_mouse_release(s.app, 300, 100)
+        assert _filled(s) == ["left", "top", "right", "bottom"]
+
+        s.drag_corner((300, 100), (312, 100))
+
+        assert "padding=20, gap=8" in s.text(), "every side at the held value; the pair's 4 is let go"
+    finally:
+        s.close()
+
+
+def test_alt_lands_on_the_pixel_and_the_bottom_handle_grows_downward(spaced: _Session) -> None:
+    spaced.hover(300, 100)
+    spaced.mode.on_mouse_press(spaced.app, 300, 100)
+    spaced.mode.on_mouse_release(spaced.app, 300, 100)
+    spaced.hover(150, 200)
+
+    spaced.mode.on_mouse_press(spaced.app, 150, 200, MOD_ALT)
+    spaced.mode.on_mouse_motion(spaced.app, 150, 211, MOD_ALT)
+    assert spaced.mode.ghosts[0].caption == "padding (8, 19)  |  no snap"
+    spaced.mode.on_mouse_release(spaced.app, 150, 211, MOD_ALT)
+
+    assert "padding=(8, 19), gap=8" in spaced.text()
+
+
+def test_a_nudge_key_moves_the_side_a_pixel_off_the_grid(spaced: _Session) -> None:
+    spaced.hover(300, 100)
+    spaced.mode.on_mouse_press(spaced.app, 300, 100)
+    spaced.mode.on_mouse_motion(spaced.app, 312, 100)
+
+    spaced.mode.on_key_press(spaced.app, "d", 0)
+    spaced.mode.on_key_press(spaced.app, "d", 0)
+    spaced.mode.on_mouse_motion(spaced.app, 100, 100)
+    assert spaced.mode.ghosts[0].caption == "padding 22  |  no snap", "the keys are the pointer now, off the grid"
+    spaced.mode.on_mouse_release(spaced.app, 100, 100)
+
+    assert "padding=22, gap=8" in spaced.text()
+
+
+def test_a_pair_padding_keeps_its_pair(app_file: Path) -> None:
+    s = _selected_column(app_file, "build_pair_padding")
+    try:
+        s.hover(300, 100)
+
+        s.drag_corner((300, 100), (312, 100))
+
+        assert "padding=(20, 4), gap=8" in s.text()
+    finally:
+        s.close()
+
+
+def test_an_absent_spacing_is_inserted_and_a_zero_gap_still_has_a_handle(app_file: Path) -> None:
+    s = _selected_column(app_file, "build_unspaced")
+    try:
+        gap = [h for h in s.mode.handles if h.keyword == "gap"]
+        assert gap and gap[0].rect == (138.0, 37.0, 24.0, 6.0), "on the seam between the tiles"
+        s.hover(150, 40)
+
+        s.drag_corner((150, 40), (150, 52))
+
+        assert 'Column(children=[t("AAA"), t("BBB")], gap=12)' in s.text()
+    finally:
+        s.close()
+
+
+def test_a_bound_gap_is_a_badge_and_no_drag(app_file: Path) -> None:
+    s = _selected_column(app_file, "build_bound_gap")
+    try:
+        before = s.text()
+        s.hover(150, 52)
+
+        s.mode.on_mouse_press(s.app, 150, 52)
+
+        assert not s.mode.dragging
+        assert s.mode.notice == "gap is bound to g"
+        s.mode.on_mouse_release(s.app, 150, 52)
+        assert s.text() == before and s.reloads == []
+    finally:
+        s.close()
+
+
+def test_releasing_where_the_drag_started_writes_nothing(spaced: _Session) -> None:
+    before = spaced.text()
+    spaced.hover(150, 52)
+
+    spaced.drag_corner((150, 52), (150, 53))
+
+    assert spaced.text() == before and spaced.reloads == []
+
+
+def test_a_click_on_a_gap_handle_changes_nothing_and_keeps_the_selection(spaced: _Session) -> None:
+    before = spaced.text()
+    spaced.hover(150, 52)
+
+    spaced.mode.on_mouse_press(spaced.app, 150, 52)
+    spaced.mode.on_mouse_release(spaced.app, 150, 52)
+
+    assert spaced.text() == before and spaced.reloads == []
+    assert spaced.mode.editor is None and spaced.mode.selected is spaced.column
+    assert _filled(spaced) == [] and spaced.mode.handles[4].filled, "the gap handle alone fills; nothing to turn"
+    spaced.hover(300, 100)
+    assert _filled(spaced) == ["left", "top", "right", "bottom"], "the padding shape was left as it was"
+
+
+def test_ctrl_z_reverts_a_spacing_edit(spaced: _Session) -> None:
+    spaced.hover(150, 52)
+    spaced.drag_corner((150, 52), (150, 61))
+    assert "gap=16" in spaced.text()
+
+    spaced.mode.on_key_press(spaced.app, "z", MOD_CTRL)
+
+    assert "padding=8, gap=8)" in spaced.text()
+    assert spaced.mode.notice == "undoing gap → 16"
+
+
+def test_the_reload_check_reads_the_spacing_back(spaced: _Session) -> None:
+    spaced.hover(150, 52)
+    spaced.drag_corner((150, 52), (150, 61))
+    rebuilt = _load(spaced.path).build_spaced()
+    with mount(rebuilt) as host:
+        host.layout(300, 200)
+        assert spaced.edits.after_reload([host.root]) is None
