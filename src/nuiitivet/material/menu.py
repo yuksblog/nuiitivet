@@ -415,7 +415,11 @@ class SubMenuItem(MenuItem):
     def _bind_menu_style(self, style: MenuStyle) -> None:
         super()._bind_menu_style(style)
         if self._submenu is not None:
-            self._submenu._adopt_style(style)
+            # The submenu takes the parent's style as given, baseline numbers
+            # intact, and applies the density itself; ``style`` is the parent's
+            # dense one, pushed so the two surfaces match at once.
+            owner = self._owner_menu
+            self._submenu._adopt_style(owner.style if owner is not None else style)
             self._submenu._apply_menu_style(style)
 
     def _handle_hover_change(self, hovered: bool) -> None:
@@ -678,7 +682,14 @@ class Menu(InteractiveWidget):
 
     @property
     def style(self) -> MenuStyle:
-        """Return the menu style currently in effect, pulled from the theme.
+        """The style in effect: the caller's or the parent menu's, else the theme's, with the MD3 baseline numbers."""
+        if self._user_style is not None:
+            return self._user_style
+        return MenuStyle.from_theme(Theme.of(self))
+
+    @property
+    def _dense(self) -> MenuStyle:
+        """:attr:`style` with the form factor's density applied: what the menu measures with.
 
         A menu has no ``build()``, so it reads the theme where the style is
         consumed -- :meth:`preferred_size`. The read registers a dependency, so
@@ -687,10 +698,7 @@ class Menu(InteractiveWidget):
         rather than re-derived on every read, so they are re-applied whenever
         the resolved style has moved.
         """
-        if self._user_style is not None:
-            resolved = self._user_style
-        else:
-            resolved = MenuStyle.from_theme(Theme.of(self))
+        resolved = self.style
         shrink = density_shrink(resolved.density, form_factor_of(self).menu, _DENSITY_FLOOR)
         if shrink:
             # ``density=0`` marks the step as applied: a submenu adopts this style.
@@ -850,8 +858,8 @@ class Menu(InteractiveWidget):
                 )
                 continue
 
-            entry._bind_menu_style(style)
             entry._owner_menu = self
+            entry._bind_menu_style(style)
             if isinstance(entry, SubMenuItem):
                 entry._bind_parent_dismiss(self.on_dismiss)
             out.append(
@@ -866,9 +874,9 @@ class Menu(InteractiveWidget):
         return out
 
     def preferred_size(self, max_width: int | None = None, max_height: int | None = None) -> tuple[int, int]:
-        vertical = int(self.style.container_vertical_padding) * 2
+        vertical = int(self._dense.container_vertical_padding) * 2
         pl, pt, pr, pb = self.padding
-        measure_max_width = int(self.style.max_width)
+        measure_max_width = int(self._dense.max_width)
         if max_width is not None:
             measure_max_width = min(measure_max_width, max(0, int(max_width) - pl - pr))
 
@@ -880,7 +888,7 @@ class Menu(InteractiveWidget):
             content_width = max(content_width, int(w))
             content_height += int(h)
 
-        resolved_width = max(int(self.style.min_width), min(int(self.style.max_width), int(content_width))) + pl + pr
+        resolved_width = max(int(self._dense.min_width), min(int(self._dense.max_width), int(content_width))) + pl + pr
         resolved_height = int(content_height) + vertical + pt + pb
 
         if max_width is not None:

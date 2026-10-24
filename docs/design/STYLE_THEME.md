@@ -69,7 +69,9 @@ reserves the 48dp touch target, and holds a density step per component. One
 step takes 4dp off the component's height.
 
 A style keeps the MD3 baseline numbers under every form factor. The widget
-applies the form factor where it reads the theme. A style factory cannot:
+applies the form factor where it measures and paints, and its `style`
+property returns the style it was given or resolved from the theme with the
+baseline numbers intact. A style factory cannot apply it:
 `ButtonStyle.tonal()` runs with no theme in reach. A minimum size left
 `None` on a style is resolved at the same place.
 

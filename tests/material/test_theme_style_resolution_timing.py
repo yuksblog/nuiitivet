@@ -580,6 +580,7 @@ def test_menu_adopts_the_themes_style() -> None:
     _mount(menu, _theme_with(_menu_style=_CUSTOM_MENU_STYLE))
 
     assert menu.style == _CUSTOM_MENU_STYLE
+    menu._dense  # the measure reads it, and the read pushes it onto the surface
     assert menu.bgcolor == ColorRole.TERTIARY_CONTAINER
     assert menu.corner_radius == 8
 
@@ -604,6 +605,7 @@ def test_menu_follows_a_later_theme_change() -> None:
     manager.set_theme(_theme_with(_menu_style=_CUSTOM_MENU_STYLE))
 
     assert menu.style == _CUSTOM_MENU_STYLE
+    menu._dense
     assert menu.bgcolor == ColorRole.TERTIARY_CONTAINER
 
 
@@ -613,7 +615,7 @@ def test_menu_items_are_rebuilt_for_the_themes_style() -> None:
     item = MenuItem("a")
     menu = Menu(items=[item])
     _mount(menu, _theme_with(_menu_style=_CUSTOM_MENU_STYLE))
-    menu.style
+    menu._dense
 
     assert item._menu_style == _CUSTOM_MENU_STYLE
 
