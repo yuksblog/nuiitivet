@@ -34,6 +34,11 @@ class BasicDialog(ComposableWidget):
     Follows Material Design 3 dialog guidelines.
     """
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`DialogStyle`'s presets."""
+        return {"style": DialogStyle}
+
     def __init__(
         self,
         title: Optional[Union[str, ReadOnlyObservableProtocol[str]]] = None,
@@ -88,7 +93,7 @@ class BasicDialog(ComposableWidget):
         if theme_data:
             return theme_data.basic_dialog_style
 
-        return DialogStyle.basic()
+        return DialogStyle.default()
 
     def build(self) -> Widget:
         style = self.style

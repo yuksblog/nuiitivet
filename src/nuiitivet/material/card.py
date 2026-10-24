@@ -39,6 +39,11 @@ class Card(ComposableWidget, Box):
     as the default.
     """
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`CardStyle`'s presets."""
+        return {"style": CardStyle}
+
     @property
     def style(self) -> CardStyle:
         """Return the style currently in effect.
@@ -82,7 +87,7 @@ class Card(ComposableWidget, Box):
         # it forever. Start from the framework default -- the same value
         # ``CardStyle.from_theme`` falls back to when no Material theme is
         # installed -- and re-apply the theme's style once mounted.
-        initial_style = style if style is not None else CardStyle.filled()
+        initial_style = style if style is not None else CardStyle.default()
         self._effective_style: CardStyle = initial_style
         _shadows = elevation_shadows(initial_style.elevation)
 

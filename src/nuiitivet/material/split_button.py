@@ -520,9 +520,16 @@ class SplitButton(Box):
             icon="play_arrow",
             on_click=lambda: start_action(),
             on_menu_toggle=lambda open: handle_menu(open),
-            style=SplitButtonStyle.filled("s"),
+            style=SplitButtonStyle.default(),
         )
     """
+
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`SplitButtonStyle`'s presets."""
+        from nuiitivet.material.styles.split_button_style import SplitButtonStyle
+
+        return {"style": SplitButtonStyle}
 
     def __init__(
         self,

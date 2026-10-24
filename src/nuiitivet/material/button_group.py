@@ -1022,6 +1022,13 @@ class StandardButtonGroup(_ButtonGroupBase):
     motion.  Item selected states are independent — no group-level enforcement.
     """
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`StandardButtonGroupStyle`'s presets."""
+        from nuiitivet.material.styles.button_group_style import StandardButtonGroupStyle
+
+        return {"style": StandardButtonGroupStyle}
+
     def __init__(
         self,
         items: Sequence[GroupButton],
@@ -1084,6 +1091,13 @@ class ConnectedButtonGroup(_ButtonGroupBase):
     press — adjacent segment corners are unaffected.  Selection is always
     enforced by the group.
     """
+
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`ConnectedButtonGroupStyle`'s presets."""
+        from nuiitivet.material.styles.button_group_style import ConnectedButtonGroupStyle
+
+        return {"style": ConnectedButtonGroupStyle}
 
     def __init__(
         self,

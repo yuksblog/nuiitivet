@@ -1,88 +1,191 @@
-"""The presets layout edit mode picks from, per widget class.
+"""What layout edit mode can pick for a widget, read from the widget's own declaration.
 
-A preset is one classmethod of a style class (``ButtonStyle.filled``) or one
-role of the type scale (``TypeScale.TITLE_MEDIUM``). The table here is what
-the pick list shows, and what the check after the reload rebuilds to compare
-the widget against.
+A widget names the constructor keywords it takes a preset for, and the class
+each preset hangs off, in ``Widget.editable_parameters()``. This module reads the choices
+from that class: its preset classmethods with the parameters each takes
+(``ButtonStyle.filled(size="m")``), or its uppercase attributes
+(``TypeScale.TITLE_LARGE``), and which choice is in effect when the keyword
+is absent. Nothing here names a widget or a design system.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Optional
+import inspect
+import typing
+from dataclasses import dataclass, replace
+from functools import lru_cache
+from typing import Any, Iterable, Mapping, Optional
 
-from nuiitivet.material.styles.button_style import ButtonStyle, IconButtonStyle, IconToggleButtonStyle
-from nuiitivet.material.styles.card_style import CardStyle
-from nuiitivet.theme.type_scale import TypeScale
+
+@dataclass(frozen=True)
+class Parameter:
+    """One parameter a preset takes: ``size``, one of ``xs`` to ``xl``, ``s`` when omitted.
+
+    Attributes:
+        name: The parameter's name.
+        choices: The values its ``Literal`` admits, in order.
+        default: The value in effect when the argument is omitted.
+    """
+
+    name: str
+    choices: tuple[Any, ...]
+    default: Any
+
+    def parse(self, token: str) -> Any:
+        """The choice spelled ``token``, or ``token`` itself when none is."""
+        return next((choice for choice in self.choices if str(choice) == token), token)
+
+
+@dataclass(frozen=True)
+class Choice:
+    """One preset: its name, and the parameters it takes."""
+
+    name: str
+    parameters: tuple[Parameter, ...] = ()
 
 
 @dataclass(frozen=True)
 class Family:
-    """The presets one widget class picks from.
+    """The choices one keyword offers.
 
     Attributes:
-        keyword: The keyword the preset is passed as.
-        companion: The class the presets hang off, by name, spelled beside the widget's own.
-        names: The preset names, in the order the list shows them.
-        sizes: The size tokens the presets take; empty when they take none.
-        default: The name and size in effect when the keyword is absent.
-        called: Whether a preset is a call; a type-scale role is an attribute.
+        keyword: The constructor keyword a pick is written to.
+        companion: The class the choices hang off.
+        choices: The presets, in the order the list shows them.
+        called: Whether a choice is a call; an attribute is not.
+        default: The choice in effect when the keyword is absent, by name, or ``None`` when no choice is.
     """
 
     keyword: str
-    companion: str
-    names: tuple[str, ...]
-    sizes: tuple[str, ...]
-    default: tuple[str, Optional[str]]
-    called: bool = True
+    companion: type
+    choices: tuple[Choice, ...]
+    called: bool
+    default: Optional[str]
+
+    @property
+    def names(self) -> tuple[str, ...]:
+        """The choices' names, in order."""
+        return tuple(choice.name for choice in self.choices)
+
+    def choice(self, name: Optional[str]) -> Optional[Choice]:
+        """The choice named ``name``, or ``None``."""
+        return next((choice for choice in self.choices if choice.name == name), None)
 
 
-_SIZES = ("xs", "s", "m", "l", "xl")
-_ROLES = tuple(name for name in vars(TypeScale) if name.isupper())
+def families_of(node: Any) -> tuple[Family, ...]:
+    """What ``node`` declares editable, one family per keyword, in the declared order.
 
-#: The families by widget class name; a subclass picks from its base's.
-FAMILIES: dict[str, Family] = {
-    "Button": Family(
-        "style", "ButtonStyle", ("filled", "tonal", "outlined", "elevated", "text"), _SIZES, ("filled", "s")
-    ),
-    "IconButton": Family(
-        "style",
-        "IconButtonStyle",
-        ("standard", "filled", "tonal", "outlined", "vibrant", "filled_vibrant", "tonal_vibrant", "outlined_vibrant"),
-        _SIZES,
-        ("standard", "s"),
-    ),
-    "IconToggleButton": Family(
-        "style", "IconToggleButtonStyle", ("standard", "filled", "tonal", "outlined"), _SIZES, ("standard", "s")
-    ),
-    "Card": Family("style", "CardStyle", ("filled", "elevated", "outlined"), (), ("filled", None)),
-    "TextBase": Family("type_scale", "TypeScale", _ROLES, (), ("BODY_MEDIUM", None), called=False),
-}
-
-_CLASSES: dict[str, Any] = {
-    "ButtonStyle": ButtonStyle,
-    "IconButtonStyle": IconButtonStyle,
-    "IconToggleButtonStyle": IconToggleButtonStyle,
-    "CardStyle": CardStyle,
-    "TypeScale": TypeScale,
-}
+    A keyword whose class offers no choice is left out.
+    """
+    declared = getattr(type(node), "editable_parameters", None)
+    if not callable(declared):
+        return ()
+    families = (_family(node, keyword, companion) for keyword, companion in declared().items())
+    return tuple(family for family in families if family.choices)
 
 
-def family_of(node: Any) -> Optional[Family]:
-    """The presets ``node``'s class picks from, found by its name or a base class's, or ``None``."""
-    for cls in type(node).__mro__:
-        family = FAMILIES.get(cls.__name__)
-        if family is not None:
-            return family
+def family_of(node: Any, keyword: str) -> Optional[Family]:
+    """The family ``node`` declares for ``keyword``, or ``None``."""
+    return next((family for family in families_of(node) if family.keyword == keyword), None)
+
+
+def value_of(family: Family, name: str, arguments: Optional[Mapping[str, Any]] = None) -> Any:
+    """The object the choice ``name`` builds with ``arguments``, as the widget holds it."""
+    member = getattr(family.companion, name)
+    return member(**(arguments or {})) if family.called else member
+
+
+def held(node: Any, keyword: str) -> list[Any]:
+    """The values ``node`` may hold for ``keyword``: the property of that name, and every attribute."""
+    values = [getattr(node, keyword, None)]
+    try:
+        values.extend(vars(node).values())
+    except TypeError:
+        pass
+    return values
+
+
+def same(value: Any, other: Any) -> bool:
+    """Equality that a value with an odd ``__eq__`` cannot break."""
+    try:
+        return bool(value == other)
+    except Exception:
+        return False
+
+
+@lru_cache(maxsize=None)
+def choices_of(companion: type) -> tuple[tuple[Choice, ...], bool]:
+    """The presets ``companion`` offers, and whether they are calls.
+
+    A preset is a public classmethod whose every parameter has a default and
+    a ``Literal`` annotation. ``default`` is not one: it names the default.
+    A class with no classmethod offers its uppercase attributes.
+    """
+    methods = [name for name, member in vars(companion).items() if _is_public_classmethod(name, member)]
+    if methods:
+        found = (_choice(companion, name) for name in methods if name != "default")
+        return tuple(choice for choice in found if choice is not None), True
+    return tuple(Choice(name) for name in vars(companion) if name.isupper()), False
+
+
+def _is_public_classmethod(name: str, member: Any) -> bool:
+    return isinstance(member, classmethod) and not name.startswith("_")
+
+
+def _all_optional(method: Any) -> bool:
+    """Whether ``method`` can be called with no argument."""
+    try:
+        parameters = inspect.signature(method).parameters.values()
+    except (TypeError, ValueError):
+        return False
+    return all(parameter.default is not inspect.Parameter.empty for parameter in parameters)
+
+
+def _choice(companion: type, name: str) -> Optional[Choice]:
+    method = getattr(companion, name)
+    try:
+        hints = typing.get_type_hints(method)
+    except Exception:
+        # An annotation only the type checker can see (``theme: "Theme"``)
+        # is not a ``Literal``.
+        hints = {}
+    parameters: list[Parameter] = []
+    for parameter in inspect.signature(method).parameters.values():
+        hint = hints.get(parameter.name)
+        if parameter.default is inspect.Parameter.empty or typing.get_origin(hint) is not typing.Literal:
+            return None
+        parameters.append(Parameter(parameter.name, typing.get_args(hint), parameter.default))
+    return Choice(name, tuple(parameters))
+
+
+def _family(node: Any, keyword: str, companion: type) -> Family:
+    choices, called = choices_of(companion)
+    family = Family(keyword, companion, choices, called, None)
+    return replace(family, default=_default(node, family))
+
+
+def _default(node: Any, family: Family) -> Optional[str]:
+    """The choice equal to the companion's ``default()``, else to what the live widget holds, else ``None``."""
+    named = getattr(family.companion, "default", None)
+    if family.called and callable(named) and _all_optional(named):
+        candidates: Iterable[Any] = (named(),)
+    else:
+        candidates = held(node, family.keyword)
+    for choice in family.choices:
+        value = value_of(family, choice.name)
+        if any(same(candidate, value) for candidate in candidates):
+            return choice.name
     return None
 
 
-def value_of(family: Family, name: str, size: Optional[str]) -> Any:
-    """The object the preset ``name`` at ``size`` resolves to, as the widget holds it."""
-    member = getattr(_CLASSES[family.companion], name)
-    if not family.called:
-        return member
-    return member(size) if size is not None else member()
-
-
-__all__ = ["FAMILIES", "Family", "family_of", "value_of"]
+__all__ = [
+    "Choice",
+    "Family",
+    "Parameter",
+    "choices_of",
+    "families_of",
+    "family_of",
+    "held",
+    "same",
+    "value_of",
+]

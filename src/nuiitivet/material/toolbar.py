@@ -77,6 +77,11 @@ class _ToolbarBase(Box):
     its own.
     """
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`ToolbarStyle`'s presets."""
+        return {"style": ToolbarStyle}
+
     #: The style the caller passed, or ``None`` to follow the theme.
     _user_style: Optional[ToolbarStyle]
     #: The last style pushed onto the container, or ``None`` before the first

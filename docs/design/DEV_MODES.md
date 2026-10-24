@@ -291,7 +291,7 @@ flowchart LR
         reorder[reorder.py · a slot or a cell]
         align[align.py · an alignment]
         spacing[spacing.py · a padding side or a gap]
-        presets[presets.py · the presets a widget takes]
+        presets[presets.py · the choices a widget declares]
     end
     toolbar[toolbar.py · the bar's geometry]
     edit[source_edit.py · span surgery · edit log · reload check]
@@ -309,8 +309,9 @@ flowchart LR
 The mode owns the selection, the drag in flight and the open list, and
 turns each gesture into a reading and each reading into an edit. A reading
 module turns a pointer position into the value to write: a size, a slot or
-a cell, an alignment, a padding side or a gap. `presets.py` is the table of
-preset families by widget class. `toolbar.py` holds the bar's geometry,
+a cell, an alignment, a padding side or a gap. `presets.py` reads what a
+widget declares editable: the keyword and the class from the widget, the
+choices, their parameters and the default from the class. `toolbar.py` holds the bar's geometry,
 which the mode hits against and the overlay paints from. `source_edit.py`
 locates the call at the recorded site, replaces spans, keeps the edit log
 with each edit's inverse, and checks the rebuilt tree after the reload.
@@ -344,14 +345,20 @@ The overlay paints the mode's state and nothing else.
   handles stand for, one int, a pair or four sides, keeping the file's
   brackets, with the sides the drag did not touch taken from the live
   widget.
+- A widget declares in `editable_parameters()` the keywords it takes a preset for and
+  the class each hangs off. The choices are read from that class: its
+  classmethods whose parameters are all optional `Literal`s, or its
+  uppercase attributes. Each parameter is a box of its own. `default()`
+  names the default and is not a choice. `nuiitivet.dev` imports no design
+  system.
 - A preset is written as a call of its companion class, spelled as the
   module spells the widget; no import is added. Whatever expression the
   keyword holds is replaced whole, and an absent keyword is inserted after
   the last argument.
 - After the reload, the pending edit is checked against the instances
   rebuilt at its site: the rect for a size, the class at the slot or in the
-  cell for a move, the value for a spacing, equality for a preset. A miss, a
-  site that builds nothing, or a failed reload is the badge.
+  cell for a move, the value for a spacing, a preset held by the instance. A
+  miss, a site that builds nothing, or a failed reload is the badge.
 
 ## Implementation Map
 

@@ -32,6 +32,18 @@ class TooltipStyle:
         return replace(self, **changes)
 
     @classmethod
+    def default(cls) -> "TooltipStyle":
+        """Return the framework default, ignoring any theme.
+
+        This is what a tooltip renders with before it is mounted, and what
+        :meth:`from_theme` falls back to when no Material theme is installed.
+
+        Returns:
+            The standard tooltip style.
+        """
+        return cls.standard()
+
+    @classmethod
     def standard(cls) -> "TooltipStyle":
         """Return the standard plain tooltip style."""
         return cls()
@@ -49,7 +61,7 @@ class TooltipStyle:
         """
         _ = theme
         _ = variant
-        return cls.standard()
+        return cls.default()
 
 
 @dataclass(frozen=True)
@@ -76,6 +88,19 @@ class RichTooltipStyle:
         return replace(self, **changes)
 
     @classmethod
+    def default(cls) -> "RichTooltipStyle":
+        """Return the framework default, ignoring any theme.
+
+        This is what a rich tooltip renders with before it is mounted, and
+        what :meth:`from_theme` falls back to when no Material theme is
+        installed.
+
+        Returns:
+            The standard rich tooltip style.
+        """
+        return cls.standard()
+
+    @classmethod
     def standard(cls) -> "RichTooltipStyle":
         """Return the standard rich tooltip style."""
         return cls()
@@ -93,7 +118,7 @@ class RichTooltipStyle:
         """
         _ = theme
         _ = variant
-        return cls.standard()
+        return cls.default()
 
 
 __all__ = ["TooltipStyle", "RichTooltipStyle"]

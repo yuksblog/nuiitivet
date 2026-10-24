@@ -446,6 +446,11 @@ class FabMenu(Widget):
     ``on_click`` and, by default, closes the menu.
     """
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`FabStyle`'s presets."""
+        return {"style": FabStyle}
+
     def __init__(
         self,
         icon: IconLike,

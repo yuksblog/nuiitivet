@@ -569,6 +569,11 @@ class Menu(InteractiveWidget):
     widget rather than dismissing anything.
     """
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`MenuStyle`'s presets."""
+        return {"style": MenuStyle}
+
     def __init__(
         self,
         items: list[MenuItem | SubMenuItem | MenuDivider],

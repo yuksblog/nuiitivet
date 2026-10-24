@@ -17,6 +17,7 @@ import pytest
 from nuiitivet.dev import source
 from nuiitivet.dev.source import Frame
 from nuiitivet.dev.source_edit import (
+    Argument,
     Edit,
     EditLog,
     Preset,
@@ -1106,13 +1107,13 @@ def test_a_style_preset_is_read_with_its_base_and_size() -> None:
 
     found = written_preset(text, _site(text, text.strip()[7:]), "style", "ButtonStyle")
 
-    assert found == Preset("nv.ButtonStyle", "filled", "m")
+    assert found == Preset("nv.ButtonStyle", "filled", (Argument("m"),))
 
 
 def test_a_style_preset_is_rewritten_keeping_its_base_and_quotes() -> None:
     text = "root = nv.Button('a', style=nv.ButtonStyle.filled('m'))\n"
 
-    written = _preset_written(text, text.strip()[7:], "style", Preset("nv.ButtonStyle", "outlined", "l"))
+    written = _preset_written(text, text.strip()[7:], "style", Preset("nv.ButtonStyle", "outlined", (Argument("l"),)))
 
     assert written == "root = nv.Button('a', style=nv.ButtonStyle.outlined('l'))\n"
 
@@ -1122,16 +1123,16 @@ def test_a_preset_without_a_size_stays_without_one_and_a_size_keyword_stays_a_ke
     keyed = 'root = Button("a", style=ButtonStyle.filled(size="m"))\n'
 
     found = written_preset(bare, _site(bare, bare.strip()[7:]), "style", "ButtonStyle")
-    assert found == Preset("ButtonStyle", "filled", None)
+    assert found == Preset("ButtonStyle", "filled")
     assert written_preset(keyed, _site(keyed, keyed.strip()[7:]), "style", "ButtonStyle") == Preset(
-        "ButtonStyle", "filled", "m", True, True
+        "ButtonStyle", "filled", (Argument("m", "size"),)
     )
     assert (
-        _preset_written(bare, bare.strip()[7:], "style", Preset("ButtonStyle", "tonal", None))
+        _preset_written(bare, bare.strip()[7:], "style", Preset("ButtonStyle", "tonal"))
         == 'root = Button("a", style=ButtonStyle.tonal())\n'
     )
     assert (
-        _preset_written(keyed, keyed.strip()[7:], "style", Preset("ButtonStyle", "tonal", "xl", True, True))
+        _preset_written(keyed, keyed.strip()[7:], "style", Preset("ButtonStyle", "tonal", (Argument("xl", "size"),)))
         == 'root = Button("a", style=ButtonStyle.tonal(size="xl"))\n'
     )
 
@@ -1144,7 +1145,7 @@ def test_a_type_scale_role_is_an_attribute_and_is_rewritten_as_one() -> None:
         text, text.strip()[7:], "type_scale", Preset("nv.TypeScale", "TITLE_LARGE", called=False)
     )
 
-    assert found == Preset("nv.TypeScale", "BODY_MEDIUM", None, False)
+    assert found == Preset("nv.TypeScale", "BODY_MEDIUM", (), False)
     assert written == 'root = nv.Text("a", type_scale=nv.TypeScale.TITLE_LARGE)\n'
 
 
@@ -1153,7 +1154,7 @@ def test_an_absent_preset_is_inserted_after_the_last_argument() -> None:
 
     assert written_preset(text, _site(text, 'nv.Button("a")'), "style", "ButtonStyle") is None
     assert (
-        _preset_written(text, 'nv.Button("a")', "style", Preset("nv.ButtonStyle", "outlined", "s"))
+        _preset_written(text, 'nv.Button("a")', "style", Preset("nv.ButtonStyle", "outlined", (Argument("s"),)))
         == 'root = nv.Button("a", style=nv.ButtonStyle.outlined("s"))\n'
     )
 
@@ -1165,7 +1166,6 @@ def test_an_absent_preset_is_inserted_after_the_last_argument() -> None:
         "self.style",
         'ButtonStyle.filled("m").copy_with(elevation=2)',
         "ButtonStyle(background=None)",
-        'ButtonStyle.filled("m", 2)',
         "ButtonStyle.filled(size)",
         "make_style()",
         'CardStyle.filled("m")',
@@ -1176,7 +1176,7 @@ def test_a_style_that_is_not_a_preset_reads_as_a_refusal_and_is_overwritten_by_a
     text = f'root = Button("a", style={value})\n'
 
     found = written_preset(text, _site(text, text.strip()[7:]), "style", "ButtonStyle")
-    written = _preset_written(text, text.strip()[7:], "style", Preset("ButtonStyle", "filled", "s"))
+    written = _preset_written(text, text.strip()[7:], "style", Preset("ButtonStyle", "filled", (Argument("s"),)))
 
     assert isinstance(found, Refusal) and value in found.reason
     assert written == 'root = Button("a", style=ButtonStyle.filled("s"))\n', "the whole expression goes"
@@ -1233,3 +1233,22 @@ def test_the_reload_check_rebuilds_the_preset_and_compares(recording: None) -> N
         edit = Edit("preset", site.file, site, "", {"style": ""}, {"style": "outlined m"}, {}, 1, (), "Button")
         log._pending = (edit, True)
         assert log.after_reload([host.root]) is None, "an absent preset before the edit is nothing to check"
+
+
+def test_the_reload_check_finds_the_preset_a_widget_was_given_not_the_style_it_shows(recording: None) -> None:
+    """A toggle button's ``style`` is the state-resolved ``ButtonStyle``; the preset lives in another attribute."""
+    from nuiitivet.material.buttons import ToggleButton
+    from nuiitivet.material.styles.toggle_button_style import ToggleButtonStyle
+
+    toggle = ToggleButton("a", style=ToggleButtonStyle.outlined("m"))
+    site = source.site_of(toggle)[0]
+    log = EditLog()
+
+    with mount(Column(children=[toggle])) as host:
+        host.layout(300, 200)
+        edit = Edit("preset", site.file, site, "", {}, {"style": "outlined m"}, {}, 1, (), "ToggleButton")
+        log._pending = (edit, False)
+        assert log.after_reload([host.root]) is None
+        edit = Edit("preset", site.file, site, "", {}, {"style": "tonal m"}, {}, 1, (), "ToggleButton")
+        log._pending = (edit, False)
+        assert log.after_reload([host.root]) == "style is not tonal m after the reload"

@@ -55,6 +55,11 @@ def _clamp(value: float, minimum: float, maximum: float) -> float:
 class _SliderBase(InteractiveWidget):
     """Shared behavior for slider widgets."""
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`SliderStyle`'s presets."""
+        return {"style": SliderStyle}
+
     def __init__(
         self,
         *,
@@ -89,7 +94,7 @@ class _SliderBase(InteractiveWidget):
         self._show_value_indicator = bool(show_value_indicator)
         self._orientation = orientation
         self._style = style
-        style_for_layout = style or SliderStyle.xs()
+        style_for_layout = style or SliderStyle.default()
 
         self._active_handle_index = 0
         self._space_accel_armed = False
@@ -159,7 +164,7 @@ class _SliderBase(InteractiveWidget):
                 return theme.slider_style
         except Exception:
             pass
-        return SliderStyle.xs()
+        return SliderStyle.default()
 
     def _cross_axis_size(self, style) -> float:
         return max(style.active_handle_height, style.state_layer_size, 48.0)

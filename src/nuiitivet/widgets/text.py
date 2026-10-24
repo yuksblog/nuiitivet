@@ -25,7 +25,7 @@ from nuiitivet.rendering.skia import (
 )
 from nuiitivet.theme.dependency import ThemeKept
 from nuiitivet.theme.resolver import resolve_color_to_rgba
-from nuiitivet.theme.type_scale import DEFAULT_TYPE_SCALE, TypeScaleToken
+from nuiitivet.theme.type_scale import DEFAULT_TYPE_SCALE, TypeScale, TypeScaleToken
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgets.text_style import TextStyle, TextStyleProtocol
 
@@ -86,6 +86,11 @@ class TextBase(Widget):
     - soft_wrap: Whether text wraps at soft line breaks when the width is
       bounded. Hard breaks (``\\n``) always break regardless of this flag.
     """
+
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``type_scale`` is picked from :class:`TypeScale`'s roles."""
+        return {"type_scale": TypeScale}
 
     # instance Disposable returned from subscribing to a label Observable
     _label_unsub: Optional["Disposable"] = None

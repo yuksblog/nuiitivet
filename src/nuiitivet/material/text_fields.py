@@ -116,6 +116,11 @@ class TextField(InteractiveWidget):
     For a field that takes several lines: `multiline`.
     """
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`TextFieldStyle`'s presets."""
+        return {"style": TextFieldStyle}
+
     def __init__(
         self,
         value: Union[str, ReadOnlyObservableProtocol[str]] = "",

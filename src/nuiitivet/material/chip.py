@@ -78,6 +78,13 @@ class MaterialChipBase(InteractiveWidget):
     recoloured — when the theme supplies a different chip style.
     """
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`ChipStyle`'s presets."""
+        from nuiitivet.material.styles.chip_style import ChipStyle
+
+        return {"style": ChipStyle}
+
     _variant: str = "assist"
 
     def __init__(

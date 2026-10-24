@@ -319,7 +319,7 @@ class MaterialButtonBase(InteractiveWidget):
         host = self._host_style
         if isinstance(host, ButtonStyle):
             return host
-        return ButtonStyle.filled("s")
+        return ButtonStyle.default()
 
     def _set_host_style(self, style: Optional[object]) -> None:
         """Take the style a hosting widget derives for this button.
@@ -817,6 +817,11 @@ class Button(MaterialButtonBase):
     ``"s"`` is used as the default.
     """
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`ButtonStyle`'s presets."""
+        return {"style": ButtonStyle}
+
     def __init__(
         self,
         label: str | ReadOnlyObservableProtocol[str] | None = None,
@@ -886,6 +891,11 @@ class Button(MaterialButtonBase):
 class IconButton(MaterialButtonBase):
     """Material icon-only action button driven by style presets."""
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`IconButtonStyle`'s presets."""
+        return {"style": IconButtonStyle}
+
     def __init__(
         self,
         icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str],
@@ -909,7 +919,7 @@ class IconButton(MaterialButtonBase):
                 to control container/icon sizing.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        effective_style = style if style is not None else IconButtonStyle.standard()
+        effective_style = style if style is not None else IconButtonStyle.default()
 
         #: The style the caller passed, or ``None`` to follow the host or the preset.
         self._user_style: Optional[ButtonStyle] = style
@@ -946,7 +956,7 @@ class IconButton(MaterialButtonBase):
         host = self._host_style
         if isinstance(host, ButtonStyle):
             return host
-        return IconButtonStyle.standard()
+        return IconButtonStyle.default()
 
     def _on_theme_change(self, theme) -> None:
         params = resolve_button_style_params(
@@ -1131,6 +1141,11 @@ class ToggleButton(ToggleButtonBase):
     defaults to :meth:`ToggleButtonStyle.filled` at size ``"s"``.
     """
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`ToggleButtonStyle`'s presets."""
+        return {"style": ToggleButtonStyle}
+
     def __init__(
         self,
         label: str | ReadOnlyObservableProtocol[str] | None = None,
@@ -1196,6 +1211,11 @@ class ToggleButton(ToggleButtonBase):
 
 class IconToggleButton(ToggleButtonBase):
     """Material icon-only toggle button driven by state-paired styles."""
+
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`IconToggleButtonStyle`'s presets."""
+        return {"style": IconToggleButtonStyle}
 
     def __init__(
         self,
@@ -1270,6 +1290,11 @@ class _FabBase(MaterialButtonBase):
     Centralises the elevation/state-layer token resolution and the expressive
     press-scale animation so the public widgets do not duplicate it.
     """
+
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`FabStyle`'s presets."""
+        return {"style": FabStyle}
 
     #: The style the caller passed, or ``None`` to follow the host or the theme.
     _user_style: Optional[FabStyle]

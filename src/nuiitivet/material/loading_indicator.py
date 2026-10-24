@@ -82,6 +82,11 @@ class LoadingIndicator(Widget):
     This widget is intended for short, indeterminate waits.
     """
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`LoadingIndicatorStyle`'s presets."""
+        return {"style": LoadingIndicatorStyle}
+
     def __init__(
         self,
         *,

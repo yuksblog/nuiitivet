@@ -133,6 +133,18 @@ class ButtonStyle:
     # -- Factory classmethods (size-aware) ----------------------------------
 
     @classmethod
+    def default(cls) -> "ButtonStyle":
+        """Return the framework default, ignoring any theme.
+
+        This is what a button renders with before it is mounted, and what a
+        button without a theme falls back to.
+
+        Returns:
+            The filled style at size ``"s"``.
+        """
+        return cls.filled("s")
+
+    @classmethod
     def filled(cls, size: ButtonSize = "s") -> "ButtonStyle":
         """Return the filled-variant style at the given M3 size."""
         t = BUTTON_SIZE_TOKENS[size]
@@ -260,6 +272,18 @@ class IconButtonStyle:
             min_width=None,
             icon_size=t["icon_size"],
         )
+
+    @classmethod
+    def default(cls) -> ButtonStyle:
+        """Return the framework default, ignoring any theme.
+
+        This is what an icon button renders with before it is mounted, and
+        what an icon button without a theme falls back to.
+
+        Returns:
+            The standard icon-button style at size ``"s"``.
+        """
+        return cls.standard("s")
 
     @classmethod
     def standard(cls, size: ButtonSize = "s") -> ButtonStyle:
