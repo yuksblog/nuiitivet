@@ -19,10 +19,12 @@ from nuiitivet.dev.source import Frame
 from nuiitivet.dev.source_edit import (
     Edit,
     EditLog,
+    Preset,
     Refusal,
     SpanEdit,
     apply_spans,
     cell_refusal,
+    companion_name,
     discarded_keywords,
     grid_item_name,
     locate_call,
@@ -33,10 +35,14 @@ from nuiitivet.dev.source_edit import (
     plan_keywords,
     plan_move,
     plan_move_across,
+    plan_preset,
+    plan_spacing,
     plan_text,
     still_applies,
     text_literal,
     written_alignment,
+    written_preset,
+    written_spacing,
 )
 from nuiitivet.layout.column import Column
 from nuiitivet.testing import mount
@@ -1031,3 +1037,199 @@ def test_the_reload_check_reports_an_empty_cell() -> None:
         host.layout(300, 200)
 
         assert log.after_reload([host.root]) == "reloaded, but nothing starts at row 1, column 1"
+
+
+# --- spacing -------------------------------------------------------------------
+
+
+def _spaced(text: str, snippet: str, keyword: str, value: Any) -> str:
+    planned = plan_spacing(text, _site(text, snippet), keyword, value)
+    assert not isinstance(planned, Refusal), planned.reason
+    return apply_spans(text, planned)[0]
+
+
+def test_a_gap_is_read_and_replaced_bare() -> None:
+    text = "root = Column(children=[], gap=8)\n"
+
+    assert written_spacing(text, _site(text, "Column(children=[], gap=8)"), "gap") == 8
+    assert _spaced(text, "Column(children=[], gap=8)", "gap", 12) == "root = Column(children=[], gap=12)\n"
+
+
+def test_a_padding_pair_is_read_as_a_tuple_and_written_in_its_own_brackets() -> None:
+    text = "root = Column(children=[], padding=[8, 4])\n"
+
+    assert written_spacing(text, _site(text, "Column(children=[], padding=[8, 4])"), "padding") == (8, 4)
+    assert (
+        _spaced(text, "Column(children=[], padding=[8, 4])", "padding", (16, 4))
+        == "root = Column(children=[], padding=[16, 4])\n"
+    )
+
+
+def test_a_padding_changes_shape_when_asked() -> None:
+    text = "root = Column(children=[], padding=8)\n"
+
+    assert (
+        _spaced(text, "Column(children=[], padding=8)", "padding", (8, 8, 16, 8))
+        == "root = Column(children=[], padding=(8, 8, 16, 8))\n"
+    )
+
+
+def test_an_absent_spacing_is_inserted_after_the_last_argument() -> None:
+    text = "root = Column(children=[])\n"
+
+    assert written_spacing(text, _site(text, "Column(children=[])"), "gap") is None
+    assert _spaced(text, "Column(children=[])", "gap", 12) == "root = Column(children=[], gap=12)\n"
+
+
+@pytest.mark.parametrize("value", ["gap_px", "self.gap", "Observable(8)", "(8, 4, 2)", "(a, 4)", "-4", "True"])
+def test_a_spacing_that_is_not_an_int_literal_is_refused_by_name(value: str) -> None:
+    text = f"root = Column(children=[], gap={value})\n"
+
+    found = written_spacing(text, _site(text, text.strip()[7:]), "gap")
+    planned = plan_spacing(text, _site(text, text.strip()[7:]), "gap", 12)
+
+    assert isinstance(found, Refusal) and value in found.reason
+    assert isinstance(planned, Refusal) and value in planned.reason
+
+
+# --- presets -------------------------------------------------------------------
+
+
+def _preset_written(text: str, snippet: str, keyword: str, preset: Preset) -> str:
+    planned = plan_preset(text, _site(text, snippet), keyword, preset)
+    assert not isinstance(planned, Refusal), planned.reason
+    return apply_spans(text, planned)[0]
+
+
+def test_a_style_preset_is_read_with_its_base_and_size() -> None:
+    text = 'root = nv.Button("a", style=nv.ButtonStyle.filled("m"))\n'
+
+    found = written_preset(text, _site(text, text.strip()[7:]), "style", "ButtonStyle")
+
+    assert found == Preset("nv.ButtonStyle", "filled", "m")
+
+
+def test_a_style_preset_is_rewritten_keeping_its_base_and_quotes() -> None:
+    text = "root = nv.Button('a', style=nv.ButtonStyle.filled('m'))\n"
+
+    written = _preset_written(text, text.strip()[7:], "style", Preset("nv.ButtonStyle", "outlined", "l"))
+
+    assert written == "root = nv.Button('a', style=nv.ButtonStyle.outlined('l'))\n"
+
+
+def test_a_preset_without_a_size_stays_without_one_and_a_size_keyword_stays_a_keyword() -> None:
+    bare = 'root = Button("a", style=ButtonStyle.filled())\n'
+    keyed = 'root = Button("a", style=ButtonStyle.filled(size="m"))\n'
+
+    found = written_preset(bare, _site(bare, bare.strip()[7:]), "style", "ButtonStyle")
+    assert found == Preset("ButtonStyle", "filled", None)
+    assert written_preset(keyed, _site(keyed, keyed.strip()[7:]), "style", "ButtonStyle") == Preset(
+        "ButtonStyle", "filled", "m", True, True
+    )
+    assert (
+        _preset_written(bare, bare.strip()[7:], "style", Preset("ButtonStyle", "tonal", None))
+        == 'root = Button("a", style=ButtonStyle.tonal())\n'
+    )
+    assert (
+        _preset_written(keyed, keyed.strip()[7:], "style", Preset("ButtonStyle", "tonal", "xl", True, True))
+        == 'root = Button("a", style=ButtonStyle.tonal(size="xl"))\n'
+    )
+
+
+def test_a_type_scale_role_is_an_attribute_and_is_rewritten_as_one() -> None:
+    text = 'root = nv.Text("a", type_scale=nv.TypeScale.BODY_MEDIUM)\n'
+
+    found = written_preset(text, _site(text, text.strip()[7:]), "type_scale", "TypeScale")
+    written = _preset_written(
+        text, text.strip()[7:], "type_scale", Preset("nv.TypeScale", "TITLE_LARGE", called=False)
+    )
+
+    assert found == Preset("nv.TypeScale", "BODY_MEDIUM", None, False)
+    assert written == 'root = nv.Text("a", type_scale=nv.TypeScale.TITLE_LARGE)\n'
+
+
+def test_an_absent_preset_is_inserted_after_the_last_argument() -> None:
+    text = 'root = nv.Button("a")\n'
+
+    assert written_preset(text, _site(text, 'nv.Button("a")'), "style", "ButtonStyle") is None
+    assert (
+        _preset_written(text, 'nv.Button("a")', "style", Preset("nv.ButtonStyle", "outlined", "s"))
+        == 'root = nv.Button("a", style=nv.ButtonStyle.outlined("s"))\n'
+    )
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "primary",
+        "self.style",
+        'ButtonStyle.filled("m").copy_with(elevation=2)',
+        "ButtonStyle(background=None)",
+        'ButtonStyle.filled("m", 2)',
+        "ButtonStyle.filled(size)",
+        "make_style()",
+        'CardStyle.filled("m")',
+        "ButtonStyle.filled().copy_with(elevation=2)",
+    ],
+)
+def test_a_style_that_is_not_a_preset_reads_as_a_refusal_and_is_overwritten_by_a_pick(value: str) -> None:
+    text = f'root = Button("a", style={value})\n'
+
+    found = written_preset(text, _site(text, text.strip()[7:]), "style", "ButtonStyle")
+    written = _preset_written(text, text.strip()[7:], "style", Preset("ButtonStyle", "filled", "s"))
+
+    assert isinstance(found, Refusal) and value in found.reason
+    assert written == 'root = Button("a", style=ButtonStyle.filled("s"))\n', "the whole expression goes"
+
+
+def test_the_companion_class_is_spelled_beside_the_widgets_own() -> None:
+    aliased = 'root = nv.Button("a")\n'
+    bare = 'from nuiitivet.material import Button, ButtonStyle\nroot = Button("a")\n'
+    unbound = 'from nuiitivet.material import Button\nroot = Button("a")\n'
+    built = 'from nuiitivet.layout.column import Column, GridItem\nroot = Column.builder([], lambda i, n: i)\n'
+
+    assert companion_name(aliased, _site(aliased, 'nv.Button("a")'), "ButtonStyle") == "nv.ButtonStyle"
+    assert companion_name(bare, _site(bare, 'Button("a")'), "ButtonStyle") == "ButtonStyle"
+    refused = companion_name(unbound, _site(unbound, 'Button("a")'), "ButtonStyle")
+    assert isinstance(refused, Refusal) and refused.reason == "ButtonStyle is not imported in app.py"
+    assert companion_name(built, _site(built, "Column.builder([], lambda i, n: i)"), "GridItem") == "GridItem"
+
+
+def test_the_reload_check_reads_the_gap_and_the_padding_back(recording: None) -> None:
+    column = Column(children=[], gap=8, padding=(4, 2))
+    site = source.site_of(column)[0]
+    log = EditLog()
+
+    with mount(column) as host:
+        host.layout(300, 200)
+        log._pending = (Edit("spacing", site.file, site, "", {}, {"gap": 8}, {"gap": 8}, 1, (), "Column"), False)
+        assert log.after_reload([host.root]) is None
+        log._pending = (Edit("spacing", site.file, site, "", {}, {"gap": 12}, {"gap": 12}, 1, (), "Column"), False)
+        assert log.after_reload([host.root]) == "gap landed at 8, expected 12"
+        sides = {"left": 4, "top": 2, "right": 4, "bottom": 2}
+        log._pending = (Edit("spacing", site.file, site, "", {}, {"padding": "(4, 2)"}, sides, 1, (), "Column"), False)
+        assert log.after_reload([host.root]) is None
+        sides["left"] = 16
+        log._pending = (Edit("spacing", site.file, site, "", {}, {"padding": "(16, 2)"}, sides, 1, (), "Column"), False)
+        assert log.after_reload([host.root]) == "padding landed at (4, 2, 4, 2), expected (16, 2, 4, 2)"
+
+
+def test_the_reload_check_rebuilds_the_preset_and_compares(recording: None) -> None:
+    from nuiitivet.material.buttons import Button
+    from nuiitivet.material.styles.button_style import ButtonStyle
+
+    button = Button("a", style=ButtonStyle.outlined("m"))
+    site = source.site_of(button)[0]
+    log = EditLog()
+
+    with mount(Column(children=[button])) as host:
+        host.layout(300, 200)
+        before: dict[str, Any] = {"style": "filled s"}
+        edit = Edit("preset", site.file, site, "", before, {"style": "outlined m"}, {}, 1, (), "Button")
+        log._pending = (edit, False)
+        assert log.after_reload([host.root]) is None
+        log._pending = (edit, True)
+        assert log.after_reload([host.root]) == "style is not filled s after the reload"
+        edit = Edit("preset", site.file, site, "", {"style": ""}, {"style": "outlined m"}, {}, 1, (), "Button")
+        log._pending = (edit, True)
+        assert log.after_reload([host.root]) is None, "an absent preset before the edit is nothing to check"

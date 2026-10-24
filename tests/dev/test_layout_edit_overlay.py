@@ -347,6 +347,61 @@ def test_the_open_field_paints_over_the_widget() -> None:
         source.uninstall()
 
 
+def test_the_spacing_handles_paint_on_the_selection_and_the_hovered_band_with_them() -> None:
+    """The handles come with the hover and stay with the selection; the band only under a handle."""
+    with mount(Column(children=[Text("AAA", width=100, height=40), Text("BBB", width=100, height=40)], gap=8)) as host:
+        host.layout(300, 200)
+        mode = LayoutEditMode(EditLog())
+        app = _App(host.root, mode)
+        mode.on_key_press(app, "e", _ENTER)
+        mode.on_mouse_motion(app, 50, 20)
+        canvas = _Canvas()
+        lo.paint_layout_edit(app, canvas, app.width, app.height)
+        boxes = canvas.calls.count("drawRoundRect") - 4
+        assert boxes == 2, "the splash and the caption, then the hovered Text's four padding handles"
+
+        mode.on_mouse_press(app, 50, 20)
+        mode.on_mouse_release(app, 50, 20)
+        mode.on_key_press(app, "w", 0)
+        canvas = _Canvas()
+        lo.paint_layout_edit(app, canvas, app.width, app.height)
+        assert canvas.calls.count("drawRoundRect") == boxes + 5, "four padding handles, filled or outlined, and one gap"
+        rects = canvas.calls.count("drawRect")
+
+        mode.on_mouse_motion(app, 150, 44)
+        assert mode.handle is not None, "the gap handle"
+        canvas = _Canvas()
+        lo.paint_layout_edit(app, canvas, app.width, app.height)
+
+        assert canvas.calls.count("drawRect") == rects + 1, "the gap's band"
+
+
+def test_the_toolbar_paints_its_boxes_and_the_open_list() -> None:
+    from nuiitivet.dev.hud import hud_font
+    from nuiitivet.dev.toolbar import Box, Toolbar
+    from nuiitivet.rendering.skia.skia_module import get_skia
+
+    skia = get_skia(raise_if_missing=False)
+    if skia is None:
+        pytest.skip("skia is not available")
+    font, typeface = hud_font(skia)
+    boxes = (Box("style", "filled", ("filled", "outlined"), 0), Box("size", "s", ("s", "m"), 0))
+    canvas = _Canvas()
+
+    anchor = (100.0, 100.0, 80.0, 40.0)
+    window = (900.0, 600.0)
+
+    lo._paint_toolbar(skia, canvas, Toolbar("Button Go", boxes, anchor), font, typeface, window)
+    assert canvas.calls.count("drawTextBlob") == 3, "the name and a text per box"
+    assert canvas.calls.count("drawRoundRect") == 3, "the backdrop and a box edge each"
+
+    canvas = _Canvas()
+    lo._paint_toolbar(skia, canvas, Toolbar("Button Go", boxes, anchor, open=0, highlighted=1), font, typeface, window)
+
+    assert canvas.calls.count("drawTextBlob") == 5, "the name, two boxes and two rows"
+    assert canvas.calls.count("drawRect") == 1, "the highlighted row"
+
+
 def test_the_layer_list_ends_with_the_keys_that_pick_one() -> None:
     """The keys act on the list, so they are taught beside it and nowhere else."""
     from nuiitivet.dev.hud import hud_font

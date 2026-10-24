@@ -12,7 +12,7 @@ Three gestures share one input layer and one prefix:
 | Gesture | Chord | Kind | Effect |
 | --- | --- | --- | --- |
 | Comment mode | `Ctrl+Shift+C` | latched mode | marks widgets and regions for the agent, with an instruction typed on the mark |
-| Layout edit mode | `Ctrl+Shift+E` | latched mode | a drag rewrites size, order or alignment in the source |
+| Layout edit mode | `Ctrl+Shift+E` | latched mode | a drag rewrites size, order, alignment or spacing in the source; a pick rewrites a preset |
 | Source jump | `Ctrl+Shift+Click` | modeless | opens the widget's construction site in the editor |
 
 `Ctrl+Shift` is the dev runner's prefix: every chord it claims starts with
@@ -276,78 +276,82 @@ handler as Node, which exits while the jump reports success.
 ## Layout Edit Mode
 
 The sibling of comment mode with the opposite division of labour: the human
-drags a widget and the dev runner edits the source itself, with no agent and
-no turn. The tree is never mutated: what is on screen always came from the
-code, and during the gesture only the overlay moves.
+drags a widget or picks from the bar over it, and the dev runner edits the
+source itself, with no agent and no turn.
 
-### The Gesture
+### Structure
 
-There is no commit. Every release writes, and `Ctrl+Z` is the confirmation
-for every write, which is why a delete asks for none. Undo is the inverse
-span, refused when the text it expects has moved. Text is one literal: the
-field writes the string into the literal the call was given.
+```mermaid
+flowchart LR
+    subgraph mode[dev/layout_edit_mode.py]
+        state[selection · drag in flight · open list]
+    end
+    subgraph readings[what a gesture means]
+        landing[landing.py · a size]
+        reorder[reorder.py · a slot or a cell]
+        align[align.py · an alignment]
+        spacing[spacing.py · a padding side or a gap]
+        presets[presets.py · the presets a widget takes]
+    end
+    toolbar[toolbar.py · the bar's geometry]
+    edit[source_edit.py · span surgery · edit log · reload check]
+    file[(source file)]
+    reload[hot reload]
+    overlay[layout_edit_overlay.py]
 
-The selection is held by the pointer, over the selected widget's children
-too: hover alone would lose the container before its corner can be reached,
-and two outlines at once would make the mode read like comment mode's marks.
+    state --> landing & reorder & align & spacing & presets --> edit
+    state <--> toolbar
+    edit -- spans --> file --> reload -- rebuilt tree --> edit
+    state -. read at paint .-> overlay
+    toolbar -. same rects .-> overlay
+```
 
-A drag is not a coordinate. A corner drag resolves to one of the three size
-spellings, a body drag to a slot among the siblings or, in a grid, to the
-cell under the pointer; what is written is a landing value, a list position
-or a cell, never a delta. Landing values are measured, not guessed: the
-`auto` band is the widget's own intrinsic size measured at the proposed
-width, and the `wt` band is what the parent's allocation would give it, so a
-snapped value matches the reload to the pixel; an axis whose landing equals
-what is declared is not rewritten. Under the nudge keys the snap bands close
-to the exact size, since a key that could not choose the pixel beside them
-would adjust nothing.
+The mode owns the selection, the drag in flight and the open list, and
+turns each gesture into a reading and each reading into an edit. A reading
+module turns a pointer position into the value to write: a size, a slot or
+a cell, an alignment, a padding side or a gap. `presets.py` is the table of
+preset families by widget class. `toolbar.py` holds the bar's geometry,
+which the mode hits against and the overlay paints from. `source_edit.py`
+locates the call at the recorded site, replaces spans, keeps the edit log
+with each edit's inverse, and checks the rebuilt tree after the reload.
+The overlay paints the mode's state and nothing else.
 
-The container under the pointer decides the reading: the deepest container
-under the pointer, looking past the dragged subtree. The widget's own
-container gives the in-place reading, any other makes the drag a move into
-it, and none keeps the in-place reading so a drag past the end of a list
-still lands at its end; "deepest" rather than "the one the pointer left" is
-what lets a widget move into a sibling container nested inside its own. In a
-`Stack` the layer decides, not the point, since a point over a stack names
-every layer under it.
+### Promises
 
-### What Is Written
-
-The edit re-parses the file, matches the `Call` node the site recorded, then
-replaces the literal's span or inserts the keyword after the last argument;
-nothing around it is reformatted, and a site under an install directory is
-refused. A refusal is a badge, not a mark: the file is left alone and the
-reason named, and nothing is handed to the agent, since layout edit mode
-never touches the `Comments`.
-
-Staying put is alignment, and the alignment is the container's. Writing the
-container's value rather than a per-child wrapper keeps one rule for every
-container, and aligning a whole column is what a drag most often means; a
-per-child override is asked for in words.
-
-A reorder moves a span. The runner locates, through the container's site,
-the list literal that owns the children's order, `children` itself or the
-list a comprehension or a `ForEach` iterates, inline or bound once to a name
-never mentioned again, and moves the element with one of its separators so
-the formatting survives. The gate is that a layout index must name a source
-span: an order the runner cannot see in one literal is refused, and tree
-indices are never trusted past that gate. A move between containers is two
-lists in one edit, possibly two files, written together and undone together
-with the second refusing when either has moved. A box with a child is passed
-over by the destination walk, since replacing it would be a choice, not a
-move; only the source can tell, since the tree sees the same children either
-way, so it is read once when the drag starts and once per container the
-pointer enters.
-
-A grid drop is a cell, and the wrapper is the destination's. A `Grid` places
-by `GridItem`, never by order, so inside a grid the in-place reading is a
-cell change, and a move across a grid's edge adds or removes the wrapper. An
-occupied cell is allowed, since overlap is the grid's business.
-
-Write, reload, check: the ghost is a prediction, and after the reload the
-edit log finds the instances rebuilt at the site and compares their rect, or
-for a move the class at the slot or in the cell, with it; a miss, a site that
-now builds nothing, or a failed reload becomes the badge.
+- The tree is never mutated. What is on screen came from the code, and
+  during a gesture only the overlay moves.
+- A write is a set of spans in one file, two files for a move across
+  containers, located by re-parsing the file and matching the call at the
+  recorded site. Nothing around a span is reformatted. A site under an
+  install directory is refused.
+- Every release writes, and every pick writes. The inverse spans undo an
+  edit, and the undo is refused when the text they expect has moved. A
+  refusal is a badge; nothing reaches the `Comments`.
+- What is written is a landing value, a list position, a cell, a shape or a
+  preset, never a delta. A landing value is measured from the live tree:
+  the `auto` band is the widget's intrinsic size at the proposed width, the
+  `wt` band is the parent's allocation, and a band's direction is the
+  widget's intrinsic size against its laid-out extent.
+- A layout index must name a source span. An order the runner cannot see in
+  one list literal is refused, and tree indices are never trusted past that
+  gate.
+- Alignment is written on the container; a `CrossAligned` the human wrote
+  is rewritten in place.
+- A grid places by `GridItem`, so a move across a grid's edge adds or
+  removes the wrapper, spelled as the destination's module spells it.
+- For spacing, the handle is the only grab zone; the padding region and the
+  gaps stay the body drag's. The spacing is written in the shape its
+  handles stand for, one int, a pair or four sides, keeping the file's
+  brackets, with the sides the drag did not touch taken from the live
+  widget.
+- A preset is written as a call of its companion class, spelled as the
+  module spells the widget; no import is added. Whatever expression the
+  keyword holds is replaced whole, and an absent keyword is inserted after
+  the last argument.
+- After the reload, the pending edit is checked against the instances
+  rebuilt at its site: the rect for a size, the class at the slot or in the
+  cell for a move, the value for a spacing, equality for a preset. A miss, a
+  site that builds nothing, or a failed reload is the badge.
 
 ## Implementation Map
 
@@ -359,7 +363,7 @@ now builds nothing, or a failed reload becomes the badge.
 | geometry picker, visible rect | `_interaction/perception.py` (`pick_at`, `find_obstruction`) |
 | construction sites | `dev/source.py` |
 | source jump, editor launch | `dev/source_jump.py`, `dev/editor.py` |
-| layout edit mode: mode, landing values, alignment, slots and gates, span surgery, overlay | `dev/layout_edit_mode.py`, `dev/landing.py`, `dev/align.py`, `dev/reorder.py`, `dev/source_edit.py`, `dev/layout_edit_overlay.py` |
+| layout edit mode: mode, landing values, alignment, slots and gates, spacing handles, presets and the bar, span surgery, overlay | `dev/layout_edit_mode.py`, `dev/landing.py`, `dev/align.py`, `dev/reorder.py`, `dev/spacing.py`, `dev/presets.py`, `dev/toolbar.py`, `dev/source_edit.py`, `dev/layout_edit_overlay.py` |
 | the badge both modes share | `dev/hud.py` |
 | the inline field both modes open over the glass | `dev/inline_field.py` |
 | the editing operations shared with `EditableText` | `widgets/text_editing.py` |

@@ -12,30 +12,45 @@ from typing import Any, Optional
 
 from nuiitivet._interaction.perception import global_visual_rect
 
-from .hud import color, hud_font, paint_caption, paint_hud, paint_sheet, paint_splash
-from .inline_field import paint_field
+from . import toolbar
+from .hud import (
+    CAPTION_BG,
+    CAPTION_INK,
+    FONT_SIZE,
+    color,
+    hud_font,
+    paint_caption,
+    paint_hud,
+    paint_sheet,
+    paint_splash,
+)
+from .inline_field import measure, paint_field
 from .comment_overlay import _enabled as _overlays_enabled
-from .comment_overlay import describe_node, paint_brackets
+from .comment_overlay import paint_brackets
 
 logger = logging.getLogger(__name__)
 
-# Teal: distant from amber and from indigo alike.
+# Teal: distant from amber and from indigo alike. The spacing handles share
+# it: an outlined pill is told from a bracket by its shape, not its colour.
 _ACCENT = (0, 168, 160)
-# Room a layer list needs beside its stack before it moves inside it.
+# Room a layer list or a pick list needs beside its widget before it moves inside it.
 _LAYERS_WIDTH = 220.0
 _DASH = (6.0, 4.0)
 # Beside the layer list, since the keys act on it; the badge does not repeat them.
 _LAYER_HINT = "W/S/0-9 layer"
 #: Every gesture of the mode, for the sheet ``H`` holds open.
 HELP: tuple[tuple[str, str], ...] = (
-    ("Esc", "leave"),
+    ("Esc", "drop the selection; with none, leave"),
     ("Esc (while dragging)", "cancel the drag"),
     ("Click", "select the widget"),
     ("Drag a corner", "resize; WASD nudge a pixel, Alt skips the snap"),
     ("Drag the body", "reorder, move, or align"),
+    ("Drag a spacing handle", "change the padding or gap; Alt skips the snap"),
+    ("Click a spacing handle", "how many sides move with it: every side, its pair, or itself alone"),
     ("W / S", "select the parent / child"),
     ("W / S / 0-9 over a Stack", "pick the layer it lands in"),
     ("Enter (on the selection)", "edit its text"),
+    ("The bar over the selection", "its style, size or type scale; a box opens its list"),
     ("Delete / Backspace", "remove the selected widget from the source"),
     ("Ctrl+Z / Ctrl+Shift+Z", "undo / redo"),
 )
@@ -81,13 +96,20 @@ def paint_layout_edit(app: Any, canvas: Any, width: int, height: int) -> None:
                 _paint_insertion_line(skia, canvas, ghost.rect, ghost.caption, font, typeface)
             elif ghost.shape == "wash":
                 _paint_wash(skia, canvas, ghost.rect)
+            elif ghost.shape == "band":
+                _paint_band(skia, canvas, ghost.rect, ghost.caption, font, typeface)
             elif ghost.shape == "cell":
                 _paint_cell(skia, canvas, ghost.rect, ghost.caption, font, typeface)
             else:
                 _paint_ghost(skia, canvas, ghost.rect, ghost.caption, font, typeface)
+        if active and jump_target is None:
+            _paint_handles(skia, canvas, mode)
         layers = mode.layers if active else None
         if layers is not None:
             _paint_layers(skia, canvas, layers, font, typeface, width)
+        bar = mode.toolbar if active else None
+        if bar is not None:
+            _paint_toolbar(skia, canvas, bar, font, typeface, window)
         editor = mode.editor if active else None
         if editor is not None:
             paint_field(skia, canvas, app, editor.slot, editor.value, _ACCENT, font, typeface, window)
@@ -120,7 +142,13 @@ def _paint_candidate(
 
     The brackets are the grab zones: a press on one starts the drag.
     """
-    candidate = mode.candidate
+    candidate, selected = mode.candidate, mode.selected
+    if selected is not None and selected is not candidate:
+        # The selection the pointer has left: still the toolbar's, and
+        # ``Enter``'s, so it keeps a faint mark.
+        kept = global_visual_rect(selected)
+        if kept is not None:
+            paint_brackets(skia, canvas, kept, 0.35, _ACCENT)
     if candidate is None:
         return
     rect = global_visual_rect(candidate)
@@ -128,10 +156,100 @@ def _paint_candidate(
         return
     x, y, w, h = rect
     wash = skia.Paint(AntiAlias=True)
-    wash.setColor(color(skia, _ACCENT, 0.12 if candidate is mode.selected else 0.08))
+    wash.setColor(color(skia, _ACCENT, 0.12 if candidate is selected else 0.08))
     canvas.drawRect(skia.Rect.MakeXYWH(x, y, w, h), wash)
-    paint_brackets(skia, canvas, rect, 1.0 if candidate is mode.selected else 0.8, _ACCENT)
-    paint_caption(skia, canvas, describe_node(candidate), font, typeface, x, y - 22.0, window)
+    paint_brackets(skia, canvas, rect, 1.0 if candidate is selected else 0.8, _ACCENT)
+    if candidate is selected and mode.toolbar is not None:
+        # The bar over the selection leads with its name; a caption there
+        # would say it twice.
+        return
+    paint_caption(skia, canvas, mode.caption or "", font, typeface, x, y - 22.0, window)
+
+
+def _paint_handles(skia: Any, canvas: Any, mode: Any) -> None:
+    """The spacing handles on the selection, and the band the one under the pointer would change.
+
+    The handles are the grab zones; the band is drawn only while a handle
+    is hovered, so the spacing stays invisible until the human reaches for
+    it. A held handle stays, riding on its band's far edge.
+    """
+    hovered = mode.handle
+    if hovered is not None:
+        _handle, bands = hovered
+        for band in bands:
+            _paint_band(skia, canvas, band, "", None, None)
+    for handle in mode.handles:
+        x, y, w, h = handle.rect
+        paint = skia.Paint(AntiAlias=True)
+        paint.setColor(color(skia, _ACCENT, 1.0 if handle.filled else 0.85))
+        if not handle.filled:
+            # Outlined at rest: something to take hold of. Filled under the
+            # pointer, with every handle that moves along: what a drag moves.
+            paint.setStyle(skia.Paint.kStroke_Style)
+            paint.setStrokeWidth(1.5)
+        radius = min(w, h) / 2.0
+        canvas.drawRoundRect(skia.Rect.MakeXYWH(x, y, w, h), radius, radius, paint)
+
+
+def _paint_band(skia: Any, canvas: Any, rect: tuple[float, ...], caption: str, font: Any, typeface: Any) -> None:
+    """The spacing a handle stands for: a tint from the content's edge to the handle, captioned with the value."""
+    x, y, w, h = rect
+    band = skia.Paint(AntiAlias=True)
+    band.setColor(color(skia, _ACCENT, 0.18))
+    canvas.drawRect(skia.Rect.MakeXYWH(x, y, w, h), band)
+    if caption:
+        paint_caption(skia, canvas, caption, font, typeface, x, y + h + 4.0)
+
+
+def _paint_toolbar(skia: Any, canvas: Any, bar: Any, font: Any, typeface: Any, window: tuple[float, float]) -> None:
+    """The bar over the selection: its name, a box per preset it takes, and the list open under one of them.
+
+    The geometry is :mod:`.toolbar`'s, so a click lands where the box is drawn.
+    """
+    from nuiitivet.rendering.skia.font import make_text_blob
+
+    if font is None:
+        return
+    fill = skia.Paint(AntiAlias=True)
+    fill.setColor(skia.Color(*CAPTION_BG))
+    bx, by, bw, bh = toolbar.backdrop(bar, measure, window)
+    canvas.drawRoundRect(skia.Rect.MakeXYWH(bx, by, bw, bh), 5.0, 5.0, fill)
+    ink = skia.Paint(AntiAlias=True)
+    ink.setColor(color(skia, CAPTION_INK, 1.0))
+    edge = skia.Paint(AntiAlias=True)
+    edge.setStyle(skia.Paint.kStroke_Style)
+    edge.setStrokeWidth(1.5)
+    edge.setColor(color(skia, _ACCENT, 0.95))
+    wash = skia.Paint(AntiAlias=True)
+    wash.setColor(color(skia, _ACCENT, 0.3))
+
+    def text_at(text: str, x: float, y: float, h: float, pad: float = toolbar.BOX_PAD) -> None:
+        blob = make_text_blob(text, font)
+        if blob is not None:
+            canvas.drawTextBlob(blob, x + pad, y + h / 2.0 + FONT_SIZE / 2.5, ink)
+
+    nx, ny, _nw, nh = toolbar.name_rect(bar, measure, window)
+    text_at(bar.name, nx, ny, nh, 0.0)
+    for index, (box, rect) in enumerate(zip(bar.boxes, toolbar.box_rects(bar, measure, window))):
+        x, y, w, h = rect
+        if index == bar.open:
+            canvas.drawRoundRect(skia.Rect.MakeXYWH(x, y, w, h), 5.0, 5.0, wash)
+        canvas.drawRoundRect(skia.Rect.MakeXYWH(x, y, w, h), 5.0, 5.0, edge)
+        text_at(box.text, x, y, h)
+    if bar.open is None:
+        return
+    rows = toolbar.row_rects(bar, measure, window)
+    if not rows:
+        return
+    x, y, w, _h = rows[0]
+    canvas.drawRoundRect(skia.Rect.MakeXYWH(x, y, w, toolbar.ROW_H * len(rows)), 5.0, 5.0, fill)
+    canvas.drawRoundRect(skia.Rect.MakeXYWH(x, y, w, toolbar.ROW_H * len(rows)), 5.0, 5.0, edge)
+    box = bar.boxes[bar.open]
+    for index, (option, rect) in enumerate(zip(box.options, rows)):
+        x, y, w, h = rect
+        if index == bar.highlighted:
+            canvas.drawRect(skia.Rect.MakeXYWH(x, y, w, h), wash)
+        text_at(f"{'•' if index == box.current else ' '} {option}", x, y, h)
 
 
 def _paint_ghost(skia: Any, canvas: Any, rect: tuple[float, ...], caption: str, font: Any, typeface: Any) -> None:
