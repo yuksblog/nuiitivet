@@ -1190,7 +1190,7 @@ class ToggleButton(ToggleButtonBase):
         return self._toggle_style().for_selected(selected)
 
     def _preset_style_for_selected(self, selected: bool) -> ButtonStyle:
-        style = self._user_toggle_style if self._user_toggle_style is not None else ToggleButtonStyle.preset()
+        style = self._user_toggle_style if self._user_toggle_style is not None else ToggleButtonStyle.default()
         return style.for_selected(selected)
 
 
@@ -1225,7 +1225,7 @@ class IconToggleButton(ToggleButtonBase):
         """
         #: The style the caller passed, or ``None`` to follow the theme.
         self._user_toggle_style: Optional[IconToggleButtonStyle] = style
-        preset = style if style is not None else IconToggleButtonStyle.preset()
+        preset = style if style is not None else IconToggleButtonStyle.default()
         # Both selected/unselected share container_height per factory contract.
         # The container is sized once, from the style available at construction:
         # a theme arriving later restyles the button but does not resize it.
@@ -1260,7 +1260,7 @@ class IconToggleButton(ToggleButtonBase):
         return style.selected if selected else style.unselected
 
     def _preset_style_for_selected(self, selected: bool) -> ButtonStyle:
-        style = self._user_toggle_style if self._user_toggle_style is not None else IconToggleButtonStyle.preset()
+        style = self._user_toggle_style if self._user_toggle_style is not None else IconToggleButtonStyle.default()
         return style.selected if selected else style.unselected
 
 
@@ -1444,7 +1444,7 @@ class Fab(_FabBase):
         # which cannot reach the theme yet. The preset is what
         # ``FabStyle.from_theme`` falls back to, so an unthemed app sees no
         # change; a themed one adopts its style on the first measure.
-        effective_style: FabStyle = style if style is not None else FabStyle.preset()
+        effective_style: FabStyle = style if style is not None else FabStyle.default()
         self._user_style = style
         self._user_padding = padding
         size = effective_style.container_height
@@ -1558,7 +1558,7 @@ class ExtendedFab(_FabBase):
         """
         # See ``Fab.__init__``: the preset stands in until the first measure can
         # reach the theme.
-        base_style = style if style is not None else FabStyle.preset()
+        base_style = style if style is not None else FabStyle.default()
         effective_style = self._adapt_style(base_style)
         self._container_height = effective_style.container_height
         ext = EXTENDED_FAB_SIZE_TOKENS[_fab_size_from_height(base_style.container_height)]

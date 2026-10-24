@@ -110,8 +110,8 @@ class ChipStyle:
         )
 
     @classmethod
-    def preset(cls, variant: str) -> "ChipStyle":
-        """Return the framework preset for ``variant``, ignoring any theme.
+    def default(cls, variant: str) -> "ChipStyle":
+        """Return the framework default for ``variant``, ignoring any theme.
 
         This is what a chip renders with before it is mounted, and what
         :meth:`from_theme` falls back to when no Material theme is installed.
@@ -158,7 +158,7 @@ class ChipStyle:
             if variant_name == "suggestion":
                 return theme_data.suggestion_chip_style
 
-        return cls.preset(variant_name)
+        return cls.default(variant_name)
 
 
 __all__ = ["ChipStyle"]

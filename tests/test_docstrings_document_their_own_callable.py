@@ -17,7 +17,7 @@ PARAMETER_SECTION = re.compile(r"^\s*(Args|Arguments|Parameters|Params|Keyword A
 
 # Resolution hooks a widget calls on its own style class, not ways an app
 # constructs one.
-NOT_A_CONSTRUCTOR = {"from_theme", "preset"}
+NOT_A_CONSTRUCTOR = {"from_theme", "default"}
 
 
 def _public_classes() -> list[tuple[str, type]]:

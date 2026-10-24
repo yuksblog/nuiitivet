@@ -198,7 +198,7 @@ def test_chip_adopts_the_themes_variant_style(variant, field, factory) -> None:
 def test_chip_uses_the_variant_preset_before_it_is_mounted(variant, field, factory) -> None:
     chip = factory()
 
-    assert chip.style == ChipStyle.preset(variant)
+    assert chip.style == ChipStyle.default(variant)
 
 
 def test_chip_content_is_rebuilt_for_the_themes_style() -> None:
@@ -295,7 +295,7 @@ def test_fab_adopts_the_themes_fab_style() -> None:
 
 
 def test_fab_uses_the_preset_before_it_is_mounted() -> None:
-    assert Fab("star").style == FabStyle.preset()
+    assert Fab("star").style == FabStyle.default()
 
 
 def test_fab_explicit_style_wins_over_the_theme() -> None:
@@ -309,7 +309,7 @@ def test_fab_explicit_style_wins_over_the_theme() -> None:
 def test_fab_follows_a_later_theme_change() -> None:
     fab = Fab("star")
     manager = _mount(fab, _theme_with())
-    assert fab.style == FabStyle.preset()
+    assert fab.style == FabStyle.default()
 
     manager.set_theme(_theme_with(_fab_style=_CUSTOM_FAB_STYLE))
 
@@ -331,7 +331,7 @@ def test_extended_fab_adopts_the_themes_fab_style() -> None:
 def test_extended_fab_uses_the_preset_before_it_is_mounted() -> None:
     fab = ExtendedFab("a")
 
-    assert fab.style == fab._adapt_style(FabStyle.preset())
+    assert fab.style == fab._adapt_style(FabStyle.default())
 
 
 # --- Toggle buttons ---------------------------------------------------------
@@ -362,7 +362,7 @@ def test_toggle_button_adopts_the_themes_selected_colours() -> None:
 
 
 def test_toggle_button_uses_the_preset_before_it_is_mounted() -> None:
-    assert ToggleButton("a").style == ToggleButtonStyle.preset().for_selected(False)
+    assert ToggleButton("a").style == ToggleButtonStyle.default().for_selected(False)
 
 
 def test_toggle_button_explicit_style_wins_over_the_theme() -> None:
@@ -376,7 +376,7 @@ def test_toggle_button_explicit_style_wins_over_the_theme() -> None:
 def test_toggle_button_follows_a_later_theme_change() -> None:
     button = ToggleButton("a")
     manager = _mount(button, _theme_with())
-    assert button.style == ToggleButtonStyle.preset().for_selected(False)
+    assert button.style == ToggleButtonStyle.default().for_selected(False)
 
     manager.set_theme(_theme_with(_toggle_button_style=_CUSTOM_TOGGLE_STYLE))
 
@@ -399,7 +399,7 @@ def test_icon_toggle_button_adopts_the_themes_style() -> None:
 
 
 def test_icon_toggle_button_uses_the_preset_before_it_is_mounted() -> None:
-    assert IconToggleButton("star").style == IconToggleButtonStyle.preset().unselected
+    assert IconToggleButton("star").style == IconToggleButtonStyle.default().unselected
 
 
 def test_icon_toggle_button_explicit_style_wins_over_the_theme() -> None:
@@ -413,7 +413,7 @@ def test_icon_toggle_button_explicit_style_wins_over_the_theme() -> None:
 def test_icon_toggle_button_follows_a_later_theme_change() -> None:
     button = IconToggleButton("star")
     manager = _mount(button, _theme_with())
-    assert button.style == IconToggleButtonStyle.preset().unselected
+    assert button.style == IconToggleButtonStyle.default().unselected
 
     manager.set_theme(_theme_with(_icon_toggle_button_style=_CUSTOM_ICON_TOGGLE_STYLE))
 
@@ -454,7 +454,7 @@ def test_toolbar_adopts_the_themes_style(name, factory) -> None:
 
 @pytest.mark.parametrize("name,factory", _TOOLBAR_CASES, ids=[name for name, _ in _TOOLBAR_CASES])
 def test_toolbar_uses_the_preset_before_it_is_mounted(name, factory) -> None:
-    assert factory().style == ToolbarStyle.preset()
+    assert factory().style == ToolbarStyle.default()
 
 
 @pytest.mark.parametrize("name,factory", _TOOLBAR_CASES, ids=[name for name, _ in _TOOLBAR_CASES])
@@ -492,7 +492,7 @@ def test_toolbar_follows_a_later_theme_change() -> None:
     toolbar = DockedToolbar([IconButton("add")])
     manager = _mount(toolbar, _theme_with())
     toolbar.preferred_size()
-    assert toolbar.style == ToolbarStyle.preset()
+    assert toolbar.style == ToolbarStyle.default()
 
     manager.set_theme(_theme_with(_toolbar_style=_CUSTOM_TOOLBAR_STYLE))
     toolbar.preferred_size()
@@ -585,7 +585,7 @@ def test_menu_adopts_the_themes_style() -> None:
 
 
 def test_menu_uses_the_preset_before_it_is_mounted() -> None:
-    assert Menu(items=[MenuItem("a")]).style == MenuStyle.preset()
+    assert Menu(items=[MenuItem("a")]).style == MenuStyle.default()
 
 
 def test_menu_explicit_style_wins_over_the_theme() -> None:
@@ -599,7 +599,7 @@ def test_menu_explicit_style_wins_over_the_theme() -> None:
 def test_menu_follows_a_later_theme_change() -> None:
     menu = Menu(items=[MenuItem("a")])
     manager = _mount(menu, _theme_with())
-    assert menu.style == MenuStyle.preset()
+    assert menu.style == MenuStyle.default()
 
     manager.set_theme(_theme_with(_menu_style=_CUSTOM_MENU_STYLE))
 
@@ -652,7 +652,7 @@ def test_standard_button_group_adopts_the_themes_style() -> None:
 def test_standard_button_group_uses_the_preset_before_it_is_mounted() -> None:
     group = StandardButtonGroup(_group_items())
 
-    assert group._style == StandardButtonGroupStyle.preset()
+    assert group._style == StandardButtonGroupStyle.default()
 
 
 def test_standard_button_group_explicit_style_wins_over_the_theme() -> None:
@@ -668,7 +668,7 @@ def test_standard_button_group_follows_a_later_theme_change() -> None:
     group = StandardButtonGroup(_group_items())
     manager = _mount(group, _theme_with())
     group.preferred_size()
-    assert group._style == StandardButtonGroupStyle.preset()
+    assert group._style == StandardButtonGroupStyle.default()
 
     manager.set_theme(_theme_with(_standard_button_group_style=_CUSTOM_STANDARD_GROUP_STYLE))
     group.preferred_size()
@@ -688,7 +688,7 @@ def test_connected_button_group_adopts_the_themes_style() -> None:
 def test_connected_button_group_uses_the_preset_before_it_is_mounted() -> None:
     group = ConnectedButtonGroup(_group_items())
 
-    assert group._style == ConnectedButtonGroupStyle.preset()
+    assert group._style == ConnectedButtonGroupStyle.default()
 
 
 def test_connected_button_group_explicit_style_wins_over_the_theme() -> None:
@@ -711,7 +711,7 @@ def test_lone_group_button_adopts_the_themes_standard_group_style() -> None:
 
 
 def test_lone_group_button_uses_the_preset_before_it_is_mounted() -> None:
-    assert GroupButton(label="a")._style == StandardButtonGroupStyle.preset()
+    assert GroupButton(label="a")._style == StandardButtonGroupStyle.default()
 
 
 def test_group_button_explicit_style_wins_over_the_theme() -> None:

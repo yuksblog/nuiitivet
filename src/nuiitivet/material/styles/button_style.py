@@ -481,8 +481,8 @@ class IconToggleButtonStyle:
     # -- Theme resolution ----------------------------------------------------
 
     @classmethod
-    def preset(cls) -> "IconToggleButtonStyle":
-        """Return the framework preset, ignoring any theme.
+    def default(cls) -> "IconToggleButtonStyle":
+        """Return the framework default, ignoring any theme.
 
         This is what an icon toggle button renders with before it is mounted,
         and what :meth:`from_theme` falls back to when no Material theme is
@@ -508,7 +508,7 @@ class IconToggleButtonStyle:
         theme_data = theme.extension(MaterialThemeData)
         if theme_data is not None:
             return theme_data.icon_toggle_button_style
-        return cls.preset()
+        return cls.default()
 
 
 __all__ = ["ButtonStyle", "IconButtonStyle", "IconToggleButtonStyle"]

@@ -147,7 +147,7 @@ class DockedToolbar(_ToolbarBase):
         # is unreachable until the widget is attached. The preset is what
         # ``ToolbarStyle.from_theme`` falls back to, so an unthemed app sees no
         # change; a themed one adopts its style on the first measure.
-        effective_style = style if style is not None else ToolbarStyle.preset()
+        effective_style = style if style is not None else ToolbarStyle.default()
         row_children: list[Widget] = list(buttons)
 
         self._content = Row(
@@ -233,7 +233,7 @@ class _FloatingToolbarBase(_ToolbarBase):
         # is unreachable until the widget is attached. The preset is what
         # ``ToolbarStyle.from_theme`` falls back to, so an unthemed app sees no
         # change; a themed one adopts its style on the first measure.
-        effective_style = style if style is not None else ToolbarStyle.preset()
+        effective_style = style if style is not None else ToolbarStyle.default()
         layout_children: list[Widget] = list(buttons)
 
         if orientation == "horizontal":

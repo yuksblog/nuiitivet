@@ -106,7 +106,7 @@ class MaterialChipBase(InteractiveWidget):
         # The theme is unreachable until the chip is attached, so resolving it
         # here would pin the light default. Build with the variant preset; the
         # real style is pulled in :attr:`style` once the chip can reach a theme.
-        initial_style = style if style is not None else ChipStyle.preset(self._variant)
+        initial_style = style if style is not None else ChipStyle.default(self._variant)
         self._effective_style: "ChipStyle" = initial_style
         # Chip height is MD3-fixed (container_height token) -> style only.
         outer_padding = padding if padding is not None else 0

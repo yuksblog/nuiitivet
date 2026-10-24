@@ -79,7 +79,7 @@ class Card(ComposableWidget, Box):
 
         # The theme is unreachable here: the widget has no parent link until it
         # is attached, so ``Theme.of`` would return the light default and freeze
-        # it forever. Start from the framework preset -- the same value
+        # it forever. Start from the framework default -- the same value
         # ``CardStyle.from_theme`` falls back to when no Material theme is
         # installed -- and re-apply the theme's style once mounted.
         initial_style = style if style is not None else CardStyle.filled()

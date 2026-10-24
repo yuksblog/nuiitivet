@@ -598,7 +598,7 @@ class Menu(InteractiveWidget):
         # could reach for the theme, which is not resolvable yet. The preset is
         # what ``MenuStyle.from_theme`` falls back to, so an unthemed app sees
         # no change; a themed one adopts its style on the first measure.
-        effective_style = style or MenuStyle.preset()
+        effective_style = style or MenuStyle.default()
         #: The style the caller passed, or ``None`` to follow the theme.
         self._user_style: MenuStyle | None = style
         self._applied_style: MenuStyle = effective_style

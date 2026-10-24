@@ -130,8 +130,8 @@ class FabStyle(ButtonStyle):
     # -- Theme resolution ----------------------------------------------------
 
     @classmethod
-    def preset(cls) -> "FabStyle":
-        """Return the framework preset, ignoring any theme.
+    def default(cls) -> "FabStyle":
+        """Return the framework default, ignoring any theme.
 
         This is what a FAB renders with before it is mounted, and what
         :meth:`from_theme` falls back to when no Material theme is installed.
@@ -156,7 +156,7 @@ class FabStyle(ButtonStyle):
         theme_data = theme.extension(MaterialThemeData)
         if theme_data is not None:
             return theme_data.fab_style
-        return cls.preset()
+        return cls.default()
 
 
 __all__ = ["FabStyle"]

@@ -186,8 +186,8 @@ class ToolbarStyle:
         )
 
     @classmethod
-    def preset(cls, variant: ToolbarColorScheme = "standard") -> "ToolbarStyle":
-        """Return the framework preset for ``variant``, ignoring any theme.
+    def default(cls, variant: ToolbarColorScheme = "standard") -> "ToolbarStyle":
+        """Return the framework default for ``variant``, ignoring any theme.
 
         This is what a toolbar renders with before it is mounted, and what
         :meth:`from_theme` falls back to when no Material theme is installed.
@@ -223,7 +223,7 @@ class ToolbarStyle:
             theme_data = theme.extension(MaterialThemeData)
             if theme_data is not None:
                 return theme_data.toolbar_style
-        return cls.preset(variant)
+        return cls.default(variant)
 
 
 __all__ = ["ToolbarColorScheme", "ToolbarStyle"]
