@@ -461,6 +461,11 @@ class _IndeterminateProgressBase(_ProgressIndicatorBase):
 class LinearProgressIndicator(_DeterminateProgressBase):
     """Material Design 3 determinate linear progress indicator."""
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`LinearProgressIndicatorStyle`'s presets."""
+        return {"style": LinearProgressIndicatorStyle}
+
     def __init__(
         self,
         value: float | ObservableProtocol[float] = 0.0,
@@ -617,6 +622,11 @@ class LinearProgressIndicator(_DeterminateProgressBase):
 class IndeterminateLinearProgressIndicator(_IndeterminateProgressBase):
     """Material Design 3 indeterminate linear progress indicator."""
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`LinearProgressIndicatorStyle`'s presets."""
+        return {"style": LinearProgressIndicatorStyle}
+
     def __init__(
         self,
         *,
@@ -741,6 +751,11 @@ class IndeterminateLinearProgressIndicator(_IndeterminateProgressBase):
 
 class CircularProgressIndicator(_DeterminateProgressBase):
     """Material Design 3 determinate circular progress indicator."""
+
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`CircularProgressIndicatorStyle`'s presets."""
+        return {"style": CircularProgressIndicatorStyle}
 
     def __init__(
         self,
@@ -876,6 +891,11 @@ class CircularProgressIndicator(_DeterminateProgressBase):
 
 class IndeterminateCircularProgressIndicator(_IndeterminateProgressBase):
     """Material Design 3 indeterminate circular progress indicator."""
+
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`CircularProgressIndicatorStyle`'s presets."""
+        return {"style": CircularProgressIndicatorStyle}
 
     def __init__(
         self,

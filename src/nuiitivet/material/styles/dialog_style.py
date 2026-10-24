@@ -58,6 +58,18 @@ class DialogStyle:
         }
 
     @classmethod
+    def default(cls) -> "DialogStyle":
+        """Return the framework default, ignoring any theme.
+
+        This is what a dialog renders with before it is mounted, and what
+        :meth:`from_theme` falls back to when no Material theme is installed.
+
+        Returns:
+            The basic dialog style.
+        """
+        return cls.basic()
+
+    @classmethod
     def basic(cls) -> "DialogStyle":
         """Default Basic Dialog style."""
         return cls()

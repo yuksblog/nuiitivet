@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Iterable, Optional, Tuple, Type, TypeVar, Union
+from typing import Iterable, Mapping, Optional, Tuple, Type, TypeVar, Union
 
 from ..rendering.padding import PaddingLike
 from ..rendering.sizing import Sizing, SizingLike
@@ -66,6 +66,19 @@ class Widget(
             max_children=max_children,
             overflow_policy=overflow_policy,
         )
+
+    @classmethod
+    def editable_parameters(cls) -> Mapping[str, type]:
+        """The constructor keywords layout edit mode edits from its bar, and the type each value is picked from.
+
+        The mode builds a box per keyword named here from the type: a class
+        with presets offers its classmethods that take only optional
+        ``Literal`` arguments (``ButtonStyle.filled("m")``), or its uppercase
+        attributes (``TypeScale.TITLE_LARGE``). The sizes and spacing a drag
+        edits are read from the constructor's signature and are not listed. A
+        widget with nothing for the bar returns an empty mapping.
+        """
+        return {}
 
     @property
     def layout_cache_token(self) -> int:

@@ -22,7 +22,11 @@ An MD3 variant is a factory on the style class, `ButtonStyle.filled("s")`,
 `ButtonStyle.outlined()`, `CardStyle.elevated()`, with the size variant as
 its argument. The style in effect for a widget is the one the caller passed,
 else the one a hosting widget derives for it (a toolbar pushes the style its
-colour scheme prescribes onto each button it hosts), else the preset.
+colour scheme prescribes onto each button it hosts), else the preset. Every
+style class with presets has `default()`: the preset a widget renders with
+before it is mounted, and the one `from_theme` falls back to with no
+Material theme installed. `ChipStyle.default(variant)` takes the chip's
+variant.
 
 ## Theme
 
@@ -65,7 +69,9 @@ reserves the 48dp touch target, and holds a density step per component. One
 step takes 4dp off the component's height.
 
 A style keeps the MD3 baseline numbers under every form factor. The widget
-applies the form factor where it reads the theme. A style factory cannot:
+applies the form factor where it measures and paints, and its `style`
+property returns the style it was given or resolved from the theme with the
+baseline numbers intact. A style factory cannot apply it:
 `ButtonStyle.tonal()` runs with no theme in reach. A minimum size left
 `None` on a style is resolved at the same place.
 

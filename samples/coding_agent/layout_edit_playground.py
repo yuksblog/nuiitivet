@@ -2,7 +2,8 @@
 
 Press Ctrl+Shift+E (Cmd+Shift+E on macOS), click a widget, and press W to
 reach its column. The spacing handles change the padding and the gap; the
-bar over a selected button, card or text holds its presets.
+bar over a selected button, toggle, FAB, chip, text field, card or text
+holds its presets.
 """
 
 from __future__ import annotations
@@ -28,6 +29,15 @@ def build_root() -> nv.Widget:
                         nv.Button("Outlined", style=nv.ButtonStyle.outlined()),
                     ],
                 ),
+                nv.Row(
+                    gap=12,
+                    children=[
+                        nv.ToggleButton("Toggle", style=nv.ToggleButtonStyle.outlined()),
+                        nv.Fab("add"),
+                        nv.AssistChip(label="Assist"),
+                    ],
+                ),
+                nv.TextField(label="Field", style=nv.TextFieldStyle.outlined()),
                 nv.Card(
                     nv.Text("A card that sizes to its text", type_scale=nv.TypeScale.TITLE_MEDIUM),
                     padding=(16, 12),
@@ -45,7 +55,7 @@ def build_root() -> nv.Widget:
 
 
 def main() -> None:
-    nv.App(nv.Window(content=build_root, title="Layout edit playground", width=520, height=420)).run()
+    nv.App(nv.Window(content=build_root, title="Layout edit playground", width=520, height=500)).run()
 
 
 if __name__ == "__main__":

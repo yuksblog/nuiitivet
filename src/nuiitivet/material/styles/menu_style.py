@@ -80,8 +80,8 @@ class MenuStyle:
         )
 
     @classmethod
-    def preset(cls, variant: str = "standard") -> "MenuStyle":
-        """Return the framework preset for ``variant``, ignoring any theme.
+    def default(cls, variant: str = "standard") -> "MenuStyle":
+        """Return the framework default for ``variant``, ignoring any theme.
 
         This is what a menu renders with before it is mounted, and what
         :meth:`from_theme` falls back to when no Material theme is installed.
@@ -117,7 +117,7 @@ class MenuStyle:
             theme_data = theme.extension(MaterialThemeData)
             if theme_data is not None:
                 return theme_data.menu_style
-        return cls.preset(variant_name)
+        return cls.default(variant_name)
 
 
 __all__ = ["MenuStyle"]

@@ -123,7 +123,7 @@ class _SearchBarCore(InteractiveWidget):
     ) -> None:
         self._user_style = style
         self._dense_style: Optional[Tuple[SearchBarStyle, int, SearchBarStyle]] = None
-        resolved = self.style
+        resolved = self._dense
 
         super().__init__(
             state_layer_color=resolved.state_layer_color,
@@ -199,15 +199,19 @@ class _SearchBarCore(InteractiveWidget):
 
     @property
     def style(self) -> SearchBarStyle:
-        """Return the resolved search bar style."""
+        """The style in effect: the caller's, else the theme's, else the default, with the MD3 baseline numbers."""
         theme = self._resolvable_theme()
         if self._user_style is not None:
-            base = self._user_style
-        elif theme is None:
-            base = SearchBarStyle()
-        else:
-            base = SearchBarStyle.from_theme(theme)
+            return self._user_style
+        if theme is None:
+            return SearchBarStyle()
+        return SearchBarStyle.from_theme(theme)
 
+    @property
+    def _dense(self) -> SearchBarStyle:
+        """:attr:`style` with the form factor's density applied: what the bar measures and paints with."""
+        theme = self._resolvable_theme()
+        base = self.style
         form_factor = default_form_factor() if theme is None else form_factor_of(self)
         shrink = density_shrink(base.density, form_factor.search_bar, _DENSITY_FLOOR)
         if shrink == 0:
@@ -288,7 +292,7 @@ class _SearchBarCore(InteractiveWidget):
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         """The bar is as wide as it is given and as tall as the style's container."""
-        style = self.style
+        style = self._dense
         width = int(max_width) if max_width is not None else int(style.min_width)
         height = int(style.container_height)
         if max_height is not None:
@@ -297,7 +301,7 @@ class _SearchBarCore(InteractiveWidget):
 
     def _slot_bounds(self, width: int) -> Tuple[float, float]:
         """Return the x range available to the input text."""
-        style = self.style
+        style = self._dense
 
         if self.leading_icon is not None:
             text_left = style.leading_space + style.icon_target + style.icon_label_gap
@@ -316,7 +320,7 @@ class _SearchBarCore(InteractiveWidget):
         """Place the icons in their targets and the editable between them."""
         super().layout(width, height)
 
-        style = self.style
+        style = self._dense
 
         if self.leading_icon is not None:
             lw, lh = self.leading_icon.preferred_size()
@@ -353,7 +357,7 @@ class _SearchBarCore(InteractiveWidget):
             return
 
         self.set_last_rect(x, y, width, height)
-        style = self.style
+        style = self._dense
         theme = self._resolvable_theme()
 
         container_color = resolve_color_to_rgba(style.container_color, theme=theme)
@@ -390,7 +394,7 @@ class _SearchBarCore(InteractiveWidget):
         if not self._placeholder:
             return
 
-        style = self.style
+        style = self._dense
         font = self._get_font(style.font_size)
         if font is None:
             return
@@ -435,7 +439,7 @@ class _SearchPane(Widget):
         super().__init__(width=width)
         self._child = child
         self._core = core
-        self._margin = Animatable(core.style.margin, motion=SEARCH_BAR_FOCUS_MARGIN)
+        self._margin = Animatable(core._dense.margin, motion=SEARCH_BAR_FOCUS_MARGIN)
         self.add_child(child)
 
     def on_mount(self) -> None:
@@ -447,7 +451,7 @@ class _SearchPane(Widget):
         self.observe(self._core.focused, self._on_focus_changed)
 
     def _on_focus_changed(self, focused: bool) -> None:
-        style = self._core.style
+        style = self._core._dense
         self._margin.target = style.focused_margin if focused else style.margin
 
     def _bar_rect(self, width: int, height: int) -> Tuple[int, int, int, int]:
@@ -460,7 +464,7 @@ class _SearchPane(Widget):
         animation. Rounding x and w independently has the same failure in
         slower motion: the two disagree by a pixel and the bar breathes.
         """
-        style = self._core.style
+        style = self._core._dense
         margin = float(self._margin.value)
 
         bar_w = width - 2.0 * margin
@@ -479,7 +483,7 @@ class _SearchPane(Widget):
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         """As wide as allowed (or as sized), and as tall as the bar."""
-        style = self._core.style
+        style = self._core._dense
         w_dim = self.width_sizing
 
         if w_dim.kind == "fixed":

@@ -117,7 +117,7 @@ def test_mobile_keeps_the_md3_sizes() -> None:
 def test_a_menu_item_follows_the_form_factor(form_factor: FormFactorLike, height: int) -> None:
     menu = Menu([MenuItem("Open")])
     _mounted(menu, form_factor)
-    assert menu.style.item_height == height
+    assert menu._dense.item_height == height
 
 
 def test_an_explicit_minimum_wins_over_the_form_factor() -> None:
@@ -156,13 +156,13 @@ def test_a_density_below_the_floor_stops_at_the_floor() -> None:
     assert _size(SearchBar(Observable(""), style=SearchBarStyle(density=-9)), "mobile")[1] == 40
     menu = Menu([MenuItem("Open")], style=MenuStyle(density=-9))
     _mounted(menu, "mobile")
-    assert menu.style.item_height == 32
+    assert menu._dense.item_height == 32
 
 
 def test_dense_insets_keep_the_text_row() -> None:
     field = _mounted(TextField("x", style=TextFieldStyle.outlined()), "desktop")
     assert isinstance(field, TextField)
-    assert field.style.content_insets == (16, 8, 16, 8)
+    assert field._dense.content_insets == (16, 8, 16, 8)
 
 
 # --- Filled label ------------------------------------------------------------
@@ -171,7 +171,7 @@ def test_dense_insets_keep_the_text_row() -> None:
 def test_a_short_filled_field_keeps_its_label_in_the_text_row() -> None:
     field = _mounted(TextField("", label="Name"), "desktop")
     assert isinstance(field, TextField)
-    assert field._label_is_inline(field.style)
+    assert field._label_is_inline(field._dense)
     field.layout(200, 40)
     assert field._label_band == 0
 

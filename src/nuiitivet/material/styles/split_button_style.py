@@ -182,6 +182,18 @@ class SplitButtonStyle:
         return replace(self, **changes)
 
     @classmethod
+    def default(cls) -> "SplitButtonStyle":
+        """Return the framework default, ignoring any theme.
+
+        This is what a split button renders with before it is mounted, and
+        what a split button without a theme falls back to.
+
+        Returns:
+            The filled split-button style at size ``"s"``.
+        """
+        return cls.filled("s")
+
+    @classmethod
     def filled(cls, size: ButtonSize = "s") -> "SplitButtonStyle":
         """Create a filled-variant style.
 

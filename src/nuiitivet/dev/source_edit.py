@@ -711,40 +711,54 @@ def plan_spacing(text: str, site: Frame, keyword: str, value: Spacing) -> Union[
 
 
 @dataclass(frozen=True)
+class Argument:
+    """One argument a written preset passes: ``"m"``, or ``size="m"``.
+
+    Attributes:
+        value: The literal passed: a string, a number or a bool.
+        name: The keyword it is passed by, or ``None`` when positional.
+    """
+
+    value: Any
+    name: Optional[str] = None
+
+
+@dataclass(frozen=True)
 class Preset:
     """A preset as it is written: ``nv.ButtonStyle.filled("s")``, or ``nv.TypeScale.BODY_MEDIUM``.
 
     Attributes:
         base: The class the preset hangs off, as spelled: ``nv.ButtonStyle``.
         name: The preset's name: ``filled``.
-        size: The size token passed, or ``None`` when none is.
+        arguments: What the call passes, in order; positional ones first.
         called: Whether the preset is called; a type-scale role is an attribute.
-        size_keyword: Whether the size is passed as ``size=``.
     """
 
     base: str
     name: str
-    size: Optional[str] = None
+    arguments: tuple[Argument, ...] = ()
     called: bool = True
-    size_keyword: bool = False
 
     def spell(self, like: Optional[str] = None) -> str:
-        """The preset as source, its size in the quotes ``like`` used."""
+        """The preset as source, its strings in the quotes ``like`` used."""
         head = f"{self.base}.{self.name}"
         if not self.called:
             return head
-        if self.size is None:
-            return f"{head}()"
         quote = _quote_in(like)
-        size = f"{quote}{self.size}{quote}"
-        return f"{head}(size={size})" if self.size_keyword else f"{head}({size})"
+        spelled = (
+            f"{argument.name}={_spell_literal(argument.value, quote)}"
+            if argument.name
+            else _spell_literal(argument.value, quote)
+            for argument in self.arguments
+        )
+        return f"{head}({', '.join(spelled)})"
 
 
 def written_preset(text: str, site: Frame, keyword: str, companion: str) -> Union[None, Preset, Refusal]:
     """The preset of ``companion`` written as ``keyword`` on the call at ``site``, ``None`` when absent, or a refusal.
 
-    A preset is a classmethod of ``companion`` called with no argument or
-    one size token (``ButtonStyle.filled("m")``), or an attribute of it
+    A preset is a classmethod of ``companion`` called with literal arguments
+    only (``ButtonStyle.filled("m")``), or an attribute of it
     (``TypeScale.TITLE_LARGE``); ``companion`` may carry a module prefix
     there. A name, a ``copy_with(...)`` or a constructor has no preset to
     write over.
@@ -765,7 +779,7 @@ def plan_preset(text: str, site: Frame, keyword: str, preset: Preset) -> Union[t
     """The spans that set ``keyword`` on the call at ``site`` to ``preset``.
 
     Whatever expression the keyword holds is replaced, a written preset's
-    size in the quotes it used. An absent keyword is inserted after the
+    strings in the quotes it used. An absent keyword is inserted after the
     last argument.
     """
     return _plan_keyword(text, site, keyword, lambda node: node, preset.spell)
@@ -869,15 +883,28 @@ def _preset_literal(node: ast.expr, companion: str) -> Optional[Preset]:
     if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
         return None
     base = _dotted(node.func.value)
-    if base is None or not _is_class(base, companion) or len(node.args) + len(node.keywords) > 1:
+    if base is None or not _is_class(base, companion):
         return None
-    if node.keywords and node.keywords[0].arg != "size":
-        return None
-    size_node = node.args[0] if node.args else (node.keywords[0].value if node.keywords else None)
-    if size_node is not None and not (isinstance(size_node, ast.Constant) and isinstance(size_node.value, str)):
-        return None
-    size = str(size_node.value) if size_node is not None else None  # type: ignore[attr-defined]
-    return Preset(base, node.func.attr, size, True, bool(node.keywords))
+    arguments: list[Argument] = []
+    for positional in node.args:
+        if not _is_plain_literal(positional):
+            return None
+        arguments.append(Argument(positional.value))  # type: ignore[attr-defined]
+    for keyword in node.keywords:
+        if keyword.arg is None or not _is_plain_literal(keyword.value):
+            return None
+        arguments.append(Argument(keyword.value.value, keyword.arg))  # type: ignore[attr-defined]
+    return Preset(base, node.func.attr, tuple(arguments))
+
+
+def _is_plain_literal(node: ast.expr) -> bool:
+    """A string, a number or a bool, written as itself."""
+    return isinstance(node, ast.Constant) and isinstance(node.value, (str, int, float, bool))
+
+
+def _spell_literal(value: Any, quote: str) -> str:
+    """``value`` as source: a string in ``quote``, anything else as Python prints it."""
+    return f"{quote}{value}{quote}" if isinstance(value, str) else repr(value)
 
 
 def _is_class(base: str, companion: str) -> bool:
@@ -1428,14 +1455,20 @@ def _check_spacing(node: Any, expected: Mapping[str, Any]) -> Optional[str]:
 
 
 def _check_preset(node: Any, keyword: str, spelled: str) -> Optional[str]:
-    """Whether ``node``'s ``keyword`` is the preset named ``spelled`` (``filled s``). An empty name checks nothing."""
-    from .presets import family_of, value_of
+    """Whether ``node`` holds the preset ``spelled`` (``filled s``: the name, then its arguments in the order
+    the preset takes them) for ``keyword``. An empty name checks nothing."""
+    from .presets import family_of, held, same, value_of
 
-    family = family_of(node)
+    family = family_of(node, keyword)
     if not spelled or family is None:
         return None
-    name, _sep, size = spelled.partition(" ")
-    if getattr(node, keyword, None) == value_of(family, name, size or None):
+    name, *tokens = spelled.split()
+    choice = family.choice(name)
+    if choice is None:
+        return f"{family.companion.__name__} has no preset {name}"
+    arguments = {parameter.name: parameter.parse(token) for parameter, token in zip(choice.parameters, tokens)}
+    value = value_of(family, name, arguments)
+    if any(same(candidate, value) for candidate in held(node, keyword)):
         return None
     return f"{keyword} is not {spelled} after the reload"
 
@@ -1576,6 +1609,7 @@ def _write(path: str, text: str) -> None:
 
 
 __all__ = [
+    "Argument",
     "Edit",
     "EditLog",
     "Refusal",

@@ -167,12 +167,14 @@ source spells it.
 
 ### Pick a preset: the bar over the selection
 
-Select a `Button`, an `IconButton`, an `IconToggleButton`, a `Card` or a
-`Text`, and a bar appears just over it. The bar carries the widget's type,
-then a box per preset it takes: `style` and `size` for a button, `style`
-for a card, `type scale` for a text. Each box shows what the source holds.
-Click a box and its list opens under it. Click a row to write it.
-`W` / `S` or `↑` / `↓` move along the list, `Enter` writes, `Esc` closes it.
+Select a widget whose `style` has presets, a button of any kind, a card, a
+chip, a text field or a slider among them, or a `Text`, and a bar appears
+just over it. The bar carries the widget's type, then a box for the preset
+and one for each argument the preset takes: `style` and `size` for a
+button, `style` alone for a card, `type scale` for a text. Each box shows
+what the source holds. Click a box and its list opens under it. Click a row
+to write it. `W` / `S` or `↑` / `↓` move along the list, `Enter` writes,
+`Esc` closes it.
 
 A box reads `filled (default)` when the call passes no `style`; a pick
 inserts the keyword. It reads `custom` when the value is not a preset, such

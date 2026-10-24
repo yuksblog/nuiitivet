@@ -77,6 +77,11 @@ class _ToolbarBase(Box):
     its own.
     """
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`ToolbarStyle`'s presets."""
+        return {"style": ToolbarStyle}
+
     #: The style the caller passed, or ``None`` to follow the theme.
     _user_style: Optional[ToolbarStyle]
     #: The last style pushed onto the container, or ``None`` before the first
@@ -147,7 +152,7 @@ class DockedToolbar(_ToolbarBase):
         # is unreachable until the widget is attached. The preset is what
         # ``ToolbarStyle.from_theme`` falls back to, so an unthemed app sees no
         # change; a themed one adopts its style on the first measure.
-        effective_style = style if style is not None else ToolbarStyle.preset()
+        effective_style = style if style is not None else ToolbarStyle.default()
         row_children: list[Widget] = list(buttons)
 
         self._content = Row(
@@ -233,7 +238,7 @@ class _FloatingToolbarBase(_ToolbarBase):
         # is unreachable until the widget is attached. The preset is what
         # ``ToolbarStyle.from_theme`` falls back to, so an unthemed app sees no
         # change; a themed one adopts its style on the first measure.
-        effective_style = style if style is not None else ToolbarStyle.preset()
+        effective_style = style if style is not None else ToolbarStyle.default()
         layout_children: list[Widget] = list(buttons)
 
         if orientation == "horizontal":

@@ -1,4 +1,4 @@
-"""Tests for the toolbar: the selection's presets in select boxes at the window's top-right.
+"""Tests for the toolbar: the selection's presets in select boxes over the selection.
 
 Same load-bearing property as the mode's other tests: the boxes write into
 the file the widgets were built from, and the assertions read it back.
@@ -20,7 +20,8 @@ from nuiitivet.testing import mount
 
 from .test_layout_edit_mode import _Session, _load, _select
 
-_BUTTON_NAMES = ("filled", "tonal", "outlined", "elevated", "text")
+# ButtonStyle's presets, in the order the class defines them.
+_BUTTON_NAMES = ("filled", "outlined", "text", "elevated", "tonal")
 _SIZES = ("xs", "s", "m", "l", "xl")
 
 
@@ -126,9 +127,9 @@ def test_a_box_opens_its_list_on_the_written_row_and_a_row_writes_the_preset(but
     assert (bar.open, bar.highlighted) == (0, 0)
     assert button.mode.hovered is None, "nothing beneath the bar is hovered"
 
-    button.mode.on_mouse_motion(button.app, *_row_centre(button, 2))
-    assert _bar(button).highlighted == 2
-    _click(button, _row_centre(button, 2))
+    button.mode.on_mouse_motion(button.app, *_row_centre(button, 1))
+    assert _bar(button).highlighted == 1
+    _click(button, _row_centre(button, 1))
 
     assert _bar(button).open is None
     assert 'Button("Go", style=ButtonStyle.outlined("s"))' in button.text()
@@ -168,7 +169,7 @@ def test_the_keys_step_an_open_list_and_escape_closes_it_without_writing(button:
     _click(button, _box_centre(button, 0))
     button.mode.on_key_press(button.app, "s", 0)
     button.mode.on_key_press(button.app, "enter", 0)
-    assert 'Button("Go", style=ButtonStyle.tonal("s"))' in button.text()
+    assert 'Button("Go", style=ButtonStyle.outlined("s"))' in button.text()
 
 
 def test_a_second_click_on_the_box_and_a_click_elsewhere_close_the_list(button: _Session) -> None:
@@ -204,7 +205,7 @@ def test_a_button_without_a_style_shows_the_default_and_a_pick_inserts_the_keywo
 
         _click(s, _row_centre(s, 1))
 
-        assert 'Button("Go", style=ButtonStyle.tonal())' in s.text(), "no size, as none was asked for"
+        assert 'Button("Go", style=ButtonStyle.outlined())' in s.text(), "no size, as none was asked for"
         pending = s.edits.pending
         assert pending is not None and pending.before == {"style": ""}
     finally:
@@ -218,7 +219,7 @@ def test_a_style_that_is_not_a_preset_shows_custom_and_a_pick_overwrites_it(app_
         assert [(b.value, b.current) for b in _bar(s).boxes] == [("custom", None), ("custom", None)]
         _click(s, _box_centre(s, 0))
 
-        _click(s, _row_centre(s, 2))
+        _click(s, _row_centre(s, 1))
 
         assert 'Button("Go", style=ButtonStyle.outlined())' in s.text(), "the whole expression is replaced"
         assert s.mode.notice is None
@@ -305,6 +306,57 @@ def test_the_bar_over_a_widget_at_the_top_drops_below_it_and_names_it(button: _S
     assert panel[1] == bar.anchor[3] + toolbar.STANDOFF, "no room above the button, so the bar sits under it"
     _click(button, (panel[0] + 1.0, panel[1] + 1.0))
     assert button.mode.selected is button.leaf(), "a press on the panel itself changes nothing"
+
+
+def test_a_chip_shows_one_box_as_its_presets_take_no_argument(app_file: Path) -> None:
+    s = _Session(app_file, "build_chip")
+    try:
+        _select(s, 20, 16)
+        bar = _bar(s)
+        assert [(b.label, b.value, b.options) for b in bar.boxes] == [
+            ("style", "assist (default)", ("assist", "filter", "input", "suggestion"))
+        ]
+
+        _click(s, _box_centre(s, 0))
+        _click(s, _row_centre(s, 1))
+
+        assert 'AssistChip(label="Go", style=ChipStyle.filter())' in s.text()
+    finally:
+        s.close()
+
+
+def test_a_fab_shows_its_own_sizes_and_a_size_pick_on_a_bare_call_writes_the_default_preset(app_file: Path) -> None:
+    s = _Session(app_file, "build_fab")
+    try:
+        _select(s, 20, 16)
+        bar = _bar(s)
+        assert [(b.label, b.value) for b in bar.boxes] == [("style", "primary (default)"), ("size", "s (default)")]
+        assert bar.boxes[1].options == ("s", "m", "l")
+
+        _click(s, _box_centre(s, 1))
+        _click(s, _row_centre(s, 1))
+
+        assert 'Fab("add", style=FabStyle.primary("m"))' in s.text()
+    finally:
+        s.close()
+
+
+def test_a_toggle_button_is_checked_by_the_preset_it_was_given_not_the_style_it_shows(app_file: Path) -> None:
+    s = _Session(app_file, "build_toggle")
+    try:
+        _select(s, 50, 20)
+        assert [(b.value, b.current) for b in _bar(s).boxes] == [("outlined", 1), ("m", 2)]
+
+        _click(s, _box_centre(s, 0))
+        _click(s, _row_centre(s, 0))
+
+        assert 'ToggleButton("Go", style=ToggleButtonStyle.filled("m"))' in s.text()
+        rebuilt = _load(s.path).build_toggle()
+        with mount(rebuilt) as host:
+            host.layout(300, 200)
+            assert s.edits.after_reload([host.root]) is None, "the toggle's style property is a ButtonStyle"
+    finally:
+        s.close()
 
 
 def test_a_bar_is_none_for_a_mount_without_a_window_size() -> None:

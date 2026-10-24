@@ -37,8 +37,12 @@ from nuiitivet.layout.grid import Grid, GridItem
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.stack import Stack
 from nuiitivet.layout.uniform_flow import UniformFlow
-from nuiitivet.material.buttons import Button
+from nuiitivet.material.buttons import Button, Fab, ToggleButton
+from nuiitivet.material.chip import AssistChip
 from nuiitivet.material.styles.button_style import ButtonStyle
+from nuiitivet.material.styles.chip_style import ChipStyle
+from nuiitivet.material.styles.fab_style import FabStyle
+from nuiitivet.material.styles.toggle_button_style import ToggleButtonStyle
 from nuiitivet.modifiers.border import border
 from nuiitivet.theme.type_scale import TypeScale
 from nuiitivet.widgeting.widget import Widget
@@ -303,6 +307,18 @@ def build_custom_button():
 
 def build_text_role():
     return Column(children=[Text("AAA", width=100, height=40, type_scale=TypeScale.BODY_MEDIUM)], gap=0)
+
+
+def build_chip():
+    return Column(children=[AssistChip(label="Go")], gap=0)
+
+
+def build_fab():
+    return Column(children=[Fab("add")], gap=0)
+
+
+def build_toggle():
+    return Column(children=[ToggleButton("Go", style=ToggleButtonStyle.outlined("m"))], gap=0)
 '''
 
 _SIDE = '''

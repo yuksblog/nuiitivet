@@ -67,6 +67,19 @@ class TextFieldStyle:
         return replace(self, **changes)
 
     @classmethod
+    def default(cls) -> "TextFieldStyle":
+        """Return the framework default, ignoring any theme.
+
+        This is what a text field renders with before it is mounted, and
+        what :meth:`from_theme` falls back to when no Material theme is
+        installed.
+
+        Returns:
+            The filled text field style.
+        """
+        return cls.filled()
+
+    @classmethod
     def filled(cls) -> "TextFieldStyle":
         """Default M3 Filled TextField style."""
         return cls(
@@ -101,4 +114,4 @@ class TextFieldStyle:
         theme_data = theme.extension(MaterialThemeData)
         if theme_data:
             return theme_data.filled_text_field_style
-        return cls.filled()
+        return cls.default()

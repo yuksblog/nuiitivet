@@ -57,6 +57,18 @@ class SliderStyle:
         return replace(self, **changes)
 
     @classmethod
+    def default(cls) -> "SliderStyle":
+        """Return the framework default, ignoring any theme.
+
+        This is what a slider renders with before it is mounted, and what
+        :meth:`from_theme` falls back to when no Material theme is installed.
+
+        Returns:
+            The XS slider style.
+        """
+        return cls.xs()
+
+    @classmethod
     def xs(cls) -> "SliderStyle":
         """Create XS slider style preset."""
         return cls(

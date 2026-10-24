@@ -23,6 +23,11 @@ from nuiitivet.widgets.box import Box
 class Tooltip(ComposableWidget):
     """Material Design 3 plain tooltip widget."""
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`TooltipStyle`'s presets."""
+        return {"style": TooltipStyle}
+
     def __init__(
         self,
         message: str,
@@ -91,6 +96,11 @@ class Tooltip(ComposableWidget):
 
 class RichTooltip(ComposableWidget):
     """Material Design 3 rich tooltip widget."""
+
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`RichTooltipStyle`'s presets."""
+        return {"style": RichTooltipStyle}
 
     def __init__(
         self,

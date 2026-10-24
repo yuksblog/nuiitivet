@@ -234,8 +234,8 @@ class ToggleButtonStyle:
     # -- Theme resolution ----------------------------------------------------
 
     @classmethod
-    def preset(cls) -> "ToggleButtonStyle":
-        """Return the framework preset, ignoring any theme.
+    def default(cls) -> "ToggleButtonStyle":
+        """Return the framework default, ignoring any theme.
 
         This is what a toggle button renders with before it is mounted, and
         what :meth:`from_theme` falls back to when no Material theme is
@@ -261,7 +261,7 @@ class ToggleButtonStyle:
         theme_data = theme.extension(MaterialThemeData)
         if theme_data is not None:
             return theme_data.toggle_button_style
-        return cls.preset()
+        return cls.default()
 
 
 __all__ = ["ToggleButtonStyle"]

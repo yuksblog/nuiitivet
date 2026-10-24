@@ -307,8 +307,8 @@ class StandardButtonGroupStyle:
         )
 
     @classmethod
-    def preset(cls) -> "StandardButtonGroupStyle":
-        """Return the framework preset, ignoring any theme.
+    def default(cls) -> "StandardButtonGroupStyle":
+        """Return the framework default, ignoring any theme.
 
         This is what a standard button group renders with before it is
         mounted, and what :meth:`from_theme` falls back to when no Material
@@ -335,7 +335,7 @@ class StandardButtonGroupStyle:
             theme_data = theme.extension(MaterialThemeData)
             if theme_data is not None:
                 return theme_data.standard_button_group_style
-        return cls.preset()
+        return cls.default()
 
 
 # ===================================================================
@@ -480,8 +480,8 @@ class ConnectedButtonGroupStyle:
         )
 
     @classmethod
-    def preset(cls) -> "ConnectedButtonGroupStyle":
-        """Return the framework preset, ignoring any theme.
+    def default(cls) -> "ConnectedButtonGroupStyle":
+        """Return the framework default, ignoring any theme.
 
         This is what a connected button group renders with before it is
         mounted, and what :meth:`from_theme` falls back to when no Material
@@ -508,7 +508,7 @@ class ConnectedButtonGroupStyle:
             theme_data = theme.extension(MaterialThemeData)
             if theme_data is not None:
                 return theme_data.connected_button_group_style
-        return cls.preset()
+        return cls.default()
 
 
 # ===================================================================

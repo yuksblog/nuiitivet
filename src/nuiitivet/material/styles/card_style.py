@@ -44,6 +44,18 @@ class CardStyle:
         }
 
     @classmethod
+    def default(cls) -> "CardStyle":
+        """Return the framework default, ignoring any theme.
+
+        This is what a card renders with before it is mounted, and what
+        :meth:`from_theme` falls back to when no Material theme is installed.
+
+        Returns:
+            The filled card style.
+        """
+        return cls.filled()
+
+    @classmethod
     def elevated(cls) -> "CardStyle":
         """Create a default style for an elevated card."""
         return cls(
@@ -84,4 +96,4 @@ class CardStyle:
         theme_data = theme.extension(MaterialThemeData)
         if theme_data:
             return theme_data.filled_card_style
-        return cls.filled()
+        return cls.default()

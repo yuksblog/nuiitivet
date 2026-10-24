@@ -145,7 +145,7 @@ class GroupButton(InteractiveWidget):
         # could reach for the theme, which is not resolvable yet. The preset is
         # what ``StandardButtonGroupStyle.from_theme`` falls back to, so an
         # unthemed app sees no change.
-        effective_style: "ButtonGroupStyle" = style or StandardButtonGroupStyle.preset()
+        effective_style: "ButtonGroupStyle" = style or StandardButtonGroupStyle.default()
         self._style: "ButtonGroupStyle" = effective_style
         self._label = label
         self._icon = icon
@@ -1022,6 +1022,13 @@ class StandardButtonGroup(_ButtonGroupBase):
     motion.  Item selected states are independent — no group-level enforcement.
     """
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`StandardButtonGroupStyle`'s presets."""
+        from nuiitivet.material.styles.button_group_style import StandardButtonGroupStyle
+
+        return {"style": StandardButtonGroupStyle}
+
     def __init__(
         self,
         items: Sequence[GroupButton],
@@ -1046,7 +1053,7 @@ class StandardButtonGroup(_ButtonGroupBase):
         )
 
         self._has_user_style = style is not None
-        eff_style = style if style is not None else _Std.preset()
+        eff_style = style if style is not None else _Std.default()
         super().__init__(
             items,
             adjacent_animation=True,
@@ -1085,6 +1092,13 @@ class ConnectedButtonGroup(_ButtonGroupBase):
     enforced by the group.
     """
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`ConnectedButtonGroupStyle`'s presets."""
+        from nuiitivet.material.styles.button_group_style import ConnectedButtonGroupStyle
+
+        return {"style": ConnectedButtonGroupStyle}
+
     def __init__(
         self,
         items: Sequence[GroupButton],
@@ -1112,7 +1126,7 @@ class ConnectedButtonGroup(_ButtonGroupBase):
         )
 
         self._has_user_style = style is not None
-        eff_style = style if style is not None else _Con.preset()
+        eff_style = style if style is not None else _Con.default()
         self._select_mode = select_mode
 
         super().__init__(

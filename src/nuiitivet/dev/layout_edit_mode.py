@@ -18,7 +18,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass, field, replace
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Mapping, Optional, Union
 
 from nuiitivet._interaction.perception import ancestors, global_visual_rect
 from nuiitivet.input.codes import MOD_ALT, resolve_modifiers
@@ -31,12 +31,13 @@ from . import align, landing, reorder, spacing, toolbar
 from .gesture import accel_held, child_toward, chord_held, invalidate, parent_of, pick, travelled, weak
 from .hud import SEPARATOR, Placement, Splash
 from .inline_field import InlineField, Slot, measure
-from .presets import Family, family_of
+from .presets import Choice, Family, families_of
 from .toolbar import Box, Toolbar
 from .snapshot import Path, path_of, widgets_by_path
 from .source import Frame, construction_frame, site_owner, widgets_built_at
 from .source_edit import (
     SNAP_BAND,
+    Argument,
     Edit,
     EditLog,
     Preset,
@@ -92,8 +93,6 @@ _DOUBLE_CLICK = 0.4
 _NUDGE_KEYS = {"w": (0.0, -1.0), "a": (-1.0, 0.0), "s": (0.0, 1.0), "d": (1.0, 0.0)}
 # What a select box shows for a value the source does not spell as a preset.
 _CUSTOM = "custom"
-# The labels of the select boxes, by what they write.
-_BOX_LABELS = {"style": "style", "size": "size", "type_scale": "type scale"}
 
 
 @dataclass
@@ -160,8 +159,8 @@ class _Spacing:
 
 
 @dataclass
-class _Presets:
-    """What the source says about the selection's presets, read once per selection."""
+class _Pick:
+    """What the source says about one keyword the selection picks for, read once per selection."""
 
     family: Family
     # The preset class as the source spells it beside the widget, or why it
@@ -322,7 +321,7 @@ class LayoutEditMode:
         self._shape: Optional[tuple[Callable[[], Any], int]] = None
         # The selection's presets as the source has them, by the widget they
         # were read for.
-        self._presets: Optional[tuple[Callable[[], Any], _Presets]] = None
+        self._presets: Optional[tuple[Callable[[], Any], tuple[_Pick, ...]]] = None
         # The toolbar box whose list is open, and the row highlighted in it.
         self._menu: Optional[tuple[int, int]] = None
         # The window's size as of the last event, which places the toolbar.
@@ -408,31 +407,16 @@ class LayoutEditMode:
 
     @property
     def toolbar(self) -> Optional[Toolbar]:
-        """The bar over the selection: its name and a select box per preset. ``None`` when it has no presets."""
+        """The bar over the selection: its name, then a box per editable keyword and per argument the chosen
+        preset takes. ``None`` when it picks nothing."""
         selected = self.selected
-        presets = self._presets_of(selected) if selected is not None else None
-        anchor = global_visual_rect(selected) if presets is not None else None
-        if presets is None or anchor is None:
+        picks = self._presets_of(selected) if selected is not None else ()
+        anchor = global_visual_rect(selected) if picks else None
+        if not picks or anchor is None:
             return None
-        family, written = presets.family, presets.written
-        boxes: list[Box] = []
-        if isinstance(written, Refusal):
-            name, size = _CUSTOM, _CUSTOM
-            current: Optional[int] = None
-        elif written is None:
-            name, size = f"{family.default[0]} (default)", f"{family.default[1]} (default)"
-            current = None
-        else:
-            name = written.name
-            size = written.size if written.size is not None else f"{family.default[1]} (default)"
-            current = family.names.index(name) if name in family.names else None
-        boxes.append(Box(_BOX_LABELS[family.keyword], name, family.names, current))
-        if family.sizes:
-            written_size = written.size if isinstance(written, Preset) else None
-            at = family.sizes.index(written_size) if written_size in family.sizes else None
-            boxes.append(Box(_BOX_LABELS["size"], size, family.sizes, at))
+        boxes = tuple(box for pick in picks for box in _boxes(pick))
         open_box, highlighted = self._menu if self._menu is not None else (None, 0)
-        return Toolbar(_type_name(selected), tuple(boxes), anchor, open_box, highlighted)
+        return Toolbar(_type_name(selected), boxes, anchor, open_box, highlighted)
 
     @property
     def caption(self) -> Optional[str]:
@@ -839,8 +823,8 @@ class LayoutEditMode:
             self._commit_box(app, open_box, highlighted)
         invalidate(app)
 
-    def _presets_of(self, node: Any) -> Optional[_Presets]:
-        """What the source says about ``node``'s presets, or ``None`` for a widget with none.
+    def _presets_of(self, node: Any) -> tuple[_Pick, ...]:
+        """What the source says about each keyword ``node`` picks for; empty for a widget that picks nothing.
 
         Read once per selection, since the toolbar is asked for at every
         paint. A source that cannot be located leaves the toolbar out.
@@ -848,40 +832,57 @@ class LayoutEditMode:
         cached = self._presets
         if cached is not None and cached[0]() is node:
             return cached[1]
-        family = family_of(node)
+        families = families_of(node)
         located = _source_of(node, "this widget")
-        if family is None or isinstance(located, Refusal):
-            return None
+        if not families or isinstance(located, Refusal):
+            return ()
         frame, text = located
-        written = written_preset(text, frame, family.keyword, family.companion)
-        base = written.base if isinstance(written, Preset) else companion_name(text, frame, family.companion)
-        presets = _Presets(family, base, written)
-        self._presets = (weak(node) or (lambda: None), presets)
-        return presets
+        picks: list[_Pick] = []
+        for family in families:
+            companion = family.companion.__name__
+            written = written_preset(text, frame, family.keyword, companion)
+            base = written.base if isinstance(written, Preset) else companion_name(text, frame, companion)
+            picks.append(_Pick(family, base, written))
+        self._presets = (weak(node) or (lambda: None), tuple(picks))
+        return tuple(picks)
 
     def _commit_box(self, app: Any, box: int, row: int) -> None:
-        """Write the preset the row of ``box`` stands for, the other box's value kept."""
+        """Write the preset the row of ``box`` stands for, the other boxes' values kept."""
         node = self.selected
-        presets = self._presets_of(node) if node is not None else None
-        if node is None or presets is None:
+        picks = self._presets_of(node) if node is not None else ()
+        found = _pick_at(picks, box)
+        if node is None or found is None:
             return
-        family, written = presets.family, presets.written
-        if isinstance(presets.base, Refusal):
-            self._notice = presets.base.reason
+        pick, local = found
+        family = pick.family
+        if isinstance(pick.base, Refusal):
+            self._notice = pick.base.reason
             invalidate(app)
             return
-        name = written.name if isinstance(written, Preset) and written.name in family.names else family.default[0]
-        size = written.size if isinstance(written, Preset) else None
-        size_keyword = written.size_keyword if isinstance(written, Preset) else False
-        if box == 0:
-            name = family.names[row]
+        chosen, given = _chosen(pick)
+        values = {name: value for name, (value, _keyed) in given.items()}
+        keyed = {name: by_keyword for name, (_value, by_keyword) in given.items()}
+        if local == 0:
+            chosen = family.choices[row]
         else:
-            size = family.sizes[row]
-        preset = Preset(presets.base, name, size, family.called, size_keyword and size is not None)
+            parameter = chosen.parameters[local - 1]
+            values[parameter.name] = parameter.choices[row]
+        # An argument stays spelled as it was; a new one is positional while
+        # every argument before it is, and a keyword after a gap.
+        arguments: list[Argument] = []
+        positional = True
+        for parameter in chosen.parameters:
+            if parameter.name not in values:
+                positional = False
+                continue
+            by_keyword = keyed.get(parameter.name, not positional)
+            positional = positional and not by_keyword
+            arguments.append(Argument(values[parameter.name], parameter.name if by_keyword else None))
+        preset = Preset(pick.base, chosen.name, tuple(arguments), family.called)
         rect = global_visual_rect(node) or (0.0, 0.0, 0.0, 0.0)
-        named = _named(name, size)
+        named = _named(chosen, values)
         ghost = Ghost(rect, f"{family.keyword} {named}")
-        if self._write(app, self._plan_preset(node, presets, preset, named), [ghost]):
+        if self._write(app, self._plan_preset(node, pick, preset, named), [ghost]):
             # The widget keeps its path through the reload, so it stays selected.
             self._select(node, getattr(app, "root", None))
         invalidate(app)
@@ -1623,10 +1624,13 @@ class LayoutEditMode:
                 ghosts.append(Ghost(shifted, ""))
         return ghosts
 
-    def _plan_preset(self, node: Any, presets: _Presets, preset: Preset, named: str) -> Edit | Refusal:
+    def _plan_preset(self, node: Any, pick: _Pick, preset: Preset, named: str) -> Edit | Refusal:
         """The edit a pick asks for, or why there is none. A value that is not a preset is overwritten."""
-        family, written = presets.family, presets.written
-        before = _named(written.name, written.size) if isinstance(written, Preset) else ""
+        family, written = pick.family, pick.written
+        before = ""
+        if isinstance(written, Preset) and family.choice(written.name) is not None:
+            chosen, given = _chosen(pick)
+            before = _named(chosen, {name: value for name, (value, _keyed) in given.items()})
         if before == named:
             return Refusal("unchanged")
         located = _source_of(node, "this widget")
@@ -1997,9 +2001,76 @@ def _row_of(bar: Toolbar, box: int) -> int:
     return current if current is not None else 0
 
 
-def _named(name: str, size: Optional[str]) -> str:
-    """A preset for a caption, a badge and the reload check: ``filled s``, or the name alone."""
-    return f"{name} {size}" if size else name
+def _named(chosen: Choice, values: Mapping[str, Any]) -> str:
+    """A preset for a caption, a badge and the reload check: ``filled s``, or the name alone.
+
+    The arguments follow the name in the order the preset takes them, up to
+    the last one given; one skipped on the way is spelled as its default.
+    """
+    given = [index for index, parameter in enumerate(chosen.parameters) if parameter.name in values]
+    upto = chosen.parameters[: given[-1] + 1] if given else ()
+    return " ".join([chosen.name, *(str(values.get(p.name, p.default)) for p in upto)])
+
+
+def _label(keyword: str) -> str:
+    """A box's label: the keyword in words (``type scale``)."""
+    return keyword.replace("_", " ")
+
+
+def _chosen(pick: _Pick) -> tuple[Choice, dict[str, tuple[Any, bool]]]:
+    """The choice whose parameters the boxes show, and the arguments the source passes it, by parameter name:
+    the value and whether it is passed by keyword.
+
+    The written choice when the source names one, else the default, else
+    the first. Arguments the choice does not take are left out.
+    """
+    family, written = pick.family, pick.written
+    chosen = family.choice(written.name) if isinstance(written, Preset) else None
+    if chosen is None:
+        chosen = family.choice(family.default) or family.choices[0]
+        return chosen, {}
+    given: dict[str, tuple[Any, bool]] = {}
+    assert isinstance(written, Preset)
+    for index, argument in enumerate(written.arguments):
+        positional = chosen.parameters[index].name if argument.name is None and index < len(chosen.parameters) else None
+        name = argument.name or positional
+        if name is not None and any(parameter.name == name for parameter in chosen.parameters):
+            given[name] = (argument.value, argument.name is not None)
+    return chosen, given
+
+
+def _boxes(pick: _Pick) -> list[Box]:
+    """The boxes for one pick: the keyword's, then one per parameter of the shown choice."""
+    family, written = pick.family, pick.written
+    chosen, given = _chosen(pick)
+    names, label = family.names, _label(family.keyword)
+    if isinstance(written, Refusal):
+        head = Box(label, _CUSTOM, names, None)
+    elif written is None:
+        head = Box(label, f"{family.default} (default)" if family.default else "(default)", names, None)
+    else:
+        head = Box(label, written.name, names, names.index(written.name) if written.name in names else None)
+    boxes = [head]
+    for parameter in chosen.parameters:
+        options = tuple(str(choice) for choice in parameter.choices)
+        if isinstance(written, Refusal):
+            boxes.append(Box(parameter.name, _CUSTOM, options, None))
+        elif parameter.name in given:
+            value = str(given[parameter.name][0])
+            boxes.append(Box(parameter.name, value, options, options.index(value) if value in options else None))
+        else:
+            boxes.append(Box(parameter.name, f"{parameter.default} (default)", options, None))
+    return boxes
+
+
+def _pick_at(picks: tuple[_Pick, ...], box: int) -> Optional[tuple[_Pick, int]]:
+    """The pick that owns the bar's box ``box``, and the box's index within it: 0 for the keyword's box."""
+    for entry in picks:
+        count = len(_boxes(entry))
+        if box < count:
+            return entry, box
+        box -= count
+    return None
 
 
 def _caption(drag: _Resize) -> str:

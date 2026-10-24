@@ -116,6 +116,11 @@ class TextField(InteractiveWidget):
     For a field that takes several lines: `multiline`.
     """
 
+    @classmethod
+    def editable_parameters(cls) -> dict[str, type]:
+        """``style`` is picked from :class:`TextFieldStyle`'s presets."""
+        return {"style": TextFieldStyle}
+
     def __init__(
         self,
         value: Union[str, ReadOnlyObservableProtocol[str]] = "",
@@ -290,7 +295,7 @@ class TextField(InteractiveWidget):
             self.add_child(self.trailing_icon)
 
         # EditableText
-        style = self.style
+        style = self._dense
         self._editable = EditableText(
             value=value,
             on_change=self._handle_editable_change,
@@ -452,7 +457,7 @@ class TextField(InteractiveWidget):
         return self._editable.state.focused and not self._editable.is_focus_from_pointer
 
     def corner_radii_pixels(self, width: float, height: float) -> Tuple[float, float, float, float]:
-        style = self.style
+        style = self._dense
         r = style.border_radius
         if style.mode == "filled":
             return (r, r, 0, 0)
@@ -495,14 +500,14 @@ class TextField(InteractiveWidget):
 
     def _set_supporting_text(self, value: Any) -> None:
         self.supporting_text = str(value) if value is not None else None
-        style = self.style
+        style = self._dense
         self._editable.cursor_color = style.error_cursor_color if self.is_error else style.cursor_color
         self._update_label_state()
         self.mark_needs_layout()
 
     def _set_is_error(self, value: Any) -> None:
         self.is_error = bool(value)
-        style = self.style
+        style = self._dense
         self._editable.cursor_color = style.error_cursor_color if self.is_error else style.cursor_color
         self._update_label_state()
         self.invalidate()
@@ -525,7 +530,7 @@ class TextField(InteractiveWidget):
         # Snap animation initial values to the correct theme-resolved colors now
         # that Theme.of(self) can reach the App's ThemeManager (unavailable at __init__).
         # This prevents a transparent-to-correct-color flash on first render.
-        style = self.style
+        style = self._dense
         theme = self._resolvable_theme()
 
         def _snap_resolve(c):
@@ -597,14 +602,19 @@ class TextField(InteractiveWidget):
 
     @property
     def style(self) -> TextFieldStyle:
+        """The style in effect: the caller's, else the theme's, else the default, with the MD3 baseline numbers."""
         theme = self._resolvable_theme()
         if self._user_style is not None:
-            base = self._user_style
-        elif theme is None:
-            base = TextFieldStyle.filled()
-        else:
-            base = TextFieldStyle.from_theme(theme)
+            return self._user_style
+        if theme is None:
+            return TextFieldStyle.default()
+        return TextFieldStyle.from_theme(theme)
 
+    @property
+    def _dense(self) -> TextFieldStyle:
+        """:attr:`style` with the form factor's density applied: what the field measures and paints with."""
+        theme = self._resolvable_theme()
+        base = self.style
         form_factor = default_form_factor() if theme is None else form_factor_of(self)
         shrink = density_shrink(base.density, form_factor.text_field, _DENSITY_FLOOR)
         if shrink == 0:
@@ -695,7 +705,7 @@ class TextField(InteractiveWidget):
         default_width = 200
 
         font = self._get_font()
-        style = self.style
+        style = self._dense
         if not style:
             return (default_width, TextFieldStyle.container_height)
         default_height = style.container_height
@@ -771,7 +781,7 @@ class TextField(InteractiveWidget):
                 self._error_height = int(-metrics.fAscent + metrics.fDescent + 4)
                 ch -= self._error_height
 
-        style = self.style
+        style = self._dense
         if not style:
             return
 
@@ -876,13 +886,13 @@ class TextField(InteractiveWidget):
     def _update_label_state(self):
         has_text = bool(self._editable.value)
         is_focused = self._editable.state.focused
-        should_float = (has_text or is_focused) and not self._label_is_inline(self.style)
+        should_float = (has_text or is_focused) and not self._label_is_inline(self._dense)
 
         target = 1.0 if should_float else 0.0
         self._label_progress.target = target
 
         # Style updates
-        style = self.style
+        style = self._dense
         is_error = bool(self.is_error)
 
         theme = self._resolvable_theme()
@@ -970,7 +980,7 @@ class TextField(InteractiveWidget):
         self._editable.paint(canvas, cx, cy, w, h)
 
     def _draw_container(self, canvas, cx, cy, cw, ch, *, text_x_abs: int | None = None):
-        style = self.style
+        style = self._dense
 
         container_color = resolve_color_to_rgba(style.container_color, theme=self._resolvable_theme())
         paint_container = make_paint(color=container_color)
@@ -1031,7 +1041,7 @@ class TextField(InteractiveWidget):
         notch_left = center_x - animated_w / 2
         notch_right = center_x + animated_w / 2
         # Clamp inside corner radii so we don't cut into the rounded corners.
-        r = self.style.border_radius
+        r = self._dense.border_radius
         min_x = cx + r + 1
         max_x = cx + cw - r - 1
         notch_left = max(min_x, notch_left)
@@ -1074,7 +1084,7 @@ class TextField(InteractiveWidget):
             return
 
         label_progress = self._label_progress.value
-        if self._label_is_inline(self.style):
+        if self._label_is_inline(self._dense):
             if self._editable.value:
                 return
             label_progress = 0.0
@@ -1096,7 +1106,7 @@ class TextField(InteractiveWidget):
             else:
                 rest_text_y, rest_text_h = cy + rest[0], rest[1]
             start_y = rest_text_y + (rest_text_h + label_h) / 2 - label_metrics.fDescent
-            style = self.style
+            style = self._dense
             if style.mode == "outlined":
                 # MD3 outlined: floating label is centered on the top outline,
                 # i.e. visually overlaps the border line.
@@ -1131,7 +1141,7 @@ class TextField(InteractiveWidget):
         if not self.supporting_text:
             return
 
-        style = self.style
+        style = self._dense
         supporting_font = self._get_font()
         if supporting_font:
             supporting_font.setSize(12)
