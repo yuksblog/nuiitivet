@@ -1,29 +1,17 @@
 # Dev Modes
 
-Every bridge surface ([DEV_BRIDGE.md](DEV_BRIDGE.md)) runs agent to app. The
-dev modes run the other way: they let the human point at a widget and have
-something happen to it, a mark the agent can read, an editor opened on the
-line that built it, or its source rewritten by a drag. Prose is an expensive
-channel for a location, and for two cases it barely works: an anonymous inner
-node no phrase identifies, and a gap with no widget to name.
+The dev modes run human to app. The human points at a widget in the running
+app. The dev runner acts on that widget's source: source jump opens the line
+that built it, comment mode marks it for the agent, layout edit mode rewrites
+the line. Source jump does not latch; the two modes do. Every bridge surface
+([DEV_BRIDGE.md](DEV_BRIDGE.md)) runs the other way, agent to app.
 
-Three gestures share one input layer and one prefix:
+## What the Gestures Share
 
-| Gesture | Chord | Kind | Effect |
-| --- | --- | --- | --- |
-| Comment mode | `Ctrl+Shift+C` | latched mode | marks widgets and regions for the agent, with an instruction typed on the mark |
-| Layout edit mode | `Ctrl+Shift+E` | latched mode | a drag rewrites size, order, alignment or spacing in the source; a pick rewrites a preset |
-| Source jump | `Ctrl+Shift+Click` | modeless | opens the widget's construction site in the editor |
+The three gestures share the input layers the runner installs, the record of
+which line built each widget, and the glass every mode paints on.
 
-`Ctrl+Shift` is the dev runner's prefix: every chord it claims starts with
-it, so an app never has to guess which are taken. The letters name what the
-human does, `C` comments and `E` edits, and sit under the left hand while the
-right is on the mouse.
-
-What the gestures share comes first, the input layers, the construction
-sites and the overlays; each gesture then has its own section.
-
-## Input Layers
+### Structure
 
 ```mermaid
 flowchart TB
@@ -38,340 +26,212 @@ flowchart TB
         end
     end
     dispatch["window._dispatch_* (widget tree)"]
-    comments[(Comments)]
-    editor[editor URL]
-    file[(source file)]
-    reload[hot reload]
-    bridge[bridge · see_comments]
+    sites[(construction sites)]
+    subgraph glass[the glass]
+        badge[badge]
+        field[inline field]
+    end
 
     human -- "mouse · keys" --> recorder --> jump
     jump -- "not consumed" --> comment -- "not consumed" --> layout -- "not consumed" --> dispatch
     agent -- "click · type · key (synthesized)" --> dispatch
-    jump --> editor
-    comment -- marks, instructions --> comments --> bridge --> agent
-    layout -- writes --> file --> reload --> dispatch
+    dispatch -. "Widget.__init__" .-> sites
+    jump & comment & layout -- "which line built it" --> sites
+    comment & layout --> badge & field
 ```
 
-The layers sit on the backend's real input handlers, where the interaction
-recorder hangs, and the agent's synthesised actions enter below them at the
-window's dispatch. That is what makes a comment unforgeable: nothing the
-agent does can reach a mode. What each mode produces leaves by a different
-door, the comments through the bridge, the jump through the platform's URL
-opener, a layout edit through the file and the reload that follows.
-
-The jump is offered on every event ahead of the modes, because it works in
-any state; then comment mode, then layout edit mode, and a layer that
-consumes an event ends the walk. Each mode lets the other's chord pass, and
-the entering mode closes the other, comment mode keeping its marks and
-layout edit mode dropping its drag. The jump is not a mode because nothing
-persists between one jump and the next.
-
-## Construction Sites
-
-Every mark is followed by the same question: which line built this? The dev
-runner wraps `Widget.__init__`, the one chokepoint every widget passes
-through, and walks the frames out of the package to the first user frames; a
-frame under an install directory is skipped like the package's own, since
-nobody can edit that line. The wrap is installed by the runner and never by
-the framework, so a production launch pays nothing, not even a flag check on
-the construction path.
-
-Sites are captured at construction and rebuilt with everything else on
-reload, so there is no invalidation step to get wrong. They are interned,
-since one helper builds fourteen cards. A site is a short chain, not one
-location: "change every tile" wants the helper and "change this one" wants
-the call site, and only the caller knows which; the innermost frame is
-flagged as the one place an editor can open. Each frame records the span of
-the exact call that was executing, not the line, since a line can hold
-several calls and chained calls share a start; the frame an edit targets is
-the innermost user frame outside any `__init__`, because inside a
-constructor the executing call is `super().__init__(...)` rather than the
-call a human recognises. A frame also records whether it built the widget
-directly: a label a button builds for itself has no user call of its own, so
-a pointer on it means the nearest ancestor a user call did build, the
-button, and that owner is what layout edit mode edits.
-
-## Overlays
-
-Each mode paints on the glass, never into the tree, the same paint-only,
-live-frames-only constraint as the action overlay, so `describe_tree` never
-sees a bracket and `screenshot` never contains one. The frame a mode asks
-for leaves the tree clean: the renderer redraws the glass over the tree it
-last painted, so a hover crossing a grid of small widgets costs the overlay
-and not a tree walk per cell. Four colour families, because one visual
-language for opposite directions would mislead:
-
-| Colour | Means |
+| Role | Module |
 | --- | --- |
-| indigo (action overlay) | the agent did this |
-| amber (comment mode) | the human means this |
-| teal (layout edit mode) | a change about to be made to a file |
-| rose (source jump) | a jump, not a mark; under a held chord inside comment mode, amber brackets would read as a mark about to be made |
+| the dev input layers: their order, the prefix chord | `backends/pyglet/runner.py` |
+| the interaction recorder the layers sit on | `dev/interaction.py` |
+| the mechanics the layers share | `dev/gesture.py` |
+| the construction site of every widget | `dev/source.py` |
+| the badge both modes report through | `dev/hud.py` |
+| the inline field both modes open over the glass | `dev/inline_field.py` |
+| the editing operations the field shares with `EditableText` | `widgets/text_editing.py` |
 
-A mode teaches its keys in one place, the sheet `H` holds open. Held rather
-than toggled, so there is nothing to close and no second key to remember.
-The entering and leaving lines sit at the window's centre, since the eye has
-to find a line before it can read it, and a corner is not where the eye is.
-Nothing else lists keys: a key list on screen while the human works covers
-the app they are working on, and the mode's brackets say it is on. The
-`Stack` layer keys are the one exception, beside the layer list, where the
-eye is mid-drag. Notices share one box at the bottom-left that steps out of
-the pointer's way.
+### Promises
 
-## Comment Mode
-
-Comment mode records what the human pointed at, as nodes and as regions, and
-what they wrote on each mark; the bridge serves the result to the agent, and
-the agent's answer comes back through the bridge onto the mark. A comment is
-a mark with a thread, and a bare number is a whole comment.
-
-The whole exchange happens inside the mode: the human marks, sends, reads the
-answer on the mark, replies and sends again. The send is the hand-over, and
-leaving is not, since the answer arrives on the marks and leaving would put
-them out of sight at the moment they matter. The human leaves to use the
-app, so no mark is drawn while the mode is off.
-
-### Marks
-
-`hit_test` cannot serve the picker: it returns the deepest hit-participating
-widget, and the node a human means is often one that participates in none, a
-plain `Text` or a spacing `Container`. The picker is geometry-only, and three
-rules make geometry agree with the eye. It descends through the same children
-the keyboard traverses, so it stops where the eye does, and only then checks
-occlusion; a `None` hit is not an obstruction, so a non-interactive target
-stays reachable. An idle `Overlay`, mounted at full size in every window,
-says it is not in the way. `Box` honours `clip_content` when hit testing and
-exposes the clip to the occlusion check, since a decorative shape laid out
-far larger than its parent and clipped to a corner is an ordinary idiom.
-
-A mark, once made, never moves, so no mark is the current one and all of
-them are drawn alike, as their badges. The keyboard walk that chooses the
-candidate holds until the pointer travels the few pixels that part a click
-from a drag, since a hand resting on the mouse drifts between the key and
-the click.
-
-Reporting uses the visible rect, not the visual rect: a mark answers "what
-of it is on screen", so the rect intersects every ancestor clip, and the
-payload and the on-screen brackets both use it, so the box on the glass and
-the rect handed to the agent are the same claim. An action still aims at the
-visual rect, the node's actual origin.
-
-A region is the half node picking cannot express. Only the rect is stored;
-its `container`, the innermost enclosing node plus that node's immediate
-children, and its `contents` are derived on every read, which carries a
-region across a reload with no restore step. A rectangle carries two
-readings the geometry cannot separate: "the gap between these things" wants
-the enclosing owner, "these things" wants what the box crosses. So each
-reading gets one field, and the caller, which knows what the human said,
-chooses. `contents` intersects rather than requiring containment, because
-humans drag rough boxes, and is scoped to the container's subtree, which is
-what makes intersection workable: the ancestor chain trivially overlaps and
-drops out without a special case.
-
-### The Field
-
-A new mark opens its field at once, since the instruction is what the mark
-was made for, and the mark is the handle after that. A click never removes a
-mark, since the brackets on a marked widget promise the same click as on any
-other. Reading a mark is a hover on its badge, not a click, so rereading
-several marks opens no field; nothing but the number stays beside a mark,
-since a line of text on every mark covers the app it comments on. The field
-is the one layout edit mode opens over a text literal, so neither mode grows
-a second editor. The thread stays while the field is open on its mark, since
-a reply is written against what was said. Thread and field stack under the
-mark's badge as one block, over every badge, since the badge is where the
-thread was asked for and a tall mark would put its bottom edge a screen
-away; the thread is kept to its newest rows when the block would not fit,
-since the reply is written to the newest exchange and the field has to stay
-on screen.
-
-### The Thread
-
-A mark is a thread, and the agent answers on it. The human already decided
-where by marking; an answer in chat hands them a number to find on screen
-again, and "not quite, a bit more" would have to be typed in chat or written
-over the first instruction. The outcome joins the number on the badge as a
-glyph on a disc of its own colour, since an outcome in the badge's own amber
-reads as part of the number and is the one thing on the mark the human must
-not miss.
-
-The answered line is not reopened for editing, since rewriting it would
-detach the answer from what it answered; a reply is a new line. A mark stays,
-whatever the answer, until the human removes it, since the judgement on an
-answer is theirs. An answer bumps no `seq` and sits outside undo, since the
-agent wrote it; the undo snapshots carry it too, so no step of the human's
-takes it back.
-
-### The Send
-
-The send has a button and a key. The key is `Ctrl+Enter`, the send key of
-every chat box; the button sits sunk below the window's edge with a sliver
-showing, since a control standing on the app all the time covers it, and
-stands up for the entering line's moment, so the mode shows it once on the
-way in. The sliver and not the button's place is what raises it, since a
-widget at the window's bottom-right has to stay markable. A sent mark with no
-answer yet carries a grey disc with an hourglass where the answer's disc will
-land, so the human sees which marks the round has not reached.
-
-A send ends the undo history and wakes every wait on the buffer. The bridge
-offers the wait as a call that blocks on the worker thread until the next
-send or a timeout, with a `since` so a send that came in before the call
-still satisfies it; leaving the mode does not wake it, and the app going
-down releases it, so a waiting worker never holds the process. A blocking
-call is what lets a watch with no model in the loop turn a send into a
-notification, which is how the agent waits without the human switching to
-chat.
-
-### The Buffer
-
-One `Comments` buffer per app is shared by the mode on the UI thread, the
-reload controller after a rebuild, and the bridge on its worker threads.
-Nodes and regions live in one ordered list because they share one on-screen
-numbering.
-
-Every change is a step back, so clearing is safe to reach for. The history
-survives leaving the mode, since leaving is a look at the app and not a
-verdict on the marks, and stops at the last send, since what the agent was
-sent is not the human's to take back.
-
-Members are keyed on object identity, because two anonymous siblings resolve
-to the same identity dict, and keying on that would make picking the second
-remove the first. A rebuild evaporates them, and that is the normal case:
-"point at it, then have the agent fix it" puts a reload in the middle of
-nearly every use. They are matched back by the same key-preferring
-structural path the state restore of [HOT_RELOAD.md](HOT_RELOAD.md) uses,
-and misses are counted rather than silently shortening the list.
-
-### Privacy
-
-A comment may carry rects, on-screen text and the human's own words, unlike
-the interaction journal, which records none of them. The journal records
-ambiently, without item-by-item consent; a comment is an explicit act of
-disclosure, the same ground on which a screenshot may.
+- Every chord the dev runner claims starts with `Ctrl+Shift`.
+- No action of the agent reaches a mode.
+- A layer that consumes an event ends the walk.
+- Each mode lets the other's chord pass. The entering mode closes the other.
+- The dev runner, not the framework, wraps `Widget.__init__`. The wrap
+  records, for every widget, the chain of frames outside the package and
+  outside any install directory.
+- A site is captured at construction. It is rebuilt with the tree on reload.
+- Each frame records the span of the executing call. The frame a jump opens
+  and an edit targets is the innermost user frame outside any `__init__`.
+- A frame records whether it built the widget directly. A pointer on a
+  widget no user call built resolves to the nearest ancestor a user call did
+  build.
+- Every mode paints on the glass, never into the tree. The constraint is the
+  action overlay's: paint-only, live frames only. Neither `describe_tree` nor
+  `screenshot` sees a mode. The frame a mode asks for redraws the glass over
+  the tree last painted.
+- Each gesture, and the action overlay, paints in a colour family of its own.
 
 ## Source Jump
 
-`Ctrl+Shift+Click` opens the hovered widget's construction site. It does not
-latch, which is only safe because the overlay repaints on every state
-change: returning from the editor shows the badge that says the mode is
-still on.
-
-The editor is handed a URL (`vscode://file/path/to/app.py:171:1`) through
-the platform's standard opener, not a CLI: the line rides inside the URL, so
-nothing on the way can drop it. The route is chosen by an install check, not
-by probing the scheme, since probing waits on the opener, on the UI thread,
-for an answer that never changes; `--editor vscode` asserts what the check
-cannot see. `--editor` is a URL template, not a command, because what goes
-stale is the built-in list, by way of VS Code forks whose URLs differ only in
-scheme, so one line catches up. A malformed template is refused at launch
-rather than arriving as silence on the first click, and a successful jump
-names the file, the only evidence the click was received, since an opener
-succeeds whether or not a handler is registered.
-
-The editor boots from a cleaned environment: an editor's extension host sets
-`ELECTRON_RUN_AS_NODE`, and on Windows the scheme handler is a relaunch of
-the editor binary, so every app a coding agent started would boot that
-handler as Node, which exits while the jump reports success.
-
-## Layout Edit Mode
-
-The sibling of comment mode with the opposite division of labour: the human
-drags a widget or picks from the bar over it, and the dev runner edits the
-source itself, with no agent and no turn.
+Source jump opens the hovered widget's construction site in the editor.
 
 ### Structure
 
 ```mermaid
 flowchart LR
-    subgraph mode[dev/layout_edit_mode.py]
-        state[selection · drag in flight · open list]
-    end
-    subgraph readings[what a gesture means]
-        landing[landing.py · a size]
-        reorder[reorder.py · a slot or a cell]
-        align[align.py · an alignment]
-        spacing[spacing.py · a padding side or a gap]
-        presets[presets.py · the choices a widget declares]
-    end
-    toolbar[toolbar.py · the bar's geometry]
-    edit[source_edit.py · span surgery · edit log · reload check]
-    file[(source file)]
-    reload[hot reload]
-    overlay[layout_edit_overlay.py]
+    runner[backends/pyglet/runner.py]
+    jump[dev/source_jump.py]
+    source[dev/source.py]
+    editor[dev/editor.py]
+    opener[platform URL opener]
 
-    state --> landing & reorder & align & spacing & presets --> edit
-    state <--> toolbar
-    edit -- spans --> file --> reload -- rebuilt tree --> edit
-    state -. read at paint .-> overlay
-    toolbar -. same rects .-> overlay
+    runner -- "--editor" --> editor
+    jump -- hovered widget --> source -- innermost user frame --> editor -- URL --> opener
 ```
 
-The mode owns the selection, the drag in flight and the open list, and
-turns each gesture into a reading and each reading into an edit. A reading
-module turns a pointer position into the value to write: a size, a slot or
-a cell, an alignment, a padding side or a gap. `presets.py` reads what a
-widget declares editable: the keyword and the class from the widget, the
-choices, their parameters and the default from the class. `toolbar.py` holds the bar's geometry,
-which the mode hits against and the overlay paints from. `source_edit.py`
-locates the call at the recorded site, replaces spans, keeps the edit log
-with each edit's inverse, and checks the rebuilt tree after the reload.
-The overlay paints the mode's state and nothing else.
+| Role | Module |
+| --- | --- |
+| the hover and the click | `dev/source_jump.py` |
+| the construction site of the hovered widget | `dev/source.py` |
+| the URL template, the install check, the launch | `dev/editor.py` |
 
 ### Promises
 
-- The tree is never mutated. What is on screen came from the code, and
-  during a gesture only the overlay moves.
-- A write is a set of spans in one file, two files for a move across
-  containers, located by re-parsing the file and matching the call at the
-  recorded site. Nothing around a span is reformatted. A site under an
-  install directory is refused.
-- Every release writes, and every pick writes. The inverse spans undo an
-  edit, and the undo is refused when the text they expect has moved. A
-  refusal is a badge; nothing reaches the `Comments`.
-- What is written is a landing value, a list position, a cell, a shape or a
-  preset, never a delta. A landing value is measured from the live tree:
-  the `auto` band is the widget's intrinsic size at the proposed width, the
-  `wt` band is the parent's allocation, and a band's direction is the
-  widget's intrinsic size against its laid-out extent.
-- A layout index must name a source span. An order the runner cannot see in
-  one list literal is refused, and tree indices are never trusted past that
-  gate.
-- Alignment is written on the container; a `CrossAligned` the human wrote
-  is rewritten in place.
-- A grid places by `GridItem`, so a move across a grid's edge adds or
-  removes the wrapper, spelled as the destination's module spells it.
-- For spacing, the handle is the only grab zone; the padding region and the
-  gaps stay the body drag's. The spacing is written in the shape its
-  handles stand for, one int, a pair or four sides, keeping the file's
-  brackets, with the sides the drag did not touch taken from the live
-  widget.
-- A widget declares in `editable_parameters()` the keywords it takes a preset for and
-  the class each hangs off. The choices are read from that class: its
-  classmethods whose parameters are all optional `Literal`s, or its
-  uppercase attributes. Each parameter is a box of its own. `default()`
-  names the default and is not a choice. `nuiitivet.dev` imports no design
-  system.
-- A preset is written as a call of its companion class, spelled as the
-  module spells the widget; no import is added. Whatever expression the
-  keyword holds is replaced whole, and an absent keyword is inserted after
-  the last argument.
-- After the reload, the pending edit is checked against the instances
-  rebuilt at its site: the rect for a size, the class at the slot or in the
-  cell for a move, the value for a spacing, a preset held by the instance. A
-  miss, a site that builds nothing, or a failed reload is the badge.
+- The editor is reached by a URL through the platform's URL opener. The URL
+  is the `--editor` template with the site's file and line filled in.
+- `--editor` is validated when the app starts, not on the first click.
 
-## Implementation Map
+## Comment Mode
 
-| Design area | Module |
+Comment mode records what the human pointed at, as nodes and as regions,
+with what they wrote on each mark. The bridge carries the marks to the agent
+and the agent's answers back onto the marks.
+
+### Structure
+
+```mermaid
+flowchart LR
+    mode[dev/comment_mode.py]
+    picker[_interaction/perception.py]
+    buffer[(dev/comments.py)]
+    bridge[dev/bridge.py]
+    agent[Coding agent]
+    controller[dev/controller.py]
+    overlay[dev/comment_overlay.py]
+    field[dev/inline_field.py]
+
+    mode -- "pointer · keys" --> picker -- "node · visible rect" --> mode
+    mode -- "marks · text · undo" --> buffer
+    buffer -- payload --> bridge --> agent
+    agent -- answers --> bridge -- "answer on the mark" --> buffer
+    controller -- "rebuilt tree" --> buffer
+    mode <--> field
+    mode -. "read at paint" .-> overlay
+    buffer -. "badges · threads" .-> overlay
+```
+
+| Role | Module |
 | --- | --- |
-| dev input layers: order, prefix chord | `backends/pyglet/runner.py` |
-| mechanics shared by the layers | `dev/gesture.py` |
-| comment mode, the comment buffer, overlay | `dev/comment_mode.py`, `dev/comments.py`, `dev/comment_overlay.py` |
-| geometry picker, visible rect | `_interaction/perception.py` (`pick_at`, `find_obstruction`) |
-| construction sites | `dev/source.py` |
-| source jump, editor launch | `dev/source_jump.py`, `dev/editor.py` |
-| layout edit mode: mode, landing values, alignment, slots and gates, spacing handles, presets and the bar, span surgery, overlay | `dev/layout_edit_mode.py`, `dev/landing.py`, `dev/align.py`, `dev/reorder.py`, `dev/spacing.py`, `dev/presets.py`, `dev/toolbar.py`, `dev/source_edit.py`, `dev/layout_edit_overlay.py` |
-| the badge both modes share | `dev/hud.py` |
-| the inline field both modes open over the glass | `dev/inline_field.py` |
-| the editing operations shared with `EditableText` | `widgets/text_editing.py` |
-| edit log and reload request | `dev/source_edit.py` (`EditLog`), `dev/controller.py` |
+| the candidate under the pointer, the marks, the open field | `dev/comment_mode.py` |
+| the geometry picker and the visible rect | `_interaction/perception.py` (`pick_at`, `find_obstruction`, `visible_rect`) |
+| the comment buffer: identity, text, thread, history, the wait on a send | `dev/comments.py` |
+| `see_comments`, `answer_comments`, `wait_for_comments` | `dev/bridge.py` |
+| the restore of the marks after a rebuild | `dev/controller.py` |
+| the brackets, badges and threads on the glass | `dev/comment_overlay.py` |
+
+### Promises
+
+- The picker is geometry-only. It descends through the children the keyboard
+  traverses before it checks occlusion. An idle `Overlay` reports itself out
+  of the way. `Box` exposes its `clip_content` clip to the occlusion check.
+- A mark carries the visible rect, the node's rect intersected with every
+  ancestor clip. The brackets on the glass and the rect handed to the agent
+  are the same rect. An action aims at the visual rect.
+- A region stores only its rect.
+- One `Comments` per app is shared by the mode on the UI thread, the reload
+  controller after a rebuild and the bridge on its worker threads. Nodes and
+  regions share one ordered list.
+- Members are keyed on object identity. A rebuild drops them. The controller
+  matches them back by the key-preferring structural path of
+  [HOT_RELOAD.md](HOT_RELOAD.md).
+- Every change to the buffer is an undo step. The undo history ends at the
+  last send. An answer is outside it.
+- A send wakes every wait on the buffer. The bridge's wait blocks on the
+  worker thread until the next send or a timeout. Leaving the mode does not
+  wake it. The app going down releases it.
+- The interaction journal records none of what a comment carries: rects,
+  on-screen text, the human's words.
+
+## Layout Edit Mode
+
+Layout edit mode turns a drag on a widget, or a pick from the bar over it,
+into an edit of the widget's source. No agent and no turn is involved.
+
+### Structure
+
+```mermaid
+flowchart LR
+    mode[dev/layout_edit_mode.py]
+    subgraph readings[what a gesture means]
+        landing[dev/landing.py]
+        reorder[dev/reorder.py]
+        align[dev/align.py]
+        spacing[dev/spacing.py]
+        presets[dev/presets.py]
+    end
+    toolbar[dev/toolbar.py]
+    edit[dev/source_edit.py]
+    file[(source file)]
+    reload[hot reload]
+    overlay[dev/layout_edit_overlay.py]
+
+    mode --> landing & reorder & align & spacing & presets --> edit
+    mode <--> toolbar
+    edit -- spans --> file --> reload -- "rebuilt tree" --> edit
+    mode -. "read at paint" .-> overlay
+    toolbar -. "same rects" .-> overlay
+```
+
+| Role | Module |
+| --- | --- |
+| the selection, the drag in flight, the open list; each gesture turned into a reading, each reading into an edit | `dev/layout_edit_mode.py` |
+| a size from a release point | `dev/landing.py` |
+| a slot or a cell from a release point | `dev/reorder.py` |
+| an alignment from a release point | `dev/align.py` |
+| a padding side or a gap from a handle | `dev/spacing.py` |
+| the choices a widget declares, their parameters, the default | `dev/presets.py` |
+| the bar's geometry | `dev/toolbar.py` |
+| span surgery, the edit log with each edit's inverse, the check after the reload | `dev/source_edit.py` |
+| the mode's state on the glass | `dev/layout_edit_overlay.py` |
+
+### Promises
+
+- The tree is never mutated. During a gesture only the overlay moves.
+- The widget edited is the owner a user call built. A site with no user
+  frame is refused.
+- A write is a set of spans in one file, or two for a move across
+  containers. The spans are located by re-parsing the file and matching the
+  call at the recorded site. Nothing around a span is reformatted.
+- An edit is undone by its inverse spans. The undo is refused when the text
+  they expect has moved. A refusal reaches the badge and never the
+  `Comments`.
+- What is written is a value, never a delta. A landing value is measured
+  from the live tree.
+- A layout index must name a source span. An order the runner cannot see in
+  one list literal is refused.
+- Alignment is written on the container. A `CrossAligned` the human wrote is
+  rewritten in place.
+- The handle is the only grab zone for spacing.
+- Spacing is written in the shape its handles stand for. The file's brackets
+  are kept. The sides the drag did not touch are taken from the live widget.
+- A widget declares in `editable_parameters()` which class each preset
+  keyword is picked from. The choices are that class's classmethods whose
+  parameters are all optional `Literal`s, or its uppercase attributes.
+  `default()` names the default. `nuiitivet.dev` imports no design system.
+- What is written is spelled as the destination's module spells it, a preset
+  as a call of its companion class, a `GridItem` by the name the module
+  imports. No import is added.
+- Whatever expression a keyword holds is replaced whole.
+- After the reload, the pending edit is checked against the instances
+  rebuilt at its site. A miss, a site that builds nothing, or a failed
+  reload reaches the badge.

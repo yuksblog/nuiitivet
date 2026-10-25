@@ -12,8 +12,11 @@ clears on the next pointer move.
 
 ### Use another editor
 
-VS Code works as installed. For another editor, pass its URL scheme to
-`--editor`. `{file}` and `{line}` are replaced with the path and the line:
+VS Code works as installed. When the caption says `VS Code was not found`,
+a portable install or a fork that answers to `vscode://`, pass
+`--editor vscode` and the jump opens it anyway. For another editor, pass its
+URL scheme to `--editor`. `{file}` and `{line}` are replaced with the path
+and the line:
 
 ```bash
 # Cursor
@@ -22,6 +25,9 @@ python -m nuiitivet.dev run app.py --editor "cursor://file{file}:{line}:1"
 python -m nuiitivet.dev run app.py \
   --editor "jetbrains://pycharm/navigate/reference?project=NAME&path={file}:{line}"
 ```
+
+A template without `{file}`, `{line}` or a scheme is refused when the app
+starts, with the reason.
 
 ### Jump from inside a mode
 
