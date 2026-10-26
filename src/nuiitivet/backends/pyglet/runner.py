@@ -224,14 +224,10 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
     debug_keys_filter = {k.strip() for k in debug_keys_filter_raw.split(",") if k.strip()}
 
     esc_down = False
-    gl_viewport_ok = True
-    auto_force_gl_viewport = False
     auto_recreate_always = False
     auto_recreate_probe_used = False
     last_resize_raw = None
     last_resize_logical = None
-    auto_recreate_on_draw_used = False
-    auto_recreate_on_draw_hits = 0
     # Normalize root if available
     try:
         root = getattr(win, "root", None)
@@ -638,8 +634,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
 
     @window.event
     def on_draw():
-        nonlocal gpu_enabled, auto_force_gl_viewport
-        nonlocal auto_recreate_on_draw_used, auto_recreate_on_draw_hits, auto_recreate_always
+        nonlocal gpu_enabled
         try:
             # IME state is per window: each window publishes its own geometry
             # into its own IMEManager, focused or not.
@@ -672,125 +667,17 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
             _update_app_size_from_window("on_draw", win_w, win_h)
 
         if gpu_enabled and gr_context is not None and GL is not None:
-            fb_w = 0
-            fb_h = 0
             try:
-                if hasattr(window, "get_framebuffer_size"):
-                    fb_size = window.get_framebuffer_size()
-                    if fb_size:
-                        fb_w = int(fb_size[0])
-                        fb_h = int(fb_size[1])
+                ok = bool(draw_gpu_frame(win, gr_context, GL, skia))
             except Exception:
-                fb_w = 0
-                fb_h = 0
-
-            nonlocal gl_viewport_ok
-            if fb_w > 0 and fb_h > 0 and gl_viewport_ok and auto_force_gl_viewport:
-                try:
-                    target_w = fb_w
-                    target_h = fb_h
-                    try:
-                        if hasattr(GL, "glGetIntegerv") and hasattr(GL, "GL_MAX_VIEWPORT_DIMS"):
-                            max_dims = GL.glGetIntegerv(GL.GL_MAX_VIEWPORT_DIMS)
-                            if max_dims is not None and len(max_dims) >= 2:
-                                max_w = int(max_dims[0])
-                                max_h = int(max_dims[1])
-                                if max_w > 0 and max_h > 0:
-                                    target_w = min(target_w, max_w)
-                                    target_h = min(target_h, max_h)
-                    except Exception:
-                        target_w = fb_w
-                        target_h = fb_h
-
-                    target_w = max(1, int(target_w))
-                    target_h = max(1, int(target_h))
-                    if hasattr(GL, "glViewport"):
-                        GL.glViewport(0, 0, target_w, target_h)
-                except Exception:
-                    gl_viewport_ok = False
-                    gpu_enabled = False
-                    exception_once(logger, "pyglet_on_draw_gl_viewport_exc", "Failed to set GL viewport")
-
-            if gpu_enabled:
-                try:
-                    if hasattr(GL, "glGetIntegerv") and hasattr(GL, "GL_VIEWPORT"):
-                        viewport = GL.glGetIntegerv(GL.GL_VIEWPORT)
-                        if viewport is not None and len(viewport) >= 4:
-                            vp_w = int(viewport[2])
-                            vp_h = int(viewport[3])
-                        else:
-                            vp_w = None
-                            vp_h = None
-                    else:
-                        vp_w = None
-                        vp_h = None
-                except Exception:
-                    vp_w = None
-                    vp_h = None
-
-                if (vp_w is None or vp_h is None) and fb_w > 0 and fb_h > 0:
-                    if not auto_force_gl_viewport:
-                        auto_force_gl_viewport = True
-                    if not auto_recreate_on_draw_used:
-                        auto_recreate_on_draw_used = True
-                        auto_recreate_on_draw_hits += 1
-                        if not auto_recreate_always:
-                            auto_recreate_always = True
-                        _recreate_gl_context("auto-draw")
-                if (vp_w is None or vp_h is None) and fb_w > 0 and fb_h > 0 and hasattr(GL, "glViewport"):
-                    try:
-                        GL.glViewport(0, 0, int(fb_w), int(fb_h))
-                        vp_w = int(fb_w)
-                        vp_h = int(fb_h)
-                    except Exception:
-                        pass
-
-                if vp_w and vp_h and vp_w > 0 and vp_h > 0:
-                    try:
-                        win_w = int(getattr(window, "width", 0))
-                        win_h = int(getattr(window, "height", 0))
-                    except Exception:
-                        win_w = 0
-                        win_h = 0
-
-                    if win_w > 0 and win_h > 0:
-                        scale_from_vp = max(float(vp_w) / float(win_w), float(vp_h) / float(win_h))
-                        logical_w = int(win_w)
-                        logical_h = int(win_h)
-                        if sys.platform == "win32" and scale_from_vp <= 1.0:
-                            dpi_scale = _get_windows_dpi_scale()
-                            if dpi_scale > 1.0:
-                                scale_from_vp = dpi_scale
-                                if scale_from_vp > 1.0:
-                                    logical_w = int(max(1, math.ceil(win_w / scale_from_vp)))
-                                    logical_h = int(max(1, math.ceil(win_h / scale_from_vp)))
-                                else:
-                                    logical_w = int(max(1, round(win_w / scale_from_vp)))
-                                    logical_h = int(max(1, round(win_h / scale_from_vp)))
-                        try:
-                            if logical_w != int(getattr(win, "width", 0)) or logical_h != int(
-                                getattr(win, "height", 0)
-                            ):
-                                win.width = int(logical_w)
-                                win.height = int(logical_h)
-                            if abs(float(getattr(win, "_scale", 1.0)) - scale_from_vp) >= 0.01:
-                                setattr(win, "_scale", max(1.0, scale_from_vp))
-                        except Exception:
-                            exception_once(
-                                logger, "pyglet_on_draw_gpu_viewport_sync_exc", "Failed to sync from viewport"
-                            )
-
-                try:
-                    ok = bool(draw_gpu_frame(win, gr_context, GL, skia))
-                except Exception:
-                    exception_once(logger, "pyglet_on_draw_gpu_frame_exc", "draw_gpu_frame raised")
-                    ok = False
-                if ok:
-                    return
-                if renderer == "gpu":
-                    logger.error("renderer='gpu': GPU frame rendering failed")
-                    raise RendererError("renderer='gpu' was requested but GPU frame rendering failed.")
-                gpu_enabled = False
+                exception_once(logger, "pyglet_on_draw_gpu_frame_exc", "draw_gpu_frame raised")
+                ok = False
+            if ok:
+                return
+            if renderer == "gpu":
+                logger.error("renderer='gpu': GPU frame rendering failed")
+                raise RendererError("renderer='gpu' was requested but GPU frame rendering failed.")
+            gpu_enabled = False
 
         if getattr(win, "_dirty", False) or getattr(win, "_last_image", None) is None:
             ok = _draw_raster_frame(win, skia)
@@ -885,17 +772,6 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
 
     @window.event
     def on_resize(width, height):
-        nonlocal last_resize_raw, auto_recreate_on_draw_used  # noqa: F824
-        try:
-            next_w = int(width)
-            next_h = int(height)
-        except Exception:
-            next_w = 0
-            next_h = 0
-        if next_w > 0 and next_h > 0 and last_resize_raw is not None:
-            prev_w, prev_h = last_resize_raw
-            if int(prev_w) != next_w or int(prev_h) != next_h:
-                auto_recreate_on_draw_used = False
         if auto_recreate_always and gpu_enabled:
             _recreate_gl_context("resize")
         _update_app_size_from_window("on_resize", width, height)

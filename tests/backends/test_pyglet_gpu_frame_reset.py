@@ -1,9 +1,8 @@
 """Tests for the Skia GL state reset in the pyglet GPU frame path.
 
-``GrDirectContext`` caches GL state and skips redundant GL calls, but the pyglet
-side calls ``GL.glViewport()`` directly and pyglet's own ``on_resize`` rewrites
-the viewport. Skia must be told, or it draws against stale bindings -- a stale,
-garbled frame after a drag-resize.
+``GrDirectContext`` caches GL state and skips redundant GL calls, but pyglet's
+own ``on_resize`` rewrites the viewport. Skia must be told, or it draws against
+stale bindings -- a stale, garbled frame after a drag-resize.
 
 ``draw_gpu_frame`` takes ``GL`` and ``skia`` as arguments, so these run against
 fakes with no GL context.

@@ -274,10 +274,10 @@ def _try_reblit_cached_frame(app: Any, canvas: Any, phys_w: int, phys_h: int, sk
 def _reset_gr_context(gr_context: Any) -> None:
     """Tell Skia its cached GL state is stale before drawing the frame.
 
-    ``GrDirectContext`` caches GL state, but ``on_draw`` and pyglet's ``on_resize``
-    rewrite the viewport behind its back -- hence the garbled frame after a
-    drag-resize. A full reset (not just ``resetGLTextureBindings()``, which
-    leaves the cached viewport wrong) costs one state resend per frame.
+    ``GrDirectContext`` caches GL state, but pyglet's ``on_resize`` rewrites the
+    viewport behind its back -- hence the garbled frame after a drag-resize. A
+    full reset (not just ``resetGLTextureBindings()``, which leaves the cached
+    viewport wrong) costs one state resend per frame.
     """
 
     reset = getattr(gr_context, "resetContext", None)
