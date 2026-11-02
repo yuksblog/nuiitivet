@@ -23,8 +23,15 @@ four. One fact can yield two sentences, the rule for the design doc and the
 surprise for the guide: "alignment is written on the container" and "the
 alignment written is the container's, not the widget's".
 
+A behaviour the reader would predict from the OS or the browser they already
+use is written nowhere: not in the guide, which carries only what surprises,
+and not in the design doc unless a module relation rests on it. Tab skipping
+a hidden panel, a modal that traps Tab and hands focus back, are such
+behaviours.
+
 Cut on sight:
 
+- a behaviour the OS or the browser already has ("Tab skips a closed panel")
 - internal mechanics ("two cells would need an echo guard so they do not chase each other")
 - principles stated as doctrine rather than instruction ("a widget's value type follows its primary input mechanism")
 - justifications for why a parameter exists at all
@@ -292,6 +299,7 @@ read is not reviewed.
 ## Checklist
 
 - [ ] No design rationale, no doctrine headings — the reader is a user; the surprise or the limit a user meets is here even when a design rule produced it
+- [ ] Each surprise differs from what the OS or the browser does; a behaviour that matches them is deleted
 - [ ] Each surprise sits where the reader meets it, as what they see: in the step, in the way, in the last lists, or under an "If …" heading; at most two callouts on the page, each naming a loss with no symptom
 - [ ] The outline was written in the reply before the edit, each level marked sequence or set; every heading in the diff is one of its nodes and names a task; `grep -n '^#' docs/guide/<page>.md`, read top to bottom: a sequence with no missing step, a set with no overlapping choice, on the whole page
 - [ ] Each step one action; its ways sit one level below while each is a few lines; ways that outgrew the step moved to a reference of ways after the round, its cases one level below, and the step shows one and names that section
