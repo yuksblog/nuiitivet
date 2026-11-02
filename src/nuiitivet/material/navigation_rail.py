@@ -934,6 +934,11 @@ class NavigationRail(InteractionHostMixin, Widget):
 
     Users can toggle between modes with optional menu button.
 
+    The items are one focus traversal group: a single Tab stop, entered at the
+    selected item, with Up and Down roving the items and wrapping at the ends.
+    Roving moves the focus only; Enter or Space selects the current item. The
+    expand/collapse button is an ordinary Tab stop above the group.
+
     For type-safe index, use IntEnum:
         class Section(IntEnum):
             HOME = 0
