@@ -1,61 +1,174 @@
 # Error Handling
 
-An exception is never silenced by `try/except: pass`. It is caught once, at a
-boundary, logged with its stack trace, and the framework continues or fails
-fast; inside the boundary it propagates. This keeps a root cause findable and
-keeps one failure from flooding the log.
+An exception is caught once, at a boundary. Inside the boundary it
+propagates.
 
-## Boundary and Internal
+## Overview
 
-A **boundary** is an entry point from the OS or the backend into the
-framework: it finalises the treatment of an exception, to log and continue,
-to fail fast, or to raise. **Internal** code, everything the boundary calls
-(rendering, layout, tree operations, subscriptions), propagates an exception
-to its boundary. An internal catch that is needed adds context, by wrapping
-or by message, and re-raises.
+Three groups of modules take part, with the internal modules and the app's
+callbacks at their edges.
 
-Boundaries in the repository: the app run entry (`App.run` and the frame
-driving around `Window._render_frame`), the backend's `@window.event`
-handlers in `backends.pyglet.runner.run_app` (`on_draw`, `on_mouse_*`,
-`on_key_*`), the event loop (`ResponsiveEventLoop.run` / `_perform_draw`) and
-input delivery (`runtime.app_events.dispatch_*`). Internal: `widgeting`,
-`layout`, `scrolling`, `rendering`, `animation`, `theme`, `colors`,
-`observable` and `widgets`, except where a widget calls a user-provided
-callback, which is a boundary of the callback kind below.
+### Structure
 
-## By Kind of Work
+```mermaid
+flowchart LR
+    boundaries[The Boundaries]
+    log[The Log]
+    report[The Report]
+    internal[the internal modules]
+    app[the app's callbacks]
 
-| Work | Policy |
+    internal -- "an exception, propagated" --> boundaries
+    app -- "an exception, from a callback" --> boundaries
+    boundaries -- "exception_once(logger, key, msg) · exception_once_per_exc(logger, prefix, msg)" --> log
+    boundaries -- "report_contained(exc, owner, site)" --> report
+```
+
+| Module | Role |
 | --- | --- |
-| Startup: app start, backend initialisation, an essential resource | Raise; failing to start means the app cannot continue. An auxiliary feature that fails to initialise logs and falls back. |
-| Event input: a click, a key, navigation, focus delivered from the OS | Catch at the delivery boundary, log, continue to the next event. |
-| Rebuild: a state update, a recomposition | Catch at the boundary, log, skip the affected subtree or unit of work where possible, continue. |
-| The frame hot path: draw, layout, animation, once per frame | Catch at the frame boundary, log once per occurrence, drop the frame, continue to the next. |
-| Calling external code: a user callback, a subscription notification, an async task completion | Catch at the caller, log, keep the subscription alive. An explicit cancellation (`CancelledError`) is ignored or logged at DEBUG. |
+| The Boundaries | the entry points from the OS, the backend and the app's callbacks, where an exception is finalised |
+| The Log | emits a record once per key |
+| The Report | hands a contained exception to whoever is listening |
+| the internal modules | `widgeting`, `layout`, `rendering`, `observable` and the rest, which propagate |
+| the app's callbacks | user code the framework calls |
 
-A synchronous handler that raises is reported and the frame continues: it is
-on the frame's own call stack, where unwinding would abandon the rest of the
-dispatch. The task of an async handler can re-raise, because the task is the
-harness's to await.
+### Promises
 
-## Logging
+- A boundary logs and continues, or it raises. An internal catch adds
+  context and re-raises.
+- `logger.exception` is called at a boundary only.
+- `RendererError` passes every boundary.
 
-`logger.exception(...)` preserves the stack trace and is called only at a
-boundary, where the exception is converted to a continuation; an internal
-catch never calls it, so a trace appears once.
+## The Boundaries
 
-The `*_once` helpers (`debug_once`, `warning_once`, `exception_once`,
-`exception_once_per_exc` in `common.logging_once`) emit a record once per
-process per key, so a failure that recurs every frame is logged once. The key
-is a string the call site chooses, a category and site such as
-`"modifier_box_cross_align_copy_exc"`, never the message; up to 1024 keys are
-kept under a lock and the oldest are evicted. `exception_once_per_exc` keys
-on the exception as well, so a new failure at the same site after a hot
-reload is logged again. The dev runner switches the de-duplication off for
-its verbose runtime log, because a suppressed record never reaches the
-handler that captures it.
+Each entry point catches what the code below it propagated.
 
-The framework logs to `logging.getLogger("nuiitivet")` and its sub-loggers
-and configures nothing: no `basicConfig`, no handler. Configuration is the
-application's, and `WARNING` is the recommended level for the `nuiitivet`
-logger.
+### Structure
+
+```mermaid
+flowchart LR
+    runner[backends/pyglet/runner.py]
+    loop[backends/pyglet/event_loop.py]
+    events[runtime/app_events.py]
+    lifecycle[widgeting/widget_lifecycle.py]
+    callbacks[widgeting/callbacks.py]
+    notify[observable/_notify.py]
+    once[common/logging_once.py]
+    internal[the internal modules]
+    app[the app's callbacks]
+
+    runner -- "_dispatch_mouse_press · _dispatch_key_press · ..., in a try" --> events
+    loop -- "_draw_callback(dt), in a try" --> internal
+    events -- "hit_test · the handler chain, in a try" --> callbacks
+    lifecycle -- "on_mount() · on_unmount() · child.mount(), in _call_contained" --> app
+    callbacks -- "cb(args), in invoke_event_handler" --> app
+    notify -- "callback(value), each subscriber in a try" --> app
+    runner & loop & events & lifecycle & callbacks & notify -- "exception_once(logger, key, msg) · exception_once_per_exc(logger, prefix, msg)" --> once
+```
+
+| Module | Role |
+| --- | --- |
+| `backends/pyglet/runner.py` | the window's event handlers, each dispatch in its own try ([APP_WINDOW.md](APP_WINDOW.md)) |
+| `backends/pyglet/event_loop.py` | the draw callback in a try ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
+| `runtime/app_events.py` | pointer delivery, each step in a try ([INTERACTION_ARCHITECTURE.md](INTERACTION_ARCHITECTURE.md)) |
+| `widgeting/widget_lifecycle.py` | the lifecycle hooks and the children's mounts, contained ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)) |
+| `widgeting/callbacks.py` | `invoke_event_handler`, containing a handler ([ASYNCIO_INTEGRATION.md](ASYNCIO_INTEGRATION.md)) |
+| `observable/_notify.py` | notifies each subscriber, surviving one that raises ([OBSERVABLE.md](OBSERVABLE.md)) |
+| `common/logging_once.py` | the record (The Log) |
+| the internal modules | propagate |
+| the app's callbacks | may raise |
+
+### Sequence
+
+#### A click handler raises
+
+```mermaid
+sequenceDiagram
+    participant R as backends/pyglet/runner.py
+    participant E as runtime/app_events.py
+    participant C as widgeting/callbacks.py
+    participant A as the app's callbacks
+    participant L as common/logging_once.py
+
+    R->>E: _dispatch_mouse_press(x, y)
+    E->>C: invoke_event_handler(on_click, ...)
+    C->>A: on_click()
+    A-->>C: raises
+    C->>L: exception_once_per_exc(logger, prefix, msg)
+    C->>C: report_contained(exc, owner, site)
+    C-->>E: None
+    Note over E: the dispatch continues
+    Note over R: the frame continues
+```
+
+### Promises
+
+- A callback's exception never unwinds the dispatch it was called from.
+- `CancelledError` passes through a task boundary.
+- A failure in `run_app` before the loop starts raises.
+
+## The Log
+
+`exception_once` and its siblings de-duplicate by a key the call site
+chooses.
+
+### Structure
+
+```mermaid
+flowchart LR
+    once[common/logging_once.py]
+    logging[logging]
+    capture[dev/runtime_capture.py]
+    sites[the boundaries]
+
+    sites -- "debug_once · warning_once · exception_once(logger, key, msg) · exception_once_per_exc(logger, prefix, msg)" --> once
+    once -- "logger.debug · warning · exception" --> logging
+    capture -- "set_log_once_enabled(enabled)" --> once
+```
+
+| Module | Role |
+| --- | --- |
+| `common/logging_once.py` | the keys seen, the per-exception signature and the kill switch |
+| `logging` | the standard library's logger, `nuiitivet` and its children |
+| `dev/runtime_capture.py` | switches the de-duplication off for a verbose runtime log ([DEV_BRIDGE.md](DEV_BRIDGE.md)) |
+| the boundaries | the call sites (The Boundaries) |
+
+### Promises
+
+- The key is a category and a site, chosen by the call site. It is never the
+  message.
+- A different failure at the same site is logged again.
+- The framework adds no logging handler. It calls no `basicConfig`.
+- Logging never raises.
+
+## The Report
+
+`report_contained` tells a listening harness that user code raised.
+
+### Structure
+
+```mermaid
+flowchart LR
+    callbacks[widgeting/callbacks.py]
+    contained[testing/_contained.py]
+    tasks[testing/_tasks.py]
+    sites[the boundaries]
+
+    sites -- "report_contained(exc, owner, site)" --> callbacks
+    callbacks -- "sink(ContainedError)" --> contained
+    contained -- "the error, claimed once" --> tasks
+```
+
+| Module | Role |
+| --- | --- |
+| `widgeting/callbacks.py` | `report_contained` and the sink set |
+| `testing/_contained.py` | the harness's sink; claims an error and reports it at teardown ([CONCURRENCY_MODEL.md](CONCURRENCY_MODEL.md)) |
+| `testing/_tasks.py` | holds the failure until the test reads it |
+| the boundaries | the containment sites (The Boundaries) |
+
+### Promises
+
+- A containment site reports.
+- A sink never raises.
+- A contained exception keeps its type when it reaches a test.
+- One containment is one record.

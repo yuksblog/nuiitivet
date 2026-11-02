@@ -223,15 +223,14 @@ theme = nv.Theme.of(self)
 is_dark = theme.mode == "dark"
 ```
 
-!!! warning "Do not call it from `__init__`"
-    Unlike `Geometry.of` / `Navigator.of` / `Overlay.of` / `App.of`, which raise
-    when called too early, `Theme.of` **never raises**: with no reachable
-    `AppScope` it returns a bare `Theme(mode="light")`. That keeps paint code
-    working for deliberately detached widgets, but it also means a call from
-    `__init__` — where the widget has no parent yet, so the app's theme is
-    unreachable — silently pins the widget to the light default forever. Read the
-    theme in `on_mount()` or at paint time. The premature case logs a warning
-    once per widget type, so check the log if colors look stuck.
+!!! warning "A theme read in `__init__` or `on_mount` leaves the widget stuck"
+    Read the theme in `build()`. A widget with no `build()` reads it in
+    `paint()`.
+
+    A widget that reads in `__init__` and keeps the value paints light for
+    good, in a dark app too. A widget that reads in `on_mount` keeps the theme
+    it mounted under and ignores every later `set_theme`. Neither case raises
+    or logs.
 
 ### Applying a color role
 

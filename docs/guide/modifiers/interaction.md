@@ -406,6 +406,3 @@ The owner decides the scope:
 | a subtree, chosen by which pane is active | `FOCUS` |
 | a subtree, unambiguous while displayed | `FOREGROUND` |
 | the app — must survive navigation (New Window, Quit) | `MOUNT`, on the content root |
-
-The full rationale, including why there is no application-level registry, is in
-[docs/design/KEYBOARD_SHORTCUTS.md](../../design/KEYBOARD_SHORTCUTS.md).

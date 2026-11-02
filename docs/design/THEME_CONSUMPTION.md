@@ -1,212 +1,241 @@
 # Theme Consumption
 
-A widget obtains the theme one way: it reads `Theme.of(context)` where the
-value is consumed, and the read registers the dependency. There is no
-per-widget choice between pull and push, because a choice fails quietly:
-a widget that resolves once and keeps the value shows the light default
-forever and looks correct in a light app, and a widget that resolves in
-`on_mount` hands a preset to anything that measures it before mount, such as
-auto window sizing measuring a card against a 0px border preset. Both are
-lifecycle-ordering bugs, and the fix is removing the choice.
+How a widget reads the theme, and how a theme change reaches it. What a
+theme holds is in [STYLE_THEME.md](STYLE_THEME.md).
 
-## The Rule
+## What Every Reader Shares
 
-1. **Read the theme; never hold it.** A widget obtains the theme only
-   through `Theme.of(context)`.
-2. **Reading registers a dependency.** The framework records that the reader
-   depends on the theme and invalidates it on a change. Widget authors never
-   subscribe and never unsubscribe.
-3. **Read in the phase that consumes the value**, which the widget's shape
-   decides. A widget with a `build()` reads there and nowhere else. A leaf has
-   no `build()`, so it reads in `paint()` or `preferred_size()`.
-4. **Never read in `on_mount()` or `__init__()`.** What is resolved once and
-   kept on a field is never corrected.
+A reader is whatever unit the framework can invalidate.
 
-"Never hold it" means: never keep a resolved value somewhere the framework
-cannot invalidate. A value read in `build()` and embedded in the returned tree
-is held, and that is fine, because a theme change discards that tree. A value
-read in `on_mount` and written to a field that survives rebuilds is not. This
-is the trade Flutter makes: `ThemeData` holds concrete colours with no
-late-binding indirection, and correctness comes from rebuilding the readers.
+### Structure
 
-## Reading Registers a Dependency
+```mermaid
+flowchart LR
+    readers[the readers]
+    provider[The Provider]
+    lookup[The Lookup]
+    dependency[The Dependency]
+    color[rendering/skia/color.py]
 
-`Theme.of(context)` resolves the nearest `AppScope` by walking `_parent`
-upward, and records that the current reader depends on the theme. The walk
-runs once per mount, not once per read: a widget changes tree only through
-`mount()` and `unmount()`, so the scope it resolved is remembered until one
-of those runs (`context_lookup.find_app_scope`); a read that finds no scope
-remembers nothing, so a widget measured before it is attached resolves the
-real scope on its next read.
+    readers -- "Theme.of(self)" --> lookup
+    lookup -- "theme_manager.current" --> provider
+    lookup -- "register_theme_dependency · push_theme_reader · pop_theme_reader" --> dependency
+    provider -- "invalidate_theme_readers(root)" --> dependency
+    dependency -- "rebuild · mark_needs_layout · invalidate_paint_cache" --> readers
+    readers -- "ThemeKept.get · theme_generation" --> dependency
+    readers -- "shared_paint(color, stroke)" --> color
+```
 
-The reader is whichever unit the framework can invalidate:
-
-| Read during | Reader | Invalidated by a theme change |
-| --- | --- | --- |
-| `build()` | the enclosing recomposition scope | that scope is rebuilt |
-| `layout()` / `preferred_size()` | the widget | the widget is re-measured |
-| `paint()` | the widget | the widget is repainted |
-
-On a change the provider calls nobody back. `ThemeManager` bumps a generation
-counter and fires its one `on_change` hook, owned by the `AppScope`, which
-walks its subtree and invalidates the readers marked theme-dependent. The
-walk is O(tree), and a theme change is a user action, not a per-frame event.
-
-The mark lives on the reader, never on the provider. A provider holding a
-set of consumer callbacks, the shape this replaced, is a strong reference
-from the provider to every consumer: a widget that forgets to unsubscribe
-stays resident for the app's lifetime, and forgetting is silent. A mark on
-the reader dies with the reader, so there is nothing to release, as in
-Flutter (the `Element`) and Compose (the recomposition scope). A
-weak-referenced registry at the provider was rejected: it invalidates more
-precisely but reintroduces a registry, dead-entry sweeping and a place for
-lifetime bugs, for precision that is not worth it at this event rate.
-
-A theme change re-measures as well as repaints. Light/dark switching
-changes only colour roles, so nothing moves, but a theme may carry different
-typography or shape and the framework cannot tell the two apart from outside.
-
-## Where a Widget Reads
-
-| Widget | Reads in | Not in |
-| --- | --- | --- |
-| Has a `build()` | `build()` | anywhere else |
-| Is a leaf | `paint()`, `preferred_size()` / `layout()` | anywhere else |
-| Either | | `on_mount()`, `__init__()` |
-
-There is no third column of judgement. Of the modules that read `Theme.of`,
-only `Card` has a `build()`; `Text`, `Icon`, `Divider`, `Slider`, the
-scrollbar, the indicators, `EditableText`, the selection controls, the
-chips, the buttons and `TextField` are leaves. Leaves are the theme readers,
-and they are the build output of something else.
-
-The two phases trade opposite costs: a `build()` read costs nothing per frame
-and a scope rebuild per change; a `paint()` / `layout()` read costs one
-lookup per frame and a repaint per change. Where there is a choice, build
-time wins, since frames are continuous and theme changes rare; but a
-composable has no reason to defer to paint, and a leaf cannot take the
-advice at all, so the phase is not a preference. The per-frame cost on the
-leaf side is kept to a few attribute reads: the scope is cached per mount,
-the manager hands out the current theme without a lock, and a style the
-theme does not override is one shared frozen object.
-
-Most widgets need no theme code. `Box` resolves background, border and
-shadow at paint time, so anything built on it follows the theme; a widget
-with a colour or typeface of its own reads `Theme.of(self)` at the point of
-use, resolving on every access and holding nothing.
-
-### When a Resolved Value Has to Rest on a Field
-
-Some values cannot be re-derived in a getter on every frame: `Card`'s style
-lands on `Box` properties, a chip's style also picks its content subtree, and
-a button's colours become concrete RGBA endpoints for running animations.
-`Text`, `Checkbox` and `Switch` are painted on every frame of a scroll, so
-they keep their colours, and `Text` its typeface.
-These keep the derived visuals on fields, but the field is a cache of the
-pull, re-applied whenever a fresh read says the theme has moved, so rule 1
-holds. What "moved" means differs for a reason:
-
-| Widget | Re-applies when |
+| Module | Role |
 | --- | --- |
-| `Card` | always; `build()` re-resolves, and rebuilding is the theme-change path |
-| The chips | the resolved `ChipStyle` differs from the applied one |
-| The buttons | `ThemeManager.generation` has advanced (`theme_generation(self)`) |
-| `Text`, `Checkbox`, `Switch` | the generation has advanced, or the key the value was resolved under differs (`ThemeKept`) |
+| the readers | the widgets that read the theme: in `build()`, at paint or measure, or through a kept value |
+| The Provider | holds the current theme and fans a change out to every window |
+| The Lookup | resolves `Theme.of` to the scope above the context, along the parent chain |
+| The Dependency | marks a reader, finds the marks on a change, keeps a resolved value for a leaf |
+| `rendering/skia/color.py` | hands out one paint per colour and stroke |
 
-A button cannot compare the derived value the way a chip does, because
-re-targeting a colour animation on every measure would disturb one in
-flight. The painted leaves cannot either: resolving the value is the cost
-their field avoids. They hold it in a `ThemeKept`, whose key carries what
-decides the value besides the theme: the style object, which a parent
-replaces to recolour a label and which moves no generation, and for the
-selection controls the disabled flag and the value. A widget outside an
-`AppScope` keeps nothing, since no theme change reaches it.
+### Promises
 
-A `ThemeKept` holds colours, never a Skia paint. A paint held per widget has
-to be dropped on every path that changes a colour, and a frame of a colour
-animation changes it on every paint. `shared_paint` hands out one paint per
-distinct colour and stroke, so a paint is found by what it draws and no path
-can leave a stale one behind.
+- A widget obtains the theme only through `Theme.of(context)`.
+- A widget with a `build()` reads in `build()`. A leaf reads in `paint()` or
+  `preferred_size()`.
+- A resolved value on a field is a cache of the read. It is applied again
+  when the theme above the widget has moved.
+- No widget subscribes to the theme.
+- A `ThemeKept` holds colours, never a Skia paint. A paint is obtained from
+  `shared_paint` by what it draws.
 
-And no widget compares the `Theme` object: `Theme` is frozen, but its
-`extensions` list and a `MaterialThemeData`'s `roles` dict are not, so a theme
-mutated in place and re-installed is a real change arriving on the same
-object; the generation counter moves regardless. A chip's pushed visuals
-materialise when it is first measured, not mounted, which in an app is
-invisible since layout runs before paint. A button's held RGBA is the one
-value a stale read cannot self-correct, which is why its check is the strict
-one. Adopting at mount without that re-check is as broken as reading in
-`__init__`, only harder to notice.
+## The Provider
 
-### The Framework's Side
+The `AppScope` owns the `ThemeManager`. A theme change is one call that fans
+out to every window.
 
-Widgets can honour the rule only if the chain they walk is intact. A
-composable parents its build result when it builds, not when it mounts
-(`BuilderHostMixin._adopt_built`), so a pre-mount measurement resolves
-ancestors instead of dead-ending; a host that returns `self` from `build()`
-is skipped, or it would become its own parent. A `ChildrenStore` clears a
-child's `_parent` only while it still points at that store's owner, so
-re-parenting before the old owner drops the child does not orphan it. And the
-app installs the `AppScope` and mounts the tree before it measures anything;
-measuring first would resolve every lookup against the default light theme
-and size the window for a theme the app never installed.
+### Structure
 
-### Enforcement and Its Limit
+```mermaid
+flowchart LR
+    app[App]
+    mgr[ThemeManager]
+    scope[AppScope]
+    dep[theme/dependency.py]
+    win[Window]
 
-`Theme.of` raises when `context` has no `_parent` attribute at all, which can
-only mean the call ran before `super().__init__()`: there is no chain to
-resolve and no identity to hang a dependency on. Flutter takes the same
-position for `of(context)` in `initState`.
+    app -- "set_theme(theme)" --> mgr -- "on_change(theme)" --> scope
+    scope -- "theme_manager, owned" --> mgr
+    scope -- "invalidate_theme_readers(window.root)" --> dep
+    scope -- "_update_background_color() · invalidate()" --> win
+```
 
-A read in `__init__` after `super().__init__()` is not rejected, by choice.
-At that point the widget has `_parent is None` and is not mounted, a state
-indistinguishable from a constructed widget being measured offscreen, which
-tests and preview tooling do; raising would forbid `Switch().style`. Telling
-the two apart needs machinery that knows a constructor is on the stack, and
-under a pull the early read is harmless on its own: the fallback (a bare
-light `Theme`) is self-correcting on the next attached read, and what makes
-it a bug is keeping the result, which rule 1 forbids. So the rule is enforced
-where it is cheap and unambiguous and carried by review where it is not.
-
-A read from an event handler, a timer or other imperative code registers the
-context widget like any other read; it is neither an error nor a special
-case, and no untracked read API exists. No widget in the framework reads the
-theme outside build, layout or paint (hover and press animate a float
-opacity while the colour stays an unresolved `ColorSpec` resolved at paint),
-so phase tracking would reject a pattern nothing uses, and the harm it would
-guard against is already forbidden by rule 1. A spurious dependency costs at
-most one repaint on a rare user action.
-
-## Prior Art
-
-| Framework | Model |
+| Module | Role |
 | --- | --- |
-| Flutter | `Theme.of(context)` registers the Element as a dependent; a change rebuilds dependents; `initState` is an error |
-| Jetpack Compose | Reading a `CompositionLocal` subscribes the enclosing recomposition scope |
-| SwiftUI | `@Environment` reads declare a dependency; views are value types, so holding a stale value is impossible |
-| React | `useContext`, the same shape |
-| UIKit | Late-bound colours resolved at draw; everything else re-read in `traitCollectionDidChange` |
-| Qt / GTK | Palette read at paint; the framework calls `changeEvent` / emits `style_updated` |
+| `App` | the one entry for a theme change, `set_theme` |
+| `ThemeManager` | holds the current theme and the generation counter; notifies its one owner |
+| `AppScope` | owns the manager; fans a change out to every open window |
+| `theme/dependency.py` | invalidates the readers under a root (The Dependency) |
+| `Window` | redraws a background drawn from a token, repaints |
 
-The declarative frameworks converge: the author writes a pull, the framework
-wires the invalidation, nobody subscribes. The retained-mode frameworks
-provide a framework-called hook rather than a subscription; none asks the
-author to pair subscribe with unsubscribe. No framework surveyed extends
-late-binding tokens beyond colour, so typography and shape are handled by
-recomputation, not by `ColorRole`-style tokens for `border_radius` or
-`font_family`.
+### Sequence
 
-`Theme`, `Geometry` and `Navigator` share one shape, a value supplied by an
-ancestor and consumed by descendants, and `theme/dependency.py` (marking
-readers, walking a provider's subtree) knows nothing theme-specific. It is
-scoped to the theme because that is where the failures were observed.
+#### A theme change reaches its readers
 
-## Where This Lives
+```mermaid
+sequenceDiagram
+    participant A as App
+    participant M as ThemeManager
+    participant S as AppScope
+    participant D as dependency.py
+    participant Rd as the marked readers
+    participant W as each Window
 
-| Piece | Module |
+    A->>M: set_theme(theme)
+    M->>M: current = theme, generation += 1
+    M->>S: on_change(theme)
+    loop each open window
+        S->>D: invalidate_theme_readers(window.root)
+        D->>D: collect the marked readers
+        D->>Rd: rebuild() a build host
+        D->>Rd: mark_needs_layout(), invalidate_paint_cache() a leaf
+        S->>W: reset the background when it is a token
+        S->>W: invalidate()
+    end
+```
+
+### Promises
+
+- The manager has one owner hook.
+- A theme change re-measures as well as repaints.
+- A window background drawn from a token is reset on every theme change.
+
+## The Lookup
+
+`Theme.of` finds the `AppScope` above the context and reads the manager's
+current theme. The parent chain it walks is kept intact by the widgeting
+layer.
+
+### Structure
+
+```mermaid
+flowchart LR
+    of[Theme.of]
+    find[find_app_scope]
+    forget[Widget]
+    scope[AppScope]
+    mgr[ThemeManager]
+    dep[theme/dependency.py]
+    build["evaluate_build()"]
+    adopt["BuilderHostMixin._adopt_built"]
+    store["ChildrenStore.add_child · _detach_parent"]
+
+    of -- "find_app_scope(context)" --> find -- "the nearest AppScope" --> scope
+    of -- "scope.theme_manager.current" --> mgr
+    forget -- "mount() · unmount(): forget_app_scope(widget)" --> find
+    of -- "register_theme_dependency(context)" --> dep
+    build -- "push_theme_reader(host) · pop_theme_reader()" --> dep
+    adopt -- "built._parent = host, at build" --> find
+    store -- "add_child: child._parent = owner · _detach_parent" --> find
+```
+
+| Module | Role |
 | --- | --- |
-| Reader marking, subtree invalidation, `theme_generation`, `ThemeKept` | `theme/dependency.py` |
-| The read and the `__init__` guard | `Theme.of` in `theme/theme.py` |
-| Attributing a read to the building host | `evaluate_build` in `widgeting/widget_builder.py` |
-| Turning a theme change into invalidation | `AppScope._on_theme_changed` in `runtime/app.py` |
-| The single owner hook and the generation counter | `theme/manager.py` |
+| `Theme.of` | resolves the scope, registers the read, falls back to the light default |
+| `find_app_scope`, `forget_app_scope` | walks `_parent` up to the `AppScope`, remembers the answer on the context, forgets it at mount and unmount |
+| `Widget` | clears the memory at mount and unmount |
+| `evaluate_build()` | pushes the build host as the reader around `build()` |
+| `BuilderHostMixin._adopt_built` | links a build result to its host as soon as it is built |
+| `ChildrenStore` | links a child to its owner, unlinks it only while the link still points at the owner |
+| `AppScope`, `ThemeManager` | the provider the walk ends at (The Provider) |
+| `theme/dependency.py` | the mark and the reader stack (The Dependency) |
+
+### Sequence
+
+#### The scope is remembered
+
+```mermaid
+sequenceDiagram
+    participant Wd as the widget
+    participant T as Theme.of
+    participant L as find_app_scope
+
+    Wd->>L: mount() → forget_app_scope
+    Wd->>T: the first read
+    T->>L: find_app_scope(widget)
+    L->>L: walk _parent upward
+    alt a scope is found
+        L->>Wd: remember it on the widget
+        L-->>T: the scope
+    else none
+        L-->>T: None, nothing remembered
+    end
+    Wd->>T: a later read
+    T->>L: find_app_scope(widget)
+    L-->>T: the remembered scope, or a new walk
+    Wd->>L: unmount() → forget_app_scope
+```
+
+### Promises
+
+- A scope the walk found is remembered on the widget until it unmounts. A
+  walk that finds nothing remembers nothing.
+- Every read that resolves a scope marks its reader.
+- A read that resolves no scope returns the light default. It marks nothing.
+- A composable parents its build result when it builds.
+- A `ChildrenStore` clears a child's `_parent` only while it still points at
+  the store's owner.
+
+## The Dependency
+
+The dependency module marks a reader, finds the marks when the theme
+changes, and keeps a resolved value for a leaf painted every frame.
+
+### Structure
+
+```mermaid
+flowchart LR
+    dep[theme/dependency.py]
+    build["evaluate_build()"]
+    of[Theme.of]
+    scope[AppScope]
+    tree[the widget tree]
+
+    build -- "push_theme_reader(host) · pop_theme_reader()" --> dep
+    of -- "register_theme_dependency(context)" --> dep
+    scope -- "invalidate_theme_readers(root)" --> dep
+    dep -- "setattr(reader, _reads_theme, True) · getattr(node, _reads_theme) · rebuild · mark_needs_layout · invalidate_paint_cache" --> tree
+    tree -- "ThemeKept.get(context, key, resolve) · theme_generation(context)" --> dep
+```
+
+| Module | Role |
+| --- | --- |
+| `theme/dependency.py` | the reader stack the build hosts stand on; the mark `_reads_theme` on a reader; the walk over `children` and `built_child` that rebuilds the marked hosts and re-measures the marked leaves; `theme_generation`; `ThemeKept` |
+| `evaluate_build()` | pushes and pops the build host around `build()` (The Lookup) |
+| `Theme.of` | registers each read (The Lookup) |
+| `AppScope` | asks for the invalidation on a change (The Provider) |
+| the widget tree | where the marks sit, what the walk invalidates, and the leaves that keep a value |
+
+### Sequence
+
+#### A read inside build() marks the host
+
+```mermaid
+sequenceDiagram
+    participant B as evaluate_build
+    participant H as the build host
+    participant T as Theme.of
+    participant D as dependency.py
+
+    B->>D: push_theme_reader(host)
+    B->>H: build()
+    H->>T: Theme.of(self)
+    T->>D: register_theme_dependency(self)
+    D->>D: the reader is the top of the stack, the host
+    D->>H: _reads_theme = True
+    T-->>H: the theme
+    B->>D: pop_theme_reader()
+```
+
+### Promises
+
+- The mark lives on the reader, never on the provider.
+- A read inside `build()` is attributed to the build host. A read outside
+  one is attributed to the context.
+- No widget compares the `Theme` object. Staleness is the generation.

@@ -1,103 +1,197 @@
 # Style and Theme
 
-A widget's look is a **style**, one frozen dataclass per widget, and a
-**theme** supplies the colours a style refers to and, where a design system
-wants it, a different default style. How a widget reads the theme is in
+A widget's look is a style, one dataclass per widget. A theme supplies the
+colours a style names. A design system may put another default style in the
+theme. How a widget reads the theme is in
 [THEME_CONSUMPTION.md](THEME_CONSUMPTION.md).
 
-## Styles
+## Overview
 
-Every widget has its own style class (`ButtonStyle`, `CheckboxStyle`,
-`IconStyle`), flat, with no inheritance between them. A style is a frozen
-dataclass; a variation is `copy_with(...)`, never a mutation. Its colour
-fields are `ColorSpec`: a design-system token such as a `ColorRole`, a
-literal, or either paired with an alpha. A token is resolved at paint time
-against the theme current then (`theme.resolver.resolve_color_to_rgba`), so
-a widget switches between light and dark with no code of its own. A style's
-shape and size fields (`container_height`, `content_insets`, a touch target)
-are the MD3 component tokens; which dimensions are style fields rather than
-constructor parameters is decided in [SIZE_POLICY.md](SIZE_POLICY.md).
+Three groups of modules take part.
 
-An MD3 variant is a factory on the style class, `ButtonStyle.filled("s")`,
-`ButtonStyle.outlined()`, `CardStyle.elevated()`, with the size variant as
-its argument. The style in effect for a widget is the one the caller passed,
-else the one a hosting widget derives for it (a toolbar pushes the style its
-colour scheme prescribes onto each button it hosts), else the preset. Every
-style class with presets has `default()`: the preset a widget renders with
-before it is mounted, and the one `from_theme` falls back to with no
-Material theme installed. `ChipStyle.default(variant)` takes the chip's
-variant.
-
-## Theme
-
-`Theme` is design-agnostic: a `mode`, a `name` and a list of
-`ThemeExtension`s, at most one per type, retrieved with
-`theme.extension(T)`. Everything design-specific lives in an extension.
-`MaterialThemeData` holds the `ColorRole` palette derived from a seed by
-`MaterialThemeFactory`, and a nullable slot per widget variant through which
-a theme overrides that variant's default style; a slot left empty falls
-through to one shared frozen preset, because the fall-through runs on every
-paint of every leaf and a frozen style can be handed out by every theme.
-`PlainThemeData` serves the plain design system the same way.
+### Structure
 
 ```mermaid
 flowchart LR
-    T["Theme: mode, name"] --> M["MaterialThemeData: ColorRole palette, style overrides"]
-    T --> S["ScrollbarThemeData, MenuBarThemeData: generic palettes"]
-    T --> A["an application's own extension"]
-    M -. "resolved at paint" .-> C["ColorSpec fields on a *Style"]
+    theme[The Theme]
+    material[The Material Theme]
+    styles[The Styles]
+    widgets[the Material widgets]
+    generic[the generic widgets]
+    app[the app]
+
+    app -- "MaterialThemeFactory.from_seed(seed, mode, variant, contrast_level, form_factor)" --> material
+    app -- "App(theme=...) · set_theme(theme)" --> theme
+    material -- "Theme(mode, extensions, name) · ThemeExtension" --> theme
+    widgets -- "Theme.of(self) · theme.extension(MaterialThemeData)" --> theme
+    widgets -- "Style.from_theme(theme) · style.copy_with(...) · ColorSpec fields" --> styles
+    styles -- "resolve_color_to_rgba(spec, theme)" --> theme
+    generic -- "theme.extension(ScrollbarThemeData) · theme.extension(MenuBarThemeData)" --> theme
 ```
 
-A generic widget, one that is not Material, never reads a Material colour
-role. The scrollbar and the menu bar each take their palette from a
-`ThemeData` extension of their own, which every design system registers,
-with the colours stored as `ColorSpec` tokens so they too resolve against
-the current theme. That is the framework-wide split: the app-wide palette
-lives in a `ThemeData`, a per-instance override in the nullable `ColorSpec`
-fields of the widget's `Style`, and the shape in the `Style`.
+| Module | Role |
+| --- | --- |
+| The Theme | the design-agnostic container, the colour resolver and the manager |
+| The Material Theme | the palette from a seed, the form factor and the per-variant style overrides |
+| The Styles | one dataclass per widget |
+| the Material widgets | read a style ([MATERIAL_INTERACTION.md](MATERIAL_INTERACTION.md)) |
+| the generic widgets | the scrollbar and the menu bar, each with a palette extension of its own ([MENU_BAR.md](MENU_BAR.md)) |
+| the app | builds a theme and installs it |
 
-The `ThemeManager` holds the current theme and a generation counter and
-notifies one owner, the `AppScope`; it keeps no subscriber list, for the
-reason THEME_CONSUMPTION.md gives.
+### Promises
 
-## Form Factor
+- Everything design-specific lives in a `ThemeExtension`.
+- A generic widget never reads a Material colour role.
+- The app-wide palette lives in a `ThemeExtension`. A per-instance override
+  lives in the nullable `ColorSpec` fields of the widget's style. The shape
+  lives in the style.
 
-A form factor is the component sizes for one kind of device.
-`MaterialThemeData.form_factor` holds it. `desktop` is the default and
-`mobile` is the MD3 baseline. A form factor says whether a small control
-reserves the 48dp touch target, and holds a density step per component. One
-step takes 4dp off the component's height.
+## The Theme
 
-A style keeps the MD3 baseline numbers under every form factor. The widget
-applies the form factor where it measures and paints, and its `style`
-property returns the style it was given or resolved from the theme with the
-baseline numbers intact. A style factory cannot apply it:
-`ButtonStyle.tonal()` runs with no theme in reach. A minimum size left
-`None` on a style is resolved at the same place.
+`Theme` is the container every design system fills.
 
-`desktop` puts the controls of one row at 40dp. A button of size `"s"` is
-40dp already, so the components with a size ladder have no density step.
+### Structure
 
-`Checkbox`, `RadioButton` and `Switch` take the 40dp state layer as their
-layout box when no touch target is reserved. Their graphic keeps its
-proportions against the 48dp target, so a checkbox stays 18dp.
+```mermaid
+flowchart LR
+    theme[theme/theme.py]
+    types[theme/types.py]
+    resolver[theme/resolver.py]
+    manager[theme/manager.py]
+    plain[theme/plain_theme.py]
+    appscope[runtime/app.py]
+    styles[the styles]
 
-A filled text field shorter than 52dp has no room for a floating label. Its
-label stays in the text row and is hidden once the field has text.
+    theme -- "is a: ThemeExtension, each extension" --> types
+    resolver -- "token.resolve(theme)" --> types
+    styles -- "resolve_color_to_rgba(spec, theme)" --> resolver
+    appscope -- "ThemeManager(initial) · current · generation · on_change" --> manager
+    manager -- "the current Theme" --> theme
+    plain -- "Theme(mode, [PlainThemeData, ScrollbarThemeData, MenuBarThemeData])" --> theme
+```
 
-One density number for the whole theme was rejected. A button is 40dp and a
-text field is 56dp. A uniform step lowers both by the same amount, so the
-controls of a row never line up.
+| Module | Role |
+| --- | --- |
+| `theme/theme.py` | the container and `Theme.of` |
+| `theme/types.py` | the colour spec vocabulary, a token, a literal or either with an alpha, and the extension protocol |
+| `theme/resolver.py` | turns a `ColorSpec` into RGBA against a theme |
+| `theme/manager.py` | holds the current theme for one owner |
+| `theme/plain_theme.py` | `PlainTheme`, the design system with no Material ([THEME_CONSUMPTION.md](THEME_CONSUMPTION.md)) |
+| `runtime/app.py` | the `AppScope` that owns the manager ([APP_WINDOW.md](APP_WINDOW.md)) |
+| the styles | the colour fields resolved (The Styles) |
 
-A target row height in place of named form factors was rejected. The steps
-could be computed from it, but a chip and a menu item do not follow the row.
+### Promises
 
-## Against the Alternatives
+- A colour token resolves at paint, against the theme current then.
+- A theme holds at most one extension per type.
+- The manager notifies one owner.
 
-Flutter's `ThemeData` with per-widget sub-themes is the closest shape; the
-difference is that here the sub-theme is optional and the preset lives on
-the style class, so `Theme` stays a container of tokens rather than a
-catalogue of every widget's defaults. SwiftUI's environment values and
-`.buttonStyle()` modifiers were not followed: a style is a plain parameter,
-explicit at the call site. The style classes map directly onto MD3 component
-tokens, so a spec value has one field to land in.
+## The Material Theme
+
+`MaterialThemeData` is the Material extension of a theme.
+
+### Structure
+
+```mermaid
+flowchart LR
+    data[material/theme/theme_data.py]
+    factory[material/theme/material_theme.py]
+    palette[material/theme/palette.py]
+    role[material/theme/color_role.py]
+    form[material/theme/form_factor.py]
+    styles[material/styles/]
+    scrollbar[scrolling/scrollbar_theme_data.py]
+    menubar[menubar/theme_data.py]
+    widgets[the Material widgets]
+
+    factory -- "palette.from_seed(seed, dark, variant, contrast_level)" --> palette
+    palette -- "the ColorRole to colour map" --> data
+    factory -- "MaterialThemeData(roles, form_factor) · ScrollbarThemeData(...) · MenuBarThemeData(...)" --> data & scrollbar & menubar
+    role -- "resolve(theme)" --> data
+    data -- "_shared_default(Style.variant), when the slot is empty" --> styles
+    styles -- "theme_data.<variant>_style" --> data
+    widgets -- "form_factor_of(context) · min_extent(explicit, container, context)" --> form
+    form -- "theme.extension(MaterialThemeData).form_factor" --> data
+```
+
+| Module | Role |
+| --- | --- |
+| `material/theme/theme_data.py` | `MaterialThemeData`: the roles, the form factor, one nullable slot per widget variant falling through to a shared default |
+| `material/theme/material_theme.py` | `MaterialThemeFactory`: a theme from a seed, with the Material, scrollbar and menu bar extensions |
+| `material/theme/palette.py` | derives the roles from a seed, a scheme variant and a contrast level |
+| `material/theme/color_role.py` | `ColorRole`, a token resolving through the Material extension |
+| `material/theme/form_factor.py` | `FormFactor`, the component sizes of one kind of device |
+| `material/styles/` | the defaults the slots fall through to (The Styles) |
+| `scrolling/scrollbar_theme_data.py` | the scrollbar's palette |
+| `menubar/theme_data.py` | the menu bar's palette ([MENU_BAR.md](MENU_BAR.md)) |
+| the Material widgets | measure and paint by the form factor |
+
+### Sequence
+
+#### A widget resolves its style
+
+```mermaid
+sequenceDiagram
+    participant W as the Material widgets
+    participant S as material/styles/
+    participant D as material/theme/theme_data.py
+
+    alt the caller passed a style, or a host derived one
+        W->>W: that style
+    else
+    W->>S: Style.from_theme(theme)
+    S->>S: theme.extension(MaterialThemeData)
+    alt a Material theme is installed
+        S->>D: the variant's slot
+        alt the slot is set
+            D-->>S: the override
+        else
+            D-->>S: the shared default
+        end
+    else
+        S->>S: Style.default()
+    end
+    end
+```
+
+### Promises
+
+- An empty slot falls through to one shared frozen preset.
+- A style keeps the MD3 baseline numbers under every form factor. The widget
+  applies the form factor where it measures and paints.
+- A style's own `density` wins over the theme's step.
+
+## The Styles
+
+Each widget has its own style class.
+
+### Structure
+
+```mermaid
+flowchart LR
+    styles[material/styles/]
+    widgets[the Material widgets]
+    data[material/theme/theme_data.py]
+    resolver[theme/resolver.py]
+    app[the app]
+
+    app -- "ButtonStyle.filled(size) · CardStyle.elevated() · style.copy_with(...)" --> styles
+    app -- "Button(style=...)" --> widgets
+    widgets -- "Style.from_theme(theme) · Style.default() · style.resolve(theme)" --> styles
+    styles -- "theme_data.<variant>_style" --> data
+    styles -- "resolve_color_to_rgba(spec, theme), per colour field" --> resolver
+```
+
+| Module | Role |
+| --- | --- |
+| `material/styles/` | one frozen dataclass per widget: the `ColorSpec` fields, the MD3 shape and size tokens, the variant factories, `default()`, `from_theme()` |
+| the Material widgets | hold the caller's style, and one a hosting widget such as a toolbar derives for them |
+| `material/theme/theme_data.py` | the overrides (The Material Theme) |
+| `theme/resolver.py` | the colour resolution (The Theme) |
+| the app | passes a style or a variant |
+
+### Promises
+
+- A style is frozen. A variation is a `copy_with`, never a mutation.
+- No style class inherits from another.
+- Every style class with presets has `default()`.

@@ -1,228 +1,262 @@
-# Rendering Pipeline Architecture
+# Rendering Pipeline
 
-A frame is three phases in a fixed order: **build**, **layout**, **paint**.
-Layout runs to completion before any paint, so every geometric fact is final
-before the first draw command. Frames are produced on demand: an idle window
-draws nothing.
+A window draws a frame on demand.
+
+## Overview
+
+Four groups of modules take part.
+
+### Structure
 
 ```mermaid
 flowchart LR
-    Q["drain size-change queue"] --> B["build: flush bindings and scope recompositions"]
-    B --> L["layout: root.layout(w, h) when _needs_layout"]
-    L --> P["paint: root.paint() from _layout_rect"]
-    P --> F["flip"]
+    loop[The Loop]
+    frame[The Frame]
+    measure[The Measure]
+    painter[The Child Painter]
+    widget[widgeting/widget.py]
+    clock[observable/runtime.py]
+
+    widget -- "invalidate() · mark_needs_layout()" --> frame
+    frame -- "request_draw(immediate)" --> loop
+    loop -- "_render_frame(dt), each open window" --> frame
+    loop -- "the tick" --> clock
+    clock -- "the tick" --> widget
+    frame -- "root.layout(w, h) · root.paint(canvas, 0, 0, w, h)" --> measure
+    measure -- "layout_child_if_needed · paint_laid_out_children" --> painter
 ```
 
-## Build
-
-Build turns declarative widget definitions into the instance tree and applies
-incremental updates when an `Observable` changes. Parent-child relations and
-properties are decided here; sizes and positions are not.
-
-A change recomposes only the scope it touches. Dynamic children sit in a
-`render_scope`, so rebuilding a host does not regenerate the expensive widgets
-around them; `ForEach` and `Card` carry a scope of their own for the same
-reason. Scope metadata records each child's `_layout_dependencies` and
-`_paint_dependencies`, which routes a binding invalidation to the right
-consumer. Recomposition is idempotent: a scope is rebuilt when it is new,
-unbuilt or explicitly invalidated (`_dirty_scopes`), never merely because the
-host's `build()` ran again ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)).
-Binding and scope queues flush together; for an unmounted host there is no
-frame to wait for, so invalidating a scope rebuilds it synchronously.
-
-## Layout
-
-Layout decides every widget's size and position and is guaranteed to finish
-before paint.
-
-### The Layout Protocol
-
-`layout(width, height)` is called by the parent with the available size. The
-widget decides its own size from `preferred_size` and its `Sizing`, lays out
-its children, stores the result in `_layout_rect` and clears `_needs_layout`.
-
-**Forbidden inside `layout()`:** a draw command, and any state change another
-consumer can observe within the same pass. An `Observable` write is the
-canonical violation: it propagates synchronously, so a sibling measured before
-the write and painted after it sees two values inside one frame, a torn frame.
-Whether tearing strikes depends on sibling order within the pass, which app
-authors cannot reason about; the writer is the only party that knows it is
-inside `layout()`, so the rule binds the writer.
-
-**Permitted**, because nothing becomes observable mid-pass:
-
-1. Storing layout results: `_layout_rect`, and plain synchronous fields that
-   paint, hit testing and other post-layout consumers read, such as the
-   recorded scroll metrics.
-2. Requesting a frame: `invalidate()` / `mark_needs_layout()` alter no
-   measurement, and work discovered during measurement has to be scheduled
-   somewhere.
-3. Queueing a deferred publish or callback (`widgeting.widget_size_change`).
-   The app drains that queue between frames, at the start of the next frame
-   before its build flush. This is the sanctioned way to make a measured
-   result reactive: `Geometry`'s size and the scroll metrics publish to their
-   `Observable`s through it. A reactive consumer therefore sees a measurement
-   one frame after the layout that produced it, and never a torn mix of old
-   and new.
-
-`preferred_size()` reports the intrinsic size so the parent can allocate room.
-It is free of side effects, the same constraint as `layout()`; in particular,
-measuring a mounted composable never calls `build()` and never unmounts the
-live subtree, which would discard focus, scroll position, animation state and
-pointer capture and cancel a gesture in progress. Measurement reads the
-existing subtree only.
-
-Measurement is also **constraint-monotonic**: shrinking a max constraint down
-to, but not below, the measured result does not change the result. Text
-wrapping, min/max clamping and every other fit-then-report strategy satisfy
-this naturally; what it rules out is a result computed as a function of the
-constraint while staying strictly inside it, "half the available width". The
-measure cache relies on it to reuse a measurement across a constraint
-animation.
-
-`mark_needs_layout()` is called when a layout-affecting property changes
-(`width`, `padding`, a child added or removed). It sets `_needs_layout` on the
-widget and every ancestor, so the next frame re-lays out only that path.
-
-### Caches
-
-- `parse_sizing()` is memoised, so repeated `width` / `height` literals cost no
-  allocation.
-- `LayoutEngine` caches preferred sizes, internal rects and child placement,
-  keyed on padding, border width, the container's `_layout_cache_token` and
-  the children's tokens. A widget that changes padding or border width bumps
-  its token.
-- `layout.measure.preferred_size()` memoises each widget's measurement in
-  `_measure_cache`, keyed on the max constraints asked. `mark_needs_layout()`
-  drops the widget's entry and, propagating upward, every ancestor's, so a
-  change routed through normal invalidation re-measures exactly the dirtied
-  path while untouched siblings stay O(1). Constraint monotonicity lets a
-  cached result also answer a shrunk constraint it still fits, which keeps a
-  width animation from re-measuring the static subtrees beside it.
-- `Row` / `Column` skip a child's `layout()` entirely when the child is clean
-  and its allocated size is unchanged; position is applied via
-  `set_layout_rect` and is not an input to `layout()`. With the measure cache
-  this makes a frame's layout cost proportional to what changed, not to the
-  tree size.
-- `enable_layout_cache_profiling()` exposes hit rates.
-
-### Recording Is Not Publishing
-
-The layout pass records sizes, positions and scroll metrics in `_layout_rect`
-and plain fields, and paint and hit testing read those records. That is what
-makes scrollbar visibility and hit testing accurate within the same frame. The
-`Observable` publish of a recorded measurement rides the queue and lands at the
-start of the next frame, so layout finalises the frame's geometry without
-making any of it observable mid-pass.
-
-## Paint
-
-Paint draws from `_layout_rect` and issues Skia commands, including clip and
-transform (`save`, `translate`, `restore`). It computes no size and moves
-nothing: `paint()` is a pure consumer of layout results.
-
-A multi-child container (`Column`, `Row`, `Flow`, `UniformFlow`, `Grid`) reads
-the canvas clip once per paint and skips any child whose visual bounds, layout
-rect plus `paint_outsets()`, end more than a small slack outside it. A scrolled
-list pays paint cost for the rows in the viewport, not for the whole content. A
-culled child still receives its `last_rect`; only its subtree's paint code is
-not run. Without a readable clip (no canvas, or a stand-in) every child is
-painted. What this asks of a widget that draws outside its rect is in
-[BOX_MODEL.md](BOX_MODEL.md).
-
-A child that lies wholly inside the clip is told so for the paint that
-follows. A container that is told reads no clip and tests no child, since
-nothing below it can be culled, and tells its own children the same. Painting
-a child the clip would have discarded costs time and no pixel, so a hint that
-is dropped or out of date is never a wrong frame. Carrying the clip itself
-down the tree was rejected for that reason: a clip that is out of date culls
-what should be drawn.
-
-A wrapper between two containers hands the hint on when it neither narrows
-the clip nor moves its child:
-
-| Wrapper | Hint |
+| Module | Role |
 | --- | --- |
-| `ComposableWidget`, `Container`, `Box` and what is built on it, `Stack`, `Deck`, `Geometry`, `CrossAligned` | passes |
-| A modifier box that draws its child in place: `clickable` and the other interaction modifiers, `will_pop`, `visible` and the transform modifiers while they apply no effect | passes |
-| `ScrollViewport`, a `Box` that clips its content (the `clip` modifier) | stops: the content is larger than what shows, and must be culled against the narrower clip |
-| A transform modifier that moves, scales, rotates or fades its child | stops: the child may land outside the clip |
+| The Loop | decides each iteration whether a frame is drawn |
+| The Frame | one window's frame, from the queues to the flip |
+| The Measure | the caches a layout pass reads |
+| The Child Painter | lays a container's children out and paints them |
+| `widgeting/widget.py` | `invalidate`, the one request for a frame ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)) |
+| `observable/runtime.py` | the clock animations tick on ([ANIMATION_SYSTEM.md](ANIMATION_SYSTEM.md)) |
 
-Any other widget that paints a child drops the hint. A wrapper that passes it
-in one state and stops it in another forgets it on every paint, so a later
-paint does not pass one that was meant for an earlier one. Passing the hint
-through a stopping wrapper would paint the whole of a scrolled list on every
-frame.
+### Promises
 
-The Python walk of `paint()` is the frame's dominant cost. The caches that
-skip parts of it, a widget's own visuals, the whole frame, a subtree, are in
-[PAINT_CACHE.md](PAINT_CACHE.md).
+- A frame is drawn only when something invalidated.
+- A flip follows a full repaint of the back buffer.
+- `layout()` issues no draw command. `layout()` writes no `Observable`. A
+  measured result reaches an `Observable` through the size-change queue.
+- `preferred_size()` has no side effect. On a mounted composable it never
+  calls `build()`.
 
-## Frame Scheduling
+## The Loop
 
-The framework draws on demand. A frame is produced only when something has
-invalidated the tree; an idle window, nothing animating and no interaction,
-draws zero frames per second and costs no CPU or battery.
+`ResponsiveEventLoop` wakes for OS events, the clock and a pending frame.
 
-### Invalidation Drives Frames
+### Structure
 
-Every visual state change routes to a redraw request:
-`Widget.invalidate()` → `App.invalidate()` →
-`ResponsiveEventLoop.request_draw()` sets `_draw_pending`. Most changes reach
-`invalidate()` indirectly: `Observable` and `Animatable` notify subscribers,
-and those subscriptions call `invalidate()`. That is why the interaction
-modules (hover, press, focus, scrolling, slider drag, overlay transitions,
-animations) contain few or no explicit `invalidate()` calls; the observable
-graph carries the signal. Scroll offset, for example, is an `Observable`, and
-the scrollable subscribes to it.
+```mermaid
+flowchart LR
+    loop[backends/pyglet/event_loop.py]
+    runner[backends/pyglet/runner.py]
+    window[runtime/window.py]
+    clock[observable/runtime.py]
+    pyglet[pyglet]
 
-Animations tick on the UI clock (`runtime.clock`, installed as the event
-loop's clock). Each tick updates an `Animatable`, the subscriber invalidates,
-one frame is drawn. When the animation completes it unschedules itself, the
-clock goes idle and the loop returns to zero frames.
+    runner -- "ResponsiveEventLoop(draw, fps, keep_running_without_windows) · run()" --> loop
+    runner -- "invalidate(), on resize" --> window
+    window -- "request_draw(immediate)" --> loop
+    loop -- "_render_frame(dt), each open window" --> window
+    loop -- "update_time() · call_scheduled_functions(dt) · get_sleep_time()" --> clock
+    loop -- "platform_event_loop.step(timeout) · set_timer(_blocking_timer, timeout)" --> pyglet
+    pyglet -- "idle(), from the OS drag loop" --> loop
+    pyglet -- "on_resize" --> runner
+```
 
-### `draw_fps` Is an Upper Bound
+| Module | Role |
+| --- | --- |
+| `backends/pyglet/event_loop.py` | decides whether a frame is drawn this iteration. Decides how long to sleep |
+| `backends/pyglet/runner.py` | builds the loop with the draw callback; the OS event handlers ([APP_WINDOW.md](APP_WINDOW.md)) |
+| `runtime/window.py` | requests a frame, draws one (The Frame) |
+| `observable/runtime.py` | the clock the loop ticks ([OBSERVABLE.md](OBSERVABLE.md)) |
+| `pyglet` | the platform event loop |
 
-`App.run(draw_fps=...)` and `set_draw_fps` configure a throttle, never a
-mandate to draw. `None`, the default, draws as soon as a request arrives; `N`
-still draws only when something invalidated, but coalesces requests to at most
-`N` frames per second. `ResponsiveEventLoop._should_draw()` returns `False`
-whenever `_draw_pending` is clear, whatever the cadence, and
-`_compute_sleep_timeout()` refuses to wake the loop for a cadence deadline
-when nothing is pending; otherwise an idle app would spin at `draw_fps` doing
-nothing.
+### Sequence
 
-### The OS Owns the Loop During a Drag
+#### A frame is requested and drawn
 
-While the user drags a window edge, the operating system runs its own loop
-and `ResponsiveEventLoop` stays blocked inside `platform_loop.step()` until
-the mouse is released. The only Python that runs is what pyglet calls back
-from that loop: `on_resize`, which invalidates, and `EventLoop.idle()`.
-Cocoa calls `idle()` from `PygletView.reshape`; Win32 arms a timer in
-`enter_blocking()` whose callback is `_blocking_timer()`. The loop overrides
-both so a pending frame passes the same `_should_draw()` gate as the main
-loop, and `idle()` returns `_compute_sleep_timeout()` so the Win32 timer
-re-arms for a throttled frame. The window repaints as it is dragged instead
-of the compositor stretching the last frame until the mouse is released.
+```mermaid
+sequenceDiagram
+    participant W as runtime/window.py
+    participant L as backends/pyglet/event_loop.py
+    participant P as pyglet
 
-Leaving pyglet's own `_blocking_timer()` in place was rejected: it presents
-through `window.draw()`, which dispatches `on_draw` and flips outside the
-gate, so Windows would ignore `draw_fps` and the flip invariant below would
-rest on a second path.
+    W->>L: request_draw(immediate)
+    L->>L: _draw_pending = True
+    loop each iteration
+        L->>P: step(timeout)
+        L->>L: tick the clock
+        alt _draw_pending, and no cadence or the deadline passed
+            L->>L: _draw_pending = False
+            L->>W: _render_frame(dt), each open window
+        end
+        L->>L: _compute_sleep_timeout(): the deadline when a frame is pending, else the clock's next due time
+    end
+```
 
-### The Flip Invariant
+#### The OS owns the loop during a drag
 
-The GPU and raster backends both present through a double-buffered
-`window.flip()`. After a swap the contents of the new back buffer are
-undefined, so the loop holds one invariant:
+```mermaid
+sequenceDiagram
+    participant OS as the OS drag loop
+    participant P as pyglet
+    participant R as backends/pyglet/runner.py
+    participant L as backends/pyglet/event_loop.py
+    participant W as runtime/window.py
 
-> **Never flip without drawing.** A frame is a full repaint of the back buffer
-> followed by a flip; the loop never presents a buffer it did not just draw.
+    Note over L: blocked inside step() until the mouse is released
+    OS->>P: the window resized
+    P->>R: on_resize
+    R->>W: invalidate()
+    P->>L: idle()
+    L->>L: tick the clock, _should_draw(now)
+    L->>W: _render_frame(dt), when a frame is pending
+    L-->>P: the sleep timeout, re-arming the Win32 timer
+```
 
-On-demand drawing satisfies this trivially: with a clean tree the loop draws
-nothing and flips nothing, and the front buffer keeps showing the last
-complete frame. Redrawing every frame was never required, only not flipping a
-stale buffer. Paths that can leave an undefined front buffer (window show,
-activation, resize, DPI change) call `invalidate()` so the next frame repaints
-from scratch. Such a redraw fills the buffer from the full-frame cache in
-[PAINT_CACHE.md](PAINT_CACHE.md) instead of walking an unchanged tree.
+### Promises
+
+- With nothing pending the loop draws nothing. It does not wake for a
+  cadence deadline.
+- A cadence throttles a pending frame and never produces one.
+- A frame served from the OS drag loop passes the same gate as one from the
+  main loop.
+
+## The Frame
+
+`_render_frame` draws one window.
+
+### Structure
+
+```mermaid
+flowchart LR
+    window[runtime/window.py]
+    runner[backends/pyglet/runner.py]
+    gpu[backends/pyglet/gpu_frame.py]
+    kernel[widgeting/widget_kernel.py]
+    pyglet[pyglet]
+
+    window -- "switch_to() · dispatch_event(on_draw) · flip()" --> pyglet
+    pyglet -- "on_draw" --> runner
+    runner -- "draw_gpu_frame(win, gr_context, GL, skia)" --> gpu
+    runner -- "_render_display_frame(scale), the raster path" --> window
+    gpu & window -- "root.layout(w, h) · clear_needs_layout() · root.paint(canvas, 0, 0, w, h)" --> kernel
+```
+
+| Module | Role |
+| --- | --- |
+| `runtime/window.py` | draws a window's frame; renders the raster path's image |
+| `backends/pyglet/runner.py` | `on_draw`: the GPU path, falling back to the raster path |
+| `backends/pyglet/gpu_frame.py` | paints the tree into the GL framebuffer, or re-blits the cached frame ([PAINT_CACHE.md](PAINT_CACHE.md)) |
+| `widgeting/widget_kernel.py` | the root's `layout` and `paint` |
+| `pyglet` | the window and its back buffer |
+
+### Sequence
+
+#### A window draws a frame
+
+```mermaid
+sequenceDiagram
+    participant W as runtime/window.py
+    participant P as pyglet
+    participant R as backends/pyglet/runner.py
+    participant G as backends/pyglet/gpu_frame.py
+    participant K as widget_kernel.py
+
+    W->>W: _render_frame(dt)
+    Note over W: the queues are flushed, in the order GEOMETRY.md draws
+    W->>P: switch_to(), dispatch_event(on_draw)
+    P->>R: on_draw
+    R->>G: draw_gpu_frame(win, ...)
+    alt the tree is clean and the cache fits
+        G->>G: re-blit the cached frame
+    else
+        G->>K: root.layout(w, h), when needs_layout or the size changed
+        G->>K: root.paint(canvas, 0, 0, w, h)
+    end
+    W->>P: flip()
+```
+
+### Promises
+
+- Layout runs to completion before the first draw command.
+- The GPU path and the raster path lay out and paint the same tree with the
+  same calls.
+
+## The Measure
+
+Three caches keep a layout pass proportional to what changed.
+
+### Structure
+
+```mermaid
+flowchart LR
+    measure[layout/measure.py]
+    engine[layout/layout_engine.py]
+    sizing[rendering/sizing.py]
+    kernel[widgeting/widget_kernel.py]
+    containers[the containers]
+
+    containers -- "preferred_size(widget, max_w, max_h)" --> measure
+    measure -- "_measure_cache · preferred_size(max_w, max_h)" --> kernel
+    containers -- "preferred_size · compute_inner_rect · compute_child_placement · resolve_child_geometry" --> engine
+    engine -- "_layout_cache_token · padding" --> kernel
+    kernel -- "parse_sizing(value)" --> sizing
+```
+
+| Module | Role |
+| --- | --- |
+| `layout/measure.py` | remembers a widget's measurement per constraint pair, a short list per widget |
+| `layout/layout_engine.py` | remembers a container's preferred size, inner rect and child placement, keyed on padding, border and the tokens |
+| `rendering/sizing.py` | parses a sizing literal once |
+| `widgeting/widget_kernel.py` | holds the measure cache slot and the layout cache token; `mark_needs_layout` drops them up the tree |
+| the containers | `Row`, `Column`, `Container` and the others that measure their children ([LAYOUT.md](LAYOUT.md)) |
+
+### Promises
+
+- Shrinking a maximum constraint down to the measured result leaves the
+  result unchanged. The measure cache answers a shrunk constraint from the
+  entry it still fits.
+- A change routed through `mark_needs_layout` re-measures the dirtied path
+  only.
+
+## The Child Painter
+
+`layout_utils` lays a container's children out and paints them at their
+rects.
+
+### Structure
+
+```mermaid
+flowchart LR
+    utils[layout/layout_utils.py]
+    kernel[widgeting/widget_kernel.py]
+    containers[the containers]
+    skia[rendering/skia/geometry.py]
+
+    containers -- "layout_child_if_needed(child, w, h) · paint_laid_out_children(container, canvas, x, y, w, h)" --> utils
+    utils -- "needs_layout · layout_rect · layout(w, h) · paint(canvas, x, y, w, h)" --> kernel
+    utils -- "paint_outsets() · set_last_rect(x, y, w, h) · _paint_inside_clip" --> kernel
+    utils -- "local_clip_bounds(canvas)" --> skia
+```
+
+| Module | Role |
+| --- | --- |
+| `layout/layout_utils.py` | lays a child out unless it is clean at the same size; paints the children, skipping those beyond the clip and its slack band; tells a child inside the clip so |
+| `widgeting/widget_kernel.py` | `layout`, `paint`, `last_rect`; the paint hints a parent sets for the paint that follows |
+| the containers | the multi-child containers ([LAYOUT.md](LAYOUT.md)) |
+| `rendering/skia/geometry.py` | reads the canvas clip |
+
+### Promises
+
+- A clean child laid out again at the same size is skipped.
+- A child whose rect plus outsets lies outside the clip and its slack band is
+  not painted. It still receives its `last_rect`.
+- Without a readable clip every child is painted.
+- A wrapper passes the inside-clip hint only while it neither narrows the
+  clip nor moves its child. A hint covers one paint.

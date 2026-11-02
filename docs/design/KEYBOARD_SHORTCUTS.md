@@ -1,187 +1,204 @@
 # Keyboard Shortcuts
 
-A shortcut is a key gesture bound to a command: `Ctrl+S` saves. It is a
-separate layer from the focus route (`focusable(on_key=...)`), which delivers
-raw keys to the focused widget and has no notion of a command.
+A shortcut is a key gesture bound to a command. It fires whether or not
+anything holds focus.
 
-## Why a Separate Layer
+## Overview
 
-The focus route answers "the focused widget got a key"; a shortcut answers "a
-command was invoked". Two things follow. A shortcut fires without anything
-focused: `Ctrl+Z` in a paint app undoes a stroke whether or not the canvas
-holds focus, and most of the time nothing in a paint app holds focus at all.
-And a gesture is portable: `Accel+S` means Cmd+S on macOS and Ctrl+S
-elsewhere, from one declaration.
+Three groups of modules take part.
 
-A shortcut layer that required focus would collapse into sugar over
-`focusable(on_key=...)`, since the focus route already bubbles keys to
-ancestors. The value of this layer is its independence from focus.
+### Structure
 
-## Scopes
+```mermaid
+flowchart LR
+    values[The Values]
+    binding[The Binding]
+    dispatch[The Dispatch]
+    backend[the backend]
+    app[the app]
 
-A binding's scope says when the gesture is live. The three widen in order,
-each a superset of the one before:
+    app -- "key_shortcut(spec, on_trigger, scope)" --> binding
+    app -- "MenuEntry(shortcut=spec)" --> values
+    binding -- "to_shortcut(spec) · ShortcutBinding(shortcut, on_trigger, scope) · shortcut.matches(key, modifier_keys)" --> values
+    backend -- "on_key_press(key, modifier_keys)" --> dispatch
+    dispatch -- "match(key, modifier_keys, scope) · trigger(binding)" --> binding
+    dispatch -- "produces_text(key, modifier_keys)" --> values
+    binding -- "on_trigger()" --> app
+```
 
-| Scope | Live when |
+| Module | Role |
 | --- | --- |
-| `FOCUS` | the subtree contains the focused node |
-| `FOREGROUND` (default) | the subtree is on the topmost interactable layer |
-| `MOUNT` | the subtree is in the widget tree at all |
+| The Values | the frozen value types |
+| The Binding | the modifier and the menu bar, ending in a widget's `ShortcutNode` |
+| The Dispatch | the key-press tiers in the window |
+| the backend | the source of key presses ([APP_WINDOW.md](APP_WINDOW.md)) |
+| the app | declares the bindings, owns the commands |
 
-### `FOREGROUND` Is the Default
+### Promises
 
-"You can click it, so its shortcuts work" is what users expect and what the
-industry defaults to: Qt's `QShortcut` defaults to `Qt::WindowShortcut`,
-SwiftUI's `.keyboardShortcut` is live while the view is in the displayed
-scene, GTK4 offers a window-wide `GLOBAL` scope. None requires focus.
+- A binding lives on a widget. The widget's place in the tree decides
+  whether the binding is live.
 
-`FOREGROUND` excludes a subtree that is hidden by `visible(False)`; closed or
-disabled (a closed `Collapsible`, a disabled `Clickable`, by the same
-`FocusTraversalBlocker` test that keeps it out of the Tab sequence); kept off
-screen by its container (a `Deck` showing another page, a covered navigation
-route, which keep every child mounted so a page keeps its state, declared via
-`focus_traversal_children()`; without this the previous screen's shortcuts
-would fire on the current one); or occluded by a blocking overlay (a dialog or
-a menu popup swallows interaction; a `passthrough=True` entry such as a toast
-or tooltip does not). These are the questions Tab asks in
-[INTERACTION_ARCHITECTURE.md](INTERACTION_ARCHITECTURE.md), so a shortcut and
-a Tab stop buried in the same hidden content agree about being out of reach.
+## The Values
 
-### `FOCUS` Is the Exception
+A gesture, a binding and a scope are frozen values, shared between a menu
+item and a modifier.
 
-`FOCUS` is needed only when the same command has two or more targets on
-screen at once, so nothing but focus can decide which one acts: a dual-pane
-file manager where `F5` copies from the focused pane, a split-view editor
-where `Ctrl+S` saves the focused side, a two-list picker where `Delete`
-removes from the focused list. And it earns its keep only when the binding
-sits on an ancestor of the focused widget (the pane root, while a text field
-inside it holds focus); if the command's target is the focused widget itself,
-`focusable(on_key=...)` suffices. A tabbed editor is not an instance: the
-inactive tab is not displayed, so `FOREGROUND` already disambiguates it.
+### Structure
 
-### `MOUNT` Is the App-Wide Command
+```mermaid
+flowchart LR
+    shortcut[input/shortcut.py]
+    codes[input/codes.py]
+    menu[menus/model.py]
+    keysc[modifiers/key_shortcut.py]
+    interaction[widgets/interaction.py]
+    window[runtime/window.py]
 
-`App(Window(content=X))` makes `X` the initial route of the default navigator,
-mounted for the life of the app, so an app-wide command is a `MOUNT` binding
-on the content root. It keeps working after a route push, which occludes the
-root but does not unmount it.
+    shortcut -- "resolve_modifiers(modifiers), at match and display" --> codes
+    menu -- "to_shortcut(spec) · shortcut.display" --> shortcut
+    keysc -- "to_shortcut(spec) · ShortcutBinding(shortcut, on_trigger, scope)" --> shortcut
+    interaction -- "shortcut.matches(key, modifier_keys)" --> shortcut
+    window -- "produces_text(key, modifier_keys)" --> shortcut
+```
 
-An app-level registry outside the widget tree (the SwiftUI `.commands` shape)
-was rejected. `FOCUS` to `MOUNT` are predicates over the widget's own state in
-the tree, exactly what a modifier can express, and `MOUNT` is the widest scope
-a modifier can have: a binding that fired after its widget unmounted would
-have no owner. An "application scope" is not a point further up the same
-axis but a different owner, the app, and it would need a registry to exist.
-Since a `MOUNT` binding on the content root already survives navigation and
-occlusion, the registry would add a second way to say the same thing, and the
-less honest one: a binding on the root ties the command's lifetime to a widget
-one can point at.
-
-The one case this does not cover is a command that must outlive its own
-subtree, an app that `replace`s its root route (login screen to main screen)
-and hangs a global command off the login screen. That is a modelling error:
-the command was never owned by the login screen. Shortcuts live in every
-window of a multi-window app would be outside the tree, and are deferred
-until multi-window exists.
-
-## Ownership
-
-The binding location follows who owns the command, never the nearest
-convenient widget. Saving a painting is a document concern: not the canvas's,
-whose concern is drawing, and not the Save menu item's, which is one UI that
-triggers the command and gets unmounted while `Ctrl+S` must still work. Menu
-item and shortcut reference the same callback; neither owns it. The scope
-follows from the owner: a subtree chosen by which pane is active takes
-`FOCUS`; a subtree unambiguous while displayed takes `FOREGROUND`; the app
-takes `MOUNT` on the content root.
-
-## Dispatch
-
-`Window._dispatch_key_press` resolves a key press in tiers, in one order:
-whatever is closest to the user's attention gets first refusal.
-
-1. `Escape` / `Tab` special-casing.
-2. The focused `FocusNode` and its ancestors (`focusable(on_key=...)`). If
-   consumed, stop: a focused text field still eats a bare `s`.
-3. The text-input guard: if the focused chain takes text and this key is one
-   text input may claim, stop. No binding is consulted.
-4. `FOCUS` bindings enclosing the focused node, innermost first.
-5. `FOREGROUND` bindings whose subtree is on the topmost interactable layer.
-6. `MOUNT` bindings.
-
-The first tier that matches wins. Within tier 4 the innermost binding wins,
-which is always well-defined. Within tiers 5 and 6 there is no such ordering:
-two displayed panes can both bind `Accel+S`. Following Qt's ambiguous-shortcut
-overload, this fires nothing and logs a warning rather than picking
-arbitrarily; `FOCUS` is what makes such a case expressible, and that is why
-the scope exists.
-
-### The Text-Input Guard
-
-Tier 2 rests on the focused widget claiming the keys it uses by returning
-`True` from `on_key`. A text field cannot honour that alone, because its key
-consumption is split across two routes: `on_key` carries `Enter` and the
-`Accel` editing combos, while the characters arrive on `on_text`. When a
-printable key arrives, `EditableText.on_key` truthfully returns `False`, and
-`on_text` then inserts the character. Read at face value, that `False` would
-hand a bare `b` to the shortcut tier: the letter is typed and
-`key_shortcut("b", ...)` fires.
-
-Tier 3 withholds such keys from the bindings outright, on two questions that
-must both hold. *Does the focused chain take text?* `FocusNode.accepts_text_input`
-walks the same `parent` chain that `handle_text_event` delivers along, so what
-it reports and where the text goes cannot drift apart. *Can this key be
-text?* `produces_text(key, modifier_keys)`, an approximation by design.
-Nothing is asked of `EditableText`; any widget that registers an `on_text`
-handler is covered, and IME composition with it, since the handler stays
-registered throughout.
-
-Whether a key yields a character is not decidable from the key and the
-modifier mask. Windows and X11 report AltGr as `Ctrl+Alt`, and on a German
-layout `AltGr+Q` types `@`, so a `Ctrl`-bearing gesture can be text. macOS
-`Option` types characters (`Option+A` is `å`) and starts dead-key compositions
-that resolve only on the next keystroke. The layout can change at runtime, so
-no static table is more than an approximation of one layout at one moment.
-
-The decision is therefore to fix the direction of the error rather than chase
-precision: a misjudgement costs a shortcut that does not fire, recoverable and
-obvious to a user who can unfocus the field, never a keystroke that silently
-runs a command. `produces_text` is biased toward text:
-
-| Gesture | Text? |
+| Module | Role |
 | --- | --- |
-| bare printable (`b`), `Shift`+printable, `Space` | yes |
-| anything with `Alt` (`Alt+X`, `Ctrl+Alt+X`) | yes |
-| `Ctrl` / `Cmd` without `Alt` (`Accel+S`) | no |
-| function and navigation keys (`F5`, arrows, `Escape`, `Enter`) | no |
+| `input/shortcut.py` | `Shortcut`, a key name with its modifier mask; `ShortcutBinding`, the gesture with its callback and its scope, `FOCUS`, `FOREGROUND` or `MOUNT`; `produces_text`, whether a key press may become text |
+| `input/codes.py` | the `MOD_*` masks; turns `MOD_ACCEL` into the platform's primary modifier |
+| `menus/model.py` | `MenuEntry` holds a `Shortcut` and shows its display form ([MENU_BAR.md](MENU_BAR.md)) |
+| `modifiers/key_shortcut.py` | builds the binding (The Binding) |
+| `widgets/interaction.py` | matches a key press against the bindings it holds (The Binding) |
+| `runtime/window.py` | asks whether a key is text (The Dispatch) |
 
-The accepted cost: `Alt` shortcuts do not fire while a text field holds
-focus. It is narrow, since `Ctrl+Alt` gestures already collide with AltGr on
-European layouts and are discouraged for that reason, and it is the price of
-never stealing a keystroke. The exact alternative, deferring the shortcut
-tiers until `on_text` has or has not arrived and using that as the answer,
-was rejected: it delays every shortcut by an event cycle, forces a redesign of
-what `on_key_press` returns to the backend, and leans on platform ordering
-between `on_key_press` and `on_text`, to recover the `Alt` case alone.
+### Promises
 
-`Enter` is classified non-text, so it reaches the shortcut tier unless the
-focused field claims it on the `on_key` route. `EditableText` claims `Enter`
-only when an `on_submit` is set, and a field without one lets `Enter` fall
-through to a `key_shortcut("enter", ...)`. The outcome is often wanted, the
-`Enter` a plain field does nothing with is the one a dialog's default action
-should get, but it is a limitation: the destination of `Enter` depends on how
-the focused field happens to be configured, which the shortcut's author cannot
-see. There is no default action in the framework; when one is added, `Enter`
-routes through it explicitly rather than by way of a field that declined it.
+- `MOD_ACCEL` is resolved when a gesture is matched or displayed, never when
+  it is constructed.
+- Both sides of a match pass through `normalize_key_name`.
 
-## Values
+## The Binding
 
-`Shortcut` is a frozen value, a normalised key name plus a `MOD_*` bitmask.
-`MOD_ACCEL` is the logical primary modifier, resolved to `MOD_META` on macOS
-and `MOD_CTRL` elsewhere at match time, never at construction, so one
-`Shortcut` stays portable. `ShortcutBinding` is gesture plus callback plus
-scope, a type rather than a bare callable so that command semantics
-(`can_execute`, menu binding) can be added without touching call sites.
-`ShortcutNode` is the `InteractionNode` holding one widget's bindings, keyed
-by gesture, so re-applying the modifier during recomposition replaces a
-binding rather than stacking a second one.
+A binding reaches a widget through `key_shortcut` or through a menu bar. Both
+end in the widget's `ShortcutNode`.
+
+### Structure
+
+```mermaid
+flowchart LR
+    keysc[modifiers/key_shortcut.py]
+    interaction[widgets/interaction.py]
+    bar[menubar/bar.py]
+    shortcut[input/shortcut.py]
+    app[the app]
+
+    app -- "widget.modifier(key_shortcut(spec, on_trigger, scope))" --> keysc
+    bar -- "KeyShortcutModifier(binding).apply(bar)" --> keysc
+    keysc -- "ensure_interaction_region(widget) · region.add_node(ShortcutNode()) · node.bind(binding)" --> interaction
+    interaction -- "shortcut.matches(key, modifier_keys)" --> shortcut
+    interaction -- "binding.on_trigger()" --> app
+```
+
+| Module | Role |
+| --- | --- |
+| `modifiers/key_shortcut.py` | `key_shortcut`, the modifier that puts a binding on a widget |
+| `widgets/interaction.py` | `ShortcutNode`, one widget's bindings keyed by gesture, on its `InteractionRegion` ([INTERACTION_ARCHITECTURE.md](INTERACTION_ARCHITECTURE.md)) |
+| `menubar/bar.py` | binds each menu item's shortcut on the bar widget ([MENU_BAR.md](MENU_BAR.md)) |
+| `input/shortcut.py` | the gesture (The Values) |
+| the app | the widget the binding is applied to, the callback it names |
+
+### Promises
+
+- A `ShortcutNode` holds one binding per gesture.
+- A menu item's shortcut is a `MOUNT` binding on the menu bar.
+- A menu item and a `key_shortcut` binding reference the command's callback.
+  Neither owns it.
+
+## The Dispatch
+
+The window offers a key press to the focused node first, then to the
+bindings, narrowest scope first.
+
+### Structure
+
+```mermaid
+flowchart LR
+    window[runtime/window.py]
+    interaction[widgets/interaction.py]
+    scopes[runtime/shortcut_dispatch.py]
+    overlay[overlay/overlay.py]
+    shortcut[input/shortcut.py]
+    backend[the backend]
+    tree[the widget tree]
+
+    backend -- "on_key_press(key, modifier_keys)" --> window
+    window -- "FocusNode.handle_key_event(key, modifier_keys) · accepts_text_input" --> interaction
+    window -- "produces_text(key, modifier_keys)" --> shortcut
+    window -- "ShortcutNode.match(key, modifier_keys, scope) · trigger(binding)" --> interaction
+    window -- "is_foreground(owner)" --> scopes
+    scopes -- "Overlay.of(widget, root=True).occluding_content_widget()" --> overlay
+    scopes -- "blocks_focus_traversal · is_inert · focus_traversal_children() · _stack.top()" --> tree
+    window -- "children_snapshot() · built_child, from the root" --> tree
+```
+
+| Module | Role |
+| --- | --- |
+| `runtime/window.py` | resolves a key press in tiers; collects the `ShortcutNode`s of the tree |
+| `widgets/interaction.py` | the focused `FocusNode` and the chain it bubbles along ([INTERACTION_ARCHITECTURE.md](INTERACTION_ARCHITECTURE.md)); the `ShortcutNode`s (The Binding) |
+| `runtime/shortcut_dispatch.py` | answers whether a widget is on the topmost interactable layer |
+| `overlay/overlay.py` | names the content of the topmost blocking entry ([OVERLAY.md](OVERLAY.md)) |
+| `input/shortcut.py` | `produces_text` (The Values) |
+| the backend | the source of key presses ([APP_WINDOW.md](APP_WINDOW.md)) |
+| the widget tree | the ancestors asked whether they hide the widget ([INTERACTION_ARCHITECTURE.md](INTERACTION_ARCHITECTURE.md)) |
+
+### Sequence
+
+#### A key press reaches a binding
+
+```mermaid
+sequenceDiagram
+    participant B as the backend
+    participant W as runtime/window.py
+    participant I as widgets/interaction.py
+    participant S as shortcut_dispatch.py
+
+    B->>W: on_key_press(key, modifier_keys)
+    Note over W: Escape and Tab are handled before this
+    W->>I: handle_key_event(key, modifier_keys), the focused node and its ancestors
+    alt consumed
+        I-->>W: True
+    else declined
+        W->>I: accepts_text_input
+        alt the chain takes text, and produces_text(key, modifier_keys)
+            Note over W: no binding is consulted
+        else
+            W->>I: match(key, modifier_keys, FOCUS), the focused node's ancestors innermost first
+            alt one matched
+                W->>I: trigger(binding)
+            else none
+                W->>S: is_foreground(owner), every node in the tree
+                W->>I: match(key, modifier_keys, FOREGROUND), the nodes in the foreground
+                alt exactly one matched
+                    W->>I: trigger(binding)
+                else several matched
+                    Note over W: warn once, fire none
+                else none
+                    W->>I: match(key, modifier_keys, MOUNT), every node
+                    Note over W: one fires, several warn, none falls through
+                end
+            end
+        end
+    end
+```
+
+### Promises
+
+- A key the focused chain consumes reaches no binding.
+- A key the focused chain can type reaches no binding. When text and a
+  shortcut can both claim a key, the key is text.
+- Among `FOCUS` bindings the innermost enclosing the focused node wins.
+- Several `FOREGROUND` or `MOUNT` matches fire nothing.
+- A widget is in the foreground by the same test that puts it in the Tab
+  sequence.
+- A blocking overlay entry puts everything outside its content out of the
+  foreground. A passthrough entry blocks nothing.

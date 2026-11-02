@@ -1,134 +1,318 @@
 # Widget Architecture
 
 `Widget` is composed from mixins by cooperative multiple inheritance, one
-mixin per responsibility. `Widget` is the leaf-friendly base: it lays out,
-paints and hit-tests its `children` and never assumes a `build()`.
-`ComposableWidget` adds `BuilderHostMixin` for a widget that assembles a
-subtree in `build()` and recomposes it in scopes.
+module per responsibility. `ComposableWidget` adds `BuilderHostMixin`.
+
+## Overview
+
+Six mixin modules and the module that composes them make up a widget. A call
+chains down the method resolution order.
+
+### Structure
 
 ```mermaid
 flowchart TB
-    CW[ComposableWidget] --> BH["BuilderHostMixin: build, scope, rebuild"]
-    BH --> W[Widget]
-    W --> B["BindingHostMixin: observe, bind, bind_to"]
-    B --> L["LifecycleHostMixin: mount, unmount, on_dispose"]
-    L --> I["InputHubMixin: pointer, key, focus, scroll"]
-    I --> C["ChildContainerMixin: children, ChildrenStore"]
-    C --> K["WidgetKernel: width, height, padding, layout, paint, hit_test"]
+    widget[widgeting/widget.py]
+    builder[widgeting/widget_builder.py]
+    binding[widgeting/widget_binding.py]
+    lifecycle[widgeting/widget_lifecycle.py]
+    input[widgeting/widget_input.py]
+    children[widgeting/widget_children.py]
+    kernel[widgeting/widget_kernel.py]
+
+    widget -- "ComposableWidget is a" --> builder
+    builder -- "super(), into Widget" --> widget
+    widget -- "Widget is a, in this order" --> binding
+    binding -- "super()" --> lifecycle
+    lifecycle -- "super()" --> input
+    input -- "super()" --> children
+    children -- "super()" --> kernel
 ```
 
-Method calls chain down the MRO in that order. `BuilderHostMixin` overrides
-`layout`, `paint` and `hit_test` to delegate to the built subtree (`_built`)
-when it exists, then falls through to `super()`; `WidgetKernel` knows only
-`children` and its own rectangle. An application widget is a
-`ComposableWidget`; a `Widget` is for a leaf that draws or lays out and
-returns no subtree from `build()`.
+| Module | Role |
+| --- | --- |
+| `widgeting/widget.py` | `Widget`, the leaf-friendly base; `ComposableWidget`, a widget with a `build()`; the layout and paint dependency declarations |
+| `widgeting/widget_builder.py` | `BuilderHostMixin`: `build()`, the built subtree, the recompose scopes |
+| `widgeting/widget_binding.py` | `BindingHostMixin`: the subscriptions a widget holds for its mounted life |
+| `widgeting/widget_lifecycle.py` | `LifecycleHostMixin`: `mount`, `unmount` and their hooks |
+| `widgeting/widget_input.py` | `InputHubMixin`: the pointer, key, focus and scroll entry points ([INTERACTION_ARCHITECTURE.md](INTERACTION_ARCHITECTURE.md)) |
+| `widgeting/widget_children.py` | `ChildContainerMixin`: the child list, backed by a `ChildrenStore` |
+| `widgeting/widget_kernel.py` | `WidgetKernel`: the sizing, the padding, the rects, `layout`, `paint`, `hit_test` ([LAYOUT.md](LAYOUT.md)) |
 
-## Lifecycle Chain Checks
+### Promises
 
-An `on_mount` or `on_unmount` override that forgets `super()` fails silently:
-the body completes, nothing raises, and the widget never builds or never
-releases its bindings. The base implementations end both chains, so each sets
-a flag that `mount` / `unmount` read back, raising a `RuntimeError` naming the
-widget, the hook and what was lost.
+- `Widget` never assumes a `build()`.
+- The rects and the layout flag are written through `set_layout_rect`,
+  `set_last_rect`, `mark_needs_layout` and `clear_needs_layout`. The built
+  subtree is read as `built_child`.
+- `_parent` is written by the children store and the builder only.
 
-| Hook | Checked on | What is lost |
-| --- | --- | --- |
-| `on_mount` | Build hosts only (`_requires_on_mount_chain`) | `build()` never runs |
-| `on_unmount` | Every widget | Bindings are never disposed |
+## The Lifecycle
 
-The scopes differ because the damage does: `LifecycleHostMixin.on_mount` is a
-no-op, so a plain `Widget` skipping it loses nothing, while binding disposal
-is universal. `super().on_mount()` may sit anywhere in the body, last when
-`build()` reads what the override computes.
+`mount` and `unmount` run the hooks, the callbacks and the children. Each
+checks that an override chained to its base.
 
-Two limits are part of the contract. The check runs under `if __debug__`
-only, like `assert_ui_thread` beside it, so `python -O` never reports. And it
-stays silent when the override itself raised: `_call_contained` has already
-reported that failure, and a missing-`super()` message on top would point at
-the wrong line. Nested in the tree, the raise is contained by the parent's
-`_safe_call` and forwarded to `report_contained`: visible in `runtime_log`,
-fatal to a test, not to the frame. Only a root widget stops the app.
-`find_missing_super_on_mount` in `skills/nuiitivet-app/scripts/check_idioms.py`
-catches the same mistake statically.
+### Structure
 
-## Binding Ownership
+```mermaid
+flowchart LR
+    lifecycle[widgeting/widget_lifecycle.py]
+    lookup[widgeting/context_lookup.py]
+    callbacks[widgeting/callbacks.py]
+    binding[widgeting/widget_binding.py]
+    builder[widgeting/widget_builder.py]
+    store[widgeting/children_store.py]
+    pointer[runtime/pointer.py]
+    app[the app]
 
-`BindingHostMixin` owns `Disposable`s for the widget's mounted life and
-disposes them all in `on_unmount`. Three methods register one:
+    store -- "mount(app) · unmount()" --> lifecycle
+    lifecycle -- "forget_app_scope(widget)" --> lookup
+    lifecycle -- "report_contained(exc, owner, site) · invoke_event_handler(callback)" --> callbacks
+    binding -- "on_unmount(): _dispose_bindings()" --> lifecycle
+    builder -- "on_mount(): evaluate_build() · on_unmount(): _unmount_built()" --> lifecycle
+    lifecycle -- "cancel_all_for(widget)" --> pointer
+    app -- "on_mount() · on_unmount() overrides · add_mount_callback · on_dispose" --> lifecycle
+```
 
-| Method | Subscribes | Applies current value first |
-| --- | --- | --- |
-| `observe(observable, callback)` | Yes | Yes |
-| `bind(disposable)` | No, the caller already did | n/a |
-| `bind_to(observable, setter, *, dependency, scope_id)` | Yes | Yes |
+| Module | Role |
+| --- | --- |
+| `widgeting/widget_lifecycle.py` | `LifecycleHostMixin`: the app link, the mounted flags, the mount and unmount callbacks, the dispose callbacks, the chain checks |
+| `widgeting/context_lookup.py` | the remembered `AppScope` a mount or unmount forgets ([THEME_CONSUMPTION.md](THEME_CONSUMPTION.md)) |
+| `widgeting/callbacks.py` | contains a hook's exception and reports it ([ERROR_HANDLING.md](ERROR_HANDLING.md)) |
+| `widgeting/widget_binding.py` | its `on_unmount` (The Bindings) |
+| `widgeting/widget_builder.py` | its `on_mount` and `on_unmount` (The Builder) |
+| `widgeting/children_store.py` | the caller of `mount` and `unmount` (The Children) |
+| `runtime/pointer.py` | the pointer captures released when a widget unmounts ([INTERACTION_ARCHITECTURE.md](INTERACTION_ARCHITECTURE.md)) |
+| the app | the widget's overrides and callbacks |
 
-All three are widget-implementation APIs: they exist so a widget can accept an
-`Observable` constructor argument and apply it to its own state. `observe`
-carries the bulk of that work in-tree (`gap`, `padding`, sizing, transform
-properties, external value sync). Application code passes observables into
-widgets, derives with `map` / `combine`, and uses `on_size_changed` for
-size-driven state. A source with no `.value`, a subscribe-only emitter, is
-subscribed without a seed rather than rejected.
+### Sequence
 
-`bind_to` does one thing `observe` does not: on every change it calls
-`_invalidate_binding_dependency(dependency, scope_id)` after the setter. The
-`dependency` is a label naming what the new value invalidates;
-`Widget._handle_dependency_invalidation` matches it against the class-level
-`_layout_dependencies` / `_paint_dependencies` and drops only the affected
-cache, `None` drops both. The initial seed skips this: it runs before the
-widget has laid out or painted, so there is no cache to drop. Invalidations
-are queued per widget and flushed at the frame boundary
-(`flush_binding_invalidations`), so several observables firing together
-coalesce into one re-render; a widget with no `_app`, unmounted or standalone
-in a test, flushes immediately. A widget with no such caches gains nothing
-from `bind_to` and uses `observe`.
+#### A widget mounts
 
-An `on_unmount` override that skips `super()` skips `_dispose_bindings()`,
-and because remounting (navigation, hot reload) re-runs `on_mount`,
-subscriptions accumulate: one source event then invokes N callbacks against N
-detached widgets. That is the case the chain check above exists for.
-`Observable` itself is [OBSERVABLE.md](OBSERVABLE.md).
+```mermaid
+sequenceDiagram
+    participant S as children_store.py
+    participant L as widget_lifecycle.py
+    participant A as the app
+    participant B as widget_builder.py
 
-## Recompose Scopes
+    S->>L: mount(app)
+    L->>L: _mounted = True, _app = app, forget_app_scope
+    L->>A: on_mount(), contained
+    A->>B: super().on_mount()
+    B->>L: super().on_mount(), down the MRO, sets _on_mount_chained
+    B->>B: evaluate_build(), _mount_built(built)
+    L->>L: the mount callbacks
+    L->>L: mount(app) on each child
+    alt the override ran clean and a build host never chained
+        L->>L: raise RuntimeError naming the widget and the hook
+    end
+```
 
-A `RecomposeScope` wraps a subtree in a named scope, and its `ScopeHandle`
-(`invalidate()`, `invalidate_scope_id()`) rebuilds that scope alone. A binding
-invalidation is routed to its scopes through
-`_lookup_scope_ids_for_dependency()`.
+#### A widget unmounts
 
-Recomposition is idempotent. A scope's subtree is rebuilt only when it is
-new, unbuilt or explicitly invalidated; `_dirty_scopes` tracks that and
-`_schedule_scope_recomposition()` is the one funnel that marks a scope dirty.
-Re-running the host's `build()` does not rebuild a scope that was not
-invalidated, because `build()` is re-entered on every measure, and tearing
-down a live subtree there would discard focus, scroll, animation and pointer
-state. The caller that changes a `render_scope` factory's inputs therefore
-invalidates the scope itself, as `ForEach` does for an item whose value
-changed; a host rebuild will not refresh it.
+```mermaid
+sequenceDiagram
+    participant S as children_store.py
+    participant L as widget_lifecycle.py
+    participant A as the app
+    participant B as widget_builder.py
+    participant Bi as widget_binding.py
 
-The layout and paint caches are in
-[RENDERING_PIPELINE.md](RENDERING_PIPELINE.md).
+    S->>L: unmount()
+    L->>A: on_unmount(), contained
+    A->>B: super().on_unmount()
+    B->>B: _unmount_built()
+    B->>Bi: super().on_unmount()
+    Bi->>Bi: _dispose_bindings()
+    Bi->>L: super().on_unmount(), sets _on_unmount_chained
+    L->>L: the unmount callbacks, the dispose callbacks, cancel the mount tasks
+    L->>L: unmount() on each child, cancel the pointer captures
+    L->>L: _app = None, forget_app_scope
+    alt the override ran clean and never chained
+        L->>L: raise RuntimeError naming the widget and the hook
+    end
+```
 
-## Internal State Ownership
+### Promises
 
-An underscore field belongs to the mixin that owns it and is read or written
-only inside that module. Across a module boundary a widget goes through the
-public accessor, so that a field is updated in one place and no mixin reaches
-into another's internals:
+- A second `mount(app)` on a widget mounted to the same app returns at once.
+- The base `on_mount` and `on_unmount` end the chains. An override that
+  never reaches them is reported after the mount or the unmount, for
+  `on_mount` on build hosts only.
+- A contained hook exception stops the app only from the root widget.
 
-| Field | Owner | Accessor |
-| --- | --- | --- |
-| `_built` | `BuilderHostMixin` | `built_child` |
-| `_layout_rect` | `WidgetKernel` | `layout_rect`, `set_layout_rect()` |
-| `_last_rect` | `WidgetKernel` | `last_rect`, `set_last_rect()` |
-| `_needs_layout` | `WidgetKernel` / `Widget` | `needs_layout`, `mark_needs_layout()`, `clear_needs_layout()` |
-| `_layout_cache_token` | `Widget` | `layout_cache_token` (`None` on `WidgetKernel`, an `int` on `Widget`) |
+## The Bindings
 
-Input bounds and overlay anchors come from `global_visual_rect`: the global
-layout rect plus each ancestor's `visual_offset()`. They are never derived
-from paint state (`last_rect`), and never from `global_layout_rect`, which
-inside a scrolled region is content space, off by the scroll offset. A
-container that paints its children away from their layout position, a scroll
-viewport, exposes `visual_offset()`, or `global_visual_rect` is wrong beneath
-it.
+A widget subscribes to an `Observable` for its mounted life. The
+subscription names what a change invalidates.
+
+### Structure
+
+```mermaid
+flowchart LR
+    binding[widgeting/widget_binding.py]
+    widget[widgeting/widget.py]
+    builder[widgeting/widget_builder.py]
+    observable[observable/]
+    window[runtime/window.py]
+    app[the app]
+
+    app -- "observe(observable, callback) · bind(disposable) · bind_to(observable, setter, dependency, scope_id)" --> binding
+    binding -- "subscribe(on_value) · dispose()" --> observable
+    binding -- "invalidate(), on the first entry" --> widget
+    window -- "flush_binding_invalidations()" --> binding
+    binding -- "_handle_dependency_invalidation(dependency or scope_id)" --> widget
+    widget -- "_handle_scope_invalidation(scope_id) · _handle_scope_dependency(dependency)" --> builder
+```
+
+| Module | Role |
+| --- | --- |
+| `widgeting/widget_binding.py` | `BindingHostMixin`: the `Disposable`s a widget holds; the queue of pending invalidations and its flush |
+| `widgeting/widget.py` | drops the cache a dependency names |
+| `widgeting/widget_builder.py` | routes a dependency to the scopes that read it (The Builder) |
+| `observable/` | the source and its subscription ([OBSERVABLE.md](OBSERVABLE.md)) |
+| `runtime/window.py` | flushes the queue at the start of a frame ([GEOMETRY.md](GEOMETRY.md)) |
+| the app | a widget passing an `Observable` into its own state |
+
+### Sequence
+
+#### An observable fires into a widget
+
+```mermaid
+sequenceDiagram
+    participant O as observable/
+    participant B as widget_binding.py
+    participant W as widget.py
+    participant Bu as widget_builder.py
+    participant Win as runtime/window.py
+
+    O->>B: on_value(value), any writer
+    B->>B: setter(value), queue (widget, dependency, scope_id)
+    opt the first entry for this widget
+        B->>W: invalidate()
+    end
+    Note over Win: the next frame starts
+    Win->>B: flush_binding_invalidations()
+    B->>W: _handle_dependency_invalidation(scope_id), each scope
+    W->>Bu: _handle_scope_invalidation(scope_id)
+    B->>W: _handle_dependency_invalidation(dependency), when no scope took it
+    W->>W: drop the layout cache, the paint cache, or both
+```
+
+### Promises
+
+- Every subscription a widget takes through the mixin is disposed in its
+  `on_unmount`.
+- A frame sees one invalidation per widget, whatever fired. A widget with no
+  app flushes at once.
+
+## The Builder
+
+A `ComposableWidget` assembles a subtree in `build()`. A scope of it
+recomposes alone.
+
+### Structure
+
+```mermaid
+flowchart LR
+    builder[widgeting/widget_builder.py]
+    widget[widgeting/widget.py]
+    lifecycle[widgeting/widget_lifecycle.py]
+    kernel[widgeting/widget_kernel.py]
+    dependency[theme/dependency.py]
+    window[runtime/window.py]
+    foreach[layout/for_each.py]
+    app[the app]
+
+    app -- "build() · render_scope(name, factory) · handle.invalidate()" --> builder
+    builder -- "push_theme_reader(host) · pop_theme_reader(), around build()" --> dependency
+    builder -- "built._parent = host" --> kernel
+    builder -- "built.mount(app) · built.unmount()" --> lifecycle
+    builder -- "layout · paint · hit_test · preferred_size, delegated to _built" --> kernel
+    builder -- "invalidate(), on the first entry · mark_needs_layout(), after a rebuild" --> widget
+    window -- "flush_scope_recompositions()" --> builder
+    foreach -- "invalidate_scope_id(scope_id), for an item whose value changed" --> builder
+```
+
+| Module | Role |
+| --- | --- |
+| `widgeting/widget_builder.py` | `BuilderHostMixin`: `evaluate_build`, the built subtree, `rebuild`; `RecomposeScope` and `ScopeHandle`; the dirty scopes and the queue of pending recompositions |
+| `widgeting/widget.py` | `invalidate`, `mark_needs_layout` (Overview) |
+| `widgeting/widget_lifecycle.py` | mounts and unmounts the built subtree (The Lifecycle) |
+| `widgeting/widget_kernel.py` | the parent link and the geometry the built subtree is delegated to |
+| `theme/dependency.py` | attributes a theme read inside `build()` to the host ([THEME_CONSUMPTION.md](THEME_CONSUMPTION.md)) |
+| `runtime/window.py` | flushes the recompositions at the start of a frame ([GEOMETRY.md](GEOMETRY.md)) |
+| `layout/for_each.py` | a host that invalidates a scope itself ([LAYOUT.md](LAYOUT.md)) |
+| the app | the widget's `build()` and the scopes it renders |
+
+### Sequence
+
+#### A scope recomposes
+
+```mermaid
+sequenceDiagram
+    participant A as the app
+    participant B as widget_builder.py
+    participant W as widget.py
+    participant Win as runtime/window.py
+
+    A->>B: handle.invalidate()
+    B->>B: _schedule_scope_recomposition(scope_id): dirty, queued
+    opt the first entry for this host
+        B->>W: invalidate()
+    end
+    Note over Win: the next frame starts
+    Win->>B: flush_scope_recompositions()
+    B->>B: _process_scope_recompositions(scope_ids)
+    B->>B: fragment.rebuild(), the scope alone
+```
+
+### Promises
+
+- A build result is parented to its host as soon as it is built.
+- A host rebuild rebuilds no scope. The caller that changed a scope's inputs
+  invalidates the scope.
+- `preferred_size` never calls `build()` on a mounted host.
+
+## The Children
+
+A widget's children live in a `ChildrenStore`. The store links each child to
+its owner.
+
+### Structure
+
+```mermaid
+flowchart LR
+    children[widgeting/widget_children.py]
+    store[widgeting/children_store.py]
+    lifecycle[widgeting/widget_lifecycle.py]
+    kernel[widgeting/widget_kernel.py]
+    layout[layout/]
+    window[runtime/window.py]
+    app[the app]
+
+    app -- "add_child(widget) · remove_child(widget) · clear_children()" --> children
+    children -- "add(w) · remove(w) · clear() · reconcile(desired) · snapshot() · view()" --> store
+    store -- "w._parent = owner · _detach_parent(child, owner)" --> kernel
+    store -- "mount(owner._app) · unmount()" --> lifecycle
+    layout -- "children_snapshot()" --> children
+    window -- "focus_traversal_children()" --> children
+```
+
+| Module | Role |
+| --- | --- |
+| `widgeting/widget_children.py` | `ChildContainerMixin`: `children`, the snapshot, the children keyboard traversal descends into |
+| `widgeting/children_store.py` | `ChildrenStore`: the ordered children, the capacity and overflow policy, the parent link |
+| `widgeting/widget_lifecycle.py` | mounts and unmounts a child (The Lifecycle) |
+| `widgeting/widget_kernel.py` | holds the parent link |
+| `layout/` | the containers that lay the children out ([LAYOUT.md](LAYOUT.md)) |
+| `runtime/window.py` | the Tab traversal ([INTERACTION_ARCHITECTURE.md](INTERACTION_ARCHITECTURE.md)) |
+| the app | adds and removes children |
+
+### Promises
+
+- A child added to a mounted owner is mounted at once. A child removed is
+  unmounted.
+- The store clears a child's `_parent` only while it still points at the
+  store's owner.

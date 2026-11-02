@@ -9,7 +9,9 @@ the line. Source jump does not latch; the two modes do. Every bridge surface
 ## What the Gestures Share
 
 The three gestures share the input layers the runner installs, the record of
-which line built each widget, and the glass every mode paints on.
+which line built each widget, and the glass every mode paints on. The
+Structure is the whole page: the shared modules and the three gestures as
+groups.
 
 ### Structure
 
@@ -17,59 +19,63 @@ which line built each widget, and the glass every mode paints on.
 flowchart TB
     human[Human]
     agent[Coding agent]
-    subgraph backend[pyglet backend · real input handlers]
-        recorder[interaction recorder]
-        subgraph layers[dev input layers · offered in this order]
-            jump[source jump]
-            comment[comment mode]
-            layout[layout edit mode]
-        end
+    runner["backends/pyglet/runner.py"]
+    recorder[dev/interaction.py]
+    subgraph gestures[the three gestures, offered in this order]
+        jump[source jump]
+        comment[comment mode]
+        layout[layout edit mode]
     end
-    dispatch["window._dispatch_* (widget tree)"]
-    sites[(construction sites)]
-    subgraph glass[the glass]
-        badge[badge]
-        field[inline field]
-    end
+    gesture[dev/gesture.py]
+    window["runtime/window.py"]
+    sites[dev/source.py]
+    hud[dev/hud.py]
+    field[dev/inline_field.py]
+    editing[widgets/text_editing.py]
 
-    human -- "mouse · keys" --> recorder --> jump
-    jump -- "not consumed" --> comment -- "not consumed" --> layout -- "not consumed" --> dispatch
-    agent -- "click · type · key (synthesized)" --> dispatch
-    dispatch -. "Widget.__init__" .-> sites
-    jump & comment & layout -- "which line built it" --> sites
-    comment & layout --> badge & field
+    human -- "mouse · keys" --> runner -- "every event" --> recorder -- "the event, in order" --> jump
+    jump -- "not consumed" --> comment -- "not consumed" --> layout -- "not consumed" --> window
+    agent -- "click · type · key, synthesized" --> window
+    runner -- "wraps Widget.__init__" --> sites
+    jump & comment & layout -- "site_of(widget)" --> sites
+    comment & layout -- "drag · pick · chord handling" --> gesture
+    comment & layout -- "notice(text)" --> hud
+    comment & layout -- "open · close" --> field
+    field -- "the editing operations" --> editing
 ```
 
-| Role | Module |
+| Module | Role |
 | --- | --- |
-| the dev input layers: their order, the prefix chord | `backends/pyglet/runner.py` |
-| the interaction recorder the layers sit on | `dev/interaction.py` |
-| the mechanics the layers share | `dev/gesture.py` |
-| the construction site of every widget | `dev/source.py` |
-| the badge both modes report through | `dev/hud.py` |
-| the inline field both modes open over the glass | `dev/inline_field.py` |
-| the editing operations the field shares with `EditableText` | `widgets/text_editing.py` |
+| `backends/pyglet/runner.py` | installs the dev input layers in their order and claims the prefix chord |
+| `dev/interaction.py` | records every real input event before the layers see it |
+| source jump | opens the construction site of the hovered widget in the editor |
+| comment mode | marks widgets and regions for the agent, with the human's text |
+| layout edit mode | turns a drag or a pick into an edit of the widget's source |
+| `dev/gesture.py` | the drag, pick and chord handling the two modes share |
+| `runtime/window.py` | dispatches what no layer consumed into the widget tree |
+| `dev/source.py` | records the construction site of every widget |
+| `dev/hud.py` | the badge both modes report through |
+| `dev/inline_field.py` | the one-line field both modes open over the glass |
+| `widgets/text_editing.py` | the editing operations the field shares with `EditableText` |
 
 ### Promises
 
 - Every chord the dev runner claims starts with `Ctrl+Shift`.
 - No action of the agent reaches a mode.
 - A layer that consumes an event ends the walk.
-- Each mode lets the other's chord pass. The entering mode closes the other.
-- The dev runner, not the framework, wraps `Widget.__init__`. The wrap
-  records, for every widget, the chain of frames outside the package and
-  outside any install directory.
-- A site is captured at construction. It is rebuilt with the tree on reload.
+- At most one mode is latched at a time. A latched mode lets the other's
+  chord pass.
+- The dev runner wraps `Widget.__init__`. The wrap records, for every
+  widget, the chain of frames outside the package and outside any install
+  directory. The record is rebuilt with the tree on reload.
 - Each frame records the span of the executing call. The frame a jump opens
   and an edit targets is the innermost user frame outside any `__init__`.
 - A frame records whether it built the widget directly. A pointer on a
   widget no user call built resolves to the nearest ancestor a user call did
   build.
-- Every mode paints on the glass, never into the tree. The constraint is the
-  action overlay's: paint-only, live frames only. Neither `describe_tree` nor
-  `screenshot` sees a mode. The frame a mode asks for redraws the glass over
-  the tree last painted.
-- Each gesture, and the action overlay, paints in a colour family of its own.
+- Every mode paints on the glass, never into the tree. The glass is painted
+  over the tree last painted, in the frame the mode asks for.
+- Each gesture paints in a colour family of its own.
 
 ## Source Jump
 
@@ -83,29 +89,32 @@ flowchart LR
     jump[dev/source_jump.py]
     source[dev/source.py]
     editor[dev/editor.py]
-    opener[platform URL opener]
+    opener[the platform URL opener]
 
     runner -- "--editor" --> editor
-    jump -- hovered widget --> source -- innermost user frame --> editor -- URL --> opener
+    jump -- "site_of(hovered widget)" --> source
+    jump -- "open(site)" --> editor -- "the URL" --> opener
 ```
 
-| Role | Module |
+| Module | Role |
 | --- | --- |
-| the hover and the click | `dev/source_jump.py` |
-| the construction site of the hovered widget | `dev/source.py` |
-| the URL template, the install check, the launch | `dev/editor.py` |
+| `dev/source_jump.py` | tracks the hover and the click |
+| `dev/editor.py` | fills the `--editor` URL template, checks the editor is installed, launches |
+| `backends/pyglet/runner.py` | passes the `--editor` option (What the Gestures Share) |
+| `dev/source.py` | answers which line built the hovered widget (What the Gestures Share) |
+| the platform URL opener | opens the editor URL |
 
 ### Promises
 
 - The editor is reached by a URL through the platform's URL opener. The URL
   is the `--editor` template with the site's file and line filled in.
-- `--editor` is validated when the app starts, not on the first click.
+- `--editor` is validated when the app starts.
 
 ## Comment Mode
 
 Comment mode records what the human pointed at, as nodes and as regions,
-with what they wrote on each mark. The bridge carries the marks to the agent
-and the agent's answers back onto the marks.
+with what they wrote on each mark. The agent reads the marks through the
+bridge and answers on them.
 
 ### Structure
 
@@ -119,31 +128,71 @@ flowchart LR
     controller[dev/controller.py]
     overlay[dev/comment_overlay.py]
     field[dev/inline_field.py]
+    gesture[dev/gesture.py]
+    sites[dev/source.py]
+    hud[dev/hud.py]
 
-    mode -- "pointer · keys" --> picker -- "node · visible rect" --> mode
-    mode -- "marks · text · undo" --> buffer
-    buffer -- payload --> bridge --> agent
-    agent -- answers --> bridge -- "answer on the mark" --> buffer
-    controller -- "rebuilt tree" --> buffer
-    mode <--> field
-    mode -. "read at paint" .-> overlay
-    buffer -. "badges · threads" .-> overlay
+    mode -- "pick_at · find_obstruction · visible_rect" --> picker
+    mode -- "add · write · undo · send" --> buffer
+    bridge -- "payload · wait · answer" --> buffer
+    agent -- "see_comments · wait_for_comments · answer_comments" --> bridge
+    controller -- "restore(rebuilt tree)" --> buffer
+    mode -- "open(text)" --> field
+    field -- "the committed text" --> mode
+    mode -- "drag · pick · chord handling" --> gesture
+    mode -- "site_of(node)" --> sites
+    mode -- "notice(text)" --> hud
+    overlay -. "reads at paint" .-> mode
+    overlay -. "marks · badges · threads" .-> buffer
 ```
 
-| Role | Module |
+| Module | Role |
 | --- | --- |
-| the candidate under the pointer, the marks, the open field | `dev/comment_mode.py` |
-| the geometry picker and the visible rect | `_interaction/perception.py` (`pick_at`, `find_obstruction`, `visible_rect`) |
-| the comment buffer: identity, text, thread, history, the wait on a send | `dev/comments.py` |
-| `see_comments`, `answer_comments`, `wait_for_comments` | `dev/bridge.py` |
-| the restore of the marks after a rebuild | `dev/controller.py` |
-| the brackets, badges and threads on the glass | `dev/comment_overlay.py` |
+| `dev/comment_mode.py` | tracks the candidate under the pointer, the marks, the open field |
+| `dev/comments.py` | the comment buffer: identity, text, thread, history, the wait on a send |
+| `dev/comment_overlay.py` | paints the brackets, badges and threads on the glass |
+| `_interaction/perception.py` | picks the node under a point and its visible rect ([DEV_BRIDGE.md](DEV_BRIDGE.md)) |
+| `dev/bridge.py` | serves `see_comments`, `answer_comments`, `wait_for_comments` ([DEV_BRIDGE.md](DEV_BRIDGE.md)) |
+| `dev/controller.py` | restores the marks after a rebuild ([HOT_RELOAD.md](HOT_RELOAD.md)) |
+| `dev/inline_field.py`, `dev/gesture.py`, `dev/source.py`, `dev/hud.py` | the shared field, mechanics, sites and badge (What the Gestures Share) |
+
+### Sequence
+
+#### A send wakes the agent's wait
+
+```mermaid
+sequenceDiagram
+    participant A as coding agent
+    participant B as dev/bridge.py (worker thread)
+    participant Buf as Comments
+    participant M as comment mode (UI thread)
+    participant H as human
+
+    A->>B: wait_for_comments(since, timeout)
+    B->>Buf: wait(since, timeout)
+    Note over Buf: blocks on the condition
+    H->>M: marks, text
+    M->>Buf: add, write, undo
+    alt the human presses Send
+        H->>M: Send
+        M->>Buf: send()
+        Note over Buf: every unanswered mark is marked as awaiting an answer, the undo history is cut
+        Buf-->>B: woken, True
+        B-->>A: satisfied
+        A->>B: see_comments
+        B->>Buf: payload
+        A->>B: answer_comments
+        B->>Buf: the answer on the mark
+    else the timeout passes, or the app closes the buffer
+        Buf-->>B: woken, False
+        B-->>A: timed out
+    end
+```
 
 ### Promises
 
-- The picker is geometry-only. It descends through the children the keyboard
-  traverses before it checks occlusion. An idle `Overlay` reports itself out
-  of the way. `Box` exposes its `clip_content` clip to the occlusion check.
+- The picker is geometry-only. An idle `Overlay` reports itself out of the
+  way. `Box` exposes its `clip_content` clip to the occlusion check.
 - A mark carries the visible rect, the node's rect intersected with every
   ancestor clip. The brackets on the glass and the rect handed to the agent
   are the same rect. An action aims at the visual rect.
@@ -151,14 +200,13 @@ flowchart LR
 - One `Comments` per app is shared by the mode on the UI thread, the reload
   controller after a rebuild and the bridge on its worker threads. Nodes and
   regions share one ordered list.
-- Members are keyed on object identity. A rebuild drops them. The controller
-  matches them back by the key-preferring structural path of
+- Members are keyed on object identity. A member a rebuild dropped is
+  matched back by the key-preferring structural path of
   [HOT_RELOAD.md](HOT_RELOAD.md).
 - Every change to the buffer is an undo step. The undo history ends at the
   last send. An answer is outside it.
-- A send wakes every wait on the buffer. The bridge's wait blocks on the
-  worker thread until the next send or a timeout. Leaving the mode does not
-  wake it. The app going down releases it.
+- Only a send, the timeout or the app going down ends a wait. Leaving the
+  mode does not.
 - The interaction journal records none of what a comment carries: rects,
   on-screen text, the human's words.
 
@@ -181,37 +229,79 @@ flowchart LR
     end
     toolbar[dev/toolbar.py]
     edit[dev/source_edit.py]
-    file[(source file)]
-    reload[hot reload]
+    file[(the source file)]
+    reload["dev/controller.py"]
+    hud[dev/hud.py]
     overlay[dev/layout_edit_overlay.py]
+    field[dev/inline_field.py]
+    gesture[dev/gesture.py]
+    sites[dev/source.py]
 
-    mode --> landing & reorder & align & spacing & presets --> edit
-    mode <--> toolbar
-    edit -- spans --> file --> reload -- "rebuilt tree" --> edit
-    mode -. "read at paint" .-> overlay
-    toolbar -. "same rects" .-> overlay
+    mode -- "a release point · a handle · a pick" --> readings -- "a reading: size, slot, alignment, spacing, preset" --> mode
+    mode -- "plan_* · apply(edit) · undo" --> edit
+    mode -- "the bar's rects · the picked item" --> toolbar
+    mode -- "open(text)" --> field
+    field -- "the committed text" --> mode
+    mode -- "drag · pick · chord handling" --> gesture
+    mode & edit -- "site_of(widget) · widgets_built_at(root, site)" --> sites
+    edit -- "the spans" --> file
+    mode -- "request_reload(file)" --> reload -- "after_reload(roots) · reload_failed" --> edit
+    edit -- "the outcome" --> hud
+    overlay -. "reads at paint" .-> mode
+    overlay -. "the same rects" .-> toolbar
 ```
 
-| Role | Module |
+| Module | Role |
 | --- | --- |
-| the selection, the drag in flight, the open list; each gesture turned into a reading, each reading into an edit | `dev/layout_edit_mode.py` |
-| a size from a release point | `dev/landing.py` |
-| a slot or a cell from a release point | `dev/reorder.py` |
-| an alignment from a release point | `dev/align.py` |
-| a padding side or a gap from a handle | `dev/spacing.py` |
-| the choices a widget declares, their parameters, the default | `dev/presets.py` |
-| the bar's geometry | `dev/toolbar.py` |
-| span surgery, the edit log with each edit's inverse, the check after the reload | `dev/source_edit.py` |
-| the mode's state on the glass | `dev/layout_edit_overlay.py` |
+| `dev/layout_edit_mode.py` | holds the selection, the drag in flight and the open list; turns each gesture into a reading and each reading into an edit |
+| `dev/landing.py` | a size from a release point |
+| `dev/reorder.py` | a slot or a cell from a release point |
+| `dev/align.py` | an alignment from a release point |
+| `dev/spacing.py` | a padding side or a gap from a handle |
+| `dev/presets.py` | the choices a widget declares, their parameters, the default |
+| `dev/toolbar.py` | the bar's geometry |
+| `dev/source_edit.py` | plans and applies span edits, keeps the edit log with each edit's inverse, checks the pending edit after the reload |
+| the source file | what the spans are written into |
+| `dev/layout_edit_overlay.py` | paints the mode's state on the glass |
+| `dev/controller.py` | reloads the file and reports back ([HOT_RELOAD.md](HOT_RELOAD.md)) |
+| `dev/inline_field.py`, `dev/gesture.py`, `dev/source.py`, `dev/hud.py` | the shared field, mechanics, sites and badge (What the Gestures Share) |
+
+### Sequence
+
+#### An edit lands through the reload
+
+```mermaid
+sequenceDiagram
+    participant H as human
+    participant M as dev/layout_edit_mode.py
+    participant L as EditLog (dev/source_edit.py)
+    participant F as source file
+    participant C as dev/controller.py
+    participant T as widget tree
+    participant Bd as badge (dev/hud.py)
+
+    H->>M: release the drag, or pick from the bar
+    M->>L: apply(edit)
+    L->>F: write the spans, keep the inverse
+    M->>C: request_reload(file)
+    C->>C: next UI tick
+    C->>T: rebuild from the factory
+    alt the reload landed
+        C->>L: after_reload(roots)
+        L->>T: look up the widgets built at the edit's site
+        L-->>Bd: the miss, when there is one
+    else the reload failed
+        C->>L: reload_failed(traceback)
+        L-->>Bd: the failure, blamed on the pending edit
+    end
+```
 
 ### Promises
 
-- The tree is never mutated. During a gesture only the overlay moves.
-- The widget edited is the owner a user call built. A site with no user
-  frame is refused.
+- During a gesture only the overlay moves.
+- A site with no user frame is refused.
 - A write is a set of spans in one file, or two for a move across
-  containers. The spans are located by re-parsing the file and matching the
-  call at the recorded site. Nothing around a span is reformatted.
+  containers. Nothing around a span is reformatted.
 - An edit is undone by its inverse spans. The undo is refused when the text
   they expect has moved. A refusal reaches the badge and never the
   `Comments`.
@@ -232,6 +322,4 @@ flowchart LR
   as a call of its companion class, a `GridItem` by the name the module
   imports. No import is added.
 - Whatever expression a keyword holds is replaced whole.
-- After the reload, the pending edit is checked against the instances
-  rebuilt at its site. A miss, a site that builds nothing, or a failed
-  reload reaches the badge.
+- A miss, a site that builds nothing, or a failed reload reaches the badge.

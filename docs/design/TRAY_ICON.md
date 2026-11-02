@@ -1,129 +1,272 @@
-# Tray Icon Design
+# Tray Icon
 
-`TrayIcon` is a model registered on `App`, `App(window, tray=...)` beside
-`exit_policy=`, mirroring `Window(menu=...)`. It must exist while no window
-does, so a widget-tree API could not be truthful. Its menu is the shared
-`MenuEntry` model of [MENU_BAR.md](MENU_BAR.md), with the same live sync of
-`label`, `enabled` and `checked`; a window-scoped standard item has no
-target window in a tray menu and is ignored with a warning, `quit()` works,
-and `shortcut` is not rendered, since tray menus have no accelerator
-convention.
+`TrayIcon` is a model registered on the `App`, `App(window, tray=...)`. Its
+menu is the `MenuEntry` model the menu bar uses ([MENU_BAR.md](MENU_BAR.md)),
+with the same live sync of `label`, `enabled` and `checked`.
 
-## Lifetime and Exit
+## Overview
 
-The tray icon lives exactly as long as the app runs, installed when the loop
-starts and removed when it stops, with no lifetime condition or teardown of
-its own. `ExitPolicy` is untouched and counts existing windows, hidden ones
-included; a resident app declares `ExitPolicy.EXPLICIT`, the one place app
-lifetime is decided. An earlier design that suspended window-based exit
-while a tray was installed was rejected: the hidden coupling made behaviour
-unpredictable from the call site.
+Three groups of modules take part, with the menu model, the notification
+backend and the clock at their edges.
 
-The close button's meaning is a `Window` property, `close_action="close" |
-"hide"`, observable-capable. It is not `on_close`, since the `on_*` prefix
-is the callback convention and this is a policy value, and there is no
-`close_to_tray=True` on the tray, because a flag that silently rewires a
-different object's behaviour is unreadable. Only the OS close button is
-remapped, through `Window._handle_close_request()`; programmatic `close()`
-and the menu roles always close.
+### Structure
 
-There is no automatic fallback; a dangerous state warns. Hiding the last
-visible window with no tray showing logs a one-time warning and behaves as
-written. The framework makes the state knowable through
-`TrayIcon.installed`, an `Observable[bool]`, and adapting is the app's job:
-the resident recipe binds `close_action` to `installed.map(lambda ok: "hide"
-if ok else "close")`, one visible line, the Qt and Electron division of
-responsibility. An install failure never takes the app down, the
-`Desktop.notify` policy, logged once; an app that treats the tray as
-essential reads `installed` and fails fast itself. `installed` means the
-user can reach the app through the tray: on a Linux desktop with no tray
-host, install fails rather than reporting an icon nobody can see, which would
-steer the recipe toward locking the user out.
+```mermaid
+flowchart LR
+    model[The Model]
+    appwin[The App and the Window]
+    bridges[The Bridges]
+    menus[menus/model.py]
+    nsmenu[menus/nsmenu.py]
+    notify[platform/notification_win32.py]
+    clock[observable/runtime.py]
 
-`on_activate` is an optional shortcut, not a primary affordance: macOS
-delivers it only without a menu, since a menu owns the click; Windows on
-double-click; a Linux desktop only if it chooses to. An equivalent menu
-entry must always exist. Activation mirrors `MenuBarController.activate` minus the
-window scope, always on the UI thread.
+    appwin -- "_install(app) · _uninstall() · _refresh_dock(visible_windows)" --> model
+    model -- "install() · uninstall() · set_dock_visible(visible)" --> bridges
+    bridges -- "_activate_item(entry) · _fire_activate(), on the UI thread" --> model
+    model -- "MenuEntry" --> menus
+    bridges -- "NSMenuBuilder" --> nsmenu
+    notify -- "active_bridge().show_balloon(title, body)" --> bridges
+    bridges -- "schedule_once(hop, 0)" --> clock
+```
 
-## Visibility Is Not Lifecycle
+| Module | Role |
+| --- | --- |
+| The Model | the icon, the tooltip, the menu, `installed`, the activation of an entry |
+| The App and the Window | registers the tray, installs it with the loop, reports window visibility; the window's close button and its hide and show |
+| The Bridges | show the icon and the menu through AppKit, Win32 or D-Bus |
+| `menus/model.py` | `MenuEntry`, the menu model shared with the menu bar ([MENU_BAR.md](MENU_BAR.md)) |
+| `menus/nsmenu.py` | `NSMenuBuilder`, the `NSMenu` construction shared with the menu bar ([MENU_BAR.md](MENU_BAR.md)) |
+| `platform/notification_win32.py` | the Windows notification backend |
+| `observable/runtime.py` | the installed clock ([OBSERVABLE.md](OBSERVABLE.md)) |
 
-The window lifecycle stays one-way, created to open to closed
-([APP_WINDOW.md](APP_WINDOW.md)); `hide()` and `show()` toggle the
-visibility of an open window whose tree, state and geometry survive. A hidden
-window renders no frames and still counts for the exit policy, and on Windows
-and Linux the taskbar entry follows it. `show()` on an already-visible window
-is a summon, raise and refocus. Hiding before the backend realises the OS
-window records the state and creates the window invisible, the
-start-in-tray launch shape with no flash.
+### Promises
 
-The resident-app recipe is therefore three independent declarations,
-`ExitPolicy.EXPLICIT`, `close_action` bound to `installed`, and the
-`TrayIcon`, each meaningful without the others.
+- The tray icon lives as long as the app's loop runs.
+- `ExitPolicy` is not changed by a tray. It counts the existing windows,
+  hidden ones included.
+- The tray menu renders natively on every platform.
+- A failed install never takes the app down.
 
-The macOS Dock icon belongs to the app, not to a window, so hiding every
-window leaves it behind, the asymmetry `dock_visibility` manages:
-`"always"` leaves the regular activation policy; `"auto"` has the app report
-every show, hide, open and close to `TrayIcon._refresh_dock`, which flips
-between regular and accessory by whether a window is visible, restoring
-regular before a shown window reappears; `"never"` is accessory from
-install, a pure menu-bar extra. Windows and Linux ignore the knob.
+## The Model
 
-## Platform Backends
+`TrayIcon` holds what the bridges show and runs what the bridges report.
 
-The model is backend-agnostic and `TrayIcon._create_bridge()` picks per
-platform. The tray menu renders natively everywhere, because it must work
-with no window on screen, unlike the menu bar's in-app fallback.
+### Structure
 
-**macOS** talks to AppKit directly (`platform/tray_cocoa.py`) through
-pyglet's bundled `cocoapy`, exactly like the menu bar's `NSMenu` bridge: no
-dependency, no extra thread, and the pumped event loop hosts it unchanged.
-`NSMenuBuilder` builds the menu, so both native surfaces share construction,
-the ObjC action target and live observable sync. Menu tracking pauses
-painting in Cocoa's modal tracking loop, identical to the global menu bar
-and accepted. pystray was rejected here: it wants to own `NSApplication`,
-and the direct route removes the one structural risk, handing part of the
-main loop to an outside library.
+```mermaid
+flowchart LR
+    tray[TrayIcon]
+    app[App]
+    bridge[the platform bridge]
+    entry[MenuEntry]
+    clock[the installed clock]
 
-**Windows** talks to Win32 directly (`platform/tray_win32.py`) through
-ctypes. A dedicated thread owns a hidden window and its message loop, and
-`Shell_NotifyIcon` hangs the icon on that window. The window is top-level and
-never shown, not message-only: a message-only window receives no broadcasts,
-and `TaskbarCreated`, which tells every icon to add itself again after
-Explorer restarts, is a broadcast. The menu is built from the model on every
-right click and destroyed when it closes; a menu kept between clicks was
-rejected because every observable in the tree would need a sync step. skia
-decodes the icon file, so the backend adds no imaging dependency. Every
-activation hops to the UI thread through the runtime clock before touching
-the model.
+    app -- "_install(app) · _uninstall() · _refresh_dock(visible_windows)" --> tray
+    tray -- "constructs · install() · uninstall() · set_dock_visible(visible)" --> bridge
+    bridge -- "schedule_once(hop, 0)" --> clock -- "_activate_item(entry) · _fire_activate()" --> tray
+    tray -- "checked · role · on_select" --> entry
+    tray -- "exit() for MenuRole.QUIT" --> app
+```
 
-A notification balloon needs an icon in the notification area to hang on.
-While a tray is installed the balloon attaches to the tray's icon; without
-one the notification backend adds a transient icon of its own. Letting the
-backend always add its own was rejected: an app with a tray would show two
-icons for the length of every notification.
+| Module | Role |
+| --- | --- |
+| `TrayIcon` | holds the icon path, the tooltip, the menu and `dock_visibility`; picks the bridge per platform; publishes `installed`; runs an activated entry |
+| `App` | installs and removes the tray with the loop, reports the visible-window count (The App and the Window) |
+| the platform bridge | shows the icon and the menu (The Bridges) |
+| `MenuEntry` | an item of the menu ([MENU_BAR.md](MENU_BAR.md)) |
+| the installed clock | the hop to the UI thread ([OBSERVABLE.md](OBSERVABLE.md)) |
 
-**Linux** speaks the tray protocol itself (`platform/tray_sni.py`) through
-jeepney, a pure-Python D-Bus library, a regular dependency platform-marked in
-`pyproject.toml`. The bridge exports a StatusNotifierItem and its dbusmenu on
-the session bus and registers with the desktop's StatusNotifierWatcher; the
-desktop draws the icon and the menu. A receiver thread serves the desktop's
-calls on a blocking connection, and every activation hops to the UI thread
-through the runtime clock before touching the model.
+### Sequence
 
-The desktop keeps its own copy of the menu, so every observable in the tree
-emits `LayoutUpdated` and the desktop asks for the layout again. Item ids
-follow the tree's order, so the layout is planned afresh on every request and
-the bridge keeps no menu state between requests. The icon travels as a
-pixmap decoded by skia; an icon theme name was rejected because the app
-would have to install its icon into the theme first.
+#### The tray is installed and removed
 
-A restarted desktop shell forgets every item. The bridge watches the
-watcher's bus name and registers again when a new owner appears.
+```mermaid
+sequenceDiagram
+    participant A as App
+    participant T as TrayIcon
+    participant B as the platform bridge
 
-The Linux tray is best-effort by contract. A desktop with a
-StatusNotifierWatcher works, KDE natively and GNOME through the AppIndicator
-extension; a desktop without one, bare X11 included, refuses install; and
-the desktop decides whether a click sends `Activate`. The API always works,
-`installed` reports the truth, and the recipe degrades to a normal closing
-window.
+    A->>T: _install(app), once the loop is up
+    T->>B: construct, install()
+    alt install raised
+        T->>T: log once, installed stays False
+    else installed
+        T->>T: installed = True
+        T->>B: set_dock_visible(visible_window_count > 0), when dock_visibility is "auto"
+    end
+    A->>T: _uninstall(), when the loop stops
+    T->>T: installed = False
+    T->>B: uninstall()
+```
+
+#### An activation reaches the model
+
+```mermaid
+sequenceDiagram
+    participant B as the platform bridge (its own thread)
+    participant C as the installed clock
+    participant T as TrayIcon (UI thread)
+    participant E as MenuEntry
+
+    B->>C: schedule_once(hop, 0)
+    C->>T: _activate_item(entry), or _fire_activate()
+    opt entry.checked is an observable
+        T->>E: checked = not checked
+    end
+    alt entry.role is QUIT
+        T->>T: app.exit()
+    else a window-scoped role
+        T->>T: warn once, ignore
+    else no role
+        T->>E: on_select()
+    end
+```
+
+### Promises
+
+- `installed` is `True` only while a bridge shows the icon.
+- An activation touches the model on the UI thread only.
+- A tray menu does not render `shortcut`.
+
+## The App and the Window
+
+The app registers the tray and installs it with the loop. The window's close
+button, its hide and its show are what a resident app is built from.
+
+### Structure
+
+```mermaid
+flowchart LR
+    runner[backends/pyglet/runner.py]
+    app[runtime/app.py]
+    window[runtime/window.py]
+    tray[platform/tray.py]
+
+    runner -- "_install_tray() · _uninstall_tray()" --> app
+    app -- "_install(app) · _uninstall() · _refresh_dock(visible_windows)" --> tray
+    window -- "_window_visibility_changed() on show · hide · open · close" --> app
+    window -- "installed.value, before hiding the last visible window" --> tray
+```
+
+| Module | Role |
+| --- | --- |
+| `backends/pyglet/runner.py` | calls the install once the loop is up and the uninstall when it stops |
+| `runtime/app.py` | `App` holds the registered tray, counts the visible windows, applies the exit policy to the open windows |
+| `runtime/window.py` | `Window.close_action` decides what the OS close button does; `hide()` and `show()` toggle visibility; `is_visible` reports it |
+| `platform/tray.py` | the registered model (The Model) |
+
+### Sequence
+
+#### The close button hides into the tray
+
+```mermaid
+sequenceDiagram
+    participant OS as the OS close button
+    participant W as Window
+    participant A as App
+    participant T as TrayIcon
+
+    OS->>W: _handle_close_request()
+    W->>W: read close_action
+    alt "close"
+        W->>W: close()
+    else "hide"
+        opt no other window is visible, and no tray is showing
+            W->>W: warn once
+        end
+        W->>W: hide(): is_visible = False, set_visible(False)
+        W->>A: _window_visibility_changed()
+        A->>T: _refresh_dock(visible_window_count)
+        opt dock_visibility is "auto"
+            T->>T: bridge.set_dock_visible(visible_window_count > 0)
+        end
+    end
+```
+
+### Promises
+
+- `close_action` remaps the OS close button only. `close()` and the menu
+  roles always close.
+- A hidden window keeps its tree, its state and its geometry. It renders no
+  frames.
+- A `hide()` before the backend realises the OS window creates it invisible.
+- `dock_visibility="auto"` keeps the Dock icon while a window is visible and
+  drops it when none is.
+
+## The Bridges
+
+One bridge per platform shows the icon and the menu.
+
+### Structure
+
+```mermaid
+flowchart LR
+    tray[platform/tray.py]
+    cocoa[platform/tray_cocoa.py]
+    win32[platform/tray_win32.py]
+    sni[platform/tray_sni.py]
+    nsmenu[menus/nsmenu.py]
+    win32plan[platform/tray_win32_plan.py]
+    sniplan[platform/tray_sni_plan.py]
+    appkit["AppKit, through pyglet's cocoapy"]
+    shell["Win32, through ctypes"]
+    dbus["the session bus, through jeepney"]
+    notify[platform/notification_win32.py]
+    clock[observable/runtime.py]
+
+    tray -- "install() · uninstall() · set_dock_visible(visible)" --> cocoa & win32 & sni
+    cocoa -- "NSMenuBuilder.new_menu(entries)" --> nsmenu
+    cocoa -- "statusItemWithLength_ · setActivationPolicy_" --> appkit
+    win32 -- "plan_menu(entries) · load_icon_bgra(path, size)" --> win32plan
+    win32 -- "RegisterClassW · CreateWindowExW · Shell_NotifyIconW · TrackPopupMenu" --> shell
+    sni -- "plan_menu(entries) · load_icon_argb(path)" --> sniplan
+    sni -- "RegisterStatusNotifierItem · GetLayout · LayoutUpdated · Event" --> dbus
+    notify -- "show_balloon(title, body)" --> win32
+    cocoa & win32 & sni -- "schedule_once(hop, 0)" --> clock
+```
+
+| Module | Role |
+| --- | --- |
+| `platform/tray.py` | the model the bridges show (The Model) |
+| `platform/tray_cocoa.py` | an `NSStatusItem` with the menu `NSMenuBuilder` builds; switches the activation policy for the Dock |
+| `platform/tray_win32.py` | a dedicated thread owning a hidden top-level window and its message loop; the icon through `Shell_NotifyIcon`; the menu built per right click; the balloon |
+| `platform/tray_sni.py` | a `StatusNotifierItem` and its `dbusmenu` on the session bus; a receiver thread serving the desktop's calls; registers again when the watcher's bus name changes owner |
+| `menus/nsmenu.py` | `NSMenuBuilder`, shared with the menu bar ([MENU_BAR.md](MENU_BAR.md)) |
+| `platform/tray_win32_plan.py` | flattens the menu into Win32 items and command ids; decodes the icon with skia |
+| `platform/tray_sni_plan.py` | flattens the menu into a dbusmenu layout and item ids; decodes the icon with skia |
+| AppKit | the status bar and the application's activation policy |
+| Win32 | the notification area and the popup menu |
+| the session bus | the desktop's `StatusNotifierWatcher`, which draws the icon and the menu |
+| `platform/notification_win32.py` | the Windows notification backend |
+| `observable/runtime.py` | the installed clock ([OBSERVABLE.md](OBSERVABLE.md)) |
+
+### Sequence
+
+#### The desktop asks for the menu again
+
+```mermaid
+sequenceDiagram
+    participant T as TrayIcon
+    participant S as tray_sni.py
+    participant D as the session bus
+
+    T->>S: a label, enabled or checked changed, through its subscription
+    S->>S: revision += 1
+    S->>D: LayoutUpdated(revision, root)
+    D->>S: GetLayout
+    S->>S: plan_menu(entries), afresh
+    S-->>D: the layout, ids in tree order
+    D->>S: Event(id, "clicked")
+    S->>T: hop: _activate_item(entry)
+```
+
+### Promises
+
+- A bridge keeps no menu state between the desktop's requests. The model is
+  the only copy.
+- While a tray is installed, a Windows notification balloon hangs on its
+  icon. Without one the notification backend adds a transient icon of its
+  own.
+- Windows and Linux decode the icon with skia. macOS hands the file to
+  AppKit.
