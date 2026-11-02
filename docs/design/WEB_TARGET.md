@@ -1,315 +1,470 @@
 # Web Target
 
-One app runs on the desktop and in a browser from the same source. The app
-does not branch on the target: the widgets, the observables, the handlers
-and the navigation are written once, and the web target is realised under
-them. The two marks an app makes for the web, `@worker` and `@server`, run on
-the desktop too.
+One app runs on the desktop and in a browser from the same source. In the
+browser, Pyodide runs the app's Python unmodified. A CanvasKit adapter with
+the shape of skia-python draws it onto one canvas. The browser's event loop
+replaces the pyglet one. The two marks an app makes for the web, `@worker`
+and `@server`, run on the desktop too.
 
-In the browser, Pyodide runs the app's Python unmodified, a CanvasKit adapter
-with the shape of skia-python draws it onto one canvas, and the browser's
-event loop replaces the pyglet one. The page is files that any file server
-can serve. The functions an app marks with `@worker` run on a Web Worker the
-page starts; the functions it marks with `@server` are the only code that
-runs on a server; everything else ships to the browser.
+## Overview
+
+Four groups of modules take part.
+
+### Structure
 
 ```mermaid
-flowchart RL
-    server[Server: the @server functions]
-    subgraph browser [Browser]
-        worker[Web Worker: a second Pyodide, the @worker functions]
-        py[Pyodide: nuiitivet and the app]
-        adapter[CanvasKit adapter]
-        host[host.mjs: canvas, input, clipboard, files]
-    end
-    server <-- "a call: POST nv/call/name, then progress and the result" --> py
-    worker <-- "a call: a message, then progress and the result" --> py
-    py -- "skia calls" --> adapter
-    adapter -- "one crossing per draw" --> host
-    host -- "events" --> py
+flowchart LR
+    page[The Page]
+    backend[The Backend]
+    remote[The Remote Functions]
+    server[The Server]
+    app[the app, in Pyodide]
+    pyodide[Pyodide]
+    canvaskit[CanvasKit]
+
+    server -- "index.html · boot.mjs · host.mjs · workers.mjs · worker.mjs · config.json · bundle.zip" --> page
+    page -- "prepare() · the events" --> backend
+    page -- "runpy.run_path(entry)" --> app
+    app -- "App.run()" --> backend
+    backend -- "frame() · pick() · download() · writeClipboard()" --> page
+    backend -- "Window._dispatch_* · paint" --> app
+    backend -- "skia calls, one crossing per draw" --> canvaskit
+    page -- "loadPyodide · unpackArchive" --> pyodide
+    app -- "await fn(...)" --> remote
+    remote -- "postMessage to worker.mjs" --> page
+    remote -- "POST nv/call/module.fn" --> server
 ```
+
+| Module | Role |
+| --- | --- |
+| The Page | the files the browser loads, the boot that starts Pyodide and the worker, the host that owns the canvas and the input |
+| The Backend | the frame loop, the clock, the input translation, the skia adapter and the file dialogs, in Pyodide |
+| The Remote Functions | `@worker` and `@server`: a call that leaves the UI thread, on both targets |
+| The Server | `run`, `build` and `serve`: the page's files, the stubs for server-only modules, the call route |
+| the app | the app's own code, unchanged from the desktop |
+| Pyodide | Python in the browser |
+| CanvasKit | skia in the browser |
+
+### Promises
+
+- The app does not branch on the target.
+- The `@server` functions are the only code that runs on a server.
+- A built site is static files.
 
 ## The Page
 
-The page is seven files beside the fonts: `index.html`, `boot.mjs`,
-`host.mjs`, `workers.mjs`, `worker.mjs`, `config.json` and `bundle.zip`. The
-zip holds the framework under
-`lib/` and the app's directory under `app/`, built from the sources at every
-request, so a browser reload shows an edit. One zip is one fetch; the
-framework alone is hundreds of modules, and the page would otherwise start
-with hundreds of requests.
+The files the browser loads, and the two it starts: the page's Pyodide and
+the worker's.
 
-`config.json` says where Pyodide and CanvasKit are, and names the app's
-modules that hold a `@worker` function. A development page loads the runtimes
-from a CDN; a built site carries them, with the licences of everything it
-redistributes, so it needs no other server. Every URL is relative to the page,
-so a built site works under any path.
+### Structure
 
-`boot.mjs` starts the worker when `config.json` names a worker module, then
-loads CanvasKit, Pyodide, the zip and the fonts in parallel, unpacks the zip
-to `/nuiitivet`, installs the host, and runs the entry script as `__main__`.
-Before the entry runs it calls the backend's `prepare()`, which
-installs the adapter as the `skia` module, registers the UI thread and
-installs the browser clock. The clock goes in first because a widget mounted
-while the App is constructed arms its timers at once, and the fallback clock
-would start a thread for them.
+```mermaid
+flowchart LR
+    index[index.html]
+    boot[boot.mjs]
+    config[config.json]
+    bundle[bundle.zip]
+    host[host.mjs]
+    workers[workers.mjs]
+    worker[worker.mjs]
+    entry[the app's entry script]
+    runner[backends/web/runner.py]
+    side[backends/web/worker.py]
+    remote[remote/worker.py]
+    pyodide[Pyodide]
+    canvaskit[CanvasKit]
 
-`App.run()` in a browser hands the app to the backend and returns. The
-browser's event loop drives the app from then on; the backend module keeps a
-reference to the app, since the entry script has finished.
+    index -- "loads" --> boot
+    boot -- "fetch" --> config & bundle
+    boot -- "loadPyodide · unpackArchive" --> pyodide
+    boot -- "CanvasKitInit" --> canvaskit
+    boot -- "startWorkers(config), when config names a worker module" --> workers
+    workers -- "new Worker · postMessage(init · call) · terminate" --> worker
+    worker -- "loadPyodide · fetch the same zip · unpackArchive" --> pyodide
+    worker -- "prepare(modules) · handle(id, name, values)" --> side
+    boot -- "installHost(CK, canvas, input, fonts)" --> host
+    boot -- "prepare()" --> runner
+    boot -- "runpy.run_path(entry, __main__)" --> entry
+    host -- "onPointer · onWheel · onKey · onText · onCompose · onPaste · onResize" --> runner
+    remote -- "NV_WORKERS.start() · handle.post · handle.end" --> workers
+```
 
-## Drawing
+| Module | Role |
+| --- | --- |
+| `index.html` | the canvas, the unseen input element, the script tag for `boot.mjs` |
+| `boot.mjs` | starts the worker, loads the runtimes, the zip and the fonts in parallel, unpacks the zip, installs the host, runs the entry |
+| `config.json` | where Pyodide and CanvasKit are, the fonts, the entry, the modules that hold a `@worker` function |
+| `bundle.zip` | the framework under `lib/` and the app's directory under `app/` |
+| `host.mjs` | owns the canvas, the WebGL surface, the input element, the clipboard, the file picker and the download |
+| `workers.mjs` | starts Web Workers on request and relays their messages |
+| `worker.mjs` | a second Pyodide that imports the worker modules and runs calls |
+| the app's entry script | the app's `main()`, run as `__main__` |
+| `backends/web/runner.py` | the backend the page hands the events to (The Backend) |
+| `backends/web/worker.py` | the worker's side of a call (The Remote Functions) |
+| `remote/worker.py` | the pool that asks the page for workers (The Remote Functions) |
+| Pyodide | Python in the browser |
+| CanvasKit | skia in the browser |
 
-The adapter is installed under the name `skia`, so the rendering code is the
-desktop code: paints, paths, text blobs, pictures and the paint cache run
-unchanged. The adapter covers the calls that code makes; a skia-python call
-nothing in the framework uses is not mirrored.
+### Sequence
 
-The canvas matrix lives in Python. CanvasKit has no `setMatrix`; a matrix
-pushed to it could only be replaced by multiplying with an inverse, and at a
-device pixel ratio such as 1.5 that leaves a matrix that is almost the
-identity. The adapter's matrix reaches CanvasKit once per run of draws, inside
-a save level the host pops before every save, restore and clip, and clips are
-applied in device coordinates. Geometry and paint state cross to JS as plain
-numbers, once per draw, so no array is built on the Python side.
-
-Every font family name resolves to the text typefaces the page loaded, and a
-font file loads as its own typeface. The browser has no system font list to
-match against.
-
-A frame runs only when one was asked for: by an invalidation, by a resize, or
-by the clock for a callback that is due. The request is a
-`requestAnimationFrame`, so frames pace to the display and `draw_fps` has no
-effect. The WebGL surface is made again when the canvas or the device pixel
-ratio changes, and that frame repaints everything.
-
-The main window fills the canvas and follows its size. A browser shows one
-window, so a second window stays unrealized and a warning says so once.
-
-## The Clock
-
-The browser clock keeps its own list of deadlines. A deadline within a frame's
-time waits for the next frame, so an animation ticks in step with the
-display; a later one is a `setTimeout`. Every frame ticks the clock before it
-draws, so a callback due at that frame runs before the paint it invalidates.
-
-## Input
-
-The host forwards pointer, wheel, key, text, composition and paste events to
-the same dispatch methods of `Window` that the pyglet backend calls. Key names
-are translated once, at the host boundary; from there the key handling is the
-desktop's, including a held key repeating only as a text motion.
-
-An input element the user never sees sits at the caret. It is what the
-browser composes IME text into and what a phone shows its keyboard for;
-without a focused text field it asks for no keyboard. The browser does not
-report a selection inside the composition, so the caret sits at its end.
-
-The clipboard crosses in one direction at a time. A copy writes through
-`navigator.clipboard`. A paste arrives only as a paste event, because the
-browser gives a page the clipboard on that gesture alone; the backend stores
-the text and dispatches Ctrl+V, so a text field pastes as on the desktop.
-
-Escape is back navigation, on the release. The press reports whether the app
-can handle it, so the browser acts on the key itself only when the app would
-not.
-
-## File Dialogs
-
-A dialog backend may answer with an awaitable: the browser's picker closes
-in an event, not in a return, and the facade awaits what a UI-thread backend
-hands back. The picker is an input element the host makes for the call. What
-the user chose is copied into the page's file system under a fresh directory
-with the names kept, and a directory pick keeps its layout under the
-directory's name, so the app reads a `Path` as on the desktop. The browser
-shows a picker only while a click or a key press is being handled; the
-backend asks the host before it asks for the picker, and raises instead of
-awaiting a picker that would never open.
-
-A page cannot write where the user chooses, so a save is a download. The
-backend returns a path in the page's file system and hooks the end of the
-task that called it: an event handler is a task of its own, so the download
-follows the handler's write with no API beside the desktop's.
-`showSaveFilePicker` was rejected: Chromium alone has it, and a save would
-behave differently per browser. A `Path` subclass that downloads on close
-was rejected: a library that takes `str(path)` opens the file past it.
-Watching the file system for the write was rejected: a handler that decides
-not to write gives nothing to wait for.
-
-## One Thread
-
-Pyodide runs on the browser's main thread and cannot start another. The UI
-thread is the only thread, and a `threading.Thread` is refused. This is the
-one place where the desktop and the browser differ in what an app may do,
-and the one place where the framework offers an API of its own instead of
-the standard library's: `@worker` and `@server`. A thread shares memory with
-the UI; a Web Worker and a server cannot, so the standard API could not be
-made to mean the same thing on both targets. `switch_map` accepts a coroutine
-function and runs it as a task, so an async transform needs no thread on
-either target.
-
-Both marks go on a module-level function, and the app calls it the same way
-on both targets: `await fn(...)`. The function itself is a plain `def`, so it
-is unit-tested as any function. What differs between the marks is where the
-call goes in the browser: `@worker` to a Web Worker the page owns, `@server`
-to a server. Under either mark the function is a function of its arguments,
-and its body and its callers are the same; an app picks the mark by what the
-place costs it: the worker's boot and its cancel, the server's round trip
-and its process, the libraries each can run, and whether the module may be
-read in the browser.
-
-On the desktop a call of either mark runs on a thread the runtime owns, in
-the same process; a `@worker` marked `process` runs in a child process
-instead. The arguments, the result and every progress write still pass
-through the codec, so the function shares no object with its caller;
-cancelling the awaiting task sets the function's token; and an exception
-that is not builtin arrives as `RemoteError`. The desktop follows the
-browser's rules so that an app which works on the desktop works in the
-browser, instead of failing there on an object it passed by reference.
-
-Arguments and the result cross as JSON, and the codec comes from the type
-annotations, never from the data: a float annotated `float` arrives as a
-float even when it was sent as `2`, a dataclass arrives as that dataclass,
-and a value of another type is refused with the field named. A type the
-codec has no rule for is refused when the function is defined, not at the
-first call.
-
-Progress flows through a `WriteOnlyObservable` parameter. The caller passes an
-observable, the function's side writes it, and each write crosses back as it
-happens. The caller's observable takes the latest value per clock tick, so a
-tight loop does not flood the page.
-
-The `CancelToken` is a parameter with a default, so the function runs
-unchanged when nobody cancels. A builtin exception raised in the function is
-raised again in the caller by type. Any other exception arrives as
-`RemoteError`, carrying the type's name and the message: the caller's side
-may have no class to rebuild it from.
-
-## Worker Functions
-
-`@worker` marks a function in a module the browser gets. A server-only
-module cannot hold one: the desktop refuses the mark there, and the build
-leaves the module out of the page.
-
-Two options go with the mark, and they are independent. `parallel` is the
-ceiling on the function's calls that run at once. `process` is the
-desktop's kind: a child process instead of a thread. The browser has one
-kind, a Web Worker, so `process` means nothing there and `parallel` alone
-decides. The rule in one sentence: the number is the function's ceiling,
-the pool is everyone's of its kind, and `warm` is everyone's pre-start.
-
-### The Call
-
-A call goes to one worker as a message: the call's number, the function's
-dotted name, the arguments as JSON. The worker answers with one message per
-write to a progress observable, then the result or the error. A Web Worker,
-a child process and a pooled thread answer through the same function, so
-the kinds differ only in what carries the messages.
+#### The page boots
 
 ```mermaid
 sequenceDiagram
-    participant App as App
-    participant W as one worker of the pool
-    App->>W: a message: the call's number, the function, arguments as JSON
-    loop while the function runs
-        W-->>App: a message per write to a progress observable
+    participant B as boot.mjs
+    participant Wk as workers.mjs
+    participant P as Pyodide
+    participant CK as CanvasKit
+    participant H as host.mjs
+    participant R as runner.py
+    participant E as the app's entry script
+
+    B->>B: fetch config.json
+    opt config names a worker module
+        B->>Wk: startWorkers(config)
     end
-    alt the function returns
-        W-->>App: the result, or the error
-    else the caller cancels
-        App--xW: the worker is ended; another starts when a call needs it
+    par
+        B->>B: import pyodide.mjs
+    and
+        B->>B: fetch bundle.zip
+    and
+        B->>B: fetch the fonts and the icon font
+    end
+    B->>P: loadPyodide
+    B->>CK: CanvasKitInit
+    B->>P: unpackArchive(bundle, /nuiitivet)
+    B->>H: installHost(CK, canvas, input, fonts)
+    B->>R: prepare()
+    B->>E: runpy.run_path(entry, run_name="__main__")
+    E->>R: App.run() → run_app(app), returns
+    Note over R: the module keeps the app, and the browser's loop drives it
+```
+
+### Promises
+
+- Every URL in the page is relative to the page.
+- A development page loads the runtimes from a CDN. A built site carries
+  them, with the licences of everything it redistributes.
+
+## The Backend
+
+The backend turns the page's events into the window's dispatch calls, draws
+a frame when one is asked for, and keeps time on the browser's loop.
+
+### Structure
+
+```mermaid
+flowchart LR
+    runner[backends/web/runner.py]
+    clock[backends/web/clock.py]
+    input[backends/web/input.py]
+    adapter[backends/web/skia.py]
+    dialogs[platform/file_dialog_browser.py]
+    host[host.mjs]
+    window[runtime/window.py]
+    browser[the browser]
+    pyodide[Pyodide]
+    canvaskit[CanvasKit]
+
+    host -- "onPointer · onWheel · onKey · onText · onCompose · onPaste · onResize" --> runner
+    runner -- "button_code · buttons_mask · wheel_steps · key_name" --> input
+    runner -- "_dispatch_mouse_* · _dispatch_key_* · _dispatch_text · _dispatch_ime_composition · _flush_frame_queues · layout · paint" --> window
+    runner -- "tick()" --> clock
+    clock -- "_request_frame()" --> runner
+    clock -- "setTimeout · clearTimeout" --> browser
+    runner -- "requestAnimationFrame" --> browser
+    window -- "Paint · Path · TextBlob · Picture …" --> adapter
+    adapter -- "the matrix once per run of draws, geometry and paint state as numbers" --> canvaskit
+    runner -- "frame() · placeInput · writeClipboard" --> host
+    dialogs -- "pick(accept, multiple, directory) · download(name, bytes)" --> host
+    dialogs -- "a fresh directory, the files copied in" --> pyodide
+```
+
+| Module | Role |
+| --- | --- |
+| `backends/web/runner.py` | `_Loop`: requests a frame on an invalidation, a resize or a due callback; dispatches the events; draws |
+| `backends/web/clock.py` | `BrowserClock`: keeps the deadlines; asks for a frame or a `setTimeout`; fires what is due on `tick()` |
+| `backends/web/input.py` | translates buttons, wheel deltas and key names once, at the host boundary |
+| `backends/web/skia.py` | the `skia` module the rendering code imports in the browser |
+| `platform/file_dialog_browser.py` | the file picker, and a download in place of a save dialog |
+| `host.mjs` | the canvas, the input element, the clipboard, the picker, the download (The Page) |
+| `runtime/window.py` | the dispatch methods and the paint the pyglet backend also calls ([APP_WINDOW.md](APP_WINDOW.md)) |
+| the browser | `requestAnimationFrame` and `setTimeout` |
+| Pyodide | the page's file system, where a picked or saved file lives |
+| CanvasKit | the WebGL surface the adapter draws on |
+
+### Sequence
+
+#### A frame is requested and drawn
+
+```mermaid
+sequenceDiagram
+    participant W as runtime/window.py
+    participant L as runner.py
+    participant C as clock.py
+    participant Br as the browser
+    participant H as host.mjs
+    participant A as skia.py
+
+    alt an invalidation, or a resize
+        W->>L: request_draw()
+    else a callback is due within a frame
+        C->>L: _request_frame()
+    end
+    L->>Br: requestAnimationFrame, once until it fires
+    Br->>L: _frame(timestamp)
+    L->>C: tick()
+    opt a draw was wanted
+        L->>H: frame()
+        opt the canvas size or the device pixel ratio changed
+            L->>L: a new skia.Surface over the WebGL surface, the window follows
+        end
+        L->>W: _flush_frame_queues() · layout if needed · paint(canvas)
+        W->>A: the draw calls
+        A->>H: one crossing per draw
+        L->>H: placeInput(caret)
     end
 ```
 
-### The Pool
-
-One pool per kind holds the workers and the calls waiting for them. A call
-runs when fewer calls of its function are running than its ceiling, and a
-worker is idle or one can still start; otherwise it waits, in order. The
-pool grows to the largest ceiling among its functions and never past the
-machine's cores; a worker starts when a call needs it, and `warm` starts a
-function's ceiling with the app. A heavy function can fill the pool and
-make another wait within its own ceiling.
-
-A queued call is cancelled by forgetting it. A running call cannot be: a
-busy worker reads no message until its function returns, so cancelling it
-ends the worker, and the pool starts another when a call needs it. A worker
-that ends on its own fails its call with `ConnectionError`. One that never
-becomes ready fails every call with the reason, until the pool is retired.
-
-### The Workers
-
-In the browser a worker is a second Pyodide that `boot.mjs` starts when
-`config.json` names a worker module. It fetches the same zip, unpacks it,
-and imports the worker modules while the page loads, so the first call pays
-no import. The modules are found by reading the sources, as the stubs are.
-The page starts one worker while it loads and keeps one running, so a
-function without a number finds it there and runs one call at a time; a
-numbered function grows the pool from it.
-
-On the desktop a function with neither option keeps a thread per call, as
-a `@server` function does. `parallel` alone puts it on a pool of threads;
-cancelling sets the running call's token, as a thread cannot be ended.
-`process` puts it on a pool of child processes, started with the `spawn`
-context on every OS and fed the messages through a pipe. A child imports
-the functions' modules by name, and the entry script the way
-`multiprocessing` does, so the window stays behind `__main__`'s guard.
-
-Hot reload retires the desktop's pools: an idle worker ends at once, a busy
-one after its call, and the next call starts one from the reloaded source.
-
-## Server Functions
-
-`@server` marks a function in any module of the app. In the browser the call
-becomes one HTTP request to the server that holds the function. The server
-keeps no session state, so any instance can answer any call.
+#### A save becomes a download
 
 ```mermaid
 sequenceDiagram
-    participant App as App (browser)
-    participant S as Server
+    participant T as the handler's task
+    participant D as file_dialog_browser.py
+    participant P as Pyodide
+    participant H as host.mjs
+
+    T->>D: await save_file(default_name)
+    D->>P: a fresh directory in the page's file system
+    D->>T: add_done_callback(download the path)
+    D-->>T: the path, at once
+    T->>P: write the file
+    T->>T: the handler returns, the task ends
+    D->>H: download(name, bytes)
+```
+
+### Promises
+
+- The rendering code is the desktop code.
+- The adapter covers the calls the framework makes.
+- The canvas matrix lives in Python. It reaches CanvasKit once per run of
+  draws.
+- Geometry and paint state cross to JS as plain numbers, once per draw.
+- Every font family name resolves to the typefaces the page loaded.
+- A frame runs only when one was asked for.
+- The WebGL surface is made again when the canvas or the device pixel ratio
+  changes. That frame repaints everything.
+- A deadline within a frame's time waits for the next frame. A later one is a
+  `setTimeout`.
+- The main window fills the canvas.
+- From the host boundary on, the key handling is the desktop's.
+- The clipboard crosses in one direction at a time. A copy writes through
+  `navigator.clipboard`. A paste arrives only as a paste event.
+
+## The Remote Functions
+
+`@worker` and `@server` mark the functions whose call leaves the UI thread,
+on both targets. Nothing is shared with the caller.
+
+### Structure
+
+```mermaid
+flowchart LR
+    function[remote/function.py]
+    worker[remote/worker.py]
+    codec[remote/codec.py]
+    writer[remote/writer.py]
+    pool[remote/pool.py]
+    threads[remote/threads.py]
+    process[remote/process.py]
+    side[backends/web/worker.py]
+    scope[remote/scope.py]
+    calls[web/calls.py]
+    workersjs[workers.mjs]
+    observable[the caller's Observable]
+
+    worker -- "WorkerFunction is a RemoteFunction" --> function
+    function -- "a Codec per annotation, at definition" --> codec
+    function -- "CallWriter(observable, codec)" --> writer
+    writer -- "the latest value per tick" --> observable
+    worker -- "web_pool · thread_pool · process_pool: Pool.call(name, ceiling, values, writers)" --> pool
+    pool -- "Transport.start(slot) · Worker.post · Worker.end" --> threads & process & worker
+    worker -- "_WebTransport: NV_WORKERS.start() · handle.post · handle.end" --> workersjs
+    side -- "RemoteFunction.run(values, writers, token)" --> function
+    threads & process -- "RemoteFunction.run(values, writers, token)" --> function
+    function -- "POST nv/call/module.fn, ndjson back" --> calls
+    worker -- "is_server_only(module)" --> scope
+```
+
+| Module | Role |
+| --- | --- |
+| `remote/function.py` | `RemoteFunction`: the codecs from the annotations, the call that encodes and decodes, `run()` on the function's side; `ServerFunction`: the server mark's one request; `register`, the two marks |
+| `remote/worker.py` | `WorkerFunction`: `parallel`, `process`, `warm`; the three pools; `_WebTransport`, the page's Web Workers as a transport |
+| `remote/codec.py` | `Codec`: encode and decode by annotation; the scalars, `datetime`, an `Enum`, a dataclass, the containers |
+| `remote/writer.py` | `WriteOnlyObservable`, the progress parameter; `CallWriter`, which lands each write on the caller's observable |
+| `remote/pool.py` | `Pool`: the workers of one kind and the calls waiting for them; the ceiling, the machine's limit, `warm`, `retire` |
+| `remote/threads.py` | a pooled thread as a transport |
+| `remote/process.py` | a child process started with `spawn` and fed through a pipe, as a transport |
+| `backends/web/worker.py` | the worker's side in the browser: imports the modules, runs a call, posts the writes and the result |
+| `remote/scope.py` | `server_only()`, which marks a module as one the browser never gets |
+| `web/calls.py` | the server's side of a `@server` call (The Server) |
+| `workers.mjs` | starts and relays the Web Workers (The Page) |
+| the caller's Observable | the app's observable a progress parameter writes to |
+
+### Sequence
+
+#### A worker call
+
+```mermaid
+sequenceDiagram
+    participant App as the app (UI thread)
+    participant F as remote/function.py
+    participant Wf as remote/worker.py
+    participant P as remote/pool.py
+    participant T as the transport (threads.py, process.py or workers.mjs)
+    participant Wr as remote/writer.py
+    participant O as the caller's Observable
+
+    App->>F: await fn(args, progress)
+    F->>F: encode the arguments by their codecs
+    F->>Wf: _call_on_web, or _call_on_desktop
+    Wf->>P: call(name, ceiling, values, writers)
+    P->>P: queue, then run when fewer calls of fn run than its ceiling and a worker is idle or can start
+    P->>T: start(slot) if needed, post(call_id, name, values)
+    loop while the function runs
+        T-->>P: a message per write to a progress parameter
+        P->>Wr: CallWriter.receive(value)
+        Wr->>O: the latest value per clock tick
+    end
+    alt the function returns
+        T-->>P: the result, or the error
+        P-->>Wf: the encoded result
+        Wf-->>F: the encoded result
+        F-->>App: decoded, or a builtin exception by type, or RemoteError
+    else the caller cancels
+        App--xP: CancelledError
+        alt the call is queued
+            P->>P: forget it
+        else the call is running
+            P->>T: end(), and another starts when a call needs it
+        end
+    end
+```
+
+### Promises
+
+- Both marks go on a module-level function. The app calls it the same way on
+  both targets, `await fn(...)`.
+- On the desktop a call of either mark runs on a thread the runtime owns, or
+  in a child process under `process`.
+- The arguments, the result and every progress write pass through the codec
+  on both targets.
+- The codec comes from the type annotations, never from the data. A type the
+  codec has no rule for is refused when the function is defined.
+- Progress flows through a `WriteOnlyObservable` parameter. The caller's
+  observable takes the latest value per clock tick.
+- The `CancelToken` is a parameter with a default. On a thread, cancelling
+  sets it. In a worker or a child process, cancelling ends the Python running
+  the call.
+- A builtin exception raised in the function is raised again in the caller by
+  type. Any other arrives as `RemoteError`.
+- `@worker` marks a function in a module the browser gets.
+- The ceiling is per function. The pool is per kind, grown to the largest
+  ceiling and never past the machine's cores.
+- A worker that ends on its own fails its call with `ConnectionError`. One
+  that never becomes ready fails every call until the pool is retired.
+- A child process imports the functions' modules by name. It imports the
+  entry script the way `multiprocessing` does.
+- Hot reload retires the desktop's pools.
+
+## The Server
+
+One process serves the page and answers the server functions.
+
+### Structure
+
+```mermaid
+flowchart LR
+    cli[web/__main__.py]
+    server[web/server.py]
+    stubs[web/stubs.py]
+    assets[web/assets.py]
+    calls[web/calls.py]
+    function[remote/function.py]
+    app[the app's sources]
+    browser[the browser]
+
+    cli -- "site(app, bundle_runtime) · make_server · write_site · write_server · load_server_functions" --> server
+    server -- "ServerOnly(app_dir) · stub_source · server_modules · worker_modules" --> stubs
+    server -- "fetch(asset): Pyodide · CanvasKit · the fonts · the licences" --> assets
+    server -- "do_POST → handle_call" --> calls
+    calls -- "lookup(name) · run(values, writers, token)" --> function
+    stubs -- "ast.parse" --> app
+    server -- "the files of the site" --> browser
+    browser -- "POST nv/call/module.fn" --> calls
+```
+
+| Module | Role |
+| --- | --- |
+| `web/__main__.py` | `run` serves the source tree and opens a browser; `build` writes the site and the server directory; `serve` serves a built site and its calls |
+| `web/server.py` | builds the zip, lists the page's files, writes the two directories, serves both over HTTP |
+| `web/stubs.py` | finds the server-only files and the modules that hold a mark by reading the sources; writes a stub per server-only module |
+| `web/assets.py` | downloads and caches Pyodide, CanvasKit, the fonts and their licences |
+| `web/calls.py` | runs a `@server` function on a thread per request and streams its writes and result back |
+| `remote/function.py` | the function the server runs (The Remote Functions) |
+| the app's sources | what is read, zipped, stubbed and served |
+| the browser | fetches the page and posts the calls |
+
+### Sequence
+
+#### A server call
+
+```mermaid
+sequenceDiagram
+    participant App as the app (browser)
+    participant S as web/calls.py
+    participant F as the function, on a thread
+
     App->>S: POST nv/call/module.fn, arguments as JSON
+    S->>F: run(values, writers, token)
     loop while the function runs
-        S-->>App: a line per write to a progress observable
+        F-->>S: a write to a progress parameter
+        S-->>App: a line {"w": name, "v": data}
     end
     alt the function returns
-        S-->>App: the result, or the error
+        S-->>App: a line {"r": data}, or {"e": error}
     else the caller cancels
-        App--xS: the request closes, and the token on the server is set
+        App--xS: the request closes
+        S->>F: token set
     end
 ```
 
-The function's module reaches the browser as any other, and the body never
-runs there: the mark sends the call to the server, which has imported the
-module. The server finds the modules that hold a `@server` function by
-reading the sources, as the page finds its worker modules. A module that
-must not reach the browser, because it imports what Pyodide cannot or holds
-a key, is a server-only one: its top level calls `server_only()`, or it sits
-under a package whose `__init__.py` does. The build leaves its files out of
-the zip and writes a stub in their place, with the same signatures, whose
-functions send their call to the server. The stubs come from the source
-text, so the build imports nothing of the server side. A dataclass in the
-signature must come from a module the page gets, since the stub's signature
-names it.
+#### The build writes the site
 
-A `@server` function in a plain module is accepted. Requiring a server-only
-module of every `@server` function was rejected: an app that runs in a
-browser from its own source has put its code there already, and a function
-that needs only the server's CPU would carry a package for a secret it does
-not hold. Making a module server-only because it holds a `@server` function
-was rejected as well: a mark on one function would take the module's other
-names away from the page.
+```mermaid
+sequenceDiagram
+    participant C as web/__main__.py
+    participant S as web/server.py
+    participant St as web/stubs.py
+    participant A as web/assets.py
 
-Each progress write streams back as a line of the response. Cancellation is
-the request closing: the caller cancels its task, the browser aborts the
-request, and the handler, which watches the connection while the function
-runs, sets the function's `CancelToken`.
+    C->>S: site(app, bundle_runtime=True)
+    S->>St: ServerOnly(app_dir), worker_modules(app_dir)
+    St-->>S: the server-only files, their stubs, the worker modules
+    S->>A: fetch(Pyodide, CanvasKit, fonts, licences)
+    S->>S: build_bundle: lib/ · app/ without the server-only files · the stubs
+    C->>S: write_site(files, dist/site)
+    C->>S: write_server(app, dist/server)
+```
 
-## Build and Serve
+### Promises
 
-The development server serves the page from the source tree and answers the
-server functions from the same process. The build writes two directories: the
-site, which any static host serves and which carries the worker and its
-functions, and the server, which is the app's sources. An app without server
-functions deploys the site alone; one with them deploys both, and the server
-is the only part that needs Python.
+- The server keeps no session state.
+- A server-only module stays out of the zip. A stub with the same signatures
+  takes its place.
+- A dataclass in a `@server` signature comes from a module the page gets.
+- Each progress write streams back as a line of the response. Cancellation is
+  the request closing.
+- `run` reads the sources at every request.
+- `server/` is the only part that needs Python.

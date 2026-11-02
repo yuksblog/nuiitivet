@@ -1,92 +1,239 @@
-# Layout System Design
+# Layout
 
-The layout is the widget tree itself. A widget's size, spacing and alignment
-are its own properties, and a container places its children by its own. There
-is no stylesheet and no constraint solver. The rect vocabulary (allocated
-rect, content rect, outsets) is defined in [BOX_MODEL.md](BOX_MODEL.md).
+A widget's size and spacing are its own properties. Its parent places it.
 
-## Spacing: Padding and Gap, No Margin
+## Overview
 
-`padding` is the inset from a widget's allocated rect to its content rect.
-`gap` is the interval a container inserts between its children. There is no
-`margin`.
+Five groups of modules take part, with the Material components and the app at
+their edges.
 
-Leaving margin out does not forbid outer space. It means there is exactly one
-property for insets, so the reader never chooses between margin and padding.
-Space between siblings is the parent's `gap`; space around the whole group is
-the parent's `padding`; an adjustment to one element is that element's own
-`padding`. A widget that draws its own boundary draws it inside the padding,
-so its padding reads as outer space. This is the shape of SwiftUI's
-`.padding()`, which has no margin either.
+### Structure
 
-## Sizing
+```mermaid
+flowchart LR
+    sizing[The Sizing]
+    containers[The Containers]
+    composable[The Composable]
+    fit[The Fit]
+    window[The Window Sizing]
+    material[the Material components]
+    app[the app]
 
-A widget asks for space on each axis with a `Sizing`: `fixed`, `auto` or
-`weight`. `weight` is a share of the space left over by the `fixed` and `auto`
-siblings, in the sense of WPF star sizing, not Flexbox `flex-grow`: there is
-no `flex-basis`, and the weight applies to the remainder alone. The share rules
-and the rejected percentage spelling are in [SIZE_POLICY.md](SIZE_POLICY.md).
+    app -- "width · height · padding · gap · alignment" --> containers
+    containers -- "parse_sizing(value) · width_sizing · height_sizing · padding" --> sizing
+    containers -- "width_sizing · height_sizing · layout_align · cross_align" --> composable
+    material -- "width · length · size, per open axis" --> sizing
+    app -- "fit · content_alignment" --> fit
+    app -- "Window(width, height, position)" --> window
+    window -- "the nine-point vocabulary" --> containers
+```
 
-A `weight` child measures as its content; the weight decides only how the
-parent's room is shared out. A parent sized by its content, such as a window
-with no height, thus fits the child's content. Measuring a `weight` child as
-zero was rejected: a grid of `"wt"` cards in such a window would come up empty.
+| Module | Role |
+| --- | --- |
+| The Sizing | how a widget asks for space on one axis |
+| The Containers | place their children and share the room out |
+| The Composable | reports the layout metadata of the widget it built |
+| The Fit | places a widget's content inside the rect it was given |
+| The Window Sizing | the window's size and position, resolved before layout |
+| the Material components | the MD3 widgets ([MATERIAL_INTERACTION.md](MATERIAL_INTERACTION.md)) |
+| the app | sizes, spaces and aligns widgets |
 
-### Grid Allocates Room; the Child Fills It
+### Promises
 
-`Grid` decides rows, columns, areas and the allocated rect of each cell.
-Whether the child fills that rect or keeps its intrinsic size is the child's
-own `width` / `height`. A cell is filled with `width="wt", height="wt"`, not by
-a `Grid` option.
+- `padding` and `gap` are the two spacing properties.
+- A modifier never changes layout ([MODIFIER.md](MODIFIER.md)).
+- Alignment belongs to the parent.
 
-### Which Dimensions Are Constructor Parameters
+## The Sizing
 
-Whether a size is a public constructor parameter is decided per axis by one
-rule: MD3 leaves the axis open, so it is a constructor parameter; MD3 fixes
-it, so it is style only. The rule and what follows from it are in
-[SIZE_POLICY.md](SIZE_POLICY.md).
+A `Sizing` is how a widget asks for space on one axis.
 
-## Alignment Is the Parent's
+### Structure
 
-Alignment belongs to the parent, not to the child. A single-child container
-takes `alignment`, one of nine points. A multi-child container takes
-`main_alignment` along its axis and `cross_alignment` across it.
+```mermaid
+flowchart LR
+    sizing[rendering/sizing.py]
+    kernel[widgeting/widget_kernel.py]
+    row[layout/row.py · column.py]
+    engine[layout/layout_engine.py]
+    material[the Material components]
 
-Alignment positions only; it never stretches. To fill the space the child
-takes `width="wt"` / `height="wt"`. CSS `align-*` lets alignment also absorb
-excess space (`stretch`); that meaning was left out so that alignment answers
-one question, where the child goes, and `Sizing` the other, how big it is.
+    kernel -- "parse_sizing(value) · sizing_signature(value)" --> sizing
+    row -- "width_sizing · height_sizing: kind, value" --> kernel
+    engine -- "sizing_signature(value), in the cache key" --> sizing
+    row -- "preferred_size(widget, max_w, max_h)" --> measure
+    measure[layout/measure.py]
+    material -- "parse_sizing(length, default=Sizing.weight()) · style tokens for the fixed axis" --> sizing
+```
 
-## Overflow Is Visible
+| Module | Role |
+| --- | --- |
+| `rendering/sizing.py` | `Sizing`, one of `fixed`, `auto` and `weight`, and its parser |
+| `widgeting/widget_kernel.py` | holds a widget's two sizings ([BOX_MODEL.md](BOX_MODEL.md)) |
+| `layout/row.py · column.py` | share an axis out by the children's sizings (The Containers) |
+| `layout/layout_engine.py` | keys its caches on the sizings (The Containers) |
+| `layout/measure.py` | the measurement cache (The Containers) |
+| the Material components | the fixed axes' style tokens |
 
-A child larger than its allocated rect is painted as it is; nothing clips it.
-Visible was chosen over clip for three reasons:
+### Sequence
 
-- With `Sizing`, content does not overflow a correct layout. Overflow is a
-  layout bug, and a visible one is found; a clipped one is not.
-- Shadows, focus rings and popups overflow their widget by design.
-- Clipping (`saveLayer` / `clipRect`) is expensive. Paying it on every widget
-  for the few that want it was rejected.
+#### A row shares its width out
 
-Clipping and scrolling are added where wanted: `clip()` is a modifier, and
-scrolling is a viewport widget.
+```mermaid
+sequenceDiagram
+    participant R as layout/row.py · column.py
+    participant M as layout/measure.py
+    participant C as the children
 
-## Modifiers Do Not Lay Out
+    R->>M: preferred_size(child, max_w, max_h), each child
+    R->>R: the fixed and auto children take their size
+    R->>R: the remainder, split by weight
+    R->>C: set_layout_rect(x, y, w, h)
+```
 
-Size, spacing and alignment are widget properties. A modifier adds a
-capability or a visual effect and never changes layout; the reason is in
-[MODIFIER.md](MODIFIER.md).
+### Promises
 
-## Window Size Is Not a Sizing
+- Only the space left after the `fixed` and `auto` children is shared by
+  weight.
+- A `weight` child measures as its content.
+- An axis MD3 leaves open is a constructor parameter, named `width`, `length`
+  or `size` by its degree of freedom. An axis MD3 fixes is a style token.
 
-The window's `width` / `height` is a `WindowSizing`: a fixed pixel value or
-`"auto"`, the content's preferred size. It is a separate type because a window
-is resolved before layout and has no parent. `"wt"` has nothing to take a
-share of, so it is not accepted.
+## The Containers
 
-A window position is a nine-point alignment on the screen plus a pixel
-offset, the same vocabulary as widget alignment. The alignment is resolved
-against the screen's work area and the window's outer frame, not the screen
-bounds and the client area the OS API takes: aligning the client area would
-push a `top` window's title bar off screen and a `bottom` window under the
-taskbar.
+A container measures its children and allocates each a rect.
+
+### Structure
+
+```mermaid
+flowchart LR
+    row[layout/row.py · column.py]
+    grid[layout/grid.py]
+    stack[layout/stack.py]
+    container[layout/container.py]
+    flow[layout/flow.py · uniform_flow.py]
+    alignment[layout/alignment.py]
+    engine[layout/layout_engine.py]
+    measure[layout/measure.py]
+    utils[layout/layout_utils.py]
+    children[the children]
+
+    row & grid & stack & flow & container -- "preferred_size(max_w, max_h) · layout_child_if_needed · set_layout_rect(x, y, w, h)" --> children
+    row & grid & stack & flow & container -- "preferred_size(widget, max_w, max_h)" --> measure
+    container -- "preferred_size · compute_inner_rect · compute_child_placement · resolve_child_geometry" --> engine
+    row & grid & stack & container -- "normalize_alignment(value) · alignment_to_point(alignment, w, h)" --> alignment
+    row & flow -- "layout_child_if_needed(child, w, h) · paint_laid_out_children(...)" --> utils
+```
+
+| Module | Role |
+| --- | --- |
+| `layout/row.py · column.py` | one axis shared out by sizing, `main_alignment` and `cross_alignment` across it, a `gap` between the children |
+| `layout/grid.py` | rows, columns and areas; allocates each cell's rect |
+| `layout/stack.py` | children over one another, each the sole claimant of both axes |
+| `layout/container.py` | one child, placed by `alignment` |
+| `layout/flow.py · uniform_flow.py` | children wrapped into lines |
+| `layout/alignment.py` | the nine-point vocabulary and its point in a rect |
+| `layout/layout_engine.py` | the padding, border and placement arithmetic, cached ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
+| `layout/measure.py` | the measurement cache ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
+| `layout/layout_utils.py` | lays a child out and paints the children ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
+| the children | measured and placed |
+
+### Promises
+
+- Alignment positions a child. It never stretches one.
+- Whether a child fills its `Grid` cell is the child's own sizing.
+- Nothing clips a child larger than its rect.
+
+## The Composable
+
+A `ComposableWidget` reports the layout metadata of its built child.
+
+### Structure
+
+```mermaid
+flowchart LR
+    widget[widgeting/widget.py]
+    builder[widgeting/widget_builder.py]
+    kernel[widgeting/widget_kernel.py]
+    parent[the parent container]
+
+    parent -- "width_sizing · height_sizing · layout_align · cross_align" --> widget
+    widget -- "_built" --> builder
+    widget -- "the built child's metadata, or its own" --> kernel
+```
+
+| Module | Role |
+| --- | --- |
+| `widgeting/widget.py` | the declared flags and the getters |
+| `widgeting/widget_builder.py` | the built child ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)) |
+| `widgeting/widget_kernel.py` | the stored values (The Sizing) |
+| the parent container | reads the metadata |
+
+### Promises
+
+- A declared value wins. An undeclared one is derived from the built child.
+
+## The Fit
+
+A leaf with content of its own places that content inside its rect by a fit
+mode.
+
+### Structure
+
+```mermaid
+flowchart LR
+    fit[rendering/fit.py]
+    image[widgets/image.py]
+    icon[material/icon.py]
+    selection[material/selection_controls.py]
+    app[the app]
+
+    app -- "fit · content_alignment" --> image
+    image -- "Fit: contain · cover · fill · none" --> fit
+    icon & selection -- "contain" --> fit
+```
+
+| Module | Role |
+| --- | --- |
+| `rendering/fit.py` | the four modes |
+| `widgets/image.py` | exposes `fit` and `content_alignment` |
+| `material/icon.py` | contains its glyph |
+| `material/selection_controls.py` | `Checkbox` and `RadioButton` contain their graphic |
+| the app | picks a mode for an image |
+
+### Promises
+
+- `cover` and `fill` exist for `Image` alone.
+
+## The Window Sizing
+
+A window's size and position are resolved before layout.
+
+### Structure
+
+```mermaid
+flowchart LR
+    sizing[runtime/window_sizing.py]
+    window[runtime/window.py]
+    placement[backends/pyglet/window_placement.py]
+    runner[backends/pyglet/runner.py]
+    alignment[layout/alignment.py]
+
+    window -- "parse_window_sizing(value) · parse_window_position(value)" --> sizing
+    window -- "the parsed WindowPosition" --> runner
+    runner -- "apply_initial_position(pyglet_window, pos)" --> placement
+    placement -- "the nine-point vocabulary" --> alignment
+```
+
+| Module | Role |
+| --- | --- |
+| `runtime/window_sizing.py` | `WindowSizing`, fixed or auto; `WindowPosition`, an alignment on a screen plus an offset |
+| `runtime/window.py` | resolves its size from the content's preferred size when auto ([APP_WINDOW.md](APP_WINDOW.md)) |
+| `backends/pyglet/window_placement.py` | places the outer frame in the screen's work area |
+| `backends/pyglet/runner.py` | applies the position when the OS window is created ([APP_WINDOW.md](APP_WINDOW.md)) |
+| `layout/alignment.py` | the nine points (The Containers) |
+
+### Promises
+
+- A window position is resolved against the screen's work area, never its
+  bounds. It places the outer frame, never the client area.

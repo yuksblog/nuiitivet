@@ -1,44 +1,119 @@
-# Public Root Surface
+# Public Root
 
-How callables on the `nv` root are organised, and where a new one goes.
-Classes, widgets, styles and protocols, sit flat on the root; this policy is
-about functions.
+An app imports one root, its design system, and reaches every public symbol
+from there.
 
-## The Rule
+## Overview
 
-A function earns a flat spot on the root only when it is **DSL vocabulary**:
-something written inline, per widget, inside a builder expression, where a
-namespace prefix would be noise. Everything else, configuration and OS
-services called a few times per app at startup or from an event handler,
-lives on a **namespace class**, a class used as a namespace, holding
-`@staticmethod`s and never instantiated. The test for a new function: does
-it appear inside widget-tree code, many times, next to other flat
-vocabulary? If not, find or create a namespace.
+Three groups of modules take part.
 
-A bare verb at the root also collides with the framework's own concepts:
-`notify` reads as an observable notification, where `Desktop.notify` does
-not.
+### Structure
 
-Flat, as DSL vocabulary: the modifiers (`background`, `clickable`,
-`key_shortcut`, ...), which read as a DSL inside `.modifier(...)` several
-per widget; the observable operators `batch` and `combine`, used
-mid-expression; the input filters (`digits_only`, `max_length`, ...),
-combinators composed inline for `input_filter=`; and the date helpers
-(`parse_date`, `format_date`, `is_date`), value vocabulary used inline in
-handlers and bindings beside `DatePicker`.
+```mermaid
+flowchart LR
+    core[nuiitivet/__init__.py]
+    material[nuiitivet/material/__init__.py]
+    namespaces[The Namespaces]
+    test[tests/test_public_imports.py]
+    apps[the apps and the samples]
 
-Namespaced, as configuration and OS services: `Fonts` (`set_default_family`,
-`register`), `Clocks` (`get`, `set`), `Desktop` (`notify`) and `FileDialog`
-(`open_file`, `open_files`, `save_file`, `open_directory`). `Clocks` stays on
-the public root rather than becoming a test-only internal because swapping
-the clock is the documented seam for app-level tests, and apps import
-through the single root only.
+    apps -- "import nuiitivet.material as nv" --> material
+    material -- "__all__ · getattr(core, name)" --> core
+    core & material -- "Fonts · Clocks · Desktop · FileDialog" --> namespaces
+    test -- "__all__ · hasattr(root, name)" --> core & material
+    test -- "the import statements" --> apps
+```
 
-## Namespace Conventions
+| Module | Role |
+| --- | --- |
+| `nuiitivet/__init__.py` | the core symbols, imported eagerly, listed in `__all__` |
+| `nuiitivet/material/__init__.py` | the Material symbols, plus the core ones |
+| The Namespaces | the static-method classes |
+| `tests/test_public_imports.py` | holds every invariant of the surface |
+| the apps and the samples | write `nv.` and nothing deeper |
 
-The class name is a plural or collective noun for the subsystem (`Fonts`,
-`Clocks`) or the service it wraps (`Desktop`, `FileDialog`). Methods drop
-the words the class name carries: `Fonts.register(...)`, not
-`Fonts.register_font(...)`. The class is a thin facade, and the
-implementation stays in its subsystem module. A rename is a clean break; no
-alias keeps a pre-namespace spelling alive.
+### Promises
+
+- Every core symbol is reachable from the Material root.
+- A function sits flat on the root only as DSL vocabulary. Configuration and
+  OS services live on a namespace class.
+
+## The Material Root
+
+`nuiitivet.material` binds the core symbols at import. Its own symbols
+resolve on first access.
+
+### Structure
+
+```mermaid
+flowchart LR
+    material[nuiitivet/material/__init__.py]
+    core[nuiitivet/__init__.py]
+    modules[the Material modules]
+    importlib[importlib]
+    apps[the apps and the samples]
+
+    apps -- "nv.Button · __getattr__(name) · dir(nv)" --> material
+    material -- "__all__ · getattr(core, name), for every name not in _EXPORTS" --> core
+    material -- "import_module(module)" --> importlib
+    importlib -- "the module" --> modules
+```
+
+| Module | Role |
+| --- | --- |
+| `nuiitivet/material/__init__.py` | `_EXPORTS`, the Material names and where each lives; `__getattr__`, the lazy resolution; the eager copy of the core names |
+| `nuiitivet/__init__.py` | the core names (Overview) |
+| the Material modules | the widgets, styles and themes, imported on first access |
+| `importlib` | imports a module by name |
+| the apps and the samples | read the attributes |
+
+### Promises
+
+- A core name the Material root overrides resolves to the Material class.
+
+## The Namespaces
+
+A namespace class holds static methods.
+
+### Structure
+
+```mermaid
+flowchart LR
+    fonts[rendering/fonts.py]
+    clocks[observable/clocks.py]
+    desktop[platform/desktop.py]
+    dialog[platform/file_dialog.py]
+    font[rendering/skia/font.py]
+    runtime[observable/runtime.py]
+    notify[platform/notification.py]
+    backend[the dialog backends]
+    apps[the apps and the samples]
+
+    apps -- "Fonts.set_default_family(name) · Fonts.register(path, family)" --> fonts
+    apps -- "Clocks.get() · Clocks.set(clock)" --> clocks
+    apps -- "Desktop.notify(title, body)" --> desktop
+    apps -- "FileDialog.open_file(...) · open_files · save_file · open_directory" --> dialog
+    fonts -- "set_default_font_family · register_font" --> font
+    clocks -- "get_clock() · set_clock(clock)" --> runtime
+    desktop -- "the platform's notification" --> notify
+    dialog -- "the platform's dialog" --> backend
+```
+
+| Module | Role |
+| --- | --- |
+| `rendering/fonts.py` | `Fonts`, the font configuration ([TYPOGRAPHY.md](TYPOGRAPHY.md)) |
+| `observable/clocks.py` | `Clocks`, the clock seam a test swaps ([OBSERVABLE.md](OBSERVABLE.md)) |
+| `platform/desktop.py` | `Desktop`, the OS notification |
+| `platform/file_dialog.py` | `FileDialog`, the OS file dialogs |
+| `rendering/skia/font.py` | the implementation behind `Fonts` |
+| `observable/runtime.py` | the implementation behind `Clocks` |
+| `platform/notification.py` | the implementation behind `Desktop` |
+| the dialog backends | the implementation behind `FileDialog` |
+| the apps and the samples | configure at startup, or call from a handler |
+
+### Promises
+
+- A namespace class is never instantiated. The implementation stays in its
+  subsystem.
+- The class name is a plural or collective noun for the subsystem or the
+  service. A method drops the words the class name carries.

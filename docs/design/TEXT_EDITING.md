@@ -1,159 +1,284 @@
-# Text Editing Architecture
+# Text Editing
 
-Text editing synchronises three parties, the application, the OS text input
-system (the IME) and the renderer. State flows one way, through an immutable
-value, and the IME is reached by patching the platform window rather than
-through the backend's own text input, which cannot compose inline.
+A text field keeps its state in an immutable value. Typed text, key
+shortcuts and the OS input method all turn one value into the next.
 
-## Data Model
+## Overview
 
-`TextEditingValue` is an immutable snapshot of a field: `text`, `selection`
-(a `TextRange`; `start == end` is the caret) and `composing`, the range the
-IME is still converting. A composing range is part of `text` but subject to
-change by the IME until it commits.
+Four groups of modules take part, with the app and the OS input method at
+their edges.
 
-## The Value Mirror
+### Structure
 
-`TextField` holds an internal `Observable[TextEditingValue]`. An observable
-passed as `value` is the field's value cell in the sense of
-[OBSERVABLE.md](OBSERVABLE.md): edits are written back to it, so the caller
-keeps no second copy of the text to fall out of sync with.
+```mermaid
+flowchart LR
+    value[The Value]
+    editor[The Editor]
+    dispatch[The Dispatch]
+    ime[The IME]
+    app[the app]
+    os[the OS input method]
 
-It is nonetheless the framework's one **mirror** rather than a true storage
-substitution, for a type mismatch. The internal cell holds text, selection and
-composing range; the bound observable holds a `str`. A `str` cell cannot carry
-the caret, so it cannot be adopted as the cell outright; the widget keeps its
-own `TextEditingValue` and reconciles the text half with the observable in
-both directions. Three rules make the mirror behave:
+    app -- "TextField(value, on_change, on_submit, input_filter) · TextField.multiline(...)" --> editor
+    editor -- "insert_text · compose_text · end_composition · apply_motion · apply_shortcut · apply(old, new)" --> value
+    dispatch -- "on_text · on_key · on_text_motion · on_ime_composition · on_ime_commit" --> editor
+    os -- "a composition update · where is the caret" --> ime
+    ime -- "on_ime_composition(text, start, length)" --> dispatch
+    editor -- "set_cursor_source(rect_fn)" --> ime
+```
 
-- **Write-back is suppressed while a composition is active.** The provisional
-  text of a half-converted candidate is not a value the application should
-  see, and anything it wrote in response would fight the IME. The composition
-  commits through the normal text path, with the composing range cleared. The
-  guard compares against the observable's own value rather than the previous
-  text, so ending a composition reconciles even when that update left the
-  text alone.
-- **An incoming write keeps the caret, clamped into the new text.** Resetting
-  it to the end would be right only for a field nobody is editing: an
-  application that normalises on write-back (upper-casing, trimming,
-  reformatting) changes the text under an actively edited field, and a caret
-  jumping to the end on every keystroke makes such a field unusable.
-- **The loop terminates on equality.** A write-back delivers back into the
-  widget, which returns early once the text it is handed already matches.
+| Module | Role |
+| --- | --- |
+| The Value | the immutable editing value and the pure functions that produce the next one |
+| The Editor | the widget that holds the value, mirrors its text to the app and draws it |
+| The Dispatch | routes typed text, motions and compositions to the focused field |
+| The IME | the patch on each platform window and the caret the OS asks for |
+| the app | binds a `str` observable and the callbacks |
+| the OS input method | composes text inline and places its candidates at the caret |
 
-A read-only observable (a computed or mapped value) has nowhere to write, so
-it is displayed and not written to. Such a field is still editable, and the
-edits go only to the internal cell; `disabled=True` makes that visible.
+### Promises
 
-Accepting an `ObservableProtocol[TextEditingValue]` as `value`, a cell whose
-type matches the internal one, would make the field a plain storage
-substitution and leave the three rules nothing to reconcile. It is not
-offered: the only thing it buys is letting the application own the caret,
-and every caller who binds a `str` still needs the reconciliation. Reasons to
-revisit, none present today: an application that has to restore a caret
-position across navigation or a re-created field; a second widget editing the
-same text alongside the field; a caller who needs to drive the selection
-programmatically, which the widget's own `value` setter cannot express.
+- Typed text and key presses arrive on two routes. A field inserts
+  characters from `on_text`. It claims keys on `on_key`.
+- The IME is reached by patching the platform window, never through the
+  backend's own text input.
 
-## Input Filters
+## The Value
 
-An input filter is a rule applied to text between a keystroke and the value
-cell. The placement is forced: correcting text requires knowing where the
-caret was, what it was in and what it became, and the observable knows none
-of these, so a rule enforced there would return through the mirror on every
-keystroke and drag the caret with it. The widget is the only participant that
-holds all three; the control-character strip it already applied is the hook
-the filter generalises.
+`TextEditingValue` is a snapshot of a field: the text, the selection and
+the range the IME is still converting.
 
-- **A filter defines what is typeable, not what is valid.** A decimal field
-  must let `"1."` be typed, or `.` can never be entered. Whether a finished
-  value is acceptable is `is_error` / `supporting_text`; reshaping a finished
-  value is `on_submit`.
-- **Filters run on insertion only**: typing, an IME commit, a paste. Running
-  them over deletions would let a whole-string rule reject the backspace that
-  breaks its pattern, leaving a field that cannot be erased.
-- **Filters do not touch values the application assigns.** The initial
-  `value` and a write to the bound observable pass through untouched; the
-  field does not rewrite what its owner put there.
-- **The internal contract carries the selection** (`apply(old, new)` on a
-  `TextEditingValue`), so the built-in filters move the caret exactly. The
-  public shorthand, a `Callable[[str], str]`, reports only the string and has
-  its caret inferred from the length change; widening it to the
-  selection-aware form later is additive.
+### Structure
 
-Filters compose with `|`, the modifier vocabulary. Masking, displaying
-`1,234,567` while storing `"1234567"`, is out of scope: it needs the
-displayed and the stored text to differ, and whatever a filter returns is the
-value.
+```mermaid
+flowchart LR
+    value[widgets/text_editing.py]
+    filter[widgets/input_filter.py]
+    editor[widgets/editable_text.py]
+    app[the app]
 
-## Commit
+    editor -- "insert_text(value, text, filter, line_breaks) · compose_text(value, text, start, length) · end_composition(value) · apply_motion(value, motion, select) · apply_shortcut(value, key, clipboard, filter, line_breaks)" --> value
+    value -- "apply(old, new)" --> filter
+    app -- "allow(pattern) · deny(pattern) · digits_only() · max_length(n) · matching(pattern) · a Callable[[str], str] · a | b" --> filter
+```
 
-`on_submit` fires on every Enter, a repeat on an unchanged value included, and
-never on focus loss: it reports the user asking for an action, not the value
-settling. Firing on focus loss too was rejected because an `on_submit` that
-runs a search or saves a record would fire every time the field is tabbed
-through. A "changed since the last commit" guard would make that safe and was
-rejected too: pressing Enter again on the same query means run it again, and
-only the caller knows whether repeating its work is wasteful. Work that
-belongs to leaving the field, finishing a half-typed `"1."` as `"1.0"`, goes
-to `on_focus_change`.
+| Module | Role |
+| --- | --- |
+| `widgets/text_editing.py` | `TextRange`, `TextEditingValue`; the edits as functions from one value to the next |
+| `widgets/input_filter.py` | `InputFilter.apply(old, new)`, the built-in filters, the chain |
+| `widgets/editable_text.py` | the one caller of the edits (The Editor) |
+| the app | composes filters |
 
-Supplying `on_submit` is also what makes the field claim the Enter key
-([KEYBOARD_SHORTCUTS.md](KEYBOARD_SHORTCUTS.md)): a field with an action for
-Enter owns it, and one without lets it reach a shortcut. A field that only
-reacts to being left takes `on_focus_change` and leaves Enter alone.
+### Promises
 
-## Lines
+- The composing range is part of the text until the IME commits.
+- A filter runs on typing, a paste and an IME commit. It runs on no deletion
+  and on no value the app assigns.
 
-A multi-line field is the same widget in a second mode, reached by a named
-constructor, `TextField.multiline`. The mode changes what Enter does, how the
-text is laid out and how the field grows, and a name at the call site says so.
+## The Editor
 
-Shift+Enter breaks the line. The break is inserted like typed text, so an
-input filter sees it. It does not come from the text the backend delivers: on
-macOS, Return arrives as `on_text('\r')` next to the key press whether Shift
-is held or not, so a break taken from there would also land on every submit.
-Enter means the same in both modes; a field claims it only when it has an
-action for it. Making Enter the line break was rejected because a multi-line
-field would then take Enter from the rest of the screen.
+`EditableText` is the field. `TextField` decorates it.
 
-## IME
+### Structure
 
-The backend's own text input leaves a floating candidate window and no inline
-composition on some platforms, so nuiitivet patches each platform window at
-runtime to intercept the IME before the OS handles it:
+```mermaid
+flowchart LR
+    editor[widgets/editable_text.py]
+    base[widgets/text_field.py]
+    material[material/text_fields.py]
+    value[widgets/text_editing.py]
+    lines[widgets/text_lines.py]
+    interaction[widgets/interaction.py]
+    observable[observable/]
+    ime[platform/ime.py]
+    app[the app]
 
-- **macOS**: hooks `PygletTextView` (an `NSTextView`) through `ctypes` and the
-  Objective-C runtime, overriding `setMarkedText:selectedRange:replacementRange:`
-  for composition updates and `firstRectForCharacterRange:actualRange:` to
-  report the caret to the OS.
-- **Windows**: subclasses the window procedure to intercept
-  `WM_IME_COMPOSITION` and reads the composition and caret with
-  `ImmGetCompositionString`.
-- **Linux (X11)**: recreates the input context with `XIMPreeditCallbacks` and
-  receives `PreeditStart` / `PreeditDraw` / `PreeditDone` directly from the
-  input method.
+    app -- "TextField(value, on_change, on_submit, input_filter) · TextField.multiline(min_lines, max_lines, ...)" --> material
+    material -- "is a" --> base
+    base -- "EditableText(value, on_change, on_submit, input_filter, multiline, ...) · value · focus()" --> editor
+    editor -- "insert_text · compose_text · end_composition · apply_motion · apply_shortcut" --> value
+    editor -- "break_lines · line_of · caret_x · index_at · move_lines · line_edge" --> lines
+    editor -- "FocusNode(on_text, on_key, on_text_motion, on_ime_composition, on_ime_commit)" --> interaction
+    editor -- "subscribe(_on_external_change) · obs.value = text" --> observable
+    editor -- "set_cursor_source(_ime_caret_rect) · clear_cursor_source" --> ime
+    editor -- "on_change(text) · on_submit(text)" --> app
+```
+
+| Module | Role |
+| --- | --- |
+| `widgets/editable_text.py` | `EditableText`: the internal `Observable[TextEditingValue]`, the mirror to the bound `str` observable, the handlers for text, keys, motions and compositions, the caret |
+| `widgets/text_field.py` | `TextFieldBase`, the decorated field around one editable |
+| `material/text_fields.py` | the MD3 `TextField` and its `multiline` constructor ([MATERIAL_INTERACTION.md](MATERIAL_INTERACTION.md)) |
+| `widgets/text_editing.py` | the edits (The Value) |
+| `widgets/text_lines.py` | breaks text into lines for a width; the caret's line and x |
+| `widgets/interaction.py` | the focus node the handlers hang on ([INTERACTION_ARCHITECTURE.md](INTERACTION_ARCHITECTURE.md)) |
+| `observable/` | the bound observable ([OBSERVABLE.md](OBSERVABLE.md)) |
+| `platform/ime.py` | the window's caret source (The IME) |
+| the app | the bound observable and the callbacks |
+
+### Sequence
+
+#### A keystroke becomes the app's text
 
 ```mermaid
 sequenceDiagram
-    participant OS as OS input method
-    participant P as platform patch
-    participant W as Window
-    participant F as focused FocusNode / TextField
-    OS->>P: composition update
-    P->>W: on_ime_composition(text, start, length)
-    W->>F: dispatch to the focused node
-    F->>F: set composing range, request redraw
-    OS->>P: where is the caret?
-    P->>W: read IMEManager
-    W-->>OS: caret rect in screen coordinates
+    participant I as widgets/interaction.py
+    participant E as editable_text.py
+    participant V as text_editing.py
+    participant O as observable/
+    participant A as the app
+
+    I->>E: on_text(text)
+    E->>V: insert_text(value, text, filter)
+    V-->>E: the new value, filtered
+    E->>E: _update_value(new)
+    alt composing, or the text equals the last announced
+        Note over E: no announcement
+    else
+        E->>O: obs.value = text
+        O->>E: _on_external_change(text), equal, returns
+        E->>A: on_change(text)
+    end
 ```
 
-The candidate window follows the caret through `IMEManager`, per-window state
-(`Window.ime`, in [APP_WINDOW.md](APP_WINDOW.md)) holding that window's
-geometry and the local caret rectangle. `TextField` updates it with the caret
-during paint, the backend with the window position during the draw loop, and
-the patch answers the OS's query from it. When a window loses OS focus, a
-pending composition is committed on the focused field, its provisional text
-stays, and the OS-side conversation is discarded, so another window's typing
-starts clean.
+#### The app rewrites the text
+
+```mermaid
+sequenceDiagram
+    participant A as the app
+    participant O as observable/
+    participant E as editable_text.py
+
+    A->>O: obs.value = "ABC"
+    O->>E: _on_external_change("ABC")
+    E->>E: the caret kept, clamped into the new text
+    E->>A: on_change("ABC")
+```
+
+### Promises
+
+- `on_change` fires for every text change, from the user or from the app.
+  The write-back fires for the user's edits only.
+- Nothing is announced while a composition is active. Ending the
+  composition announces the text, changed or not.
+- The write-back loop ends on equality.
+- A field without `on_submit` declines Enter.
+- An Enter that confirms an IME composition is not a submit.
+
+## The Dispatch
+
+The window routes text, motions and compositions to the focused node. The
+node bubbles them up its chain.
+
+### Structure
+
+```mermaid
+flowchart LR
+    runner[backends/pyglet/runner.py]
+    window[runtime/window.py]
+    interaction[widgets/interaction.py]
+    editor[widgets/editable_text.py]
+    shortcuts[input/shortcut.py]
+
+    runner -- "_dispatch_text(text) · _dispatch_text_motion(motion, select) · _dispatch_ime_composition(text, start, length) · _dispatch_key_press(key, mods) · _set_os_active(active)" --> window
+    window -- "handle_text_event(text) · handle_text_motion_event · handle_ime_composition_event · handle_ime_commit_event() · handle_key_event · accepts_text_input" --> interaction
+    interaction -- "on_text · on_text_motion · on_ime_composition · on_ime_commit · on_key" --> editor
+    window -- "produces_text(key, modifier_keys)" --> shortcuts
+```
+
+| Module | Role |
+| --- | --- |
+| `backends/pyglet/runner.py` | the `on_text`, `on_text_motion`, `on_ime_composition` and activate handlers ([APP_WINDOW.md](APP_WINDOW.md)) |
+| `runtime/window.py` | hands each event to the focused node |
+| `widgets/interaction.py` | `FocusNode`: the handlers and the bubbling to the parent node |
+| `widgets/editable_text.py` | the field at the end of the chain (The Editor) |
+| `input/shortcut.py` | the text guard of the shortcut tier ([KEYBOARD_SHORTCUTS.md](KEYBOARD_SHORTCUTS.md)) |
+
+### Sequence
+
+#### The window loses the OS focus mid-composition
+
+```mermaid
+sequenceDiagram
+    participant R as backends/pyglet/runner.py
+    participant W as runtime/window.py
+    participant I as widgets/interaction.py
+    participant E as editable_text.py
+
+    R->>W: _set_os_active(False)
+    W->>I: handle_ime_commit_event()
+    I->>E: on_ime_commit()
+    E->>E: end_composition: the provisional text kept, the range cleared
+```
+
+### Promises
+
+- A window blocked by a modal child consumes a text event.
+- A key the focused chain can type reaches no shortcut.
+- A field holds no live composition while its window lacks the OS focus.
+
+## The IME
+
+Each platform window is patched to intercept the input method before the OS
+handles it. The window's `IMEManager` answers where the caret is.
+
+### Structure
+
+```mermaid
+flowchart LR
+    manager[platform/ime.py]
+    macos[backends/pyglet/ime/macos.py]
+    windows[backends/pyglet/ime/windows.py]
+    linux[backends/pyglet/ime/linux.py]
+    runner[backends/pyglet/runner.py]
+    window[runtime/window.py]
+    editor[widgets/editable_text.py]
+    os[the OS input method]
+
+    runner -- "install_patch(pyglet_window, window) · discard_conversation(pyglet_window)" --> macos & windows & linux
+    runner -- "update_window_info(x, y, w, h), on draw" --> manager
+    window -- "IMEManager()" --> manager
+    editor -- "set_cursor_source(rect_fn) · clear_cursor_source(rect_fn)" --> manager
+    macos & windows & linux -- "cursor_rect" --> manager
+    macos & windows & linux -- "on_ime_composition(text, start, length)" --> runner
+    os -- "setMarkedText · WM_IME_COMPOSITION · PreeditDraw · the caret query" --> macos & windows & linux
+```
+
+| Module | Role |
+| --- | --- |
+| `platform/ime.py` | `IMEManager`: the window's position and the caret source |
+| `backends/pyglet/ime/macos.py` | overrides `setMarkedText:selectedRange:replacementRange:` and `firstRectForCharacterRange:actualRange:` on the `NSTextView` through the Objective-C runtime |
+| `backends/pyglet/ime/windows.py` | subclasses the window procedure for the composition messages |
+| `backends/pyglet/ime/linux.py` | recreates the X input context with preedit callbacks |
+| `backends/pyglet/runner.py` | installs the patch when the window is realised; drops the OS conversation on deactivate ([APP_WINDOW.md](APP_WINDOW.md)) |
+| `runtime/window.py` | owns the manager ([APP_WINDOW.md](APP_WINDOW.md)) |
+| `widgets/editable_text.py` | the focused field, the caret source (The Editor) |
+| the OS input method | composes and asks for the caret |
+
+### Sequence
+
+#### The OS asks where the caret is
+
+```mermaid
+sequenceDiagram
+    participant OS as the OS input method
+    participant P as ime/macos.py, windows.py or linux.py
+    participant M as platform/ime.py
+    participant E as editable_text.py
+
+    OS->>P: the caret query
+    P->>M: cursor_rect
+    M->>E: _ime_caret_rect(), the registered source
+    E->>E: the caret's line and x from layout, the scroll settled
+    E-->>M: the rect in window coordinates
+    M-->>P: the rect plus the window's position
+    P-->>OS: the rect in screen coordinates
+```
+
+### Promises
+
+- One `IMEManager` per window.
+- The focused field is its window's caret source. It withdraws on unmount.
+- The caret rect is computed when the OS asks, from layout state. Nothing
+  publishes it on paint.
+- A window that loses the OS focus drops its OS-side conversation.

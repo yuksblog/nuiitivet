@@ -1,94 +1,221 @@
 # Hit Testing
 
-Which widget receives a pointer at a point. Two internal axes decide it for
-every widget: **S**, whether the widget's own rectangle becomes the hit
-target, and **C**, whether hit testing descends into its children.
+Hit testing names the widget under a point. Two axes decide it for every
+widget. One is whether the widget's own rectangle catches. The other is
+whether the test descends into its children.
 
-## The `auto` Default
+## Overview
 
-S resolves by one principle, *you can click what you can see*:
+Three groups of modules take part, with the pointer dispatch and the overlay
+at their edges.
 
-| Widget | S |
+### Structure
+
+```mermaid
+flowchart LR
+    resolution[The Resolution]
+    box[The Participation Box]
+    postures[The Postures]
+    window[runtime/window.py]
+    overlay[overlay/overlay.py]
+    app[the app]
+
+    window -- "root.hit_test(x, y)" --> resolution
+    box -- "_hit_test_children(x, y) · _resolve_hit(x, y, child_hit, self_opaque)" --> resolution
+    postures -- "HitParticipationBox(child, condition, descend_children, self_opaque)" --> box
+    overlay -- "HitParticipationBox(child, condition, descend_children, self_opaque)" --> box
+    app -- "defer_pointer() · block_pointer() · absorb_pointer() · passthrough_pointer()" --> postures
+```
+
+| Module | Role |
 | --- | --- |
-| Interactive (click, hover, focus, scroll, or overrides `on_pointer_event`) | catches its rect |
-| Paints a visible surface (`Box` / `Container` background, border or shadow) | catches its rect |
-| Transparent layout wrapper (`Container`, `Stack`, `Deck`, positioning wrappers) | defers to children |
-| Non-interactive ink (`Text`, `Icon`, `Image`, `Divider`) | defers to children |
+| The Resolution | the descent into the children and the widget's own surface |
+| The Participation Box | one wrapper that fixes both axes while a condition holds |
+| The Postures | the four modifiers, each a setting of the box |
+| `runtime/window.py` | asks for the target of a pointer event ([INTERACTION_ARCHITECTURE.md](INTERACTION_ARCHITECTURE.md)) |
+| `overlay/overlay.py` | builds its blocking and click-through layers from the box ([OVERLAY.md](OVERLAY.md)) |
+| the app | picks a posture |
 
-So a bare, non-painting, non-interactive layer lets clicks through to whatever
-is behind it: a full-size alignment `Container` over a canvas passes the empty
-area to the canvas while the toolbar inside it still catches. A layer meant to
-block clicks paints a background, carries a handler, or takes
-`block_pointer()`. A `Box` catches when it has a background, border or shadow;
-the check is presence-based (a `border_width > 0` counts, alpha is not
-resolved), so a deliberately invisible catcher carries a handler instead.
+### Promises
 
-The hit region is always the rectangle, never per-pixel. A whole text block is
-expected to be clickable, and per-pixel precision is impractical. This is SVG
-`pointer-events: painted` and SwiftUI's painted-only default in spirit, but
-bounding-box, not shape-aware, by choice.
+- The hit region is the rectangle, never the painted shape.
+- The two axes are not public. A posture is named, never spelled as flags.
+- Every widget's hit resolves through `_resolve_hit`.
 
-S resolves to `none` / `painted` / `all` internally, and that tri-state is not
-public: no string enum and no raw S API. The modifiers below each fix S and C
-to name one posture.
+## The Resolution
 
-## Opt-In Postures
+`WidgetKernel.hit_test` combines the children's answer with the widget's own
+surface.
 
-Four intent-named modifiers deviate from `auto`. All route through one
-wrapper, `HitParticipationBox`, configured by two booleans: `descend_children`
-(C), which makes the box descend into the wrapped widget's own children so the
-wrapped widget's S is governed by the box rather than by its `auto`
-resolution, and `self_opaque` (S), passed straight to `_resolve_hit`.
+### Structure
 
-| Modifier | C | S | Intent |
-| --- | --- | --- | --- |
-| `defer_pointer()` | on | off | self never catches; children do |
-| `block_pointer()` | on | on | self catches its whole rect; children still work |
-| `absorb_pointer()` | off | on | self catches its whole rect; children absorbed |
-| `passthrough_pointer()` | off | off | whole subtree click-through |
+```mermaid
+flowchart LR
+    kernel[widgeting/widget_kernel.py]
+    input[widgeting/widget_input.py]
+    box[widgets/box.py]
+    iw[material/interactive_widget.py]
+    deck[layout/deck.py]
+    position[overlay/overlay_position.py]
+    window[runtime/window.py]
+    children[the child widgets]
 
-`passthrough_pointer` is the both-off corner of the same box and backs the
-`visible()` composition. Each modifier accepts a `bool` or `Observable[bool]`,
-read and validated at construction or mount, never deferred to the first
-click; while the condition is falsy the box falls back to `auto`.
+    window -- "root.hit_test(x, y)" --> kernel
+    kernel -- "hit_test(x - rx, y - ry), topmost first" --> children
+    kernel -- "_hit_is_interactive()" --> input
+    box -- "is a · _hit_self_opaque(): a painted surface" --> kernel
+    iw -- "is a · _in_local_bounds(x, y): the content rect" --> box
+    deck & position -- "_resolve_hit(x, y, child_hit, self_opaque=False)" --> kernel
+```
 
-The box lives in `nuiitivet.widgeting`, below the modifiers, and the overlay
-builds its blocking and click-through layers from it directly. Borrowing the
-modifiers instead would close an import cycle: `popup`, `tooltip` and
-`context_menu` are overlay clients, so the modifiers already sit above the
-overlay.
+| Module | Role |
+| --- | --- |
+| `widgeting/widget_kernel.py` | the descent, the own-surface policy and the bounds test |
+| `widgeting/widget_input.py` | answers whether the widget handles pointer or scroll input ([INTERACTION_ARCHITECTURE.md](INTERACTION_ARCHITECTURE.md)) |
+| `widgets/box.py` | catches on its own surface when it paints a background, a border or a shadow ([BOX_MODEL.md](BOX_MODEL.md)) |
+| `material/interactive_widget.py` | bounds the hit to its content rect ([BOX_MODEL.md](BOX_MODEL.md)) |
+| `layout/deck.py` | a pure pass-through wrapper ([LAYOUT.md](LAYOUT.md)) |
+| `overlay/overlay_position.py` | a pure pass-through wrapper ([OVERLAY.md](OVERLAY.md)) |
+| `runtime/window.py` | asks for the target (Overview) |
+| the child widgets | each a kernel of its own |
 
-### Stacking
+### Sequence
 
-The modifiers wrap the widget as independent, nestable boxes evaluated
-outermost-first (in `a | b`, `b` is outermost), and the outermost box's axes
-dominate: its C decision says whether descent happens at all, and its S
-decision resolves any point the descent leaves uncaught. A box with C off
-(`absorb_pointer`, `passthrough_pointer`) stops descent, so a posture nested
-inside it never runs; an outer `passthrough_pointer` therefore makes the
-whole subtree click-through whatever is nested, the most-blocking modifier
-wins. Two boxes that disagree only on S (`defer_pointer() | block_pointer()`)
-resolve to the outermost. Stacking these on one widget is redundant; the rule
-exists to keep the rare case well-defined.
+#### A point is resolved
 
-## Implementation
+```mermaid
+sequenceDiagram
+    participant W as runtime/window.py
+    participant K as widgeting/widget_kernel.py
+    participant C as the child widgets
 
-All hit participation routes through one helper set on `WidgetKernel`:
+    W->>K: hit_test(x, y)
+    loop each child, topmost first
+        alt the child has a rect with area
+            K->>K: skip the child when the point is outside its rect
+            K->>C: hit_test(x - rx, y - ry)
+        else
+            K->>C: hit_test(x, y), untranslated
+        end
+    end
+    alt a child caught
+        K-->>W: that widget
+    else the widget handles input or paints a surface, and the point is in its bounds
+        K-->>W: the widget
+    else
+        K-->>W: None
+    end
+```
 
-- `_hit_test_children(x, y)`, the C axis: reverse Z-order descent. A child's
-  `layout_rect` both gates the point and translates it into the child's space.
-  A child with no rect or a zero-area one is neither gated nor translated; the
-  point is handed down as is. That is what makes a size-less provider such as
-  `ForEach` work: it reports `(0, 0)`, paints nothing and lifts its children
-  into the parent's coordinate space, so it must never act as a bounds gate
-  for a subtree it does not enclose.
-- `_hit_self_opaque()` resolves S for `auto`. The base returns
-  `_hit_is_interactive()`; `Box` widens it to a painted surface;
-  `InteractionHostMixin` reports interactive.
-- `_hit_is_interactive()` (`InputHubMixin`) is true when the widget overrides
-  `on_pointer_event` / `on_scroll_event` or has a registered pointer or scroll
-  hook.
-- `_resolve_hit(x, y, *, child_hit, self_opaque)` combines C and S. A pure
-  pass-through wrapper (`Deck`, the overlay positioning and passthrough layers)
-  passes `self_opaque=False` so it never becomes the target; no wrapper keeps
-  a hand-rolled `if hit is self` check.
+### Promises
+
+- A widget that handles pointer or scroll input catches its rect. A widget
+  that paints a surface catches its rect. Any other widget defers to its
+  children.
+- A size-less provider such as `ForEach` is no bounds gate for the subtree
+  it lifts into its parent.
+- A pure pass-through wrapper passes `self_opaque=False`. No wrapper keeps an
+  `is self` check of its own.
+
+## The Participation Box
+
+`HitParticipationBox` overrides a subtree's two axes while its condition
+holds.
+
+### Structure
+
+```mermaid
+flowchart LR
+    box[widgeting/hit_participation.py]
+    kernel[widgeting/widget_kernel.py]
+    binding[widgeting/widget_binding.py]
+    observable[observable/value.py]
+    shortcuts[runtime/shortcut_dispatch.py]
+    modifiers[the postures]
+    overlay[overlay/overlay.py]
+
+    modifiers & overlay -- "HitParticipationBox(child, condition, descend_children, self_opaque)" --> box
+    box -- "child._hit_test_children(x, y) · _resolve_hit(x, y, child_hit, self_opaque)" --> kernel
+    box -- "observe(condition, _set_active)" --> binding
+    binding -- "subscribe" --> observable
+    shortcuts -- "is_inert" --> box
+```
+
+| Module | Role |
+| --- | --- |
+| `widgeting/hit_participation.py` | overrides a subtree's two axes while its condition holds; reports whether the subtree is inert |
+| `widgeting/widget_kernel.py` | the resolution the box drives (The Resolution) |
+| `widgeting/widget_binding.py` | the subscription to an observable condition ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)) |
+| `observable/value.py` | an `Observable[bool]` condition ([OBSERVABLE.md](OBSERVABLE.md)) |
+| `runtime/shortcut_dispatch.py` | reads whether a subtree is inert ([KEYBOARD_SHORTCUTS.md](KEYBOARD_SHORTCUTS.md)) |
+| the postures | the four modifiers that configure the box (The Postures) |
+| `overlay/overlay.py` | the backdrop and the blocker ([OVERLAY.md](OVERLAY.md)) |
+
+### Promises
+
+- An inactive box resolves as the wrapped widget would alone.
+- The condition is read at construction, never at the first hit.
+- The box descends into the wrapped widget's children, not into the widget.
+  The wrapped widget's own surface is governed by the box.
+- `widgeting/hit_participation.py` imports no modifier.
+
+## The Postures
+
+Four modifiers name one setting of the box each.
+
+### Structure
+
+```mermaid
+flowchart LR
+    defer[modifiers/defer_pointer.py]
+    block[modifiers/block_pointer.py]
+    absorb[modifiers/absorb_pointer.py]
+    passthrough[modifiers/passthrough_pointer.py]
+    visible[modifiers/visible.py]
+    box[widgeting/hit_participation.py]
+    app[the app]
+
+    app -- "defer_pointer(condition) · block_pointer(condition) · absorb_pointer(condition) · passthrough_pointer(condition)" --> defer & block & absorb & passthrough
+    defer -- "descend_children=True, self_opaque=False" --> box
+    block -- "descend_children=True, self_opaque=True" --> box
+    absorb -- "descend_children=False, self_opaque=True" --> box
+    passthrough -- "descend_children=False, self_opaque=False" --> box
+    visible -- "passthrough_pointer(not condition)" --> passthrough
+```
+
+| Module | Role |
+| --- | --- |
+| `modifiers/defer_pointer.py` | self never catches, the children do |
+| `modifiers/block_pointer.py` | self catches its whole rect, the children still work |
+| `modifiers/absorb_pointer.py` | self catches its whole rect, nothing below it is asked |
+| `modifiers/passthrough_pointer.py` | the whole subtree is click-through |
+| `modifiers/visible.py` | composes the click-through posture into a hidden widget ([MODIFIER.md](MODIFIER.md)) |
+| `widgeting/hit_participation.py` | the wrapper each posture configures (The Participation Box) |
+| the app | picks a posture, with a `bool` or an `Observable[bool]` |
+
+### Sequence
+
+#### Two stacked postures resolve a point
+
+```mermaid
+sequenceDiagram
+    participant O as hit_participation.py, the outer box
+    participant I as hit_participation.py, the inner box
+    participant K as widgeting/widget_kernel.py
+
+    O->>O: hit_test(x, y)
+    alt the outer box descends
+        O->>I: hit_test(x, y), through the wrapped widget's children
+        I->>K: _resolve_hit(x, y, child_hit, self_opaque of the inner)
+        I-->>O: the inner answer
+    else
+        Note over I: never asked
+    end
+    O->>K: _resolve_hit(x, y, child_hit, self_opaque of the outer)
+```
+
+### Promises
+
+- Stacked postures are nested boxes, the later in `a | b` outermost. The
+  outermost box decides whether descent happens. Where two disagree on the
+  widget's own surface, the outermost wins.

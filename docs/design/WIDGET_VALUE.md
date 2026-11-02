@@ -1,62 +1,108 @@
-# Widget Value Surface
+# Widget Value
 
-A widget that holds something the user set publishes it as a public `value`
-property. This is the name the whole framework uses (`EditableText`,
-`TextFieldBase`, `Toggleable`, `RadioGroup`, `SearchBar`, `ProgressIndicator`,
-`Slider`, `RangeSlider`) and the name the dev tools read. The `_private` side
-of the same widgets is in [WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md).
+A widget that holds something the user set publishes it as `value`. One name
+serves every widget and the dev tools that read them.
 
-## Why One Name
+## Overview
 
-`describe_tree` reports a node's interactive state in a vocabulary a coding
-agent can rely on across every widget: `disabled`, `focused`, `selected`,
-`value`. It gets that vocabulary by probing public properties, so a widget
-that keeps its value under a private attribute is invisible there.
+The probe and the widgets it reads take part, with the dev bridge and the
+app at their edges.
 
-The reactive dump (`describe_state`) is not a substitute. It reports the
-`Observable` attributes a widget happens to hold, under the names the widget
-bound them to (`_state_internal`, `checked_external_tri`), so the same fact is
-named differently for every widget. A widget whose value was bound as a plain
-`bool` or `float` holds no observable at all and reports nothing.
+### Structure
 
-## What `value` Means
+```mermaid
+flowchart LR
+    probe[_interaction/perception.py]
+    holders[The Holders]
+    interaction[widgets/interaction.py]
+    bridge[dev/bridge.py]
+    app[the app]
 
-**The value the user thinks the widget has, not all of its state.**
-`EditableText.value` is the `str` being edited, while the full editing state,
-text, selection and composing range, lives in a `TextEditingValue` beside it.
-A widget with rich internal state still publishes the one thing its user set.
-A widget with no such thing has no `value`: `Navigator` does not publish its
-route stack as one.
+    bridge -- "describe_tree(root)" --> probe
+    probe -- "value, by name" --> holders
+    probe -- "state.focused · state.disabled · state.selected" --> interaction
+    app -- "widget.value · widget.value = v" --> holders
+```
 
-## Composite Values
+| Module | Role |
+| --- | --- |
+| `_interaction/perception.py` | reads a node's semantic state by name |
+| The Holders | the widgets that publish a `value` |
+| `widgets/interaction.py` | the flags a node's interaction state holds ([INTERACTION_ARCHITECTURE.md](INTERACTION_ARCHITECTURE.md)) |
+| `dev/bridge.py` | serves the tree to a coding agent ([DEV_BRIDGE.md](DEV_BRIDGE.md)) |
+| the app | reads and assigns through the same name |
 
-A value made of several parts is still one `value`. `RangeSlider.value` is
-`(start, end)`; a time picker's would carry hour, minute and period.
+### Promises
 
-The shape of a composite value is a per-widget decision, reviewed before it
-is fixed, because once published callers destructure it and changing it
-breaks them. Two questions decide it, and neither has a general answer:
+- A widget with nothing the user set has no `value`.
+- `value` is the one thing the user set, never the widget's whole state.
 
-- **Is the shape self-describing?** A positional tuple works when the parts
-  are the same quantity in the same order every time, a range's two ends. It
-  stops working when the parts are different kinds of thing: `(3, 30)` does
-  not say which is the hour. Parts that need names are not given positions.
-- **Does the widget already declare the shape somewhere?** `RangeSlider`
-  types `on_change` as `Callable[[Tuple[float, float]], None]`, so its value
-  was an ordered pair before `value` existed and the property only surfaced
-  it. Where such a declaration exists, it wins over a second shape for the
-  same value.
+## The Probe
 
-Reaching for a tuple because a sibling widget used one is the failure this
-rule exists to prevent.
+`describe_tree` reads each node by name.
 
-## Writing
+### Structure
 
-`value` is writable wherever the widget's value is writable, so a caller can
-read and assign through the name it saw in the tree.
+```mermaid
+flowchart LR
+    perception[_interaction/perception.py]
+    interaction[widgets/interaction.py]
+    holders[the holders]
+    bridge[dev/bridge.py]
 
-A composite `value` whose parts have their own setters does not leave the
-ordering to the caller. `RangeSlider.value_start` clamps against the current
-`value_end` and vice versa, so assigning the two ends in the wrong order
-collapses the new range onto the old one; the `value` setter picks the order,
-and that trap is solved once, in the widget.
+    bridge -- "describe_tree(root)" --> perception
+    perception -- "state.focused · state.disabled · state.selected" --> interaction
+    perception -- "value" --> holders
+```
+
+| Module | Role |
+| --- | --- |
+| `_interaction/perception.py` | probes each node for the flags and for `value`, tolerating a getter that raises |
+| `widgets/interaction.py` | the flags a node's interaction state holds ([INTERACTION_ARCHITECTURE.md](INTERACTION_ARCHITECTURE.md)) |
+| the holders | publish `value` (The Holders) |
+| `dev/bridge.py` | the caller ([DEV_BRIDGE.md](DEV_BRIDGE.md)) |
+
+### Promises
+
+- The probe reads public properties only.
+- `value` is reported whenever the node has one.
+- A toggle's `value` is its checked state.
+
+## The Holders
+
+The widgets below publish `value`.
+
+### Structure
+
+```mermaid
+flowchart LR
+    editable[widgets/editable_text.py]
+    textfield[material/text_fields.py]
+    toggleable[widgets/toggleable.py]
+    radio[material/selection_controls.py]
+    search[material/search.py]
+    slider[material/slider.py]
+    app[the app]
+
+    app -- "value: str" --> editable & textfield & search
+    app -- "value: bool | None" --> toggleable
+    app -- "value: object | None, the selected option" --> radio
+    app -- "value: float · value: tuple[float, float], a range" --> slider
+```
+
+| Module | Role |
+| --- | --- |
+| `widgets/editable_text.py` | the text being edited ([TEXT_EDITING.md](TEXT_EDITING.md)) |
+| `material/text_fields.py` | the field's text |
+| `widgets/toggleable.py` | the checked state, `None` for indeterminate |
+| `material/selection_controls.py` | `RadioGroup`, the selected option |
+| `material/search.py` | the query |
+| `material/slider.py` | `Slider` and `RangeSlider` |
+| the app | reads and assigns |
+
+### Promises
+
+- The type of `value` is the type of the widget's primary input.
+- A value made of several parts is one `value`. Its shape is the one the
+  widget already declares elsewhere, such as the `on_change` signature.
+- A composite `value` setter orders its parts itself.
