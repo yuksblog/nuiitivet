@@ -228,6 +228,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
     auto_recreate_probe_used = False
     last_resize_raw = None
     last_resize_logical = None
+    last_pixel_ratio = None
     # Normalize root if available
     try:
         root = getattr(win, "root", None)
@@ -525,8 +526,9 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
             return 1.0
 
     def _update_app_size_from_window(source: str, width: int, height: int) -> None:
-        nonlocal last_resize_raw, last_resize_logical
+        nonlocal last_resize_raw, last_resize_logical, last_pixel_ratio
         nonlocal auto_recreate_always, auto_recreate_probe_used
+        changed = True
         try:
             # Get latest scale
             current_scale = 1.0
@@ -534,6 +536,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
                 current_scale = float(window.get_pixel_ratio())
             except Exception:
                 pass
+            last_pixel_ratio = current_scale
 
             dpi_scale = None
             if sys.platform == "win32":
@@ -606,6 +609,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
                 logical_h = raw_h if use_raw else div_h
 
             # Update win state
+            prev_scale = getattr(win, "_scale", None)
             win.width = int(max(1, logical_w))
             win.height = int(max(1, logical_h))
             setattr(win, "_scale", scale)
@@ -621,12 +625,19 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
                     auto_recreate_probe_used = True
                 _recreate_gl_context("auto-resize")
 
+            changed = (
+                (raw_w, raw_h) != last_resize_raw
+                or (win.width, win.height) != last_resize_logical
+                or prev_scale != scale
+            )
             last_resize_raw = (raw_w, raw_h)
             last_resize_logical = (win.width, win.height)
 
         except Exception:
             exception_once(logger, "pyglet_on_resize_set_size_exc", "Failed to set win.width/win.height")
 
+        if not changed:
+            return
         try:
             win.invalidate(immediate=True)
         except Exception:
@@ -649,21 +660,14 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         except Exception:
             win_w = 0
             win_h = 0
+        # Compare pyglet's readings with the readings of the last update: win holds
+        # logical sizes and a DPI-derived scale, which differ from them off 100%.
         try:
-            cur_scale = float(getattr(win, "_scale", 1.0))
+            pixel_ratio_changed = float(window.get_pixel_ratio()) != last_pixel_ratio
         except Exception:
-            cur_scale = 1.0
-        scale_changed = False
-        try:
-            latest_scale = float(window.get_pixel_ratio())
-            if abs(latest_scale - cur_scale) >= 0.01:
-                scale_changed = True
-        except Exception:
-            scale_changed = False
+            pixel_ratio_changed = False
 
-        if (win_w and win_h) and (
-            win_w != int(getattr(win, "width", 0)) or win_h != int(getattr(win, "height", 0)) or scale_changed
-        ):
+        if (win_w and win_h) and ((win_w, win_h) != last_resize_raw or pixel_ratio_changed):
             _update_app_size_from_window("on_draw", win_w, win_h)
 
         if gpu_enabled and gr_context is not None and GL is not None:
