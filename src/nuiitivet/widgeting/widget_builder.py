@@ -531,8 +531,12 @@ class BuilderHostMixin:
     # --- Lifecycle & Rendering (Mixin overrides) --------------------------
     def on_mount(self) -> None:
         super().on_mount()  # type: ignore
-        # If this widget is a composition (uses build), build it now.
-        built = self.evaluate_build()
+        # A subtree built before the mount (``rebuild`` on an unmounted host, a
+        # scoped fragment built as its scope is rendered) is the subtree that
+        # mounts. Building again here would discard it unseen.
+        built = self._built
+        if built is None:
+            built = self.evaluate_build()
         if built is not None and built is not self:
             self._mount_built(built)
 

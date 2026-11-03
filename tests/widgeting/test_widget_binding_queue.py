@@ -116,9 +116,8 @@ def test_binding_queue_targets_scope_before_cache_clear() -> None:
     widget = _ScopeAwareWidget()
     widget._app = _AppStub()
     widget.rebuild()
-    # Note: ScopedFragment seems to be built twice (once in render_scope, once in mount)
-    # This might be an inefficiency in the framework, but for now we accept 2.
-    assert widget.scope_recomposes == 2
+    # The fragment built while its scope was rendered is the one that mounts.
+    assert widget.scope_recomposes == 1
     emitter = _Emitter()
     widget.bind_to(emitter, lambda v: None, dependency="alpha")
 
@@ -128,6 +127,6 @@ def test_binding_queue_targets_scope_before_cache_clear() -> None:
 
     flush_binding_invalidations()
 
-    assert widget.scope_recomposes == 3
+    assert widget.scope_recomposes == 2
     assert widget.layout_hits == 0
     assert widget.paint_hits == 0
