@@ -98,8 +98,6 @@ SAMPLES = [
     ("samples/navigation/nested.py", "navigation_sub.png"),
     # The intuitive grammar
     ("samples/intuitive_grammar/counter_card.py", "intuitive_grammar_counter_card.png"),
-    # README samples
-    ("samples/readme/readme_counter_app.py", "readme_counter.png"),
     # Window Chrome
     ("samples/window/chrome/os_chrome_default.py", "window_chrome_os_default.png"),
     ("samples/window/chrome/custom_chrome.py", "window_chrome_custom.png"),
