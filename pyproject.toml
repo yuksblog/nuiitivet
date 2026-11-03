@@ -20,7 +20,7 @@ dependencies = [
   "skia-python>=138.0",
   'jeepney>=0.9.0; sys_platform == "linux"',
 ]
-description = "AI friendly Desktop UI framework for Python"
+description = "An intuitive UI framework for Python"
 keywords = ["ui", "desktop", "framework", "graphics", "opengl", "skia", "material design"]
 license = "Apache-2.0"
 license-files = ["LICENSE", "LICENSES/*"]
