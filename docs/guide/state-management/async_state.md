@@ -133,6 +133,21 @@ If `_search` has a natural place to check, it can give up early:
 Checking is optional and never affects which result wins. A `_search` that blocks
 in a single call has nowhere to check, and loses nothing by ignoring `cancel`.
 
+## Using a coroutine
+
+`switch_map` also takes a coroutine function. It receives the query alone:
+
+```python
+    async def _search(self, query: str) -> SearchOutcome:
+        return SearchOutcome(items=await asyncio.to_thread(search_api, query))
+```
+
+The coroutine runs on the UI thread. A blocking call inside it freezes the
+window. The slow part goes behind an `await`. A superseded run stops at its next
+`await`. In a browser a plain `_search` raises. A
+[`@nv.server` function](../web/worker_and_server_functions.md) is the form that
+runs there.
+
 ## When this is the wrong tool
 
 `switch_map` runs when a value changes, and produces one result. Anything else
@@ -147,7 +162,7 @@ stays hand-written — see [Background Work](background_work.md):
 
 Two things that do *not* matter here: how much data comes back (items, a total and
 facets are still one answer — that is what `SearchOutcome` is for), and how heavy
-the work is (`switch_map` uses a worker thread either way).
+the work is (a plain `_search` runs on a worker thread either way).
 
 ## Full sample
 

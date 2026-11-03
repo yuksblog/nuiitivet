@@ -89,6 +89,9 @@ results = query.switch_map(search, initial=SearchOutcome())
 The last one runs off the UI thread and keeps only the newest run's result. See
 [Async State](async_state.md).
 
+A `debounce`, `scan` or `switch_map` chain that nothing holds stops firing.
+Assign it, as above.
+
 ## Keep Transformations Pure
 
 The function you pass to `.map()` / `.compute()` should be a pure transformation:
@@ -100,6 +103,10 @@ driving widgets — fire unpredictably.
 Return the derived value and bind it where you need it (for example, pass the
 resulting observable straight to a widget) instead of updating state from inside
 the transform.
+
+The function runs on the thread that wrote the source, a worker thread included.
+A function that keeps raising puts one line in the log. The derived value
+keeps its previous value.
 
 ```python
 # ❌ bad: the transform mutates a separate observable as a side effect
