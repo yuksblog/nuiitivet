@@ -44,7 +44,7 @@ class _FakeGL:
 
 
 class _FakePygletWindow:
-    """A Windows pyglet window: sizes in physical pixels, pixel ratio 1.0."""
+    """A Windows pyglet window: sizes in physical pixels, pixel ratio 1.0 unless set."""
 
     WINDOW_STYLE_BORDERLESS = "borderless"
     WINDOW_STYLE_DIALOG = "dialog"
@@ -56,13 +56,14 @@ class _FakePygletWindow:
         self.height = height
         self.handlers: dict[str, Callable[..., Any]] = {}
         self._hwnd = 1
+        self.pixel_ratio = 1.0
 
     def event(self, fn: Callable[..., Any]) -> Callable[..., Any]:
         self.handlers[fn.__name__] = fn
         return fn
 
     def get_pixel_ratio(self) -> float:
-        return 1.0
+        return self.pixel_ratio
 
     def get_framebuffer_size(self) -> tuple[int, int]:
         return self.width, self.height
@@ -143,3 +144,56 @@ def test_scale_follows_the_window_through_a_resize(realized) -> None:
         on_draw()
         assert win._scale == pytest.approx(1.5)
         assert (win.width, win.height) == (536, 400)
+
+
+def _count_invalidates(monkeypatch: pytest.MonkeyPatch, win: Window) -> list[bool]:
+    calls: list[bool] = []
+    original = win.invalidate
+
+    def counting(immediate: bool = False, content: bool = True) -> None:
+        calls.append(content)
+        original(immediate=immediate, content=content)
+
+    monkeypatch.setattr(win, "invalidate", counting)
+    return calls
+
+
+@pytest.mark.parametrize("pixel_ratio", [1.0, 1.5])
+def test_an_idle_window_requests_no_frame(realized, monkeypatch: pytest.MonkeyPatch, pixel_ratio: float) -> None:
+    # pyglet reports 1.0 under dpi_scaling="real" and the DPI ratio otherwise.
+    win, os_window, gl = realized
+    os_window.pixel_ratio = pixel_ratio
+    on_draw = os_window.handlers["on_draw"]
+    on_draw()
+    calls = _count_invalidates(monkeypatch, win)
+
+    for _ in range(3):
+        on_draw()
+
+    assert calls == []
+    assert (win.width, win.height) == (534, 400)
+
+
+def test_a_draw_picks_up_a_resize_with_no_resize_event(realized) -> None:
+    win, os_window, gl = realized
+    on_draw = os_window.handlers["on_draw"]
+
+    on_draw()
+    os_window.width, os_window.height = 803, 600
+    on_draw()
+
+    assert (win.width, win.height) == (536, 400)
+
+
+def test_a_draw_picks_up_a_pixel_ratio_change(realized, monkeypatch: pytest.MonkeyPatch) -> None:
+    win, os_window, gl = realized
+    on_draw = os_window.handlers["on_draw"]
+    on_draw()
+    calls = _count_invalidates(monkeypatch, win)
+
+    os_window.pixel_ratio = 2.0
+    on_draw()
+
+    assert win._scale == pytest.approx(2.0)
+    assert (win.width, win.height) == (400, 300)
+    assert calls == [True]
