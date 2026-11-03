@@ -142,7 +142,9 @@ if __name__ == "__main__":
 
 `Window` takes the factory itself, `build_root`, not a call to it. With
 `Window(content=build_root())` edits stop applying to that window. The dev
-runner warns about it.
+runner warns about it. With a `lambda`, or a function defined inside
+`main()`, edits to the classes it builds still apply. Edits to its own body stop
+applying. No warning is logged.
 
 ## 5. Launch under the dev runner
 

@@ -183,7 +183,8 @@ chrome = nv.CustomChrome(
 
 A mounted `MenuBarArea` suppresses the automatic insertion; the model stays
 on the window either way, so menus, callbacks and shortcuts are unaffected by
-placement. An area with no registered menu renders nothing.
+placement. An area with no registered menu renders nothing. With two areas
+mounted at once, only the first one renders. A warning is logged.
 
 ## Keyboard
 
@@ -216,5 +217,6 @@ menu bar, set the corresponding `MenuBarStyle` fields (`bar_background`,
   menu; a window with `menu=None` shows the main window's. An application
   menu is synthesized automatically — a `MenuEntry.quit()` found in one of
   your menus is relocated into it, and one is added if you have none.
-  Accelerators become native key equivalents (`⌘S`). No platform branching
-  is needed in app code.
+  Accelerators become native key equivalents (`⌘S`). A top-level `MenuEntry`
+  with `on_select` and no `submenu` becomes a menu holding that one item. No
+  platform branching is needed in app code.

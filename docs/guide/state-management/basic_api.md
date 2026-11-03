@@ -38,7 +38,8 @@ subscription = age.subscribe(lambda value: print(value))
 subscription.dispose()
 ```
 
-In most UI cases, cleanup is handled automatically by the framework lifecycle.
+Inside a widget, `self.bind(age.subscribe(...))` disposes the subscription when
+the widget unmounts.
 
 ## Custom Comparison Function
 
