@@ -1,0 +1,105 @@
+"""Charts - a matplotlib Figure as a widget, live and in the theme's colors.
+
+The live chart keeps its line and only moves its data: ``plot`` runs on every
+value of ``samples`` with ``line.set_ydata``. The bar chart is drawn once and
+handed over. Both follow the theme: press Dark and the lines, text and ticks
+take the dark scheme's colors.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import math
+
+from matplotlib.figure import Figure
+
+import nuiitivet.material as nv
+
+light, dark = nv.ThemeFactory.from_seed_pair("#6750A4")
+
+XS = [i / 20 for i in range(200)]
+samples = nv.Observable([math.sin(x) for x in XS])
+
+live = Figure()
+live_ax = live.subplots()
+(line,) = live_ax.plot(XS, samples.value)
+live_ax.set_ylim(-1.2, 1.2)
+live_ax.set_title("Live")
+
+
+def plot(figure: Figure, ys: list[float]) -> None:
+    """Runs before each draw with the latest samples: same artists, new data."""
+    line.set_ydata(ys)
+
+
+bars = Figure()
+bars_ax = bars.subplots()
+bars_ax.bar(["Mon", "Tue", "Wed", "Thu", "Fri"], [3, 7, 4, 6, 5])
+bars_ax.set_title("Static")
+
+
+class ChartScreen(nv.ComposableWidget):
+    """Two charts and a theme toggle; the live one is fed for as long as the screen is mounted."""
+
+    def __init__(self) -> None:
+        super().__init__(width="wt", height="wt")
+        self._is_dark = False
+        self._toggle_label = nv.Observable("Dark")
+
+    async def _feed(self) -> None:
+        phase = 0.0
+        while True:
+            phase += 0.1
+            samples.value = [math.sin(x + phase) for x in XS]
+            await asyncio.sleep(0.05)
+
+    def _toggle(self) -> None:
+        self._is_dark = not self._is_dark
+        self._toggle_label.value = "Light" if self._is_dark else "Dark"
+        nv.App.of(self).set_theme(dark if self._is_dark else light)
+
+    def build(self) -> nv.Widget:
+        return nv.Column(
+            [
+                nv.Row(
+                    [
+                        nv.Text("matplotlib in the app's colors"),
+                        nv.Spacer(width="wt"),
+                        nv.Button(self._toggle_label, on_click=self._toggle, style=nv.ButtonStyle.tonal()),
+                    ],
+                    cross_alignment="center",
+                    width="wt",
+                ),
+                nv.Row(
+                    [
+                        # plot(live, samples.value) runs before each draw, on every change of samples.
+                        nv.MatplotlibFigure.plot(live, samples, plot, width="wt", height="wt"),
+                        nv.MatplotlibFigure(bars, width=260, height="wt"),
+                    ],
+                    gap=16,
+                    width="wt",
+                    height="wt",
+                ),
+            ],
+            gap=16,
+            padding=16,
+            width="wt",
+            height="wt",
+        ).modifier(nv.on_mount(self._feed))
+
+
+def build_root() -> nv.Widget:
+    return ChartScreen()
+
+
+def main(png_path: str = "") -> None:
+    app = nv.App(nv.Window(content=build_root, width=760, height=400, title="MatplotlibFigure"))
+    if png_path:
+        app.render_to_png(png_path)
+        print(f"Rendered {png_path}")
+        return
+    app.run()
+
+
+if __name__ == "__main__":
+    main()

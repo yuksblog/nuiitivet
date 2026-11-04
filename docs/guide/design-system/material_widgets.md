@@ -385,3 +385,23 @@ nv.DockedDatePicker(
 ![Image](../../assets/material_widgets_image.png)
 
 [API Reference](../../api/widgets.md#nuiitivet.widgets.image.Image)
+
+---
+
+## RasterSurface
+
+`RasterSurface` is a primitive widget that is not part of Material Design. Shows pixels the app draws itself, asked for at the widget's device size so they stay crisp on any display. The buffer must hold exactly `width_px * height_px * 4` RGBA bytes.
+
+![RasterSurface](../../assets/charts_raster_surface.png)
+
+[Charts guide](../charts/index.md) · [API Reference](../../api/widgets.md#nuiitivet.widgets.RasterSurface)
+
+---
+
+## MatplotlibFigure
+
+Shows a matplotlib `Figure`, drawn at the widget's size in the theme's colors, replotted from an Observable with `MatplotlibFigure.plot`. Needs `pip install nuiitivet[matplotlib]`; the widget sets the figure's size and dpi itself.
+
+![MatplotlibFigure](../../assets/charts_matplotlib_figure.png)
+
+[Charts guide](../charts/index.md) · [API Reference](../../api/material.md#nuiitivet.material.MatplotlibFigure)

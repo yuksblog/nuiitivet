@@ -43,6 +43,7 @@ from .geometry import (
 )
 
 from .surface import (
+    make_raster_image,
     make_raster_surface,
     save_png,
 )
@@ -90,6 +91,7 @@ __all__ = [
     "path_add_rrect",
     "path_move_to",
     "path_line_to",
+    "make_raster_image",
     "make_raster_surface",
     "save_png",
     "make_blur_mask_filter",

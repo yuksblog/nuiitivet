@@ -1,0 +1,255 @@
+"""A matplotlib ``Figure`` shown as a widget, drawn at the widget's device size in the theme's colors."""
+
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, TypeVar
+
+from nuiitivet.common.logging_once import exception_once
+from nuiitivet.material.theme.color_role import ColorRole
+from nuiitivet.observable.protocols import ObservableBase
+from nuiitivet.rendering.padding import PaddingLike
+from nuiitivet.rendering.sizing import SizingLike
+from nuiitivet.theme.dependency import theme_generation
+from nuiitivet.theme.resolver import resolve_color_to_rgba
+from nuiitivet.theme.theme import Theme
+from nuiitivet.widgets.raster_surface import RasterSurface
+
+if TYPE_CHECKING:
+    from matplotlib.figure import Figure
+
+logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
+
+#: Points per logical pixel: a 10pt label is 10pt on screen, as in the rest of the app.
+_LOGICAL_DPI = 96.0
+
+#: The colors a plotted series takes, in order; matplotlib's stock cycle maps onto these.
+_SERIES_ROLES = (ColorRole.PRIMARY, ColorRole.TERTIARY, ColorRole.SECONDARY, ColorRole.ERROR)
+
+_TRANSPARENT = (0.0, 0.0, 0.0, 0.0)
+
+
+class MatplotlibFigure(RasterSurface):
+    """A matplotlib ``Figure`` as a widget.
+
+    The figure is drawn with the Agg renderer at the widget's device size, so
+    text and lines stay crisp on any display; the widget takes over the
+    figure's canvas, size and dpi.
+
+    With ``themed`` the figure follows the app's :class:`ColorRole` palette and
+    switches with it: the figure and axes backgrounds become transparent, text
+    and ticks take the on-surface colors, spines the outline color, and a
+    series drawn in one of matplotlib's stock cycle colors takes the primary,
+    tertiary, secondary and error colors in turn. A color set by hand stays.
+    From a data source: :meth:`plot`.
+    """
+
+    def __init__(
+        self,
+        figure: "Figure",
+        *,
+        themed: bool = True,
+        width: SizingLike = None,
+        height: SizingLike = None,
+        padding: PaddingLike = 0,
+        key: Optional[str] = None,
+    ) -> None:
+        """Initialize a MatplotlibFigure showing *figure* as it is.
+
+        Args:
+            figure: The figure to show, drawn already.
+            themed: Whether the figure takes the app theme's colors.
+            width: Width sizing.
+            height: Height sizing.
+            padding: Insets from the allocated rect to the figure.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
+
+        Raises:
+            ImportError: matplotlib is not installed; ``pip install nuiitivet[matplotlib]``.
+        """
+        try:
+            from matplotlib.backends.backend_agg import FigureCanvasAgg
+        except ImportError as error:
+            raise ImportError(
+                "MatplotlibFigure needs matplotlib: install the extra with `pip install nuiitivet[matplotlib]`"
+            ) from error
+        super().__init__(self._render_figure, width=width, height=height, padding=padding, key=key)
+        self._figure = figure
+        self._canvas = FigureCanvasAgg(figure)
+        self._themed = bool(themed)
+        self._theme_gen: Optional[int] = None
+        self._applied_series: list[str] = []
+        self._plot_fn: Optional[Callable[["Figure", Any], None]] = None
+        self._pending_value: Any = None
+        self._plot_pending = False
+
+    @classmethod
+    def plot(
+        cls,
+        figure: "Figure",
+        data: ObservableBase[T],
+        plot: Callable[["Figure", T], None],
+        *,
+        themed: bool = True,
+        width: SizingLike = None,
+        height: SizingLike = None,
+        padding: PaddingLike = 0,
+        key: Optional[str] = None,
+    ) -> "MatplotlibFigure":
+        """Create a MatplotlibFigure replotted from *data* on every change.
+
+        Args:
+            figure: The figure *plot* draws into.
+            plot: Called as ``plot(figure, value)`` with the current value
+                before the figure is drawn, whenever the value changes.
+            data: The observable the plot is made from.
+            themed: Whether the figure takes the app theme's colors.
+            width: Width sizing.
+            height: Height sizing.
+            padding: Insets from the allocated rect to the figure.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
+        """
+        widget = cls(figure, themed=themed, width=width, height=height, padding=padding, key=key)
+        widget._plot_fn = plot
+        widget.observe(data, widget._on_data)
+        return widget
+
+    @property
+    def figure(self) -> "Figure":
+        """The figure shown."""
+        return self._figure
+
+    def layout(self, width: int, height: int) -> None:
+        """Lay out, and queue a redraw when the theme changed since the last one."""
+        super().layout(width, height)
+        if self._themed and self._theme_gen is not None and theme_generation(self) != self._theme_gen:
+            self.request_render()
+
+    def _on_data(self, value: Any) -> None:
+        self._pending_value = value
+        self._plot_pending = True
+        self.request_render()
+
+    def _render_figure(self, width_px: int, height_px: int) -> Any:
+        figure = self._figure
+        if self._plot_pending and self._plot_fn is not None:
+            self._plot_pending = False
+            try:
+                self._plot_fn(figure, self._pending_value)
+            except Exception:
+                exception_once(logger, "matplotlib_figure_plot_exc", "MatplotlibFigure plot function raised")
+        if self._themed:
+            self._apply_theme()
+        dpi = _LOGICAL_DPI * self.pixel_ratio
+        figure.set_dpi(dpi)
+        # Agg truncates the figure's size in pixels to an int; half a pixel
+        # keeps a rounding error below the requested size from losing a row.
+        figure.set_size_inches((width_px + 0.5) / dpi, (height_px + 0.5) / dpi, forward=False)
+        self._canvas.draw()
+        got = tuple(int(v) for v in self._canvas.get_width_height())
+        if got != (width_px, height_px):
+            exception_once(
+                logger,
+                "matplotlib_figure_size_exc",
+                "matplotlib drew %s for a %s request",
+                got,
+                (width_px, height_px),
+            )
+            return None
+        return self._canvas.buffer_rgba()
+
+    # --- Theme ---------------------------------------------------------------
+
+    def _apply_theme(self) -> None:
+        theme = Theme.of(self)
+        self._theme_gen = theme_generation(self)
+        on_surface = _hex(ColorRole.ON_SURFACE, theme)
+        on_surface_variant = _hex(ColorRole.ON_SURFACE_VARIANT, theme)
+        outline_variant = _hex(ColorRole.OUTLINE_VARIANT, theme)
+        series = [_hex(role, theme) for role in _SERIES_ROLES]
+        recolor = _series_mapping(self._applied_series, series)
+        self._applied_series = series
+
+        figure = self._figure
+        figure.patch.set_facecolor(_TRANSPARENT)
+        for text in figure.texts:
+            text.set_color(on_surface)
+        for ax in figure.axes:
+            ax.set_facecolor(_TRANSPARENT)
+            for spine in ax.spines.values():
+                spine.set_color(outline_variant)
+            ax.tick_params(axis="both", which="both", colors=on_surface_variant, labelcolor=on_surface_variant)
+            ax.xaxis.label.set_color(on_surface)
+            ax.yaxis.label.set_color(on_surface)
+            ax.title.set_color(on_surface)
+            for gridline in ax.get_xgridlines() + ax.get_ygridlines():
+                gridline.set_color(outline_variant)
+            _recolor_artists(ax.get_lines(), recolor)
+            _recolor_artists(ax.patches, recolor)
+            _recolor_collections(ax.collections, recolor)
+            legend = ax.get_legend()
+            if legend is not None:
+                legend.get_frame().set_facecolor(_hex(ColorRole.SURFACE_CONTAINER, theme))
+                legend.get_frame().set_edgecolor(outline_variant)
+                for text in legend.get_texts():
+                    text.set_color(on_surface)
+                _recolor_artists(getattr(legend, "legend_handles", ()), recolor)
+            ax.set_prop_cycle(color=series)
+
+
+def _hex(role: ColorRole, theme: Theme) -> str:
+    r, g, b, _a = resolve_color_to_rgba(role, theme=theme)
+    return f"#{r:02x}{g:02x}{b:02x}"
+
+
+def _series_mapping(previous: list[str], current: list[str]) -> dict[str, str]:
+    """Which colors a series may hold that mean "the n-th theme color": the stock cycle, and the last theme's."""
+    import matplotlib
+    from matplotlib.colors import to_hex
+
+    stock = [to_hex(c).lower() for c in matplotlib.rcParamsDefault["axes.prop_cycle"].by_key()["color"]]
+    mapping = {color: current[i % len(current)] for i, color in enumerate(stock)}
+    mapping.update({color: current[i % len(current)] for i, color in enumerate(previous)})
+    return mapping
+
+
+def _mapped(color: Any, recolor: dict[str, str]) -> Optional[str]:
+    from matplotlib.colors import to_hex
+
+    try:
+        return recolor.get(to_hex(color).lower())
+    except (ValueError, TypeError):
+        return None
+
+
+def _recolor_artists(artists: Iterable[Any], recolor: dict[str, str]) -> None:
+    for artist in artists:
+        if hasattr(artist, "get_color") and hasattr(artist, "set_color"):
+            mapped = _mapped(artist.get_color(), recolor)
+            if mapped is not None:
+                artist.set_color(mapped)
+            continue
+        if hasattr(artist, "get_facecolor"):
+            mapped = _mapped(artist.get_facecolor(), recolor)
+            if mapped is not None:
+                artist.set_facecolor(mapped)
+        if hasattr(artist, "get_edgecolor"):
+            mapped = _mapped(artist.get_edgecolor(), recolor)
+            if mapped is not None:
+                artist.set_edgecolor(mapped)
+
+
+def _recolor_collections(collections: Iterable[Any], recolor: dict[str, str]) -> None:
+    for collection in collections:
+        for getter, setter in (("get_facecolor", "set_facecolor"), ("get_edgecolor", "set_edgecolor")):
+            colors = getattr(collection, getter)()
+            if len(colors) == 0:
+                continue
+            mapped = [_mapped(color, recolor) for color in colors]
+            if any(m is not None for m in mapped):
+                getattr(collection, setter)([m if m is not None else tuple(c) for m, c in zip(mapped, colors)])
+
+
+__all__ = ["MatplotlibFigure"]

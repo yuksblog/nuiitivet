@@ -174,3 +174,29 @@ def test_the_runtime_decides_the_target(monkeypatch: pytest.MonkeyPatch) -> None
     assert not is_web()
     monkeypatch.setattr("sys.platform", "emscripten")
     assert is_web()
+
+
+def test_an_app_that_imports_a_pyodide_package_has_the_page_load_it(
+    app_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app_path.write_text("import numpy\n")
+    lock = {"packages": {"numpy": {"name": "numpy", "file_name": "numpy-wasm32.whl", "sha256": "ab", "depends": []}}}
+    monkeypatch.setattr(server, "_pyodide_lock", lambda: lock)
+
+    served = site(app_path, bundle_runtime=False)
+    built = site(app_path, bundle_runtime=True)
+
+    assert json.loads(server.read(served["config.json"]))["packages"] == ["numpy"]
+    assert "pyodide/numpy-wasm32.whl" not in served
+    assert "pyodide/numpy-wasm32.whl" in built
+
+
+def test_an_app_without_such_imports_reads_no_lock(app_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def no_lock() -> dict:
+        raise AssertionError("the lock was read")
+
+    monkeypatch.setattr(server, "_pyodide_lock", no_lock)
+
+    config = json.loads(server.read(site(app_path, bundle_runtime=True)["config.json"]))
+
+    assert config["packages"] == []

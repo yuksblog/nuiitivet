@@ -9,6 +9,7 @@
 
 export function startWorkers(config, pageUrl) {
   const pyodide = new URL(config.pyodide, pageUrl).href;
+  const packagesUrl = new URL(config.packages_url, pageUrl).href;
   const bundle = new URL("bundle.zip", pageUrl).href;
   const script = new URL("worker.mjs", pageUrl);
 
@@ -37,7 +38,14 @@ export function startWorkers(config, pageUrl) {
       } else exit(data.error);
     };
     worker.onerror = (event) => exit(event.message || "the worker stopped");
-    worker.postMessage({ type: "init", pyodide, bundle, modules: config.workers });
+    worker.postMessage({
+      type: "init",
+      pyodide,
+      packagesUrl,
+      bundle,
+      packages: config.packages,
+      modules: config.workers,
+    });
     return handle;
   }
 

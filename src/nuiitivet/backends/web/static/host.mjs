@@ -203,6 +203,16 @@ export function installHost(CK, canvas, input, fonts) {
     },
 
     decode(bytes) { return CK.MakeImageFromEncoded(bytes); },
+    raster(bytes, width, height) {
+      const info = {
+        width,
+        height,
+        alphaType: CK.AlphaType.Unpremul,
+        colorType: CK.ColorType.RGBA_8888,
+        colorSpace: CK.ColorSpace.SRGB,
+      };
+      return CK.MakeImage(info, bytes, width * 4);
+    },
     encode(image) { return image.encodeToBytes(); },
   };
 

@@ -113,6 +113,8 @@ catalog below), not a job for `Container` — its box is layout-only.
 | Text (static or bound) | `Text` | `nv.Text("Hi")` / `nv.Text(obs)` |
 | Icon glyph | `Icon` | `nv.Icon("home")` / `nv.Icon(nv.Symbols.home)` |
 | Image | `Image` | `nv.Image(path_or_source)` |
+| Pixels drawn by the app, crisp at device size | `RasterSurface` | `nv.RasterSurface.draw(obs, lambda value, w_px, h_px: rgba_bytes)` |
+| matplotlib chart, live and in the theme's colors | `MatplotlibFigure` | `nv.MatplotlibFigure.plot(fig, obs, lambda fig, value: line.set_ydata(value))` |
 | Progress / loading | `CircularProgressIndicator` / `LinearProgressIndicator` / `LoadingIndicator` | `nv.LinearProgressIndicator(value=obs)` |
 | Status badge | `SmallBadge` / `LargeBadge` | `nv.SmallBadge()` |
 

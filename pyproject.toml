@@ -46,6 +46,9 @@ nuiitivet = "nuiitivet.testing.plugin"
 dev = [
   "mcp>=1.2.0",
 ]
+matplotlib = [
+    "matplotlib>=3.6",
+]
 
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]
@@ -59,6 +62,7 @@ dev = [
   # Self-reference the published extra so a plain `uv sync` keeps 'mcp'
   # installed: extras are not synced by default, and the sync is exact.
   "nuiitivet[dev]",
+  "nuiitivet[matplotlib]",
   "flake8>=7.0.0",
   "mypy>=1.18.2",
   "pytest>=9.0.1",

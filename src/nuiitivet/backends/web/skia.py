@@ -65,6 +65,14 @@ class ClipOp:
     kIntersect = 1
 
 
+class ColorType:
+    kRGBA_8888_ColorType = 4
+
+
+class AlphaType:
+    kUnpremul_AlphaType = 3
+
+
 class FilterMode:
     kNearest = 0
     kLinear = 1
@@ -508,15 +516,23 @@ class TextBlob:
 
 
 class Image:
-    def __init__(self, handle: Any) -> None:
+    def __init__(self, handle: Any, size: tuple[int, int] | None = None) -> None:
         self._i = handle
-        self._w = int(handle.width())
-        self._h = int(handle.height())
+        if size is None:
+            size = (int(handle.width()), int(handle.height()))
+        self._w, self._h = int(size[0]), int(size[1])
 
     @staticmethod
     def MakeFromEncoded(data: Any) -> Optional["Image"]:
         handle = H.decode(to_js(_raw(data)))
         return Image(handle) if handle else None
+
+    @staticmethod
+    def frombytes(array: Any, dimensions: tuple[int, int], *args: Any, **kwargs: Any) -> "Image":
+        # The colour and alpha type arguments are accepted for the skia-python
+        # signature; the host builds every raster as straight-alpha RGBA.
+        width, height = int(dimensions[0]), int(dimensions[1])
+        return Image(H.raster(to_js(_raw(array)), width, height), (width, height))
 
     def width(self) -> int:
         return self._w
