@@ -400,7 +400,7 @@ nv.DockedDatePicker(
 
 ## MatplotlibFigure
 
-Shows a matplotlib `Figure`, drawn at the widget's size in the theme's colors, replotted from an Observable with `MatplotlibFigure.plot`. Needs `pip install nuiitivet[matplotlib]`; the widget sets the figure's size and dpi itself.
+Shows a matplotlib `Figure`, drawn at the widget's size in the theme's colors, replotted from an Observable with `MatplotlibFigure.plot`. The pointer and the keyboard reach the figure as matplotlib events, so `mpl_connect` handlers and `picker` artists work. Needs `pip install nuiitivet[matplotlib]`; the widget sets the figure's size and dpi itself.
 
 ![MatplotlibFigure](../../assets/charts_matplotlib_figure.png)
 

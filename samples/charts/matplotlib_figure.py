@@ -1,9 +1,11 @@
-"""Charts - a matplotlib Figure as a widget, live and in the theme's colors.
+"""Charts - a matplotlib Figure as a widget, live, in the theme's colors, taking the mouse.
 
 The live chart keeps its line and only moves its data: ``plot`` runs on every
 value of ``samples`` with ``line.set_ydata``. The bar chart is drawn once and
-handed over. Both follow the theme: press Dark and the lines, text and ticks
-take the dark scheme's colors.
+handed over; a click on a bar picks it, through ``mpl_connect`` as in a
+matplotlib window, and writes the pick to an Observable. Both
+follow the theme: press Dark and the lines, text and ticks take the dark
+scheme's colors.
 """
 
 from __future__ import annotations
@@ -11,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import math
 
+from matplotlib.backend_bases import PickEvent
 from matplotlib.figure import Figure
 
 import nuiitivet.material as nv
@@ -32,10 +35,26 @@ def plot(figure: Figure, ys: list[float]) -> None:
     line.set_ydata(ys)
 
 
+DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri"]
+COUNTS = [3, 7, 4, 6, 5]
+picked = nv.Observable("Click a bar")
+
 bars = Figure()
 bars_ax = bars.subplots()
-bars_ax.bar(["Mon", "Tue", "Wed", "Thu", "Fri"], [3, 7, 4, 6, 5])
+rects = list(bars_ax.bar(DAYS, COUNTS, picker=True))
 bars_ax.set_title("Static")
+
+
+def on_pick(event: PickEvent) -> None:
+    """Click: the picked bar stays full, the others fade, and the app's state follows."""
+    for rect in rects:
+        rect.set_alpha(1.0 if rect is event.artist else 0.4)
+    index = rects.index(event.artist)
+    picked.value = f"{DAYS[index]}: {COUNTS[index]}"
+    bars.canvas.draw_idle()
+
+
+bars.canvas.mpl_connect("pick_event", on_pick)
 
 
 class ChartScreen(nv.ComposableWidget):
@@ -65,8 +84,10 @@ class ChartScreen(nv.ComposableWidget):
                     [
                         nv.Text("matplotlib in the app's colors"),
                         nv.Spacer(width="wt"),
+                        nv.Text(picked, key="picked"),
                         nv.Button(self._toggle_label, on_click=self._toggle, style=nv.ButtonStyle.tonal()),
                     ],
+                    gap=16,
                     cross_alignment="center",
                     width="wt",
                 ),
@@ -74,7 +95,7 @@ class ChartScreen(nv.ComposableWidget):
                     [
                         # plot(live, samples.value) runs before each draw, on every change of samples.
                         nv.MatplotlibFigure.plot(live, samples, plot, width="wt", height="wt"),
-                        nv.MatplotlibFigure(bars, width=260, height="wt"),
+                        nv.MatplotlibFigure(bars, width=260, height="wt", key="bars"),
                     ],
                     gap=16,
                     width="wt",

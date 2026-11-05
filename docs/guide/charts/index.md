@@ -39,8 +39,6 @@ The widget sets `figsize` and `dpi` to its own size on every layout; what you
 set on the figure is overwritten. A 10pt label is 10pt on screen, as in the
 rest of the app, on any display.
 
-The figure shown this way is a picture: it takes no mouse.
-
 ### 2. Feed it from an Observable
 
 ```python
@@ -87,6 +85,53 @@ drawn in one of matplotlib's stock cycle colors takes the theme's accent
 colors in this order: primary, tertiary, secondary, error. A color you set
 yourself stays. `themed=False`, on either constructor, leaves every color as
 matplotlib drew it.
+
+### 4. Handle events with `mpl_connect`
+
+`mpl_connect` is matplotlib's way to register an event handler:
+`figure.canvas.mpl_connect("pick_event", handler)` runs `handler` on every
+pick. The widget hands the pointer and the keyboard to the figure as
+matplotlib events, so a handler written for a matplotlib window runs
+unchanged.
+
+```python
+from matplotlib.backend_bases import PickEvent
+
+rects = list(bars_ax.bar(["Mon", "Tue", "Wed", "Thu", "Fri"], [3, 7, 4, 6, 5], picker=True))  # replaces step 1's bar call
+picked = nv.Observable("Click a bar")
+
+
+def on_pick(event: PickEvent) -> None:
+    for rect in rects:
+        rect.set_alpha(1.0 if rect is event.artist else 0.4)
+    picked.value = f"bar {rects.index(event.artist)}"  # into the app's state
+    bars.canvas.draw_idle()
+
+
+bars.canvas.mpl_connect("pick_event", on_pick)
+
+nv.Text(picked)  # follows the pick, anywhere in the app
+```
+
+Connect before or after the widget is made; the handlers belong to the
+figure. From inside a handler the app is reached as from anywhere else: an
+Observable written there updates the widgets that show it. The screen is
+reached through `draw_idle()`: the figure is drawn on the next frame, once,
+however many times it was asked. `draw()` alone changes nothing on screen;
+only a draw the widget asked for reaches it. A redraw is the whole figure, so
+ask when something changed, not on every `motion_notify_event`.
+
+The wheel arrives as `scroll_event` and does not scroll a list the figure
+sits in. Keys reach the figure once it has been clicked: `key_press_event`
+carries the key as matplotlib spells it, `ctrl+a`, `A` for a shifted letter.
+The app's shortcuts see the key too.
+
+The other events, `motion_notify_event`, `button_press_event` and the rest,
+are matplotlib's own; [Event handling and
+picking](https://matplotlib.org/stable/users/explain/figure/event_handling.html)
+lists them with their fields.
+
+No toolbar comes with the widget yet.
 
 ## Pixels from any library
 

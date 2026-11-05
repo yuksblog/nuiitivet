@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import functools
 import logging
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, TypeVar
 
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.input.codes import BUTTON_LEFT, BUTTON_MIDDLE, BUTTON_RIGHT, MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT
+from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.observable.protocols import ObservableBase
 from nuiitivet.rendering.padding import PaddingLike
@@ -13,6 +16,7 @@ from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.theme.dependency import theme_generation
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.theme.theme import Theme
+from nuiitivet.widgets.interaction import FocusNode, FocusSource, InteractionHostMixin, PointerListenerNode
 from nuiitivet.widgets.raster_surface import RasterSurface
 
 if TYPE_CHECKING:
@@ -30,8 +34,51 @@ _SERIES_ROLES = (ColorRole.PRIMARY, ColorRole.TERTIARY, ColorRole.SECONDARY, Col
 
 _TRANSPARENT = (0.0, 0.0, 0.0, 0.0)
 
+#: matplotlib's button numbers for the framework's button codes.
+_BUTTONS = {BUTTON_LEFT: 1, BUTTON_MIDDLE: 2, BUTTON_RIGHT: 3}
 
-class MatplotlibFigure(RasterSurface):
+#: Modifier names in the order matplotlib prefixes them to a key: ``ctrl+alt+shift+super+k``.
+_MODIFIERS = ((MOD_CTRL, "ctrl"), (MOD_ALT, "alt"), (MOD_SHIFT, "shift"), (MOD_META, "super"))
+
+#: The framework's key names that matplotlib spells differently.
+_KEY_NAMES = {
+    "space": " ",
+    "return": "enter",
+    "capslock": "caps_lock",
+    "lshift": "shift",
+    "rshift": "shift",
+    "lctrl": "control",
+    "rctrl": "control",
+    "lalt": "alt",
+    "ralt": "alt",
+    "loption": "alt",
+    "roption": "alt",
+    "meta": "super",
+    "lmeta": "super",
+    "rmeta": "super",
+    "lcommand": "super",
+    "rcommand": "super",
+    "lwindows": "super",
+    "rwindows": "super",
+    "minus": "-",
+    "equal": "=",
+    "plus": "+",
+    "comma": ",",
+    "period": ".",
+    "slash": "/",
+    "backslash": "\\",
+    "semicolon": ";",
+    "apostrophe": "'",
+    "grave": "`",
+    "bracketleft": "[",
+    "bracketright": "]",
+}
+
+#: A modifier pressed on its own is not its own prefix: ``shift``, never ``shift+shift``.
+_MODIFIER_KEYS = {"shift": "shift", "control": "ctrl", "alt": "alt", "super": "super"}
+
+
+class MatplotlibFigure(InteractionHostMixin, RasterSurface):
     """A matplotlib ``Figure`` as a widget.
 
     The figure is drawn with the Agg renderer at the widget's device size, so
@@ -44,6 +91,14 @@ class MatplotlibFigure(RasterSurface):
     series drawn in one of matplotlib's stock cycle colors takes the primary,
     tertiary, secondary and error colors in turn. A color set by hand stays.
     From a data source: :meth:`plot`.
+
+    The figure takes the pointer, and the keyboard after a click on it, as
+    matplotlib events: a handler connected with ``mpl_connect`` runs with the
+    event in the figure's pixels and data coordinates, ``picker`` artists
+    fire ``pick_event``, and the wheel arrives as ``scroll_event`` instead of
+    scrolling the page behind. A key the figure does not consume goes on to
+    the app's shortcuts. ``draw_idle()`` on the canvas redraws the figure on
+    the next frame, once however often it is called.
     """
 
     def __init__(
@@ -70,20 +125,36 @@ class MatplotlibFigure(RasterSurface):
             ImportError: matplotlib is not installed; ``pip install nuiitivet[matplotlib]``.
         """
         try:
-            from matplotlib.backends.backend_agg import FigureCanvasAgg
+            import matplotlib.backends.backend_agg  # noqa: F401
         except ImportError as error:
             raise ImportError(
                 "MatplotlibFigure needs matplotlib: install the extra with `pip install nuiitivet[matplotlib]`"
             ) from error
         super().__init__(self._render_figure, width=width, height=height, padding=padding, key=key)
         self._figure = figure
-        self._canvas = FigureCanvasAgg(figure)
+        self._canvas = _canvas_class()(figure)
+        self._canvas.on_draw_idle = self._on_draw_idle
+        self._drawing = False
         self._themed = bool(themed)
         self._theme_gen: Optional[int] = None
         self._applied_series: list[str] = []
         self._plot_fn: Optional[Callable[["Figure", Any], None]] = None
         self._pending_value: Any = None
         self._plot_pending = False
+        # Where the pointer last was, in figure pixels: a key event carries it.
+        self._pointer_px: tuple[float, float] = (0.0, 0.0)
+        self._focus_node = FocusNode(traversable=False, on_key=self._on_key, on_key_up=self._on_key_up)
+        self.add_node(self._focus_node)
+        self.add_node(
+            PointerListenerNode(
+                on_press=self._on_press,
+                on_move=self._on_move,
+                on_release=self._on_release,
+                on_enter=self._on_enter,
+                on_leave=self._on_leave,
+                on_scroll=self._on_scroll,
+            )
+        )
 
     @classmethod
     def plot(
@@ -133,6 +204,13 @@ class MatplotlibFigure(RasterSurface):
         self.request_render()
 
     def _render_figure(self, width_px: int, height_px: int) -> Any:
+        self._drawing = True
+        try:
+            return self._draw_figure(width_px, height_px)
+        finally:
+            self._drawing = False
+
+    def _draw_figure(self, width_px: int, height_px: int) -> Any:
         figure = self._figure
         if self._plot_pending and self._plot_fn is not None:
             self._plot_pending = False
@@ -159,6 +237,98 @@ class MatplotlibFigure(RasterSurface):
             )
             return None
         return self._canvas.buffer_rgba()
+
+    def _on_draw_idle(self) -> None:
+        # A draw_idle from inside a draw (a draw_event handler, the plot function) is already answered.
+        if not self._drawing:
+            self.request_render()
+
+    # --- Events ----------------------------------------------------------------
+
+    def _figure_xy(self, event: PointerEvent) -> tuple[float, float]:
+        """The pointer in the figure's pixels: device pixels from its bottom-left corner."""
+        left, top, _right, _bottom = self.padding
+        ratio = self.pixel_ratio
+        x = (event.local_x - left) * ratio
+        y = float(self._figure.bbox.height) - (event.local_y - top) * ratio
+        return x, y
+
+    def _deliver(self, event: Any) -> None:
+        try:
+            event._process()
+        except Exception:
+            exception_once(logger, "matplotlib_figure_handler_exc", "a matplotlib event handler raised")
+
+    def _mouse(
+        self,
+        name: str,
+        event: PointerEvent,
+        *,
+        button: Optional[int] = None,
+        step: float = 0,
+        buttons: Optional[frozenset[int]] = None,
+    ) -> None:
+        from matplotlib.backend_bases import MouseButton, MouseEvent
+
+        x, y = self._figure_xy(event)
+        self._pointer_px = (x, y)
+        self._deliver(
+            MouseEvent(
+                name,
+                self._canvas,
+                int(x),
+                int(y),
+                button=None if button is None else MouseButton(button),
+                step=step,
+                buttons=None if buttons is None else [MouseButton(number) for number in buttons],
+                modifiers=_mpl_modifiers(event.modifier_keys),
+            )
+        )
+
+    def _location(self, name: str, event: PointerEvent) -> None:
+        from matplotlib.backend_bases import LocationEvent
+
+        x, y = self._figure_xy(event)
+        self._pointer_px = (x, y)
+        self._deliver(
+            LocationEvent(name, self._canvas, int(x), int(y), modifiers=_mpl_modifiers(event.modifier_keys))
+        )
+
+    def _on_press(self, event: PointerEvent) -> None:
+        self._focus_node.request_focus(FocusSource.POINTER)
+        self._mouse("button_press_event", event, button=_mpl_button(event.button))
+
+    def _on_move(self, event: PointerEvent) -> None:
+        self._mouse("motion_notify_event", event, buttons=_mpl_buttons(event.buttons))
+
+    def _on_release(self, event: PointerEvent) -> None:
+        self._mouse("button_release_event", event, button=_mpl_button(event.button))
+
+    def _on_scroll(self, event: PointerEvent) -> None:
+        # The framework counts a wheel step toward the user as positive; matplotlib counts it as "down".
+        step = -float(event.scroll_y)
+        if step != 0:
+            self._mouse("scroll_event", event, step=step)
+
+    def _on_enter(self, event: PointerEvent) -> None:
+        self._location("figure_enter_event", event)
+
+    def _on_leave(self, event: PointerEvent) -> None:
+        self._location("figure_leave_event", event)
+
+    def _on_key(self, key: str, modifier_keys: int) -> bool:
+        self._key("key_press_event", key, modifier_keys)
+        return False
+
+    def _on_key_up(self, key: str, modifier_keys: int) -> bool:
+        self._key("key_release_event", key, modifier_keys)
+        return False
+
+    def _key(self, name: str, key: str, modifier_keys: int) -> None:
+        from matplotlib.backend_bases import KeyEvent
+
+        x, y = self._pointer_px
+        self._deliver(KeyEvent(name, self._canvas, _mpl_key(key, modifier_keys), int(x), int(y)))
 
     # --- Theme ---------------------------------------------------------------
 
@@ -197,6 +367,54 @@ class MatplotlibFigure(RasterSurface):
                     text.set_color(on_surface)
                 _recolor_artists(getattr(legend, "legend_handles", ()), recolor)
             ax.set_prop_cycle(color=series)
+
+
+@functools.lru_cache(maxsize=1)
+def _canvas_class() -> Any:
+    from matplotlib.backends.backend_agg import FigureCanvasAgg
+
+    class WidgetCanvas(FigureCanvasAgg):
+        """An Agg canvas whose ``draw_idle`` is answered by the widget on the next frame."""
+
+        on_draw_idle: Optional[Callable[[], None]] = None
+
+        def draw_idle(self, *args: Any, **kwargs: Any) -> None:
+            if self.on_draw_idle is not None:
+                self.on_draw_idle()
+
+    return WidgetCanvas
+
+
+def _mpl_button(button: Optional[int]) -> Optional[int]:
+    """matplotlib's number for a button code; a synthetic press without one is the left button."""
+    if button is None:
+        return 1
+    return _BUTTONS.get(button)
+
+
+def _mpl_buttons(mask: int) -> frozenset[int]:
+    return frozenset(number for code, number in _BUTTONS.items() if mask & code)
+
+
+def _mpl_modifiers(modifier_keys: int) -> frozenset[str]:
+    return frozenset(name for mask, name in _MODIFIERS if modifier_keys & mask)
+
+
+def _mpl_key(key: str, modifier_keys: int) -> str:
+    """matplotlib's name for a key press: modifiers first, a shifted letter as its capital."""
+    name = key.strip().lower()
+    if len(name) == 2 and name[0] == "_" and name[1].isdigit():
+        name = name[1]
+    name = _KEY_NAMES.get(name, name)
+    mods = [label for mask, label in _MODIFIERS if modifier_keys & mask]
+    own = _MODIFIER_KEYS.get(name)
+    if own in mods:
+        mods.remove(own)
+    if len(name) == 1 and name.isalpha():
+        if "shift" in mods:
+            mods.remove("shift")
+            name = name.upper()
+    return "+".join(mods + [name])
 
 
 def _hex(role: ColorRole, theme: Theme) -> str:
