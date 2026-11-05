@@ -1,10 +1,12 @@
-"""Regression tests for ForEach mount/unmount lifecycle counts.
+"""Regression tests for ForEach build/mount/unmount lifecycle counts.
 
 ForEach used to fire ``on_mount`` / ``on_unmount`` on its item widgets far more
 than the tree changes justified: every item mounted twice on the initial render,
-and appending or inserting one item re-mounted every surviving item. These tests
-pin the corrected behaviour — each structural change touches only the items that
-actually entered or left, leaving survivors mounted in place.
+and appending or inserting one item re-mounted every surviving item. The builder
+was also run twice per item: once when the item's scope was rendered and once
+again when the fragment mounted, discarding the first subtree. These tests pin
+the corrected behaviour — each structural change builds and mounts only the
+items that actually entered, and unmounts only the items that left.
 """
 
 from __future__ import annotations
@@ -29,6 +31,7 @@ def _mount_column(items: Observable) -> tuple[Column, List[str]]:
 
     def builder(item, index):
         del index
+        log.append(f"build {item}")
         return Box(width=Sizing.fixed(10), height=Sizing.fixed(10)).modifier(
             on_mount(lambda item=item: log.append(f"mount {item}"))
             | on_unmount(lambda item=item: log.append(f"unmount {item}"))
@@ -39,34 +42,34 @@ def _mount_column(items: Observable) -> tuple[Column, List[str]]:
     return root, log
 
 
-def test_initial_mount_fires_each_item_once() -> None:
+def test_initial_mount_builds_and_mounts_each_item_once() -> None:
     items = Observable([1, 2])
     _root, log = _mount_column(items)
-    assert log == ["mount 1", "mount 2"]
+    assert log == ["build 1", "build 2", "mount 1", "mount 2"]
 
 
-def test_initial_mount_static_list_fires_each_item_once() -> None:
+def test_initial_mount_static_list_builds_and_mounts_each_item_once() -> None:
     # Confirms the double-mount was structural, not observable-subscription driven.
     _root, log = _mount_column(Observable([1, 2, 3]))
-    assert log == ["mount 1", "mount 2", "mount 3"]
+    assert log == ["build 1", "build 2", "build 3", "mount 1", "mount 2", "mount 3"]
 
 
-def test_append_leaves_survivors_mounted() -> None:
+def test_append_builds_only_the_newcomer_and_leaves_survivors_mounted() -> None:
     items = Observable([1, 2])
     _root, log = _mount_column(items)
     log.clear()
 
     items.value = [1, 2, 3]
-    assert log == ["mount 3"]
+    assert log == ["build 3", "mount 3"]
 
 
-def test_insert_leaves_survivors_mounted() -> None:
+def test_insert_builds_only_the_newcomer_and_leaves_survivors_mounted() -> None:
     items = Observable([1, 2])
     _root, log = _mount_column(items)
     log.clear()
 
     items.value = [0, 1, 2]
-    assert log == ["mount 0"]
+    assert log == ["build 0", "mount 0"]
 
 
 def test_remove_unmounts_only_the_departed_item() -> None:
@@ -78,7 +81,7 @@ def test_remove_unmounts_only_the_departed_item() -> None:
     assert log == ["unmount 3"]
 
 
-def test_reorder_leaves_all_items_mounted() -> None:
+def test_reorder_leaves_all_items_built_and_mounted() -> None:
     items = Observable([1, 2, 3])
     _root, log = _mount_column(items)
     log.clear()
@@ -90,15 +93,15 @@ def test_reorder_leaves_all_items_mounted() -> None:
 def test_full_sequence_matches_expected_lifecycle() -> None:
     items = Observable([1, 2])
     _root, log = _mount_column(items)
-    assert log == ["mount 1", "mount 2"]
+    assert log == ["build 1", "build 2", "mount 1", "mount 2"]
     log.clear()
 
     items.value = [1, 2, 3]
-    assert log == ["mount 3"]
+    assert log == ["build 3", "mount 3"]
     log.clear()
 
     items.value = [0, 1, 2, 3]
-    assert log == ["mount 0"]
+    assert log == ["build 0", "mount 0"]
     log.clear()
 
     items.value = [0, 2, 3]

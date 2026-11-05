@@ -271,6 +271,8 @@ sequenceDiagram
 ### Promises
 
 - A build result is parented to its host as soon as it is built.
+- A subtree built before its host mounts is the subtree that mounts. `on_mount`
+  builds only a host that holds none.
 - A host rebuild rebuilds no scope. The caller that changed a scope's inputs
   invalidates the scope.
 - `preferred_size` never calls `build()` on a mounted host.
