@@ -129,6 +129,7 @@ if TYPE_CHECKING:
     from nuiitivet.widgets.image import Image
     from nuiitivet.widgets.raster_surface import RasterSurface
     from .matplotlib_figure import MatplotlibFigure
+    from .matplotlib_controller import MatplotlibController
 
 __all__ = [
     "App",
@@ -256,6 +257,7 @@ __all__ = [
     "Image",
     "RasterSurface",
     "MatplotlibFigure",
+    "MatplotlibController",
 ]
 
 
@@ -385,6 +387,7 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "Image": ("..widgets.image", "Image"),
     "RasterSurface": ("..widgets.raster_surface", "RasterSurface"),
     "MatplotlibFigure": ("matplotlib_figure", "MatplotlibFigure"),
+    "MatplotlibController": ("matplotlib_controller", "MatplotlibController"),
 }
 
 

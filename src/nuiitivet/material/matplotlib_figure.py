@@ -13,14 +13,17 @@ from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.observable.protocols import ObservableBase
 from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.rendering.sizing import SizingLike
+from nuiitivet.rendering.skia import make_paint, make_rect
 from nuiitivet.theme.dependency import theme_generation
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.theme.theme import Theme
+from nuiitivet.widgeting.paint_replay import replay_safe
 from nuiitivet.widgets.interaction import FocusNode, FocusSource, InteractionHostMixin, PointerListenerNode
 from nuiitivet.widgets.raster_surface import RasterSurface
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
+
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +36,9 @@ _LOGICAL_DPI = 96.0
 _SERIES_ROLES = (ColorRole.PRIMARY, ColorRole.TERTIARY, ColorRole.SECONDARY, ColorRole.ERROR)
 
 _TRANSPARENT = (0.0, 0.0, 0.0, 0.0)
+
+#: The zoom rectangle's fill: the primary color at a state layer's opacity, under a one pixel outline.
+_RUBBERBAND_FILL_ALPHA = 31
 
 #: matplotlib's button numbers for the framework's button codes.
 _BUTTONS = {BUTTON_LEFT: 1, BUTTON_MIDDLE: 2, BUTTON_RIGHT: 3}
@@ -98,7 +104,9 @@ class MatplotlibFigure(InteractionHostMixin, RasterSurface):
     fire ``pick_event``, and the wheel arrives as ``scroll_event`` instead of
     scrolling the page behind. A key the figure does not consume goes on to
     the app's shortcuts. ``draw_idle()`` on the canvas redraws the figure on
-    the next frame, once however often it is called.
+    the next frame, once however often it is called. A
+    :class:`MatplotlibController` made for the figure adds pan, zoom and the
+    view history, driven from the app's own buttons.
     """
 
     def __init__(
@@ -143,6 +151,11 @@ class MatplotlibFigure(InteractionHostMixin, RasterSurface):
         self._plot_pending = False
         # Where the pointer last was, in figure pixels: a key event carries it.
         self._pointer_px: tuple[float, float] = (0.0, 0.0)
+        # The zoom rectangle being dragged, in figure pixels, or None.
+        self._rubberband: Optional[tuple[float, float, float, float]] = None
+        from nuiitivet.material.matplotlib_controller import MatplotlibController
+
+        MatplotlibController._shown(figure, self)
         self._focus_node = FocusNode(traversable=False, on_key=self._on_key, on_key_up=self._on_key_up)
         self.add_node(self._focus_node)
         self.add_node(
@@ -242,6 +255,42 @@ class MatplotlibFigure(InteractionHostMixin, RasterSurface):
         # A draw_idle from inside a draw (a draw_event handler, the plot function) is already answered.
         if not self._drawing:
             self.request_render()
+
+    # --- Rubberband ------------------------------------------------------------
+
+    def _set_rubberband(self, rect: Optional[tuple[float, float, float, float]]) -> None:
+        """Show the zoom rectangle *rect*, two corners in figure pixels, or none."""
+        if rect != self._rubberband:
+            self._rubberband = rect
+            self.invalidate()
+
+    @replay_safe
+    def paint(self, canvas: Any, x: int, y: int, width: int, height: int) -> None:
+        """Paint the figure, and the zoom rectangle while one is dragged."""
+        super().paint(canvas, x, y, width, height)
+        if canvas is None or self._rubberband is None:
+            return
+        cx, cy, _cw, _ch = self.content_rect(x, y, width, height)
+        ratio = self.pixel_ratio
+        figure_height = float(self._figure.bbox.height)
+        x0, y0, x1, y1 = self._rubberband
+        left = cx + min(x0, x1) / ratio
+        right = cx + max(x0, x1) / ratio
+        top = cy + (figure_height - max(y0, y1)) / ratio
+        bottom = cy + (figure_height - min(y0, y1)) / ratio
+        rect = make_rect(left, top, right - left, bottom - top)
+        if rect is None:
+            return
+        r, g, b, _a = resolve_color_to_rgba(ColorRole.PRIMARY, theme=Theme.of(self))
+        fill = make_paint(color=(r, g, b, _RUBBERBAND_FILL_ALPHA), style="fill")
+        outline = make_paint(color=(r, g, b, 255), style="stroke", stroke_width=1.0)
+        try:
+            if fill is not None:
+                canvas.drawRect(rect, fill)
+            if outline is not None:
+                canvas.drawRect(rect, outline)
+        except Exception:
+            exception_once(logger, "matplotlib_figure_rubberband_exc", "the zoom rectangle could not be painted")
 
     # --- Events ----------------------------------------------------------------
 
