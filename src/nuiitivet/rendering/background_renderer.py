@@ -9,8 +9,10 @@ from .skia import (
 )
 from .skia.geometry import draw_round_rect
 from .shadow import NO_SHADOWS
+from nuiitivet.common.back_reference import back_reference
 from nuiitivet.common.logging_once import exception_once
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +26,12 @@ class BackgroundRenderer:
     """
 
     def __init__(self, owner) -> None:
-        self.owner = owner
+        self._owner_ref = back_reference(owner)
+
+    @property
+    def owner(self) -> Any:
+        """The widget drawn, while it lives."""
+        return self._owner_ref()
 
     def corner_radius_pixels(self, width: int, height: int) -> float:
         # Backwards-compatible scalar radius: return the maximum of per-corner radii

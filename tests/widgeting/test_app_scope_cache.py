@@ -37,7 +37,8 @@ def test_the_walk_happens_once_per_mount() -> None:
 
 def test_a_detached_widget_is_not_remembered() -> None:
     leaf = Widget()
-    Container().add_child(leaf)
+    parent = Container()  # held: a child's link does not keep its parent alive
+    parent.add_child(leaf)
 
     assert find_app_scope(leaf) is None
 

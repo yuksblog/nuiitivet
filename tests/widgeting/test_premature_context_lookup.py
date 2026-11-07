@@ -61,7 +61,8 @@ def test_premature_message_points_at_on_mount(name, lookup) -> None:
 def test_attached_widget_keeps_provider_not_found_message(name, lookup) -> None:
     """A parent link exists, so the failure really is a missing provider."""
     child = Widget()
-    Container().add_child(child)
+    parent = Container()  # held: a child's link does not keep its parent alive
+    parent.add_child(child)
 
     with pytest.raises(RuntimeError) as excinfo:
         lookup(child)
@@ -121,7 +122,8 @@ def test_theme_of_before_super_init_raises() -> None:
 def test_theme_of_attached_but_detached_tree_stays_quiet(caplog) -> None:
     """No AppScope above, but the chain is real — nothing to warn about."""
     child = Widget()
-    Container().add_child(child)
+    parent = Container()  # held: a child's link does not keep its parent alive
+    parent.add_child(child)
 
     with caplog.at_level(logging.WARNING, logger="nuiitivet.theme.theme"):
         theme = Theme.of(child)

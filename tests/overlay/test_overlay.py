@@ -182,7 +182,8 @@ def test_overlay_of_not_found():
     widget = DummyWidget()
     # Attached, so the lookup fails for the reason under test (no Overlay above)
     # rather than for the pre-mount reason, which has its own message.
-    Container().add_child(widget)
+    parent = Container()  # held: a child's link does not keep its parent alive
+    parent.add_child(widget)
 
     with pytest.raises(RuntimeError, match="not attached to a Window"):
         Overlay.of(widget)

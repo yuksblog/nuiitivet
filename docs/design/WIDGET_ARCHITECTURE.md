@@ -318,3 +318,8 @@ flowchart LR
   unmounted.
 - The store clears a child's `_parent` only while it still points at the
   store's owner.
+- A child's link to its parent does not keep the parent alive. Neither does
+  the link from a widget's store, engine, renderer or interaction node back
+  to the widget, nor a callback the widget handed a node of its own. A
+  subtree its parent dropped is freed by reference counting, with no cycle
+  left for the collector.

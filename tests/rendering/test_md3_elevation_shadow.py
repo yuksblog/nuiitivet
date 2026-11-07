@@ -88,7 +88,8 @@ def _sample_profile(
     canvas = surface.getCanvas()
     canvas.clear(skia.ColorWHITE)
 
-    renderer = BackgroundRenderer(_Owner(_concrete(shadows), _CORNER))
+    owner = _Owner(_concrete(shadows), _CORNER)  # held: the renderer does not keep its owner alive
+    renderer = BackgroundRenderer(owner)
     renderer.paint_shadow_and_background(canvas, _PAD, _PAD, _CARD_W, _CARD_H)
 
     # The opaque card body, painted over the shadow.

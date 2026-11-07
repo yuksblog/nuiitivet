@@ -1,8 +1,9 @@
 """Helper to compute container layout sizes and positions."""
 
 import logging
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
+from nuiitivet.common.back_reference import back_reference
 from nuiitivet.common.logging_once import exception_once
 
 from ..rendering.sizing import sizing_signature
@@ -53,8 +54,13 @@ class LayoutEngine:
     values (padding tuple, border_width, align).
     """
 
+    @property
+    def owner(self) -> Any:
+        """The container laid out, while it lives."""
+        return self._owner_ref()
+
     def __init__(self, owner) -> None:
-        self.owner = owner
+        self._owner_ref = back_reference(owner)
         self._pref_cache_key: Optional[Tuple[Tuple[int, int, int, int], int, Optional[int]]] = None
         self._pref_cache_value: Tuple[int, int] = (0, 0)
         self._inner_cache_key: Optional[Tuple[Tuple[int, int, int, int], int, Optional[int]]] = None
