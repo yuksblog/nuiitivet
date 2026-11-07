@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 ItemsLike = Union[Iterable[Any], ObservableProtocol, Any]
 BuilderFn = Callable[[Any, int], Optional[Widget]]
+KeyFn = Callable[[Any, int], Any]
 
 
 @dataclass
@@ -77,7 +78,7 @@ class ForEach(ComposableWidget):
         items: ItemsLike,
         builder: BuilderFn,
         *,
-        key_fn: Optional[Callable[[Any, int], Any]] = None,
+        key_fn: Optional[KeyFn] = None,
         key: Optional[str] = None,
     ):
         """Initialize the ForEach data provider.
@@ -103,6 +104,7 @@ class ForEach(ComposableWidget):
         self._ordered_entries: List[_ForEachEntry] = []
         self._provider_children: List[Widget] = []
         self._pending_tokens: Optional[List[_TokenInfo]] = None
+        self._window: Optional[Tuple[int, int]] = None
 
     def build(self) -> Widget:
         self._rebuild_children()
@@ -117,6 +119,28 @@ class ForEach(ComposableWidget):
         if self._provider_children:
             return list(self._provider_children)
         return list(self.children_snapshot())
+
+    def item_count(self) -> int:
+        """The number of items in the source, built or not."""
+        return len(self._materialize_items())
+
+    def set_window(self, start: int, stop: int) -> None:
+        """Hold a widget for each item in ``range(start, stop)`` and none outside it.
+
+        For a lazy container, which calls it from ``layout``. An item leaving
+        the window is unmounted; one entering it is built.
+        """
+        start = max(0, int(start))
+        window = (start, max(start, int(stop)))
+        if self._window == window and (self._provider_children or window[0] == window[1]):
+            return
+        self._window = window
+        self._pending_tokens = None
+        self._rebuild_children()
+
+    def window_children(self) -> List[Widget]:
+        """The widgets currently held, in item order, without building any."""
+        return list(self._provider_children)
 
     # ---- Passive widget surface --------------------------------------
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
@@ -154,7 +178,11 @@ class ForEach(ComposableWidget):
     def _enumerate_tokens(self, items: List[Any]) -> List[_TokenInfo]:
         counts: Dict[str, int] = {}
         tokens: List[_TokenInfo] = []
-        for idx, value in enumerate(items):
+        indices = range(len(items))
+        if self._window is not None:
+            indices = range(min(self._window[0], len(items)), min(self._window[1], len(items)))
+        for idx in indices:
+            value = items[idx]
             label = self._key_label(value, idx)
             counter = counts.get(label, 0)
             counts[label] = counter + 1
@@ -286,6 +314,9 @@ class ForEach(ComposableWidget):
 
     # ---- Data change handling -----------------------------------------
     def _handle_items_changed(self, _value=None) -> None:
+        if self._window is not None:
+            # The count decides the lazy container's size and window.
+            self.mark_needs_layout()
         tokens = self._enumerate_tokens(self._materialize_items())
         if not self._ordered_entries:
             self._pending_tokens = tokens

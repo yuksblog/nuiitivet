@@ -82,6 +82,11 @@ class ScrollViewport(Widget):
         return self._content
 
     @property
+    def controller(self) -> ScrollController:
+        """The controller whose offset this viewport applies."""
+        return self._controller
+
+    @property
     def viewport_rect(self) -> Optional[Tuple[int, int, int, int]]:
         return self._viewport_rect
 

@@ -2,7 +2,7 @@
 
 Screens often need to render a collection of items — tags, cards, list rows —
 whose contents come from data rather than being written out one by one.
-NuiiTivet offers three ways to do this, from the simplest static form to a
+Nuiitivet offers several ways to do this, from the simplest static form to a
 fully reactive one.
 
 ## Static: List Comprehension
@@ -93,6 +93,45 @@ class TagList:
 With a static list you would have to rebuild and re-render the layout yourself.
 With an observable, `builder()` keeps the children in sync with the data for you.
 
+The Flow matches cards to tags by position. Inserting a tag at the front then
+rebuilds every card. Pass `key_fn=lambda tag, index: tag` to match by tag. The
+existing cards then stay.
+
+## `lazy()` for a Long List
+
+`Column.lazy()`, `Row.lazy()` and `UniformFlow.lazy()` take the same `items`
+and builder as `builder()`, but build only the items the scrollable shows:
+
+```python
+import nuiitivet.material as nv
+
+rows = [f"Row {i}" for i in range(10_000)]
+
+nv.Container(
+    height=300,
+    child=nv.VerticalScrollable(
+        child=nv.Column.lazy(
+            rows,
+            lambda row, index: nv.Text(row, padding=(16, 8)),  # built when the row scrolls into view
+            gap=4,
+        ),
+    ),
+)
+```
+
+Every row gets the height of the first one. A taller row overlaps the next.
+Pass `item_height=` (`item_width=` on a `Row`) when the first row is not
+typical. `UniformFlow.lazy()` takes its row height from `aspect_ratio`, else
+from the first item.
+
+A row that scrolls out of view is thrown away. It is built again from the
+builder when it scrolls back in. A checkbox the user ticked inside the row is
+unticked by then. Keep such state in the item data.
+
+The lazy Column is as wide as the scrollable. `cross_alignment` places each row
+inside that width. Outside a scrollable it builds only the rows that fit its
+height. The rest are not drawn, where a plain `Column` would overflow.
+
 ## `ForEach` (SwiftUI-like Style)
 
 If you prefer a SwiftUI-style declaration, `ForEach` provides the same dynamic
@@ -130,4 +169,5 @@ Widget` builder, so it behaves identically to `builder()` at runtime.
 | --- | --- |
 | Collection is fixed at build time | List comprehension |
 | Collection changes at runtime (dynamic) | `builder()` (recommended) |
+| Collection is long: thousands of rows in a scrollable | `lazy()` |
 | You prefer a SwiftUI-like declaration | `ForEach` |

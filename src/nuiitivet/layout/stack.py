@@ -9,7 +9,7 @@ from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
 from .alignment import AlignmentLike, normalize_alignment
 from .layout_utils import expand_layout_children
-from .for_each import ForEach, ItemsLike, BuilderFn
+from .for_each import ForEach, ItemsLike, BuilderFn, KeyFn
 from .measure import preferred_size as measure_preferred_size
 
 
@@ -51,6 +51,7 @@ class Stack(Widget):
         items: ItemsLike,
         builder: BuilderFn,
         *,
+        key_fn: Optional[KeyFn] = None,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
@@ -64,6 +65,9 @@ class Stack(Widget):
                 children then follow its changes.
             builder: Called as ``builder(item, index)`` for each item; returns
                 the item's widget.
+            key_fn: Called as ``key_fn(item, index)``; the result identifies
+                the item across changes of *items*, so an item that moves keeps
+                its widget. By index when omitted.
             width: Stack width.
             height: Stack height.
             padding: Padding around the content.
@@ -71,7 +75,7 @@ class Stack(Widget):
                 (horizontal, vertical) tuple or string like "top-left", "center".
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        provider = ForEach(items, builder)
+        provider = ForEach(items, builder, key_fn=key_fn)
         return cls(
             children=[provider],
             width=width,

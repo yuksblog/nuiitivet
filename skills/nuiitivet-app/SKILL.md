@@ -102,6 +102,7 @@ All widgets hang off `nv`. This is the working set; every symbol is importable a
 | Override one child's cross-axis position | `CrossAligned` | `nv.CrossAligned(child, "center")` |
 | Rule / separator | `HorizontalDivider` / `VerticalDivider` | `nv.HorizontalDivider()` |
 | Dynamic list from data | `Column.builder` (also `Row`/`Stack`/`Flow`/`UniformFlow`) | `nv.Column.builder(items_obs, lambda item, i: nv.Text(item))` |
+| Long list in a scrollable, rows built as they come into view | `Column.lazy` (also `Row`/`UniformFlow`) | `nv.VerticalScrollable(nv.Column.lazy(items, lambda item, i: nv.Text(item)))` |
 
 Background, border, shadow, and clipping are **modifiers** (see the Modifier
 catalog below), not a job for `Container` — its box is layout-only.
