@@ -56,13 +56,17 @@ flowchart LR
     runner[backends/pyglet/runner.py]
     window[runtime/window.py]
     clock[observable/runtime.py]
+    pacer[runtime/gc_pacing.py]
     pyglet[pyglet]
+    collector[the collector]
 
     runner -- "ResponsiveEventLoop(draw, fps, keep_running_without_windows) · run()" --> loop
     runner -- "invalidate(), on resize" --> window
     window -- "request_draw(immediate)" --> loop
     loop -- "_render_frame(dt), each open window" --> window
     loop -- "update_time() · call_scheduled_functions(dt) · get_sleep_time()" --> clock
+    loop -- "install() · before_frame() · after_frame(now) · idle(now) · uninstall()" --> pacer
+    pacer -- "disable() · collect(generation) · freeze() · unfreeze() · enable()" --> collector
     loop -- "platform_event_loop.step(timeout) · set_timer(_blocking_timer, timeout)" --> pyglet
     pyglet -- "idle(), from the OS drag loop" --> loop
     pyglet -- "on_resize" --> runner
@@ -74,7 +78,9 @@ flowchart LR
 | `backends/pyglet/runner.py` | builds the loop with the draw callback; the OS event handlers ([APP_WINDOW.md](APP_WINDOW.md)) |
 | `runtime/window.py` | requests a frame, draws one (The Frame) |
 | `observable/runtime.py` | the clock the loop ticks ([OBSERVABLE.md](OBSERVABLE.md)) |
+| `runtime/gc_pacing.py` | `GcPacer`: holds the collector while the loop runs; picks the generation collected at a wait, before a frame past the backstop, and in a quiet stretch |
 | `pyglet` | the platform event loop |
+| the collector | CPython's cyclic garbage collector |
 
 ### Sequence
 
@@ -84,8 +90,10 @@ flowchart LR
 sequenceDiagram
     participant W as runtime/window.py
     participant L as backends/pyglet/event_loop.py
+    participant G as runtime/gc_pacing.py
     participant P as pyglet
 
+    L->>G: install(), as the loop starts
     W->>L: request_draw(immediate)
     L->>L: _draw_pending = True
     loop each iteration
@@ -93,10 +101,16 @@ sequenceDiagram
         L->>L: tick the clock
         alt _draw_pending, and no cadence or the deadline passed
             L->>L: _draw_pending = False
+            L->>G: before_frame()
             L->>W: _render_frame(dt), each open window
+            L->>G: after_frame(now)
         end
         L->>L: _compute_sleep_timeout(): the deadline when a frame is pending, else the clock's next due time
+        alt the timeout is not zero
+            L->>G: idle(now)
+        end
     end
+    L->>G: uninstall(), as the loop exits
 ```
 
 #### The OS owns the loop during a drag
@@ -126,6 +140,14 @@ sequenceDiagram
 - A cadence throttles a pending frame and never produces one.
 - A frame served from the OS drag loop passes the same gate as one from the
   main loop.
+- While the loop runs, the collector runs only where the loop calls it.
+- No collection runs inside a frame. The loop collects before a wait, or
+  before a frame once the allocations after the last collection passed the
+  backstop.
+- A full collection over the whole heap runs only in a quiet stretch. Past
+  the old generation's budget a full collection runs at once, over the
+  unfrozen heap.
+- The loop hands the collector back as it found it when it exits.
 
 ## The Frame
 

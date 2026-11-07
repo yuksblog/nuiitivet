@@ -1,3 +1,4 @@
+import gc
 import time
 
 import pytest
@@ -291,6 +292,54 @@ class _StubPlatformLoopRunnable(_StubPlatformLoop):
         return None
 
 
+class _RecordingPacer:
+    def __init__(self, record):
+        self.record = record
+
+    def before_frame(self):
+        self.record.append("before_frame")
+
+    def after_frame(self, now):
+        self.record.append("after_frame")
+
+    def idle(self, now):
+        self.record.append("idle")
+        return None
+
+
+def test_perform_draw_brackets_the_frame_with_the_pacer():
+    record = []
+
+    def _draw(dt: float) -> None:
+        record.append("draw")
+
+    loop = ResponsiveEventLoop(_draw, draw_fps=None)
+    loop._gc_pacer = _RecordingPacer(record)  # type: ignore[assignment]
+    loop._draw_pending = True
+
+    loop._perform_draw(0.016, time.perf_counter())
+
+    assert record == ["before_frame", "draw", "after_frame"]
+
+
+def test_idle_collects_only_when_a_wait_is_ahead():
+    loop, _ = _idle_loop(draw_fps=None, sleep_time=None)
+    record = []
+    loop._gc_pacer = _RecordingPacer(record)  # type: ignore[assignment]
+    loop._draw_pending = False
+
+    loop.idle()
+    assert record == ["idle"], "an indefinite wait is collected before"
+
+    loop, _ = _idle_loop(draw_fps=None, sleep_time=0.0)
+    record = []
+    loop._gc_pacer = _RecordingPacer(record)  # type: ignore[assignment]
+    loop._draw_pending = False
+
+    loop.idle()
+    assert record == [], "a wake due now leaves no time to collect"
+
+
 def test_run_async_starts_the_work_spawned_before_it(monkeypatch):
     """A root widget's async on_mount is spawned at App construction, before any loop."""
     import asyncio
@@ -318,3 +367,27 @@ def test_run_async_starts_the_work_spawned_before_it(monkeypatch):
 
     assert ran == [True]
     assert pending.done() is True
+
+
+def test_run_async_owns_the_collector_while_it_runs(monkeypatch):
+    import asyncio
+
+    import pyglet
+
+    monkeypatch.setattr(pyglet.app, "platform_event_loop", _StubPlatformLoopRunnable(), raising=False)
+    monkeypatch.setattr(pyglet.app, "windows", [], raising=False)
+    monkeypatch.setattr(pyglet.app, "event_loop", None, raising=False)
+
+    seen = []
+
+    def _draw(dt: float) -> None:
+        seen.append(gc.isenabled())
+        loop.exit()
+
+    loop = ResponsiveEventLoop(_draw, draw_fps=None, keep_running_without_windows=lambda: True)
+    assert gc.isenabled()
+
+    asyncio.run(loop.run_async())
+
+    assert seen == [False], "inside the loop the pacer holds the collector"
+    assert gc.isenabled(), "the loop hands it back on exit"
