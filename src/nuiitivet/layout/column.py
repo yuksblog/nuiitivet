@@ -8,7 +8,8 @@ from ..rendering.sizing import SizingLike
 from .gap import normalize_gap
 from .metrics import compute_aligned_offsets, align_offset
 from .layout_utils import expand_layout_children, layout_child_if_needed, paint_laid_out_children
-from .for_each import ForEach, ItemsLike, BuilderFn
+from .for_each import ForEach, ItemsLike, BuilderFn, KeyFn
+from .lazy import LazyItems
 from .measure import preferred_size as measure_preferred_size
 from nuiitivet.observable.protocols import ObservableBase
 
@@ -16,7 +17,8 @@ from nuiitivet.observable.protocols import ObservableBase
 class Column(Widget):
     """Layout children vertically.
 
-    From a data collection, or an observable of one: :meth:`builder`.
+    From a data collection, or an observable of one: :meth:`builder`. The
+    items in view only, for a long list: :meth:`lazy`.
     """
 
     # Hint for ancestor-based layout resolution (used by ForEach and others)
@@ -58,6 +60,7 @@ class Column(Widget):
 
         self.main_alignment = main_alignment
         self.cross_alignment = cross_alignment
+        self._lazy: Optional[LazyItems] = None
 
     @property
     def gap(self) -> int:
@@ -78,6 +81,7 @@ class Column(Widget):
         items: ItemsLike,
         builder: BuilderFn,
         *,
+        key_fn: Optional[KeyFn] = None,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
@@ -93,6 +97,9 @@ class Column(Widget):
                 children then follow its changes.
             builder: Called as ``builder(item, index)`` for each item; returns
                 the item's widget.
+            key_fn: Called as ``key_fn(item, index)``; the result identifies
+                the item across changes of *items*, so an item that moves keeps
+                its widget. By index when omitted.
             width: Column width.
             height: Column height.
             padding: Padding around the content.
@@ -103,7 +110,7 @@ class Column(Widget):
                 'start', 'center' or 'end'.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        provider = ForEach(items, builder)
+        provider = ForEach(items, builder, key_fn=key_fn)
         return cls(
             children=[provider],
             width=width,
@@ -115,7 +122,73 @@ class Column(Widget):
             key=key,
         )
 
+    @classmethod
+    def lazy(
+        cls,
+        items: ItemsLike,
+        builder: BuilderFn,
+        *,
+        key_fn: Optional[KeyFn] = None,
+        item_height: Optional[int] = None,
+        width: SizingLike = None,
+        height: SizingLike = None,
+        padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
+        gap: int = 0,
+        cross_alignment: str = "start",
+        key: Optional[str] = None,
+    ) -> "Column":
+        """Create a Column that holds widgets for the items in view only.
+
+        Inside a ``VerticalScrollable`` the Column builds the items the viewport
+        shows and unmounts the ones that scroll out; its height is the height
+        of every item, so the scrollbar is exact. Outside one it holds the
+        items inside its own rect. Every item takes the same height, and the
+        Column takes the width it is offered.
+
+        Args:
+            items: Source data: a collection, or an observable of one -- the
+                children then follow its changes.
+            builder: Called as ``builder(item, index)`` for an item entering
+                the view; returns the item's widget.
+            key_fn: Called as ``key_fn(item, index)``; the result identifies
+                the item across changes of *items*, so an item that moves keeps
+                its widget. By index when omitted.
+            item_height: Height of every item in pixels. ``None`` measures the
+                first item in view and gives its height to all.
+            width: Column width.
+            height: Column height.
+            padding: Padding around the content.
+            gap: Space between children in pixels.
+            cross_alignment: Horizontal alignment of children.
+                'start', 'center' or 'end'.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
+        """
+        provider = ForEach(items, builder, key_fn=key_fn)
+        column = cls(
+            children=[provider],
+            width=width,
+            height=height,
+            padding=padding,
+            gap=gap,
+            cross_alignment=cross_alignment,
+            key=key,
+        )
+        column._lazy = LazyItems(provider, "vertical", item_height)
+        return column
+
+    def on_mount(self) -> None:
+        super().on_mount()
+        if self._lazy is not None:
+            self._lazy.attach(self)
+
+    def on_unmount(self) -> None:
+        if self._lazy is not None:
+            self._lazy.detach()
+        super().on_unmount()
+
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
+        if self._lazy is not None:
+            return self._lazy_preferred_size(self._lazy, max_width, max_height)
         children = expand_layout_children(self.children_snapshot())
 
         l, t, r, b = self.padding
@@ -161,6 +234,9 @@ class Column(Widget):
 
     def layout(self, width: int, height: int) -> None:
         super().layout(width, height)
+        if self._lazy is not None:
+            self._lazy_layout(self._lazy, width, height)
+            return
         children = expand_layout_children(self.children_snapshot())
         self._laid_out_children = children
         if not children:
@@ -220,6 +296,60 @@ class Column(Widget):
     @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         paint_laid_out_children(self, canvas, x, y, width, height)
+
+    def _lazy_preferred_size(
+        self, lazy: LazyItems, max_width: Optional[int], max_height: Optional[int]
+    ) -> Tuple[int, int]:
+        l, t, r, b = self.padding
+        inner_max_w: Optional[int] = None
+        if max_width is not None:
+            inner_max_w = max(0, int(max_width) - int(l) - int(r))
+        elif self.width_sizing.kind == "fixed":
+            inner_max_w = max(0, int(self.width_sizing.value) - int(l) - int(r))
+
+        count = lazy.count()
+        extent = lazy.item_extent(inner_max_w) if count else 0
+        content_height = count * extent + max(0, count - 1) * self.gap
+
+        w_dim = self.width_sizing
+        if w_dim.kind == "fixed":
+            width = int(w_dim.value)
+        elif max_width is not None:
+            width = int(max_width)
+        else:
+            sample_w = lazy.sample_size(inner_max_w)[0] if count else 0
+            width = sample_w + l + r
+
+        h_dim = self.height_sizing
+        if h_dim.kind == "fixed":
+            height = int(h_dim.value)
+        else:
+            height = content_height + t + b
+            if max_height is not None:
+                height = min(height, int(max_height))
+        return (width, height)
+
+    def _lazy_layout(self, lazy: LazyItems, width: int, height: int) -> None:
+        l, t, r, b = self.padding
+        cw = max(0, width - l - r)
+
+        count = lazy.count()
+        extent = lazy.item_extent(cw) if count else 0
+        span = lazy.visible_span(self, height)
+        first, stop = lazy.index_range(span, count, extent, self.gap, t)
+        children = lazy.materialize(self, first, stop)
+        self._laid_out_children = children
+
+        pitch = extent + self.gap
+        for i, child in enumerate(children):
+            pref_w, _ = measure_preferred_size(child, max_width=cw)
+            resolved_width = self._resolve_cross_size(child, pref_w, cw)
+            child_align = getattr(child, "cross_align", None)
+            alignment = str(child_align) if child_align else self.cross_alignment
+            rel_x = l + align_offset(cw, resolved_width, alignment)
+            rel_y = t + (first + i) * pitch
+            layout_child_if_needed(child, resolved_width, extent)
+            child.set_layout_rect(rel_x, rel_y, resolved_width, extent)
 
     @staticmethod
     def _allocate_main_sizes(base_sizes: List[int], weights: List[float], usable: int) -> List[int]:

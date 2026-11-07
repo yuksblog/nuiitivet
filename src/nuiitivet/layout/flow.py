@@ -10,7 +10,7 @@ from ..rendering.sizing import SizingLike
 from .gap import normalize_gap
 from .layout_utils import expand_layout_children, paint_laid_out_children
 from .metrics import align_offset
-from .for_each import ForEach, ItemsLike, BuilderFn
+from .for_each import ForEach, ItemsLike, BuilderFn, KeyFn
 from .measure import preferred_size as measure_preferred_size
 
 
@@ -71,6 +71,7 @@ class Flow(Widget):
         items: ItemsLike,
         builder: BuilderFn,
         *,
+        key_fn: Optional[KeyFn] = None,
         main_gap: int = 0,
         cross_gap: int = 0,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
@@ -88,6 +89,9 @@ class Flow(Widget):
                 children then follow its changes.
             builder: Called as ``builder(item, index)`` for each item; returns
                 the item's widget.
+            key_fn: Called as ``key_fn(item, index)``; the result identifies
+                the item across changes of *items*, so an item that moves keeps
+                its widget. By index when omitted.
             main_gap: Space between children in a line, in pixels.
             cross_gap: Space between lines, in pixels.
             padding: Padding around the content.
@@ -102,7 +106,7 @@ class Flow(Widget):
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
 
-        provider = ForEach(items, builder)
+        provider = ForEach(items, builder, key_fn=key_fn)
         return cls(
             [provider],
             main_gap=main_gap,

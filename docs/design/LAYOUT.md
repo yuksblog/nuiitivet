@@ -13,6 +13,7 @@ their edges.
 flowchart LR
     sizing[The Sizing]
     containers[The Containers]
+    providers[The Providers]
     composable[The Composable]
     fit[The Fit]
     window[The Window Sizing]
@@ -20,6 +21,8 @@ flowchart LR
     app[the app]
 
     app -- "width · height · padding · gap · alignment" --> containers
+    app -- "builder(items, fn) · lazy(items, fn)" --> providers
+    containers -- "provide_layout_children() · item_count() · set_window(start, stop)" --> providers
     containers -- "parse_sizing(value) · width_sizing · height_sizing · padding" --> sizing
     containers -- "width_sizing · height_sizing · layout_align · cross_align" --> composable
     material -- "width · length · size, per open axis" --> sizing
@@ -32,6 +35,7 @@ flowchart LR
 | --- | --- |
 | The Sizing | how a widget asks for space on one axis |
 | The Containers | place their children and share the room out |
+| The Providers | build a container's children from data, all of them or the ones in view |
 | The Composable | reports the layout metadata of the widget it built |
 | The Fit | places a widget's content inside the rect it was given |
 | The Window Sizing | the window's size and position, resolved before layout |
@@ -143,6 +147,82 @@ flowchart LR
 - Alignment positions a child. It never stretches one.
 - Whether a child fills its `Grid` cell is the child's own sizing.
 - Nothing clips a child larger than its rect.
+
+## The Providers
+
+A provider builds a container's children from a data collection. A lazy
+container's provider builds the items in view.
+
+### Structure
+
+```mermaid
+flowchart LR
+    for_each[layout/for_each.py]
+    lazy[layout/lazy.py]
+    containers[layout/row.py · column.py · uniform_flow.py]
+    utils[layout/layout_utils.py]
+    viewport[layout/scroll_viewport.py]
+    controller[scrolling/controller.py]
+    builder[widgeting/widget_builder.py]
+
+    containers -- "ForEach(items, fn, key_fn) · LazyItems(provider, axis, extent)" --> for_each & lazy
+    containers -- "expand_layout_children(children)" --> utils
+    utils -- "provide_layout_children()" --> for_each
+    containers -- "count() · item_extent(cross_limit) · visible_span(container, length) · index_range(span, count, extent, gap, pad) · materialize(container, first, stop)" --> lazy
+    lazy -- "item_count() · set_window(start, stop) · window_children()" --> for_each
+    lazy -- "visual_clip_rect() · visual_offset() · controller" --> viewport
+    lazy -- "axis_state(axis).offset.subscribe(cb)" --> controller
+    for_each -- "render_scope_with_handle(handle, factory) · _prune_unused_scopes()" --> builder
+```
+
+| Module | Role |
+| --- | --- |
+| `layout/for_each.py` | `ForEach`: one scoped fragment per item, found by its key; with a window, per item in the window |
+| `layout/lazy.py` | `LazyItems`: the item extent, the span the viewport shows, the index range it covers; follows the viewport's offset while mounted |
+| `layout/row.py · column.py · uniform_flow.py` | `builder()` and `lazy()`; place the provided children, a lazy one at its index times the pitch (The Containers) |
+| `layout/layout_utils.py` | replaces a provider with its children (The Containers) |
+| `layout/scroll_viewport.py` | the clip rect, the displacement and the controller it scrolls by ([BOX_MODEL.md](BOX_MODEL.md)) |
+| `scrolling/controller.py` | the offset `Observable` |
+| `widgeting/widget_builder.py` | the recompose scopes ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)) |
+
+### Sequence
+
+#### A scroll moves the window
+
+```mermaid
+sequenceDiagram
+    participant S as scrolling/controller.py
+    participant L as layout/lazy.py
+    participant C as layout/column.py
+    participant V as layout/scroll_viewport.py
+    participant F as layout/for_each.py
+
+    S->>L: offset changed
+    L->>C: mark_needs_layout()
+    V->>C: preferred_size(max_w): count × extent plus the gaps
+    V->>C: layout(w, h)
+    C->>L: visible_span(self, h)
+    L->>V: visual_clip_rect() · visual_offset()
+    C->>L: index_range(span, count, extent, gap, pad)
+    C->>L: materialize(self, first, stop)
+    L->>F: set_window(first, stop)
+    F->>F: build the items that entered, unmount the ones that left
+    C->>C: place item i at pad + i × (extent + gap)
+```
+
+### Promises
+
+- A provider is never laid out or painted. Its children take its place in the
+  container.
+- A lazy container holds a widget for each item in its window and none
+  outside it.
+- Every item of a lazy container has one main-axis extent: the given one,
+  else the measured extent of the first item in view.
+- A lazy container's window is the span its nearest enclosing scroll viewport
+  shows. With no viewport, the window is its own rect.
+- A lazy container's extent on its axis is the sum of its items and gaps,
+  known without building them.
+- A lazy container takes the cross-axis extent it is offered.
 
 ## The Composable
 

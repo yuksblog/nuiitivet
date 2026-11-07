@@ -9,9 +9,10 @@ from typing import List, Optional, Sequence, Tuple, Union
 from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
 from .gap import normalize_gap
-from .layout_utils import expand_layout_children, paint_laid_out_children
+from .layout_utils import expand_layout_children, layout_child_if_needed, paint_laid_out_children
 from .metrics import align_offset, compute_prefix_offsets
-from .for_each import ForEach, ItemsLike, BuilderFn
+from .for_each import ForEach, ItemsLike, BuilderFn, KeyFn
+from .lazy import LazyItems
 from .measure import preferred_size as measure_preferred_size
 
 AlignValue = Union[str, Tuple[str, str]]
@@ -24,7 +25,8 @@ class UniformFlow(Widget):
     tall as its tallest child measures; a row whose children all have a ``"wt"``
     height also takes a share of the height the other rows leave.
 
-    From a data collection, or an observable of one: :meth:`builder`.
+    From a data collection, or an observable of one: :meth:`builder`. The
+    items in view only, for a long grid: :meth:`lazy`.
     """
 
     def __init__(
@@ -84,6 +86,7 @@ class UniformFlow(Widget):
         self.item_alignment = self._normalize_align_pair(item_alignment)
         self._row_tracks: List[Tuple[float, float]] = []
         self._column_tracks: List[Tuple[float, float]] = []
+        self._lazy: Optional[LazyItems] = None
 
     @property
     def row_tracks(self) -> List[Tuple[float, float]]:
@@ -101,6 +104,7 @@ class UniformFlow(Widget):
         items: ItemsLike,
         builder: BuilderFn,
         *,
+        key_fn: Optional[KeyFn] = None,
         columns: Optional[int] = None,
         max_column_width: Optional[int] = None,
         aspect_ratio: Optional[float] = None,
@@ -121,6 +125,9 @@ class UniformFlow(Widget):
                 children then follow its changes.
             builder: Called as ``builder(item, index)`` for each item; returns
                 the item's widget.
+            key_fn: Called as ``key_fn(item, index)``; the result identifies
+                the item across changes of *items*, so an item that moves keeps
+                its widget. By index when omitted.
             columns: Number of columns. Takes precedence over *max_column_width*.
             max_column_width: Widest a column may get, in pixels; as many columns
                 as fit the available width are used. With neither this nor
@@ -142,7 +149,7 @@ class UniformFlow(Widget):
             height: UniformFlow height.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        provider = ForEach(items, builder)
+        provider = ForEach(items, builder, key_fn=key_fn)
         return cls(
             [provider],
             columns=columns,
@@ -158,6 +165,85 @@ class UniformFlow(Widget):
             height=height,
             key=key,
         )
+
+    @classmethod
+    def lazy(
+        cls,
+        items: ItemsLike,
+        builder: BuilderFn,
+        *,
+        key_fn: Optional[KeyFn] = None,
+        columns: Optional[int] = None,
+        max_column_width: Optional[int] = None,
+        aspect_ratio: Optional[float] = None,
+        main_gap: int = 0,
+        cross_gap: int = 0,
+        padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
+        item_alignment: AlignValue = "start",
+        width: SizingLike = None,
+        height: SizingLike = None,
+        key: Optional[str] = None,
+    ) -> "UniformFlow":
+        """Create a UniformFlow that holds widgets for the rows in view only.
+
+        Inside a ``VerticalScrollable`` the grid builds the rows the viewport
+        shows and unmounts the ones that scroll out; its height is the height
+        of every row, so the scrollbar is exact. Outside one it holds the rows
+        inside its own rect. Every row takes the same height: from
+        *aspect_ratio* when given, else the first item in view is measured and
+        its height given to all.
+
+        Args:
+            items: Source data: a collection, or an observable of one -- the
+                children then follow its changes.
+            builder: Called as ``builder(item, index)`` for an item entering
+                the view; returns the item's widget.
+            key_fn: Called as ``key_fn(item, index)``; the result identifies
+                the item across changes of *items*, so an item that moves keeps
+                its widget. By index when omitted.
+            columns: Number of columns. Takes precedence over *max_column_width*.
+            max_column_width: Widest a column may get, in pixels; as many columns
+                as fit the available width are used. With neither this nor
+                *columns*, every child sits in one row.
+            aspect_ratio: Cell width divided by cell height; sets the row height
+                from the column width.
+            main_gap: Space between columns, in pixels.
+            cross_gap: Space between rows, in pixels.
+            padding: Padding around the content.
+            item_alignment: Where a child sits in its cell: one value for both
+                axes, or a ``(horizontal, vertical)`` pair of 'start', 'center'
+                or 'end'. A child fills its cell on an axis by its own
+                ``width`` / ``height`` of ``"wt"``.
+            width: UniformFlow width.
+            height: UniformFlow height.
+            key: Stable widget identity for dev-bridge targeting and hot reload.
+        """
+        provider = ForEach(items, builder, key_fn=key_fn)
+        flow = cls(
+            [provider],
+            columns=columns,
+            max_column_width=max_column_width,
+            aspect_ratio=aspect_ratio,
+            main_gap=main_gap,
+            cross_gap=cross_gap,
+            padding=padding,
+            item_alignment=item_alignment,
+            width=width,
+            height=height,
+            key=key,
+        )
+        flow._lazy = LazyItems(provider, "vertical", None)
+        return flow
+
+    def on_mount(self) -> None:
+        super().on_mount()
+        if self._lazy is not None:
+            self._lazy.attach(self)
+
+    def on_unmount(self) -> None:
+        if self._lazy is not None:
+            self._lazy.detach()
+        super().on_unmount()
 
     @staticmethod
     def _normalize_positive(value: Optional[int]) -> Optional[int]:
@@ -175,6 +261,8 @@ class UniformFlow(Widget):
         return ("start", "start")
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
+        if self._lazy is not None:
+            return self._lazy_preferred_size(self._lazy, max_width, max_height)
         children = expand_layout_children(self.children_snapshot())
         pad = self.padding
 
@@ -256,10 +344,13 @@ class UniformFlow(Widget):
 
     def layout(self, width: int, height: int) -> None:
         super().layout(width, height)
-        children = expand_layout_children(self.children_snapshot())
-        self._laid_out_children = children
         self._row_tracks = []
         self._column_tracks = []
+        if self._lazy is not None:
+            self._lazy_layout(self._lazy, width, height)
+            return
+        children = expand_layout_children(self.children_snapshot())
+        self._laid_out_children = children
         if not children:
             return
 
@@ -319,6 +410,103 @@ class UniformFlow(Widget):
     @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         paint_laid_out_children(self, canvas, x, y, width, height)
+
+    def _lazy_preferred_size(
+        self, lazy: LazyItems, max_width: Optional[int], max_height: Optional[int]
+    ) -> Tuple[int, int]:
+        pad = self.padding
+        count = lazy.count()
+
+        outer_max_w: Optional[int] = None if max_width is None else int(max_width)
+        if self.width_sizing.kind == "fixed":
+            fixed_w = int(self.width_sizing.value)
+            outer_max_w = fixed_w if outer_max_w is None else min(fixed_w, outer_max_w)
+        inner_max_w: Optional[int] = None
+        if outer_max_w is not None:
+            inner_max_w = max(0, outer_max_w - int(pad[0]) - int(pad[2]))
+
+        if count == 0:
+            content_w = content_h = 0
+        elif inner_max_w is not None and inner_max_w > 0:
+            cols = self._resolve_columns(count, inner_max_w)
+            col_w = self._lazy_column_width(cols, inner_max_w)
+            row_h = self._lazy_row_height(lazy, col_w)
+            rows = math.ceil(count / cols)
+            content_w = cols * col_w + max(0, cols - 1) * self.main_gap
+            content_h = rows * row_h + max(0, rows - 1) * self.cross_gap
+        else:
+            cols = self._intrinsic_columns(count)
+            sample_w, sample_h = lazy.sample_size(None)
+            row_h = self._height_from_aspect(sample_w) if self.aspect_ratio else sample_h
+            rows = math.ceil(count / cols)
+            content_w = cols * sample_w + max(0, cols - 1) * self.main_gap
+            content_h = rows * row_h + max(0, rows - 1) * self.cross_gap
+
+        width = self._resolve_sizing(self.width_sizing, content_w + pad[0] + pad[2])
+        height = self._resolve_sizing(self.height_sizing, content_h + pad[1] + pad[3])
+
+        if max_width is not None and self.width_sizing.kind != "fixed":
+            width = min(width, int(max_width))
+        if max_height is not None and self.height_sizing.kind != "fixed":
+            height = min(height, int(max_height))
+        return (int(width), int(height))
+
+    def _lazy_column_width(self, cols: int, inner_w: int) -> int:
+        usable = max(0, inner_w - max(0, cols - 1) * self.main_gap)
+        return usable // max(1, cols)
+
+    def _lazy_row_height(self, lazy: LazyItems, col_w: int) -> int:
+        """Every row's height: from the aspect ratio, else the sample item's."""
+        if self.aspect_ratio:
+            return self._height_from_aspect(col_w)
+        return lazy.sample_size(col_w if col_w > 0 else None)[1]
+
+    def _lazy_layout(self, lazy: LazyItems, width: int, height: int) -> None:
+        pad = self.padding
+        inner_w = max(0, width - pad[0] - pad[2])
+        inner_h = max(0, height - pad[1] - pad[3])
+
+        count = lazy.count()
+        if count == 0:
+            self._laid_out_children = lazy.materialize(self, 0, 0)
+            return
+
+        cols = max(1, self._resolve_columns(count, inner_w))
+        rows = max(1, math.ceil(count / cols))
+        col_widths = self._resolve_column_widths(cols, inner_w, [])
+        row_h = self._lazy_row_height(lazy, col_widths[0] if col_widths else 0)
+
+        content_w = sum(col_widths) + max(0, cols - 1) * self.main_gap
+        content_h = rows * row_h + max(0, rows - 1) * self.cross_gap
+        start_x = pad[0] + align_offset(inner_w, content_w, self.main_alignment)
+        start_y = pad[1] + align_offset(inner_h, content_h, self.run_alignment)
+        col_offsets = compute_prefix_offsets(col_widths, self.main_gap)
+        pitch = row_h + self.cross_gap
+        self._row_tracks = [(float(start_y + r * pitch), float(row_h)) for r in range(rows)]
+        self._column_tracks = [(float(start_x + col_offsets[c]), float(col_widths[c])) for c in range(cols)]
+
+        span = lazy.visible_span(self, height)
+        first_row, stop_row = lazy.index_range(span, rows, row_h, self.cross_gap, start_y)
+        first = first_row * cols
+        stop = min(count, stop_row * cols)
+        children = lazy.materialize(self, first, stop)
+        self._laid_out_children = children
+
+        align_x, align_y = self.item_alignment
+        for i, child in enumerate(children):
+            r, c = divmod(first + i, cols)
+            cell_w = col_widths[c]
+            cell_x = start_x + col_offsets[c]
+            cell_y = start_y + r * pitch
+
+            pref_w, pref_h = measure_preferred_size(child, max_width=cell_w)
+            child_w = self._resolve_cell_size(child.width_sizing, pref_w, cell_w)
+            child_h = self._resolve_cell_size(child.height_sizing, pref_h, row_h)
+            cell_x += align_offset(cell_w, child_w, align_x)
+            cell_y += align_offset(row_h, child_h, align_y)
+
+            layout_child_if_needed(child, child_w, child_h)
+            child.set_layout_rect(int(cell_x), int(cell_y), int(child_w), int(child_h))
 
     def _intrinsic_columns(self, child_count: int) -> int:
         if self.columns:
