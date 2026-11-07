@@ -100,7 +100,8 @@ existing cards then stay.
 ## `lazy()` for a Long List
 
 `Column.lazy()`, `Row.lazy()` and `UniformFlow.lazy()` take the same `items`
-and builder as `builder()`, but build only the items the scrollable shows:
+and builder as `builder()`, but build only the items the scrollable shows,
+plus the next few ahead of the scroll while the app has nothing else to do:
 
 ```python
 import nuiitivet.material as nv
@@ -112,7 +113,7 @@ nv.Container(
     child=nv.VerticalScrollable(
         child=nv.Column.lazy(
             rows,
-            lambda row, index: nv.Text(row, padding=(16, 8)),  # built when the row scrolls into view
+            lambda row, index: nv.Text(row, padding=(16, 8)),  # built as the row nears the view
             gap=4,
         ),
     ),
@@ -124,9 +125,9 @@ Pass `item_height=` (`item_width=` on a `Row`) when the first row is not
 typical. `UniformFlow.lazy()` takes its row height from `aspect_ratio`, else
 from the first item.
 
-A row that scrolls out of view is thrown away. It is built again from the
-builder when it scrolls back in. A checkbox the user ticked inside the row is
-unticked by then. Keep such state in the item data.
+A row that scrolls well out of view is thrown away. It is built again from
+the builder when it scrolls back in. A checkbox the user ticked inside the
+row is unticked by then. Keep such state in the item data.
 
 The lazy Column is as wide as the scrollable. `cross_alignment` places each row
 inside that width. Outside a scrollable it builds only the rows that fit its

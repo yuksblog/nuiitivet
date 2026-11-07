@@ -57,6 +57,7 @@ flowchart LR
     window[runtime/window.py]
     clock[observable/runtime.py]
     pacer[runtime/gc_pacing.py]
+    idle[widgeting/idle_work.py]
     pyglet[pyglet]
     collector[the collector]
 
@@ -66,6 +67,7 @@ flowchart LR
     loop -- "_render_frame(dt), each open window" --> window
     loop -- "update_time() · call_scheduled_functions(dt) · get_sleep_time()" --> clock
     loop -- "install() · before_frame() · after_frame(now) · idle(now) · uninstall()" --> pacer
+    loop -- "run_idle_work(budget)" --> idle
     pacer -- "disable() · collect(generation) · freeze() · unfreeze() · enable()" --> collector
     loop -- "platform_event_loop.step(timeout) · set_timer(_blocking_timer, timeout)" --> pyglet
     pyglet -- "idle(), from the OS drag loop" --> loop
@@ -79,6 +81,7 @@ flowchart LR
 | `runtime/window.py` | requests a frame, draws one (The Frame) |
 | `observable/runtime.py` | the clock the loop ticks ([OBSERVABLE.md](OBSERVABLE.md)) |
 | `runtime/gc_pacing.py` | `GcPacer`: holds the collector while the loop runs; picks the generation collected at a wait, before a frame past the backstop, and in a quiet stretch |
+| `widgeting/idle_work.py` | the tasks the loop runs before it waits, each until the deadline ([LAYOUT.md](LAYOUT.md)) |
 | `pyglet` | the platform event loop |
 | the collector | CPython's cyclic garbage collector |
 
@@ -91,6 +94,7 @@ sequenceDiagram
     participant W as runtime/window.py
     participant L as backends/pyglet/event_loop.py
     participant G as runtime/gc_pacing.py
+    participant I as widgeting/idle_work.py
     participant P as pyglet
 
     L->>G: install(), as the loop starts
@@ -107,6 +111,7 @@ sequenceDiagram
         end
         L->>L: _compute_sleep_timeout(): the deadline when a frame is pending, else the clock's next due time
         alt the timeout is not zero
+            L->>I: run_idle_work(budget): the timeout, at most a slice of a frame
             L->>G: idle(now)
         end
     end
@@ -140,6 +145,8 @@ sequenceDiagram
 - A cadence throttles a pending frame and never produces one.
 - A frame served from the OS drag loop passes the same gate as one from the
   main loop.
+- Idle work runs before a wait, within its budget. A frame due now runs
+  first. Work left over brings the loop back at once.
 - While the loop runs, the collector runs only where the loop calls it.
 - No collection runs inside a frame. The loop collects before a wait, or
   before a frame once the allocations after the last collection passed the

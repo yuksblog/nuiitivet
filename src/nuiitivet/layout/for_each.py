@@ -237,7 +237,9 @@ class ForEach(ComposableWidget):
                 entry.value = info.value
                 if value_changed and entry.scope_id:
                     self.invalidate_scope_id(entry.scope_id)
-            fragment = self._ensure_fragment(entry)
+            fragment = self._reuse_fragment(entry)
+            if fragment is None:
+                fragment = self._ensure_fragment(entry)
             if fragment is not None:
                 next_children.append(fragment)
             next_entries.append(entry)
@@ -250,6 +252,26 @@ class ForEach(ComposableWidget):
 
         self._ordered_entries = next_entries
         self._replace_children(next_children)
+
+    def _reuse_fragment(self, entry: _ForEachEntry) -> Optional[Widget]:
+        """The entry's fragment as it stands, when nothing asks for a build.
+
+        Rendering the scope entry again would only refresh a factory that
+        captures the same entry; marking the scope active keeps it from
+        the pruning that follows the rebuild.
+        """
+        fragment = entry.fragment
+        scope_id = entry.scope_id
+        if (
+            fragment is None
+            or scope_id is None
+            or scope_id in self._dirty_scopes
+            or getattr(fragment, "built_child", None) is None
+            or self._scope_nodes.get(scope_id) is not fragment
+        ):
+            return None
+        self._active_scope_ids.add(scope_id)
+        return fragment
 
     def _ensure_fragment(self, entry: _ForEachEntry) -> Optional[Widget]:
         def factory(entry_ref: _ForEachEntry = entry) -> Widget:

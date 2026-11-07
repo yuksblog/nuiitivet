@@ -20,8 +20,12 @@ from nuiitivet.platform.clipboard import BrowserClipboard, get_system_clipboard
 from nuiitivet.rendering.skia.color import rgba_to_skia_color
 from nuiitivet.runtime.gc_pacing import GcPacer
 from nuiitivet.runtime.threading import set_ui_thread
+from nuiitivet.widgeting.idle_work import run_idle_work
 
 logger = logging.getLogger(__name__)
+
+# Idle work per timer run: a slice of a frame, so the next frame is never far away.
+IDLE_BUDGET_SECONDS = 0.008
 
 
 class _Loop:
@@ -105,8 +109,11 @@ class _Loop:
 
     def _gc_idle(self, *_args: Any) -> None:
         self._gc_timer = None
+        more = run_idle_work(IDLE_BUDGET_SECONDS)
         wake = self._gc_pacer.idle(time.perf_counter())
-        if wake is not None:
+        if more:
+            self._schedule_gc_idle(0.0)
+        elif wake is not None:
             self._schedule_gc_idle(wake)
 
     def _pointer(self, kind: str, x: float, y: float, button: int, buttons: int, modifier_keys: int) -> None:

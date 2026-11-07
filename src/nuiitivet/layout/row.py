@@ -136,11 +136,12 @@ class Row(Widget):
         cross_alignment: str = "start",
         key: Optional[str] = None,
     ) -> "Row":
-        """Create a Row that holds widgets for the items in view only.
+        """Create a Row that holds widgets for the items in view and the few around them.
 
         Inside a ``HorizontalScrollable`` the Row builds the items the viewport
-        shows and unmounts the ones that scroll out; its width is the width of
-        every item, so the scrollbar is exact. Outside one it holds the items
+        shows, builds the next ones ahead of the scroll while the app is idle,
+        and unmounts the ones that scrolled out of reach; its width is the
+        width of every item, so the scrollbar is exact. Outside one it holds the items
         inside its own rect. Every item takes the same width, and the Row takes
         the height it is offered.
 
@@ -336,19 +337,23 @@ class Row(Widget):
         extent = lazy.item_extent(ch) if count else 0
         span = lazy.visible_span(self, width)
         first, stop = lazy.index_range(span, count, extent, self.gap, l)
-        children = lazy.materialize(self, first, stop)
-        self._laid_out_children = children
-
         pitch = extent + self.gap
-        for i, child in enumerate(children):
+
+        def place(child: Widget, index: int) -> None:
             _, pref_h = measure_preferred_size(child, max_height=ch)
             resolved_height = self._resolve_cross_size(child, pref_h, ch)
             child_align = getattr(child, "cross_align", None)
             alignment = str(child_align) if child_align else self.cross_alignment
-            rel_x = l + (first + i) * pitch
             rel_y = t + align_offset(ch, resolved_height, alignment)
             layout_child_if_needed(child, extent, resolved_height)
-            child.set_layout_rect(rel_x, rel_y, extent, resolved_height)
+            child.set_layout_rect(l + index * pitch, rel_y, extent, resolved_height)
+
+        start, children = lazy.materialize(self, first, stop, pitch=pitch, place=place)
+        self._laid_out_children = children
+        for i, child in enumerate(children):
+            if lazy.placed(child, l + (start + i) * pitch, ch):
+                continue
+            place(child, start + i)
 
     @staticmethod
     def _allocate_main_sizes(base_sizes: List[int], weights: List[float], usable: int) -> List[int]:

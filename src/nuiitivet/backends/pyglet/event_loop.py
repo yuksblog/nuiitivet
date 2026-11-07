@@ -15,8 +15,13 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.runtime.gc_pacing import GcPacer
 from nuiitivet.runtime.renderer import RendererError
 from nuiitivet.widgeting.callbacks import drop_pending_tasks, start_pending_tasks
+from nuiitivet.widgeting.idle_work import run_idle_work
 
 logger = logging.getLogger(__name__)
+
+# Idle work per loop iteration: a slice of a frame, so a frame that becomes
+# pending meanwhile is never far away.
+IDLE_BUDGET_SECONDS = 0.008
 
 
 class ResponsiveEventLoop(pyglet.app.EventLoop):
@@ -241,7 +246,7 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
                     self._perform_draw(dt, now)
             finally:
                 self._in_idle_draw = False
-        return self._sleep_timeout_after_collecting(time.perf_counter())
+        return self._before_wait(time.perf_counter())
 
     def _blocking_timer(self) -> None:
         # pyglet's version presents through ``window.draw()``, outside the
@@ -319,7 +324,7 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
                     self._enter_phase("draw")
                     self._perform_draw(dt, now)
 
-                timeout = self._sleep_timeout_after_collecting(now)
+                timeout = self._before_wait(now)
                 try:
                     max_step = float(os.environ.get("NUIITIVET_PYGLET_MAX_STEP", "0.05"))
                 except Exception:
@@ -408,7 +413,7 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
                 if self._should_draw(now):
                     self._perform_draw(dt, now)
 
-                timeout = self._sleep_timeout_after_collecting(now)
+                timeout = self._before_wait(now)
                 if timeout is None:
                     # No timeout: wait indefinitely for an event
                     # But we must yield to asyncio loop
@@ -518,11 +523,19 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
             if self._draw_interval is not None:
                 self._next_draw_deadline = now + self._draw_interval
 
-    def _sleep_timeout_after_collecting(self, now: float) -> Optional[float]:
-        """The sleep timeout, the collector having run first when there is a wait ahead."""
+    def _before_wait(self, now: float) -> Optional[float]:
+        """The sleep timeout, idle work and the collector having run first when there is a wait ahead.
+
+        Idle work left over makes the timeout zero, so the loop comes straight
+        back for it.
+        """
         timeout = self._compute_sleep_timeout(now)
-        if timeout is None or timeout > 0.0:
-            self._gc_pacer.idle(time.perf_counter())
+        if timeout is not None and timeout <= 0.0:
+            return timeout
+        budget = IDLE_BUDGET_SECONDS if timeout is None else min(timeout, IDLE_BUDGET_SECONDS)
+        if run_idle_work(budget):
+            timeout = 0.0
+        self._gc_pacer.idle(time.perf_counter())
         return timeout
 
     def _compute_sleep_timeout(self, now: float) -> Optional[float]:

@@ -109,8 +109,8 @@ def test_rows_a_lazy_column_dropped_are_freed_at_once(collector_off):
     scroller.layout(200, 100)
     assert sorted(rows) == [0, 1, 2, 3, 4]
 
-    scroller._controller.scroll_to(100)
+    scroller._controller.scroll_to(400)  # a whole screen away: nothing of the old range is kept
     scroller.layout(200, 100)
 
     assert all(rows[item]() is None for item in (0, 1, 2, 3, 4)), "the rows that left the window are gone"
-    assert all(rows[item]() is not None for item in (5, 6, 7, 8, 9)), "the rows in the window live"
+    assert all(rows[item]() is not None for item in (20, 21, 22, 23, 24)), "the rows in the window live"

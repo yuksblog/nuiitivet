@@ -391,3 +391,45 @@ def test_run_async_owns_the_collector_while_it_runs(monkeypatch):
 
     assert seen == [False], "inside the loop the pacer holds the collector"
     assert gc.isenabled(), "the loop hands it back on exit"
+
+
+# ---------------------------------------------------------------------------
+# _before_wait(): idle work runs before a wait, never before a pending frame
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def idle_tasks():
+    from nuiitivet.widgeting import idle_work
+
+    idle_work._tasks.clear()
+    yield idle_work
+    idle_work._tasks.clear()
+
+
+def test_before_wait_runs_idle_work_when_a_wait_is_ahead(idle_tasks):
+    runs = []
+    idle_tasks.request_idle_work(lambda deadline: runs.append(deadline) and False)
+    loop, _ = _idle_loop(draw_fps=None, sleep_time=None)
+    loop._draw_pending = False
+
+    assert loop._before_wait(time.perf_counter()) is None
+    assert len(runs) == 1
+
+
+def test_before_wait_skips_idle_work_before_a_pending_frame(idle_tasks):
+    runs = []
+    idle_tasks.request_idle_work(lambda deadline: runs.append(deadline) and False)
+    loop, _ = _idle_loop(draw_fps=None, sleep_time=None)
+    loop._draw_pending = True
+
+    assert loop._before_wait(time.perf_counter()) == 0.0
+    assert runs == [], "a frame is due now; the work waits"
+
+
+def test_before_wait_comes_straight_back_while_work_remains(idle_tasks):
+    idle_tasks.request_idle_work(lambda deadline: True)
+    loop, _ = _idle_loop(draw_fps=None, sleep_time=0.5)
+    loop._draw_pending = False
+
+    assert loop._before_wait(time.perf_counter()) == 0.0, "no sleep: more work waits"

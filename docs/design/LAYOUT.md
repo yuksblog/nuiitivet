@@ -151,7 +151,8 @@ flowchart LR
 ## The Providers
 
 A provider builds a container's children from a data collection. A lazy
-container's provider builds the items in view.
+container's provider builds the items in view, and the ones around them
+while the loop is idle.
 
 ### Structure
 
@@ -164,26 +165,30 @@ flowchart LR
     viewport[layout/scroll_viewport.py]
     controller[scrolling/controller.py]
     builder[widgeting/widget_builder.py]
+    idle[widgeting/idle_work.py]
 
     containers -- "ForEach(items, fn, key_fn) · LazyItems(provider, axis, extent)" --> for_each & lazy
     containers -- "expand_layout_children(children)" --> utils
     utils -- "provide_layout_children()" --> for_each
-    containers -- "count() · item_extent(cross_limit) · visible_span(container, length) · index_range(span, count, extent, gap, pad) · materialize(container, first, stop)" --> lazy
+    containers -- "count() · item_extent(cross_limit) · visible_span(container, length) · index_range(span, count, extent, gap, pad) · materialize(container, first, stop, pitch, place)" --> lazy
+    lazy -- "place(child, index), for an item built in idle time" --> containers
     lazy -- "item_count() · set_window(start, stop) · window_children()" --> for_each
     lazy -- "visual_clip_rect() · visual_offset() · controller" --> viewport
     lazy -- "axis_state(axis).offset.subscribe(cb)" --> controller
+    lazy -- "request_idle_work(prefetch) · cancel_idle_work(prefetch)" --> idle
     for_each -- "render_scope_with_handle(handle, factory) · _prune_unused_scopes()" --> builder
 ```
 
 | Module | Role |
 | --- | --- |
 | `layout/for_each.py` | `ForEach`: one scoped fragment per item, found by its key; with a window, per item in the window |
-| `layout/lazy.py` | `LazyItems`: the item extent, the span the viewport shows, the index range it covers; follows the viewport's offset while mounted |
+| `layout/lazy.py` | `LazyItems`: the item extent, the span the viewport shows, the index range it covers, the held range around it and the lead; follows the viewport's offset while mounted and builds ahead of it in idle time |
 | `layout/row.py · column.py · uniform_flow.py` | `builder()` and `lazy()`; place the provided children, a lazy one at its index times the pitch (The Containers) |
 | `layout/layout_utils.py` | replaces a provider with its children (The Containers) |
 | `layout/scroll_viewport.py` | the clip rect, the displacement and the controller it scrolls by ([BOX_MODEL.md](BOX_MODEL.md)) |
 | `scrolling/controller.py` | the offset `Observable` |
 | `widgeting/widget_builder.py` | the recompose scopes ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)) |
+| `widgeting/idle_work.py` | the tasks the frame loop runs before it waits ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
 
 ### Sequence
 
@@ -198,24 +203,54 @@ sequenceDiagram
     participant F as layout/for_each.py
 
     S->>L: offset changed
+    L->>L: note the direction and the items one step moves
     L->>C: mark_needs_layout()
     V->>C: preferred_size(max_w): count × extent plus the gaps
     V->>C: layout(w, h)
     C->>L: visible_span(self, h)
     L->>V: visual_clip_rect() · visual_offset()
     C->>L: index_range(span, count, extent, gap, pad)
-    C->>L: materialize(self, first, stop)
-    L->>F: set_window(first, stop)
-    F->>F: build the items that entered, unmount the ones that left
+    C->>L: materialize(self, first, stop, pitch, place)
+    L->>L: the held range: the view, plus the built items within the lead on each side
+    L->>F: set_window(held_first, held_stop)
+    F->>F: build the items that entered the view, unmount the ones beyond the lead
+    L->>I: request_idle_work(prefetch), when the lead is not full
     C->>C: place item i at pad + i × (extent + gap)
+```
+
+#### Idle time builds ahead of the view
+
+```mermaid
+sequenceDiagram
+    participant E as backends/pyglet/event_loop.py
+    participant I as widgeting/idle_work.py
+    participant L as layout/lazy.py
+    participant F as layout/for_each.py
+    participant C as layout/column.py
+
+    E->>I: run_idle_work(budget), before a wait
+    I->>L: prefetch(deadline)
+    loop until the deadline or the lead is full
+        L->>L: the next item: the scroll's side first, at rest the side with fewer
+        L->>F: set_window(the held range grown by one)
+        F->>F: build the item
+        L->>C: place(child, index)
+    end
+    L-->>I: whether the lead is still not full
+    I-->>E: whether work remains
 ```
 
 ### Promises
 
 - A provider is never laid out or painted. Its children take its place in the
   container.
-- A lazy container holds a widget for each item in its window and none
-  outside it.
+- A lazy container holds a widget for each item in view, for the built items
+  within the lead on each side of the view, and for none beyond.
+- The layout pass builds the items that entered the view and no other.
+- The lead is filled in idle time, one item at a time, the scroll's side
+  first.
+- At rest the lead is the same on both sides. While scrolling it grows with
+  the items one scroll step moves.
 - Every item of a lazy container has one main-axis extent: the given one,
   else the measured extent of the first item in view.
 - A lazy container's window is the span its nearest enclosing scroll viewport

@@ -2,7 +2,8 @@
 
 One pass scrolls the lazy table by a number of rows and lays it out, which
 builds the rows that came into view and drops the ones that left. The passes
-run back to back, as frames of a scroll do, and the time of each is kept.
+run as frames of a scroll do: back to back, with the time a frame leaves over
+given to idle work, which builds the rows ahead of the view.
 
 Policies:
 
@@ -38,6 +39,7 @@ from typing import Callable, List, Optional
 import nuiitivet.material as nv
 from nuiitivet.runtime.gc_pacing import GcPacer
 from nuiitivet.runtime.pointer import PointerCaptureManager
+from nuiitivet.widgeting.idle_work import run_idle_work
 
 _COMPARE = Path(__file__).resolve().parents[1] / "debug" / "lazy_table_compare.py"
 _spec = importlib.util.spec_from_file_location("lazy_table_compare", _COMPARE)
@@ -133,6 +135,8 @@ def run(
     offset = 0
     times: List[float] = []
     allocated: List[int] = []
+    built_in_passes = 0
+    built_in_idle = 0
     now = 0.0
     try:
         for _ in range(passes):
@@ -142,6 +146,7 @@ def run(
             now += FRAME_SECONDS
             started = perf_counter()
             before = gc.get_count()[0]
+            built_before = stats.built
             if pacer is not None:
                 pacer.before_frame()
             controller.scroll_to(offset)
@@ -150,7 +155,13 @@ def run(
             if pacer is not None:
                 pacer.after_frame(now)
                 pacer.idle(now)
-            times.append(perf_counter() - started)
+            elapsed = perf_counter() - started
+            times.append(elapsed)
+            built_in_passes += stats.built - built_before
+            # What the frame left over goes to the idle work, as the loop does.
+            built_before = stats.built
+            run_idle_work(max(0.0, FRAME_SECONDS - elapsed))
+            built_in_idle += stats.built - built_before
         waiting = len(gc.get_objects()) - alive
         rss_growth = _peak_rss_mb() - rss_before
         # What a quiet moment would pay: the full collection the pacer runs
@@ -172,6 +183,10 @@ def run(
     print(
         f"{policy:>13} | {rows_per_pass:2d} rows/pass | mean {statistics.fmean(ms):5.1f} | p95 {p95:5.1f} | "
         f"max {ms[-1]:6.1f} ms | alloc/pass {statistics.fmean(allocated):7.0f} | {collections.summary()}"
+    )
+    print(
+        f"{'':>13} | rows built: {built_in_passes / passes:.1f} per pass inside the frame, "
+        f"{built_in_idle / passes:.1f} per pass in idle time"
     )
     print(
         f"{'':>13} | after the passes: {waiting:,} tracked objects more than before, peak RSS +{rss_growth:.0f} MB, "
