@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, TypeVar
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.input.codes import BUTTON_LEFT, BUTTON_MIDDLE, BUTTON_RIGHT, MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT
 from nuiitivet.input.pointer import PointerEvent
-from nuiitivet.material.theme.color_role import ColorRole
+from nuiitivet.matplotlib.theme_data import MatplotlibFigureThemeData
 from nuiitivet.observable.protocols import ObservableBase
 from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.rendering.sizing import SizingLike
@@ -17,6 +17,7 @@ from nuiitivet.rendering.skia import make_paint, make_rect
 from nuiitivet.theme.dependency import theme_generation
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.theme.theme import Theme
+from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.paint_replay import replay_safe
 from nuiitivet.widgets.interaction import FocusNode, FocusSource, InteractionHostMixin, PointerListenerNode
 from nuiitivet.widgets.raster_surface import RasterSurface
@@ -28,16 +29,14 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
+_FigureWidget = TypeVar("_FigureWidget", bound="MatplotlibFigure")
 
 #: Points per logical pixel: a 10pt label is 10pt on screen, as in the rest of the app.
 _LOGICAL_DPI = 96.0
 
-#: The colors a plotted series takes, in order; matplotlib's stock cycle maps onto these.
-_SERIES_ROLES = (ColorRole.PRIMARY, ColorRole.TERTIARY, ColorRole.SECONDARY, ColorRole.ERROR)
-
 _TRANSPARENT = (0.0, 0.0, 0.0, 0.0)
 
-#: The zoom rectangle's fill: the primary color at a state layer's opacity, under a one pixel outline.
+#: The zoom rectangle's fill: the rubberband color at a state layer's opacity, under a one pixel outline.
 _RUBBERBAND_FILL_ALPHA = 31
 
 #: matplotlib's button numbers for the framework's button codes.
@@ -85,18 +84,20 @@ _MODIFIER_KEYS = {"shift": "shift", "control": "ctrl", "alt": "alt", "super": "s
 
 
 class MatplotlibFigure(InteractionHostMixin, RasterSurface):
-    """A matplotlib ``Figure`` as a widget.
+    """A matplotlib ``Figure`` as a widget, in the colors of the theme's :class:`MatplotlibFigureThemeData`.
 
     The figure is drawn with the Agg renderer at the widget's device size, so
     text and lines stay crisp on any display; the widget takes over the
     figure's canvas, size and dpi.
 
-    With ``themed`` the figure follows the app's :class:`ColorRole` palette and
-    switches with it: the figure and axes backgrounds become transparent, text
-    and ticks take the on-surface colors, spines the outline color, and a
-    series drawn in one of matplotlib's stock cycle colors takes the primary,
-    tertiary, secondary and error colors in turn. A color set by hand stays.
-    From a data source: :meth:`plot`.
+    With ``themed`` the figure follows the app's theme and switches with it:
+    the figure and axes backgrounds become transparent, and text, ticks,
+    spines and the series take the palette's colors, resolved against the
+    theme on each draw. A series drawn in one of matplotlib's stock cycle
+    colors takes the palette's series colors in turn; a color set by hand
+    stays. The palette is the extension the theme's design system registered;
+    a theme without one draws the neutral defaults. From a data source:
+    :meth:`plot`.
 
     The figure takes the pointer, and the keyboard after a click on it, as
     matplotlib events: a handler connected with ``mpl_connect`` runs with the
@@ -153,7 +154,7 @@ class MatplotlibFigure(InteractionHostMixin, RasterSurface):
         self._pointer_px: tuple[float, float] = (0.0, 0.0)
         # The zoom rectangle being dragged, in figure pixels, or None.
         self._rubberband: Optional[tuple[float, float, float, float]] = None
-        from nuiitivet.material.matplotlib_controller import MatplotlibController
+        from nuiitivet.matplotlib.controller import MatplotlibController
 
         MatplotlibController._shown(figure, self)
         self._focus_node = FocusNode(traversable=False, on_key=self._on_key, on_key_up=self._on_key_up)
@@ -171,7 +172,7 @@ class MatplotlibFigure(InteractionHostMixin, RasterSurface):
 
     @classmethod
     def plot(
-        cls,
+        cls: type[_FigureWidget],
         figure: "Figure",
         data: ObservableBase[T],
         plot: Callable[["Figure", T], None],
@@ -181,8 +182,8 @@ class MatplotlibFigure(InteractionHostMixin, RasterSurface):
         height: SizingLike = None,
         padding: PaddingLike = 0,
         key: Optional[str] = None,
-    ) -> "MatplotlibFigure":
-        """Create a MatplotlibFigure replotted from *data* on every change.
+    ) -> _FigureWidget:
+        """Create a widget replotted from *data* on every change.
 
         Args:
             figure: The figure *plot* draws into.
@@ -281,7 +282,10 @@ class MatplotlibFigure(InteractionHostMixin, RasterSurface):
         rect = make_rect(left, top, right - left, bottom - top)
         if rect is None:
             return
-        r, g, b, _a = resolve_color_to_rgba(ColorRole.PRIMARY, theme=Theme.of(self))
+        theme = Theme.of(self)
+        colors = _palette(theme)
+        spec = colors.rubberband if colors.rubberband is not None else colors.text
+        r, g, b, _a = resolve_color_to_rgba(spec, theme=theme)
         fill = make_paint(color=(r, g, b, _RUBBERBAND_FILL_ALPHA), style="fill")
         outline = make_paint(color=(r, g, b, 255), style="stroke", stroke_width=1.0)
         try:
@@ -384,10 +388,11 @@ class MatplotlibFigure(InteractionHostMixin, RasterSurface):
     def _apply_theme(self) -> None:
         theme = Theme.of(self)
         self._theme_gen = theme_generation(self)
-        on_surface = _hex(ColorRole.ON_SURFACE, theme)
-        on_surface_variant = _hex(ColorRole.ON_SURFACE_VARIANT, theme)
-        outline_variant = _hex(ColorRole.OUTLINE_VARIANT, theme)
-        series = [_hex(role, theme) for role in _SERIES_ROLES]
+        colors = _palette(theme)
+        on_surface = _hex(colors.text, theme)
+        on_surface_variant = _hex(colors.ticks, theme)
+        outline_variant = _hex(colors.outline, theme)
+        series = [_hex(spec, theme) for spec in colors.series]
         recolor = _series_mapping(self._applied_series, series)
         self._applied_series = series
 
@@ -410,12 +415,14 @@ class MatplotlibFigure(InteractionHostMixin, RasterSurface):
             _recolor_collections(ax.collections, recolor)
             legend = ax.get_legend()
             if legend is not None:
-                legend.get_frame().set_facecolor(_hex(ColorRole.SURFACE_CONTAINER, theme))
+                if colors.legend is not None:
+                    legend.get_frame().set_facecolor(_hex(colors.legend, theme))
                 legend.get_frame().set_edgecolor(outline_variant)
                 for text in legend.get_texts():
                     text.set_color(on_surface)
                 _recolor_artists(getattr(legend, "legend_handles", ()), recolor)
-            ax.set_prop_cycle(color=series)
+            if series:
+                ax.set_prop_cycle(color=series)
 
 
 @functools.lru_cache(maxsize=1)
@@ -466,8 +473,14 @@ def _mpl_key(key: str, modifier_keys: int) -> str:
     return "+".join(mods + [name])
 
 
-def _hex(role: ColorRole, theme: Theme) -> str:
-    r, g, b, _a = resolve_color_to_rgba(role, theme=theme)
+def _palette(theme: Theme) -> MatplotlibFigureThemeData:
+    """The figure palette *theme*'s design system registered, else the neutral defaults."""
+    palette = theme.extension(MatplotlibFigureThemeData)
+    return palette if palette is not None else MatplotlibFigureThemeData()
+
+
+def _hex(spec: ColorSpec, theme: Theme) -> str:
+    r, g, b, _a = resolve_color_to_rgba(spec, theme=theme)
     return f"#{r:02x}{g:02x}{b:02x}"
 
 
@@ -476,6 +489,8 @@ def _series_mapping(previous: list[str], current: list[str]) -> dict[str, str]:
     import matplotlib
     from matplotlib.colors import to_hex
 
+    if not current:
+        return {}
     stock = [to_hex(c).lower() for c in matplotlib.rcParamsDefault["axes.prop_cycle"].by_key()["color"]]
     mapping = {color: current[i % len(current)] for i, color in enumerate(stock)}
     mapping.update({color: current[i % len(current)] for i, color in enumerate(previous)})

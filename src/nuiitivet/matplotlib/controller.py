@@ -12,7 +12,7 @@ from nuiitivet.observable import Observable
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
 
-    from nuiitivet.material.matplotlib_figure import MatplotlibFigure
+    from nuiitivet.matplotlib.figure import MatplotlibFigure
 
 #: The scale one wheel step zooms by; three steps double it.
 _WHEEL_ZOOM_STEP = 1.25

@@ -128,8 +128,8 @@ if TYPE_CHECKING:
     )
     from nuiitivet.widgets.image import Image
     from nuiitivet.widgets.raster_surface import RasterSurface
-    from .matplotlib_figure import MatplotlibFigure
-    from .matplotlib_controller import MatplotlibController
+    from ..matplotlib.figure import MatplotlibFigure
+    from ..matplotlib.controller import MatplotlibController
 
 __all__ = [
     "App",
@@ -386,8 +386,8 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "SlideOutVertically": ("transitions", "SlideOutVertically"),
     "Image": ("..widgets.image", "Image"),
     "RasterSurface": ("..widgets.raster_surface", "RasterSurface"),
-    "MatplotlibFigure": ("matplotlib_figure", "MatplotlibFigure"),
-    "MatplotlibController": ("matplotlib_controller", "MatplotlibController"),
+    "MatplotlibFigure": ("..matplotlib.figure", "MatplotlibFigure"),
+    "MatplotlibController": ("..matplotlib.controller", "MatplotlibController"),
 }
 
 

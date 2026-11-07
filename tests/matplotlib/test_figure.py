@@ -17,11 +17,12 @@ from matplotlib.backend_bases import MouseButton  # noqa: E402
 from matplotlib.colors import to_hex, to_rgba  # noqa: E402
 from matplotlib.figure import Figure  # noqa: E402
 
-import nuiitivet.material.matplotlib_figure as figure_mod  # noqa: E402
+import nuiitivet.matplotlib.figure as figure_mod  # noqa: E402
 import nuiitivet.widgets.raster_surface as raster_mod  # noqa: E402
 from nuiitivet.input.codes import BUTTON_LEFT, BUTTON_RIGHT, MOD_CTRL, MOD_META, MOD_SHIFT  # noqa: E402
 from nuiitivet.input.pointer import PointerEvent, PointerEventType  # noqa: E402
-from nuiitivet.material.matplotlib_figure import MatplotlibFigure, _mpl_key  # noqa: E402
+from nuiitivet.matplotlib.figure import MatplotlibFigure  # noqa: E402
+from nuiitivet.matplotlib.figure import _mpl_key  # noqa: E402
 from nuiitivet.material.theme.color_role import ColorRole  # noqa: E402
 from nuiitivet.material.theme.material_theme import MaterialThemeFactory  # noqa: E402
 from nuiitivet.observable import Observable  # noqa: E402
