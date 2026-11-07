@@ -30,6 +30,7 @@ async function fetchBuffer(url) {
 async function start() {
   const config = await fetch("config.json").then((response) => response.json());
   const pyodide = new URL(config.pyodide, location.href).href;
+  const packagesUrl = new URL(config.packages_url, location.href).href;
   const canvaskit = new URL(config.canvaskit, location.href).href;
   // The worker boots meanwhile; an app without a @worker function gets none.
   if (config.workers.length) startWorkers(config, location.href);
@@ -43,7 +44,7 @@ async function start() {
   ]);
   const [CK, py] = await Promise.all([
     CanvasKitInit({ locateFile: (file) => canvaskit + file }),
-    loadPyodide({ indexURL: pyodide }),
+    loadPyodide({ indexURL: pyodide, packageBaseUrl: packagesUrl, packages: config.packages }),
   ]);
   // The console and a browser test reach the running app through it.
   globalThis.NV_PYODIDE = py;

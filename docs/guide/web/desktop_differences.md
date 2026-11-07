@@ -33,6 +33,10 @@ and starts the interpreter: a few seconds before the first frame. Under `run`
 they come from a CDN, in a built site from the site itself. The browser
 caches both; a reload is faster.
 
+A package the app imports that Pyodide ships, such as numpy or matplotlib,
+is downloaded with them. The import is the declaration; `build` puts the
+package's wheels in the site next to Pyodide.
+
 ### Fonts
 
 The page has the fonts the framework ships and the font files in the app's

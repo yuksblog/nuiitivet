@@ -850,6 +850,15 @@ class Window:
         return self._parent
 
     @property
+    def pixel_ratio(self) -> float:
+        """Device pixels per logical pixel on the display this window is on.
+
+        ``1.0`` before the window opens. A widget that produces pixels itself
+        multiplies its logical size by this to come out crisp.
+        """
+        return float(self._scale)
+
+    @property
     def modal(self) -> bool:
         """Whether this window blocks input to its parent chain while open."""
         return self._modal

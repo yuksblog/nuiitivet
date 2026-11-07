@@ -17,7 +17,7 @@ from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.animation import Animatable
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.container import Container
-from nuiitivet.observable import Observable, ObservableProtocol
+from nuiitivet.observable import Observable, ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.rendering.skia import (
     draw_oval,
     draw_round_rect,
@@ -108,7 +108,7 @@ class Checkbox(Toggleable, InteractiveWidget):
         *,
         on_toggle: Optional[Callable[[Optional[bool]], None]] = None,
         indeterminate: bool | ObservableProtocol[bool] = False,
-        disabled: bool | ObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["CheckboxStyle"] = None,
         key: Optional[str] = None,
@@ -700,7 +700,7 @@ class RadioButton(Toggleable, InteractiveWidget):
         self,
         value: object | None,
         *,
-        disabled: bool | ObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["RadioButtonStyle"] = None,
         key: Optional[str] = None,
@@ -931,7 +931,7 @@ class Switch(Toggleable, InteractiveWidget):
         checked: bool | ObservableProtocol[bool] = False,
         *,
         on_change: Optional[Callable[[bool], None]] = None,
-        disabled: bool | ObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["SwitchStyle"] = None,
         key: Optional[str] = None,

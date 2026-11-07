@@ -10,6 +10,7 @@ from dataclasses import dataclass, replace
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from nuiitivet.matplotlib.theme_data import MatplotlibFigureThemeData
 from nuiitivet.menubar.theme_data import MenuBarThemeData
 from nuiitivet.scrolling.scrollbar_theme_data import ScrollbarThemeData
 from nuiitivet.theme.theme import Theme
@@ -97,6 +98,20 @@ def _plain_scrollbar_theme_data() -> ScrollbarThemeData:
     )
 
 
+def _plain_matplotlib_figure_theme_data() -> MatplotlibFigureThemeData:
+    """Default figure palette for the Plain design system.
+
+    Text takes ``ON_SURFACE`` and spines ``OUTLINE`` as tokens. The Plain
+    theme has no accent color, so the series keep matplotlib's own cycle.
+    """
+    return MatplotlibFigureThemeData(
+        text=PlainColorRole.ON_SURFACE,
+        ticks=(PlainColorRole.ON_SURFACE, 0.7),
+        outline=(PlainColorRole.OUTLINE, 0.6),
+        legend=PlainColorRole.SURFACE,
+    )
+
+
 class PlainTheme:
     """Factory for creating Themes with Plain configuration."""
 
@@ -111,7 +126,12 @@ class PlainTheme:
         )
         return Theme(
             mode="light",
-            extensions=[data, _plain_scrollbar_theme_data(), _plain_menubar_theme_data()],
+            extensions=[
+                data,
+                _plain_scrollbar_theme_data(),
+                _plain_menubar_theme_data(),
+                _plain_matplotlib_figure_theme_data(),
+            ],
             name="plain-light",
         )
 
@@ -126,6 +146,11 @@ class PlainTheme:
         )
         return Theme(
             mode="dark",
-            extensions=[data, _plain_scrollbar_theme_data(), _plain_menubar_theme_data()],
+            extensions=[
+                data,
+                _plain_scrollbar_theme_data(),
+                _plain_menubar_theme_data(),
+                _plain_matplotlib_figure_theme_data(),
+            ],
             name="plain-dark",
         )

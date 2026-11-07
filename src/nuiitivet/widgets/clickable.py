@@ -14,7 +14,7 @@ from nuiitivet.widgets.interaction import (
     PointerEventCallback,
 )
 from nuiitivet.rendering.sizing import SizingLike
-from nuiitivet.observable import ObservableProtocol
+from nuiitivet.observable import ReadOnlyObservableProtocol
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.widget import Widget
 
@@ -34,7 +34,7 @@ class Clickable(InteractionHostMixin, FocusTraversalBlocker, Box):
         on_hover: Optional[BoolCallback] = None,
         on_press: Optional[PointerEventCallback] = None,
         on_release: Optional[PointerEventCallback] = None,
-        disabled: bool | ObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         focusable: bool = True,
         traversable: bool = True,
         width: SizingLike = None,
@@ -46,9 +46,9 @@ class Clickable(InteractionHostMixin, FocusTraversalBlocker, Box):
         corner_radius: Union[float, Tuple[float, float, float, float]] = 0.0,
         **kwargs,
     ):
-        self._disabled_external: ObservableProtocol[bool] | None = None
+        self._disabled_external: ReadOnlyObservableProtocol[bool] | None = None
         if hasattr(disabled, "subscribe") and hasattr(disabled, "value"):
-            self._disabled_external = cast("ObservableProtocol[bool]", disabled)
+            self._disabled_external = cast("ReadOnlyObservableProtocol[bool]", disabled)
             initial_disabled = bool(self._disabled_external.value)
         else:
             initial_disabled = bool(disabled)

@@ -20,7 +20,11 @@ self.onmessage = async ({ data }) => {
         import(data.pyodide + "pyodide.mjs"),
         fetchBuffer(data.bundle),
       ]);
-      const py = await loadPyodide({ indexURL: data.pyodide });
+      const py = await loadPyodide({
+        indexURL: data.pyodide,
+        packageBaseUrl: data.packagesUrl,
+        packages: data.packages,
+      });
       py.unpackArchive(bundle, "zip", { extractDir: "/nuiitivet" });
       py.runPython(`import sys\nsys.path[:0] = ["/nuiitivet/app", "/nuiitivet/lib"]`);
       const side = py.pyimport("nuiitivet.backends.web.worker");

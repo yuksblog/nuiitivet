@@ -62,6 +62,8 @@ SAMPLES = [
     ("samples/layout/adaptive/adaptive_toolbar.py", "layout_adaptive_toolbar.png"),
     # Advanced
     ("samples/advanced/geometry/scoped_size.py", "advanced_geometry_scoped_size.png"),
+    ("samples/charts/raster_surface.py", "charts_raster_surface.png"),
+    ("samples/charts/matplotlib_figure.py", "charts_matplotlib_figure.png"),
     # Dialogs
     ("samples/overlay/dialogs/basic_usage.py", "dialogs_basic_usage.png"),
     ("samples/overlay/dialogs/custom_dialog.py", "dialogs_custom_dialog.png"),

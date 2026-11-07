@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Optional, Tuple
 
+from nuiitivet.matplotlib.theme_data import MatplotlibFigureThemeData
 from nuiitivet.menubar.theme_data import MenuBarThemeData
 from nuiitivet.scrolling import ScrollbarThemeData
 from nuiitivet.theme.theme import Theme
@@ -55,6 +56,23 @@ def _material_scrollbar_theme_data() -> ScrollbarThemeData:
     )
 
 
+def _material_matplotlib_figure_theme_data() -> MatplotlibFigureThemeData:
+    """The figure palette mapped onto Material color roles.
+
+    Text and ticks take the on-surface roles, spines the outline variant, and
+    the series the primary, tertiary, secondary and error roles in turn; the
+    zoom rectangle is drawn in the primary role.
+    """
+    return MatplotlibFigureThemeData(
+        text=ColorRole.ON_SURFACE,
+        ticks=ColorRole.ON_SURFACE_VARIANT,
+        outline=ColorRole.OUTLINE_VARIANT,
+        series=(ColorRole.PRIMARY, ColorRole.TERTIARY, ColorRole.SECONDARY, ColorRole.ERROR),
+        legend=ColorRole.SURFACE_CONTAINER,
+        rubberband=ColorRole.PRIMARY,
+    )
+
+
 class MaterialThemeFactory:
     """Factory for creating Themes with Material Design configuration."""
 
@@ -87,6 +105,7 @@ class MaterialThemeFactory:
                 material_data,
                 _material_scrollbar_theme_data(),
                 _material_menubar_theme_data(),
+                _material_matplotlib_figure_theme_data(),
             ],
             name=name,
         )

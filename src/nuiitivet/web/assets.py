@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 PYODIDE_CDN = "https://cdn.jsdelivr.net/npm/pyodide@314.0.7/"
+# The npm package holds the interpreter alone; the wheels of Pyodide's packages are served from here.
+PYODIDE_PACKAGES_CDN = "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/"
 CANVASKIT_CDN = "https://cdn.jsdelivr.net/npm/canvaskit-wasm@0.42.0/"
 _NOTO = "https://raw.githubusercontent.com/notofonts/noto-cjk/Sans2.004/"
 
@@ -56,6 +58,14 @@ TEXT_FONTS: tuple[tuple[int, Asset], ...] = (
     ),
 )
 
+# Pyodide's lock file: which packages its build ships, as which wheels. The
+# page loads from it, and the web tools read it to find an app's packages.
+PYODIDE_LOCK = Asset(
+    "pyodide/pyodide-lock.json",
+    PYODIDE_CDN + "pyodide-lock.json",
+    "5dc2fc119108bc148c7457dc86e7675b5c87e1cafd420b9c34c1eaef7b36c010",
+)
+
 RUNTIME: tuple[Asset, ...] = (
     Asset(
         "pyodide/pyodide.mjs",
@@ -77,11 +87,7 @@ RUNTIME: tuple[Asset, ...] = (
         PYODIDE_CDN + "python_stdlib.zip",
         "fa1957e5777068fc4f7437f96d860ae2fbe9c19732ba06c84e004ec16dd7dd7a",
     ),
-    Asset(
-        "pyodide/pyodide-lock.json",
-        PYODIDE_CDN + "pyodide-lock.json",
-        "5dc2fc119108bc148c7457dc86e7675b5c87e1cafd420b9c34c1eaef7b36c010",
-    ),
+    PYODIDE_LOCK,
     Asset(
         "canvaskit/canvaskit.js",
         CANVASKIT_CDN + "bin/canvaskit.js",
@@ -154,4 +160,15 @@ def fetch(asset: Asset) -> Path:
     return target
 
 
-__all__ = ["Asset", "CANVASKIT_CDN", "LICENSES", "PYODIDE_CDN", "RUNTIME", "TEXT_FONTS", "cache_dir", "fetch"]
+__all__ = [
+    "Asset",
+    "CANVASKIT_CDN",
+    "LICENSES",
+    "PYODIDE_CDN",
+    "PYODIDE_LOCK",
+    "PYODIDE_PACKAGES_CDN",
+    "RUNTIME",
+    "TEXT_FONTS",
+    "cache_dir",
+    "fetch",
+]

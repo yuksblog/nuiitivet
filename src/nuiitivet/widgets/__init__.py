@@ -7,8 +7,10 @@ from __future__ import annotations
 
 from .text import TextBase
 from .icon import IconBase
+from .raster_surface import RasterSurface
 
 __all__ = [
     "TextBase",
     "IconBase",
+    "RasterSurface",
 ]

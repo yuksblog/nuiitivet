@@ -80,10 +80,11 @@ jobs:
             libgl1-mesa-dri \
             libglvnd0
 
-      # --extra dev pulls in 'mcp': without it the MCP server tests skip
+      # --extra dev pulls in 'mcp' and --extra matplotlib pulls in matplotlib:
+      # without them the MCP server tests and the MatplotlibFigure tests skip
       # silently. Redundant with the dev group, kept as the explicit record.
       - name: Sync locked dependencies
-        run: uv sync --locked --dev --extra dev
+        run: uv sync --locked --dev --extra dev --extra matplotlib
 
       - name: Run mypy
         run: uv run mypy

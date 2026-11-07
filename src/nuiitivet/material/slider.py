@@ -14,7 +14,7 @@ from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS
 from nuiitivet.material.styles.slider_style import SliderStyle
-from nuiitivet.observable import ObservableProtocol
+from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.rendering.sizing import Sizing, SizingLike, parse_sizing
 from nuiitivet.widgeting.paint_replay import replay_safe
 from nuiitivet.widgets.interaction import DraggableNode, FocusScope, PointerInputNode, VirtualStopPolicy
@@ -67,7 +67,7 @@ class _SliderBase(InteractiveWidget):
         max_value: float,
         stops: Optional[int],
         show_value_indicator: bool,
-        disabled: bool | ObservableProtocol[bool],
+        disabled: bool | ReadOnlyObservableProtocol[bool],
         orientation: Orientation,
         length: SizingLike,
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int],
@@ -728,7 +728,7 @@ class _Slider(_SliderBase):
         max_value: float = 1.0,
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
-        disabled: bool | ObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         orientation: Orientation = Orientation.HORIZONTAL,
         length: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
@@ -840,7 +840,7 @@ class _CenteredSlider(_Slider):
         max_value: float = 1.0,
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
-        disabled: bool | ObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         orientation: Orientation = Orientation.HORIZONTAL,
         length: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
@@ -901,7 +901,7 @@ class _RangeSlider(_SliderBase):
         max_value: float = 1.0,
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
-        disabled: bool | ObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         orientation: Orientation = Orientation.HORIZONTAL,
         length: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
@@ -1092,7 +1092,7 @@ class HorizontalSlider(_Slider):
         max_value: float = 1.0,
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
-        disabled: bool | ObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         width: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
@@ -1141,7 +1141,7 @@ class VerticalSlider(_Slider):
         max_value: float = 1.0,
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
-        disabled: bool | ObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         height: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
@@ -1190,7 +1190,7 @@ class HorizontalCenteredSlider(_CenteredSlider):
         max_value: float = 1.0,
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
-        disabled: bool | ObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         width: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
@@ -1239,7 +1239,7 @@ class VerticalCenteredSlider(_CenteredSlider):
         max_value: float = 1.0,
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
-        disabled: bool | ObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         height: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
@@ -1289,7 +1289,7 @@ class HorizontalRangeSlider(_RangeSlider):
         max_value: float = 1.0,
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
-        disabled: bool | ObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         width: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
@@ -1341,7 +1341,7 @@ class VerticalRangeSlider(_RangeSlider):
         max_value: float = 1.0,
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
-        disabled: bool | ObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         height: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,

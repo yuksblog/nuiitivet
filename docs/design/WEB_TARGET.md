@@ -93,7 +93,7 @@ flowchart LR
 | --- | --- |
 | `index.html` | the canvas, the unseen input element, the script tag for `boot.mjs` |
 | `boot.mjs` | starts the worker, loads the runtimes, the zip and the fonts in parallel, unpacks the zip, installs the host, runs the entry |
-| `config.json` | where Pyodide and CanvasKit are, the fonts, the entry, the modules that hold a `@worker` function |
+| `config.json` | where Pyodide and CanvasKit are, the Pyodide packages the app imports and where their wheels are, the fonts, the entry, the modules that hold a `@worker` function |
 | `bundle.zip` | the framework under `lib/` and the app's directory under `app/` |
 | `host.mjs` | owns the canvas, the WebGL surface, the input element, the clipboard, the file picker and the download |
 | `workers.mjs` | starts Web Workers on request and relays their messages |

@@ -165,3 +165,15 @@ def test_rrect_takes_both_radii_shapes(web: tuple[Any, _Host]) -> None:
     pairs.setRectRadii(rect, [(1, 1), (2, 2), (3, 3), (4, 4)])
 
     assert flat.radii == pairs.radii == (1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0)
+
+
+def test_raw_pixels_cross_once_with_their_size(web: tuple[Any, _Host]) -> None:
+    skia, host = web
+    pixels = bytes(2 * 3 * 4)
+
+    color, alpha = skia.ColorType.kRGBA_8888_ColorType, skia.AlphaType.kUnpremul_AlphaType
+    image = skia.Image.frombytes(pixels, (2, 3), color, alpha)
+
+    # The host stand-in drops the first argument of every call: the pixels here.
+    assert host.named("raster") == [(2, 3)]
+    assert isinstance(image, skia.Image)

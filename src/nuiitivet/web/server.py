@@ -19,8 +19,19 @@ from typing import Callable, Iterator, Union
 
 import nuiitivet
 from nuiitivet.web.calls import handle_call
+from nuiitivet.web.packages import imported_names, resolve
 from nuiitivet.web.stubs import SKIPPED_DIRS, ServerOnly, server_modules, worker_modules
-from nuiitivet.web.assets import CANVASKIT_CDN, LICENSES, PYODIDE_CDN, RUNTIME, TEXT_FONTS, fetch
+from nuiitivet.web.assets import (
+    CANVASKIT_CDN,
+    LICENSES,
+    PYODIDE_CDN,
+    PYODIDE_LOCK,
+    PYODIDE_PACKAGES_CDN,
+    RUNTIME,
+    TEXT_FONTS,
+    Asset,
+    fetch,
+)
 
 # A file on disk, or bytes made at each read.
 Source = Union[Path, Callable[[], bytes]]
@@ -115,23 +126,47 @@ def load_server_functions(app_dir: Path) -> list[str]:
     return modules
 
 
+def _pyodide_lock() -> dict:
+    return json.loads(fetch(PYODIDE_LOCK).read_bytes())
+
+
+def packages(app_dir: Path) -> list[dict]:
+    """The Pyodide packages the app's imports need, as lock entries.
+
+    Pyodide's lock file is downloaded on the first app that imports something
+    outside the standard library; an app that imports nothing of the kind
+    needs no lock.
+
+    Args:
+        app_dir: The directory of the app's sources.
+    """
+    names = imported_names(app_dir)
+    if not names:
+        return []
+    return resolve(_pyodide_lock(), names)
+
+
 def site(app_path: Path, *, bundle_runtime: bool) -> dict[str, Source]:
     """Every file of the app's page, by its path relative to the page.
 
     The text fonts are downloaded on their first use, and so are the runtimes
-    when they are bundled.
+    and the Pyodide packages the app imports when they are bundled.
 
     Args:
         app_path: The app's entry script.
-        bundle_runtime: ``True`` puts Pyodide and CanvasKit and the licences of
-            everything redistributed among the files, so the page needs no
-            other server. ``False`` has the page load both from a CDN.
+        bundle_runtime: ``True`` puts Pyodide and CanvasKit, the packages the
+            app imports and the licences of everything redistributed among the
+            files, so the page needs no other server. ``False`` has the page
+            load all of them from a CDN.
     """
     app_path = app_path.resolve()
+    needed = packages(app_path.parent)
     config = {
         "entry": app_path.name,
         "pyodide": "pyodide/" if bundle_runtime else PYODIDE_CDN,
         "canvaskit": "canvaskit/" if bundle_runtime else CANVASKIT_CDN + "bin/",
+        "packages": [entry["name"] for entry in needed],
+        "packages_url": "pyodide/" if bundle_runtime else PYODIDE_PACKAGES_CDN,
         "fonts": [{"url": asset.path, "weight": weight} for weight, asset in TEXT_FONTS],
         "files": [{"url": _ICON_FONT_URL, "path": f"{_PAGE_ROOT}/lib/nuiitivet/material/symbols/{_ICON_FONT}"}],
         "workers": worker_modules(app_path.parent),
@@ -151,6 +186,9 @@ def site(app_path: Path, *, bundle_runtime: bool) -> dict[str, Source]:
     if bundle_runtime:
         for asset in RUNTIME + LICENSES:
             files[asset.path] = fetch(asset)
+        for entry in needed:
+            wheel = Asset(f"pyodide/{entry['file_name']}", PYODIDE_PACKAGES_CDN + entry["file_name"], entry["sha256"])
+            files[wheel.path] = fetch(wheel)
         files["licenses/material-symbols-LICENSE.txt"] = _SYMBOLS / "LICENSE.txt"
         files["licenses/nuiitivet-LICENSE.txt"] = lambda: _license_of("nuiitivet")
         files["licenses/materialyoucolor-LICENSE.txt"] = lambda: _license_of("materialyoucolor")

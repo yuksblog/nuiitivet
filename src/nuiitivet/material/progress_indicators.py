@@ -6,7 +6,7 @@ import math
 from typing import Any, Callable, Tuple, TypeGuard, cast
 
 from nuiitivet.animation import Animatable, LinearMotion
-from nuiitivet.observable import ObservableProtocol, runtime
+from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol, runtime
 from nuiitivet.rendering.padding import parse_padding
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia import draw_round_rect, make_paint, make_rect
@@ -261,7 +261,7 @@ class _ProgressIndicatorBase(Widget):
     def __init__(
         self,
         *,
-        disabled: bool | ObservableProtocol[bool],
+        disabled: bool | ReadOnlyObservableProtocol[bool],
         width: SizingLike = None,
         height: SizingLike = None,
         padding: PaddingArg = 0,
@@ -276,9 +276,9 @@ class _ProgressIndicatorBase(Widget):
             padding: Insets from the allocated rect to the indicator.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        self._disabled_external: ObservableProtocol[bool] | None = None
+        self._disabled_external: ReadOnlyObservableProtocol[bool] | None = None
         if _is_observable(disabled):
-            self._disabled_external = cast(ObservableProtocol[bool], disabled)
+            self._disabled_external = cast("ReadOnlyObservableProtocol[bool]", disabled)
             self._disabled = bool(self._disabled_external.value)
         else:
             self._disabled = bool(disabled)
@@ -313,7 +313,7 @@ class _DeterminateProgressBase(_ProgressIndicatorBase):
         self,
         value: float | ObservableProtocol[float],
         *,
-        disabled: bool | ObservableProtocol[bool],
+        disabled: bool | ReadOnlyObservableProtocol[bool],
         width: SizingLike = None,
         height: SizingLike = None,
         padding: PaddingArg = 0,
@@ -384,7 +384,7 @@ class _IndeterminateProgressBase(_ProgressIndicatorBase):
     def __init__(
         self,
         *,
-        disabled: bool | ObservableProtocol[bool],
+        disabled: bool | ReadOnlyObservableProtocol[bool],
         width: SizingLike = None,
         height: SizingLike = None,
         padding: PaddingArg = 0,
@@ -470,7 +470,7 @@ class LinearProgressIndicator(_DeterminateProgressBase):
         self,
         value: float | ObservableProtocol[float] = 0.0,
         *,
-        disabled: bool | ObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         width: SizingLike = "wt",
         padding: PaddingArg = 0,
         style: LinearProgressIndicatorStyle | None = None,
@@ -630,7 +630,7 @@ class IndeterminateLinearProgressIndicator(_IndeterminateProgressBase):
     def __init__(
         self,
         *,
-        disabled: bool | ObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         width: SizingLike = "wt",
         padding: PaddingArg = 0,
         style: LinearProgressIndicatorStyle | None = None,
@@ -761,7 +761,7 @@ class CircularProgressIndicator(_DeterminateProgressBase):
         self,
         value: float | ObservableProtocol[float] = 0.0,
         *,
-        disabled: bool | ObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         size: int | None = None,
         padding: PaddingArg = 0,
         style: CircularProgressIndicatorStyle | None = None,
@@ -900,7 +900,7 @@ class IndeterminateCircularProgressIndicator(_IndeterminateProgressBase):
     def __init__(
         self,
         *,
-        disabled: bool | ObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         size: int | None = None,
         padding: PaddingArg = 0,
         style: CircularProgressIndicatorStyle | None = None,

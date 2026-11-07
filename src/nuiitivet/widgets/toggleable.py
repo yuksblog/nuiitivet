@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Optional, Union, cast
 
 from nuiitivet.widgets.clickable import Clickable
-from nuiitivet.observable import Observable, ObservableProtocol
+from nuiitivet.observable import Observable, ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgeting.callbacks import invoke_event_handler, OptionalBoolCallback
 
@@ -22,7 +22,7 @@ class Toggleable(Clickable):
         value: Union[bool, None, ObservableProtocol[Optional[bool]]] = False,
         on_change: Optional[OptionalBoolCallback] = None,
         tristate: bool = False,
-        disabled: bool | ObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
         # Clickable args
         width: SizingLike = None,
         height: SizingLike = None,
