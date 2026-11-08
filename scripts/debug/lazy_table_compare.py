@@ -334,6 +334,8 @@ def main() -> None:
     parser.add_argument("--png", default="", help="render one frame to this file and print the build stats")
     args = parser.parse_args()
 
+    # args.only = "lazy"
+
     model = Model(args.rows)
     eager_stats = SideStats()
     lazy_stats = SideStats()

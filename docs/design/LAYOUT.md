@@ -172,8 +172,9 @@ flowchart LR
     containers -- "ForEach(items, fn, key_fn) · LazyItems(provider, axis, extent)" --> for_each & lazy
     containers -- "expand_layout_children(children)" --> utils
     utils -- "provide_layout_children()" --> for_each
-    containers -- "count() · item_extent(cross_limit) · visible_span(container, length) · index_range(span, count, extent, gap, pad) · materialize(container, first, stop, pitch, place)" --> lazy
-    lazy -- "place(child, index), for an item built one at a time" --> containers
+    containers -- "count() · item_extent(container, cross_limit) · known_extent() · sample_size(cross_limit) · visible_span(container, length) · index_range(span, count, extent, gap, pad) · materialize(container, first, stop, pitch, place)" --> lazy
+    lazy -- "place(child, index), for an item built one at a time · mark_needs_layout(), when the extent changed" --> containers
+    viewport -- "preferred_size(max_w) · layout(w, h)" --> containers
     lazy -- "item_count() · set_window(start, stop, build) · window_children() · placeholder_indices() · build_item(index)" --> for_each
     lazy -- "visual_clip_rect() · visual_offset() · controller" --> viewport
     lazy -- "axis_state(axis).offset.subscribe(cb)" --> controller
@@ -185,7 +186,7 @@ flowchart LR
 | Module | Role |
 | --- | --- |
 | `layout/for_each.py` | `ForEach`: one scoped fragment per item, found by its key; with a window, per item in the window, and a placeholder for an item not built yet |
-| `layout/lazy.py` | `LazyItems`: the item extent, the span the viewport shows, the index range it covers, the held range around it, the lead and the deadline of a pass inside a frame; follows the viewport's offset while mounted, builds ahead of it in idle time and keeps the items a view's length behind it |
+| `layout/lazy.py` | `LazyItems`: the item extent, measured on the first built item held in the container's layout pass when none is given, the span the viewport shows, the index range it covers, the held range around it, the lead and the deadline of a pass inside a frame; follows the viewport's offset while mounted, builds ahead of it in idle time and keeps the items a view's length behind it |
 | `layout/row.py · column.py · uniform_flow.py` | `builder()` and `lazy()`; place the provided children, a lazy one at its index times the pitch (The Containers) |
 | `layout/layout_utils.py` | replaces a provider with its children (The Containers) |
 | `layout/scroll_viewport.py` | the clip rect, the displacement and the controller it scrolls by ([BOX_MODEL.md](BOX_MODEL.md)) |
@@ -195,6 +196,26 @@ flowchart LR
 | `widgeting/frame_clock.py` | when the frame began and how long a frame is, as the loop reports them ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
 
 ### Sequence
+
+#### The first layout pass measures the item extent
+
+```mermaid
+sequenceDiagram
+    participant V as layout/scroll_viewport.py
+    participant C as layout/column.py
+    participant L as layout/lazy.py
+    participant F as layout/for_each.py
+
+    V->>C: preferred_size(max_w): the padding, no extent being known
+    V->>C: layout(w, h)
+    C->>L: item_extent(self, cross_limit)
+    L->>F: set_window(0, 1), nothing being held: item 0 built
+    L->>L: measure item 0, remember its extent
+    L->>C: mark_needs_layout(): the measure caches of the container and its ancestors are dropped
+    C->>L: materialize(self, first, stop, pitch, place), as in the case below
+    V->>C: preferred_size(max_w), in the same pass: count × extent plus the gaps
+    V->>C: layout(w, h) once more, at the settled length
+```
 
 #### A scroll moves the window
 
@@ -273,11 +294,16 @@ sequenceDiagram
 - At rest the lead is the same on both sides. While scrolling it grows with
   the items one scroll step moves.
 - Every item of a lazy container has one main-axis extent: the given one,
-  else the measured extent of the first item in view.
+  else the extent of the first built item held, measured in the container's
+  layout pass.
 - A lazy container's window is the span its nearest enclosing scroll viewport
   shows. With no viewport, the window is its own rect.
-- A lazy container's extent on its axis is the sum of its items and gaps,
-  known without building them.
+- A lazy container's `preferred_size` builds no item. It answers the sum of
+  its items and gaps once the extent is known, and the padding alone before
+  the first layout pass.
+- A scroll viewport lays its content out at the length the content answers,
+  reads the length again after the layout, and lays the content out once more
+  when it changed.
 - A lazy container takes the cross-axis extent it is offered.
 
 ## The Composable
