@@ -10,11 +10,10 @@ from typing import Any, Callable, List, Optional, Tuple
 from nuiitivet.common.back_reference import back_reference
 from nuiitivet.common.logging_once import exception_once
 
-from ..widgeting.frame_clock import frame_deadline
 from ..widgeting.idle_work import cancel_idle_work, request_idle_work
 from ..widgeting.widget import Widget
 from .for_each import ForEach
-from .layout_utils import expand_layout_children
+from .layout_utils import expand_layout_children, layout_deadline
 from .measure import preferred_size as measure_preferred_size
 from .scroll_viewport import ScrollViewport
 
@@ -28,9 +27,6 @@ LEAD_STEPS = 3
 MAX_AHEAD = 48
 # A scroll older than this leaves the container at rest: the next direction is unknown.
 REST_SECONDS = 0.25
-# The share of the frame a pass may spend building; the rest of the view
-# holds placeholders until idle time.
-BUILD_SHARE = 0.5
 
 PlaceFn = Callable[[Widget, int], None]
 
@@ -46,8 +42,8 @@ class LazyItems:
     extent. While attached it keeps the container laid out as the viewport
     scrolls, builds the items ahead of the view while the loop is idle, and
     keeps the ones that left the view until they lie a view's length away.
-    Inside a frame a pass builds until a share of the frame has passed; the
-    rest of the view holds placeholders that idle time replaces.
+    Inside a frame a pass builds until the layout deadline; the rest of the
+    view holds placeholders that idle time replaces.
     """
 
     def __init__(self, provider: ForEach, axis: str, extent: Optional[int]) -> None:
@@ -193,7 +189,7 @@ class LazyItems:
         held_first = max(first - keep, old_first) if old_first <= first <= old_stop else first
         held_stop = min(stop + keep, old_stop, count) if old_first <= stop <= old_stop else stop
         self._held = (held_first, held_stop)
-        deadline = frame_deadline(BUILD_SHARE)
+        deadline = layout_deadline()
         if deadline is None:
             self.provider.set_window(held_first, held_stop, build=(first, stop))
         else:

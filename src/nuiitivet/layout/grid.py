@@ -10,7 +10,7 @@ from ..widgeting.widget import Widget
 from ..rendering.sizing import Sizing, SizingLike, parse_sizing
 from .container import Container
 from .gap import normalize_gap
-from .layout_utils import expand_layout_children, paint_laid_out_children
+from .layout_utils import expand_layout_children, layout_child_if_needed, paint_laid_out_children
 from nuiitivet.widgeting.paint_replay import replay_safe
 
 logger = logging.getLogger(__name__)
@@ -43,6 +43,8 @@ class _ResolvedPlacement:
     column_span: int
     pref_width: int = 0
     pref_height: int = 0
+    # Every track the child spans is fixed: its cell owes nothing to its measurement.
+    sized_by_parent: bool = False
 
 
 class GridItem(Container):
@@ -300,7 +302,7 @@ class Grid(Widget):
             rect_x, rect_y = int(cell_x), int(cell_y)
             rect_w, rect_h = int(cell_w), int(cell_h)
 
-            placement.child.layout(rect_w, rect_h)
+            layout_child_if_needed(placement.child, rect_w, rect_h, sized_by_parent=placement.sized_by_parent)
             placement.child.set_layout_rect(rect_x, rect_y, rect_w, rect_h)
 
     @replay_safe
@@ -324,9 +326,13 @@ class Grid(Widget):
             placement = self._resolve_child_placement(child, rows, columns)
             if placement is None:
                 continue
-            pref_w, pref_h = self._safe_preferred_size(child, child_max_w, child_max_h)
-            placement.pref_width = max(0, int(pref_w))
-            placement.pref_height = max(0, int(pref_h))
+            rows_fixed = self._tracks_fixed(rows, placement.row, placement.row_span)
+            columns_fixed = self._tracks_fixed(columns, placement.column, placement.column_span)
+            placement.sized_by_parent = rows_fixed and columns_fixed
+            if not placement.sized_by_parent:
+                pref_w, pref_h = self._safe_preferred_size(child, child_max_w, child_max_h)
+                placement.pref_width = max(0, int(pref_w))
+                placement.pref_height = max(0, int(pref_h))
             placements.append(placement)
 
         return placements, rows, columns
@@ -394,6 +400,10 @@ class Grid(Widget):
     def _ensure_track_length(self, tracks: List[Sizing], required: int) -> None:
         while len(tracks) < required:
             tracks.append(Sizing.auto())
+
+    @staticmethod
+    def _tracks_fixed(tracks: List[Sizing], start: int, span: int) -> bool:
+        return all(track.kind == "fixed" for track in tracks[start : start + max(1, span)])
 
     def _measure_axis(
         self,

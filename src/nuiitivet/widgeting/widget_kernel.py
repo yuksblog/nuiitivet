@@ -98,6 +98,10 @@ class WidgetKernel:
     # for the paint that follows; a container reads it to skip culling.
     _paint_inside_clip: bool = False
 
+    # Set by ``layout_child_if_needed`` on a child it left pending: the child has
+    # its rect and nothing below it has run. Cleared by ``layout``.
+    _layout_pending: bool = False
+
     # Set by a scroll viewport on its content for the paint that follows; the
     # first container below records one picture per child and replays it.
     _paint_scroll_content: bool = False
@@ -392,6 +396,7 @@ class WidgetKernel:
         if __debug__:
             assert_ui_thread()
         self.clear_needs_layout()
+        self._layout_pending = False
         # Preserve the widget's position in its parent.
         # `layout_rect` is defined in parent coordinate space.
         current = self._layout_rect
@@ -428,6 +433,9 @@ class WidgetKernel:
         Z-order hit testing.
         """
 
+        # Nothing below a pending widget has a rect of this pass.
+        if self._layout_pending:
+            return None
         children: Tuple = getattr(self, "children", tuple())
         for child in reversed(children):
             # Try to use layout rect for coordinate translation

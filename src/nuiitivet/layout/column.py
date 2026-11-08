@@ -7,7 +7,7 @@ from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
 from .gap import normalize_gap
 from .metrics import compute_aligned_offsets, align_offset
-from .layout_utils import expand_layout_children, layout_child_if_needed, paint_laid_out_children
+from .layout_utils import expand_layout_children, layout_child_if_needed, paint_laid_out_children, sized_by_parent
 from .for_each import ForEach, ItemsLike, BuilderFn, KeyFn
 from .lazy import LazyItems
 from .measure import preferred_size as measure_preferred_size
@@ -250,7 +250,8 @@ class Column(Widget):
         cw = max(0, width - l - r)
         ch = max(0, height - t - b)
 
-        sizes = [measure_preferred_size(c, max_width=cw) for c in children]
+        # A child sized by the parent on both axes is placed without a measurement.
+        sizes = [None if sized_by_parent(c) else measure_preferred_size(c, max_width=cw) for c in children]
         n = len(children)
 
         spacing = max(0, int(self.gap))
@@ -260,7 +261,8 @@ class Column(Widget):
         base_sizes: List[int] = []
         weights: List[float] = []
         for idx, child in enumerate(children):
-            pref_h = max(0, sizes[idx][1])
+            size = sizes[idx]
+            pref_h = 0 if size is None else max(0, size[1])
             dim = getattr(child, "height_sizing", None)
             if dim is None or dim.kind == "auto":
                 base: int = pref_h
@@ -282,7 +284,8 @@ class Column(Widget):
 
         for idx, child in enumerate(children):
             h = alloc[idx]
-            resolved_width = self._resolve_cross_size(child, sizes[idx][0], cw)
+            size = sizes[idx]
+            resolved_width = self._resolve_cross_size(child, 0 if size is None else size[0], cw)
 
             # Check for child-specific cross-axis alignment override (CrossAligned/cross_align)
             child_align = getattr(child, "cross_align", None)
@@ -293,7 +296,7 @@ class Column(Widget):
             rel_y = cy + (row_offsets[idx] if idx < len(row_offsets) else 0)
 
             # Layout child and store geometry
-            layout_child_if_needed(child, resolved_width, h)
+            layout_child_if_needed(child, resolved_width, h, sized_by_parent=size is None)
             child.set_layout_rect(rel_x, rel_y, resolved_width, h)
 
     @replay_safe

@@ -7,7 +7,7 @@ from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
 from ..observable.protocols import ObservableBase
 from .measure import preferred_size as measure_preferred_size
-from .layout_utils import expand_layout_children
+from .layout_utils import expand_layout_children, layout_child_if_needed
 
 
 class Deck(Widget):
@@ -196,9 +196,10 @@ class Deck(Widget):
         available_w = max(0, width - pad_left - pad_right)
         available_h = max(0, height - pad_top - pad_bottom)
 
-        # Layout ALL children so they maintain state
+        # Layout ALL children so they maintain state. A page's rect is the whole
+        # content box, whatever its sizing.
         for child in children:
-            child.layout(available_w, available_h)
+            layout_child_if_needed(child, available_w, available_h, sized_by_parent=True)
 
         # Position selected child (others will not be painted)
         if 0 <= self._current_index < len(children):
@@ -219,7 +220,7 @@ class Deck(Widget):
         # Only paint the selected child
         selected_child = children[self._current_index]
         rect = selected_child.layout_rect
-        if rect is None:
+        if rect is None or selected_child._layout_pending:
             return
 
         rel_x, rel_y, w, h = rect

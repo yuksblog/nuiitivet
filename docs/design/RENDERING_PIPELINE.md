@@ -24,6 +24,7 @@ flowchart LR
     clock -- "the tick" --> widget
     frame -- "root.layout(w, h) · root.paint(canvas, 0, 0, w, h)" --> measure
     measure -- "layout_child_if_needed · paint_laid_out_children" --> painter
+    painter -- "frame_deadline(share) · request_idle_work(task)" --> loop
 ```
 
 | Module | Role |
@@ -31,7 +32,7 @@ flowchart LR
 | The Loop | decides each iteration whether a frame is drawn |
 | The Frame | one window's frame, from the queues to the flip |
 | The Measure | the caches a layout pass reads |
-| The Child Painter | lays a container's children out and paints them |
+| The Child Painter | lays a container's children out and paints them; stops at the frame's deadline and finishes in idle time |
 | `widgeting/widget.py` | `invalidate`, the one request for a frame ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)) |
 | `observable/runtime.py` | the clock animations tick on ([ANIMATION_SYSTEM.md](ANIMATION_SYSTEM.md)) |
 
@@ -83,8 +84,8 @@ flowchart LR
 | `runtime/window.py` | requests a frame, draws one (The Frame) |
 | `observable/runtime.py` | the clock the loop ticks ([OBSERVABLE.md](OBSERVABLE.md)) |
 | `runtime/gc_pacing.py` | `GcPacer`: holds the collector while the loop runs; picks the generation collected at a wait, before a frame past the backstop, and in a quiet stretch |
-| `widgeting/idle_work.py` | the tasks the loop runs before it waits, each until the deadline ([LAYOUT.md](LAYOUT.md)) |
-| `widgeting/frame_clock.py` | whether a frame is under way, when it began and how long a frame is, for work inside a frame that stops at a deadline ([LAYOUT.md](LAYOUT.md)) |
+| `widgeting/idle_work.py` | the tasks the loop runs before it waits, each until the deadline (The Child Painter; [LAYOUT.md](LAYOUT.md)) |
+| `widgeting/frame_clock.py` | whether a frame is under way, when it began and how long a frame is, for work inside a frame that stops at a deadline (The Child Painter; [LAYOUT.md](LAYOUT.md)) |
 | `pyglet` | the platform event loop; the screen's refresh rate |
 | the collector | CPython's cyclic garbage collector |
 
@@ -223,8 +224,8 @@ sequenceDiagram
 ### Promises
 
 - Layout runs to its end before the first draw command. A pass short of time
-  leaves placeholders laid out in their items' slots, never an unfinished
-  tree ([LAYOUT.md](LAYOUT.md)).
+  stops at the deadline. Work it stopped leaves a blank of the rect its parent
+  decided, never an unfinished tree (The Child Painter).
 - The GPU path and the raster path lay out and paint the same tree with the
   same calls.
 
@@ -268,7 +269,8 @@ flowchart LR
 ## The Child Painter
 
 `layout_utils` lays a container's children out and paints them at their
-rects.
+rects. Inside a frame a pass stops descending at the deadline; idle time
+finishes it.
 
 ### Structure
 
@@ -278,23 +280,84 @@ flowchart LR
     kernel[widgeting/widget_kernel.py]
     containers[the containers]
     skia[rendering/skia/geometry.py]
+    frame[widgeting/frame_clock.py]
+    idle[widgeting/idle_work.py]
 
-    containers -- "layout_child_if_needed(child, w, h) · paint_laid_out_children(container, canvas, x, y, w, h)" --> utils
+    containers -- "layout_child_if_needed(child, w, h, sized_by_parent) · paint_laid_out_children(container, canvas, x, y, w, h)" --> utils
     utils -- "needs_layout · layout_rect · layout(w, h) · paint(canvas, x, y, w, h)" --> kernel
-    utils -- "paint_outsets() · set_last_rect(x, y, w, h) · _paint_inside_clip" --> kernel
+    utils -- "paint_outsets() · set_last_rect(x, y, w, h) · _paint_inside_clip · _layout_pending" --> kernel
+    utils -- "layout(w, h) · invalidate(), in idle time" --> kernel
     utils -- "local_clip_bounds(canvas)" --> skia
+    utils -- "frame_deadline(share)" --> frame
+    utils -- "request_idle_work(task)" --> idle
+    idle -- "task(deadline)" --> utils
 ```
 
 | Module | Role |
 | --- | --- |
-| `layout/layout_utils.py` | lays a child out unless it is clean at the same size; paints the children, skipping those beyond the clip and its slack band; tells a child inside the clip so |
-| `widgeting/widget_kernel.py` | `layout`, `paint`, `last_rect`; the paint hints a parent sets for the paint that follows |
-| the containers | the multi-child containers ([LAYOUT.md](LAYOUT.md)) |
+| `layout/layout_utils.py` | lays a child out unless it is clean at the same size, or the deadline has passed and the child's rect is its parent's; lays the pending children out in idle time; paints the children, skipping the pending ones and those beyond the clip and its slack band; tells a child inside the clip so |
+| `widgeting/widget_kernel.py` | `layout`, `paint`, `last_rect`; the pending flag; the paint hints a parent sets for the paint that follows |
+| the containers | the multi-child containers, `Container` and `Deck` ([LAYOUT.md](LAYOUT.md)) |
 | `rendering/skia/geometry.py` | reads the canvas clip |
+| `widgeting/frame_clock.py` | the deadline of the frame under way (The Loop) |
+| `widgeting/idle_work.py` | runs the pending layout before the loop waits (The Loop) |
+
+### Sequence
+
+#### A pass past the deadline leaves a child pending
+
+```mermaid
+sequenceDiagram
+    participant C as the containers
+    participant U as layout/layout_utils.py
+    participant F as widgeting/frame_clock.py
+    participant K as widget_kernel.py
+    participant I as widgeting/idle_work.py
+
+    C->>U: layout_child_if_needed(child, w, h, sized_by_parent)
+    U->>F: frame_deadline(share)
+    alt the deadline has passed and the rect is the parent's
+        U->>K: _layout_pending: nothing below the child runs
+        U->>I: request_idle_work(the pending layout)
+    else
+        U->>K: layout(w, h)
+    end
+    C->>K: set_layout_rect(x, y, w, h)
+    C->>U: paint_laid_out_children(...), later in the frame
+    U->>K: set_last_rect(x, y, w, h), and no paint for a pending child
+```
+
+#### Idle time lays the pending children out
+
+```mermaid
+sequenceDiagram
+    participant E as backends/pyglet/event_loop.py
+    participant I as widgeting/idle_work.py
+    participant U as layout/layout_utils.py
+    participant K as widget_kernel.py
+
+    E->>I: run_idle_work(budget), before a wait
+    I->>U: the pending layout(deadline)
+    loop the pending children, top-down, until the deadline
+        U->>K: layout(w, h), at the rect the parent decided, the deadline cutting inside it too
+        U->>K: invalidate(): the next frame paints it
+    end
+    U-->>I: whether a pending child remains
+    I-->>E: whether work remains
+```
 
 ### Promises
 
 - A clean child laid out again at the same size is skipped.
+- Past the deadline a child whose rect its parent decided is left pending: it
+  keeps the rect, nothing below it runs. A child sized by its content is laid
+  out whatever the time.
+- A pending child is painted as nothing. It still receives its `last_rect`.
+  Nothing below it is hit.
+- Idle time lays the pending children out top-down, each at its rect, a
+  subtree whole before the siblings after it. A child laid out asks for a
+  frame and moves nothing.
+- Outside a frame, where no loop runs, a pass leaves nothing pending.
 - A child whose rect plus outsets lies outside the clip and its slack band is
   not painted. It still receives its `last_rect`.
 - Without a readable clip every child is painted.
