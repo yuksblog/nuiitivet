@@ -433,14 +433,14 @@ class UniformFlow(Widget):
         elif inner_max_w is not None and inner_max_w > 0:
             cols = self._resolve_columns(count, inner_max_w)
             col_w = self._lazy_column_width(cols, inner_max_w)
-            row_h = self._lazy_row_height(lazy, col_w)
+            row_h = self._lazy_row_height(col_w, lazy.known_extent())
             rows = math.ceil(count / cols)
             content_w = cols * col_w + max(0, cols - 1) * self.main_gap
             content_h = rows * row_h + max(0, rows - 1) * self.cross_gap
         else:
             cols = self._intrinsic_columns(count)
-            sample_w, sample_h = lazy.sample_size(None)
-            row_h = self._height_from_aspect(sample_w) if self.aspect_ratio else sample_h
+            sample_w = (lazy.sample_size(None) or (0, 0))[0]
+            row_h = self._lazy_row_height(sample_w, lazy.known_extent())
             rows = math.ceil(count / cols)
             content_w = cols * sample_w + max(0, cols - 1) * self.main_gap
             content_h = rows * row_h + max(0, rows - 1) * self.cross_gap
@@ -458,11 +458,11 @@ class UniformFlow(Widget):
         usable = max(0, inner_w - max(0, cols - 1) * self.main_gap)
         return usable // max(1, cols)
 
-    def _lazy_row_height(self, lazy: LazyItems, col_w: int) -> int:
-        """Every row's height: from the aspect ratio, else the sample item's."""
+    def _lazy_row_height(self, col_w: int, extent: Optional[int]) -> int:
+        """Every row's height: from the aspect ratio, else the item ``extent``; zero while no extent is known."""
         if self.aspect_ratio:
             return self._height_from_aspect(col_w)
-        return lazy.sample_size(col_w if col_w > 0 else None)[1]
+        return extent or 0
 
     def _lazy_layout(self, lazy: LazyItems, width: int, height: int) -> None:
         pad = self.padding
@@ -477,7 +477,9 @@ class UniformFlow(Widget):
         cols = max(1, self._resolve_columns(count, inner_w))
         rows = max(1, math.ceil(count / cols))
         col_widths = self._resolve_column_widths(cols, inner_w, [])
-        row_h = self._lazy_row_height(lazy, col_widths[0] if col_widths else 0)
+        col_w = col_widths[0] if col_widths else 0
+        extent = None if self.aspect_ratio else lazy.item_extent(self, col_w if col_w > 0 else None)
+        row_h = self._lazy_row_height(col_w, extent)
 
         content_w = sum(col_widths) + max(0, cols - 1) * self.main_gap
         content_h = rows * row_h + max(0, rows - 1) * self.cross_gap

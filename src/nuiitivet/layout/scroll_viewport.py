@@ -180,6 +180,16 @@ class ScrollViewport(Widget):
 
         return (content_w, content_h)
 
+    def _content_size(self, content: Widget, vp_w: int, vp_h: int) -> Tuple[int, int]:
+        """The size the content is laid out at: its preferred size, unconstrained along the scroll axis."""
+        if self.direction is ScrollDirection.VERTICAL:
+            content_w, content_h = measure_preferred_size(content, max_width=vp_w)
+        elif self.direction is ScrollDirection.HORIZONTAL:
+            content_w, content_h = measure_preferred_size(content, max_height=vp_h)
+        else:
+            content_w, content_h = measure_preferred_size(content, max_width=vp_w, max_height=vp_h)
+        return self._resolve_cross_axis(content, content_w, content_h, vp_w, vp_h)
+
     def layout(self, width: int, height: int) -> None:
         super().layout(width, height)
         content = self._content
@@ -193,22 +203,20 @@ class ScrollViewport(Widget):
         # Store viewport size for paint/hit_test
         self._vp_size = (vp_w, vp_h)
 
-        if self.direction is ScrollDirection.VERTICAL:
-            content_w, content_h = measure_preferred_size(content, max_width=vp_w)
-        elif self.direction is ScrollDirection.HORIZONTAL:
-            content_w, content_h = measure_preferred_size(content, max_height=vp_h)
-        else:
-            content_w, content_h = measure_preferred_size(content, max_width=vp_w, max_height=vp_h)
-
-        content_w, content_h = self._resolve_cross_axis(content, content_w, content_h, vp_w, vp_h)
+        content_w, content_h = self._content_size(content, vp_w, vp_h)
+        content.layout(content_w, content_h)
+        # A lazy container settles its item extent inside its layout; the
+        # length it answers afterwards is the one to show. Any other content
+        # answers from its measure cache and is laid out once.
+        settled_w, settled_h = self._content_size(content, vp_w, vp_h)
+        if (settled_w, settled_h) != (content_w, content_h):
+            content_w, content_h = settled_w, settled_h
+            content.layout(content_w, content_h)
 
         # Record metrics; their Observable publish lands between frames.
         self._update_scroll_metrics(content_w, content_h, vp_w, vp_h)
 
-        # Layout content with its preferred size
-        # Note: We layout content at (pad_l, pad_t) relative to viewport origin.
-        # Scroll offset is applied during paint.
-        content.layout(content_w, content_h)
+        # The content sits at (pad_l, pad_t); paint applies the scroll offset.
         content.set_layout_rect(pad_l, pad_t, content_w, content_h)
 
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:

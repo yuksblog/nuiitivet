@@ -310,8 +310,8 @@ class Row(Widget):
             inner_max_h = max(0, int(self.height_sizing.value) - int(t) - int(b))
 
         count = lazy.count()
-        extent = lazy.item_extent(inner_max_h) if count else 0
-        content_width = count * extent + max(0, count - 1) * self.gap
+        extent = lazy.known_extent() if count else 0
+        content_width = 0 if extent is None else count * extent + max(0, count - 1) * self.gap
 
         w_dim = self.width_sizing
         if w_dim.kind == "fixed":
@@ -327,8 +327,8 @@ class Row(Widget):
         elif max_height is not None:
             height = int(max_height)
         else:
-            sample_h = lazy.sample_size(inner_max_h)[1] if count else 0
-            height = sample_h + t + b
+            sample = lazy.sample_size(inner_max_h) if count else None
+            height = (sample[1] if sample else 0) + t + b
         return (width, height)
 
     def _lazy_layout(self, lazy: LazyItems, width: int, height: int) -> None:
@@ -336,7 +336,7 @@ class Row(Widget):
         ch = max(0, height - t - b)
 
         count = lazy.count()
-        extent = lazy.item_extent(ch) if count else 0
+        extent = lazy.item_extent(self, ch) if count else 0
         span = lazy.visible_span(self, width)
         first, stop = lazy.index_range(span, count, extent, self.gap, l)
         pitch = extent + self.gap

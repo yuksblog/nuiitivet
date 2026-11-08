@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any, List
 
+import pytest
+
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.for_each import ForEach
 from nuiitivet.layout.row import Row
@@ -136,9 +138,62 @@ def test_column_lazy_with_auto_height_holds_every_item() -> None:
     log = _Log()
     column = Column.lazy(list(range(7)), log.builder)
     column.mount(_App())
+    # A parent lays the column out at the length it answers, which is none
+    # before the first pass; that pass measures the extent, and the parent's
+    # next measure gets the whole length.
+    column.layout(200, column.preferred_size()[1])
+    assert column.preferred_size() == (60, 7 * 20)
     column.layout(200, column.preferred_size()[1])
 
     assert log.built == list(range(7))
+
+
+@pytest.mark.parametrize(
+    "make",
+    [
+        lambda log: Column.lazy(list(range(100)), log.builder),
+        lambda log: Row.lazy(list(range(100)), log.builder),
+        lambda log: UniformFlow.lazy(list(range(100)), log.builder, columns=4),
+    ],
+    ids=["column", "row", "uniform_flow"],
+)
+def test_preferred_size_of_a_lazy_container_builds_nothing(make) -> None:
+    log = _Log()
+    container = make(log)
+    container.preferred_size()
+    container.preferred_size(max_width=200, max_height=100)
+    container.mount(_App())
+    container.preferred_size(max_width=200)
+
+    assert log.built == []
+
+
+@pytest.mark.parametrize("item_height", [None, 20], ids=["measured", "given"])
+def test_the_first_frame_shows_the_whole_length_on_the_scrollbar(item_height) -> None:
+    log = _Log()
+    column = Column.lazy(list(range(1000)), log.builder, gap=4, item_height=item_height)
+    scroller = VerticalScrollable(column, width=200, height=100)
+    scroller.mount(_App())
+    scroller.layout(200, 100)
+
+    assert log.built == [0, 1, 2, 3, 4]
+    assert scroller._controller.content_size == 1000 * 20 + 999 * 4
+    assert scroller._controller.max_extent == 1000 * 20 + 999 * 4 - 100
+    assert scroller._should_show_scrollbar()
+
+
+def test_a_lazy_column_below_a_header_is_measured_through_its_parent() -> None:
+    log = _Log()
+    column = Column.lazy(list(range(1000)), log.builder)
+    content = Column([Box(width=Sizing.fixed(60), height=Sizing.fixed(30)), column])
+    scroller = VerticalScrollable(content, width=200, height=100)
+    scroller.mount(_App())
+    scroller.layout(200, 100)
+
+    # The 70px below the header hold four 20px slots.
+    assert log.built == [0, 1, 2, 3]
+    assert content.layout_rect == (0, 0, 200, 30 + 1000 * 20)
+    assert scroller._controller.content_size == 30 + 1000 * 20
 
 
 def test_row_lazy_builds_only_the_items_in_view() -> None:

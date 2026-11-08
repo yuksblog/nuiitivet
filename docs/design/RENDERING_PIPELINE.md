@@ -42,8 +42,7 @@ flowchart LR
 - `layout()` issues no draw command. `layout()` writes no `Observable`. A
   measured result reaches an `Observable` through the size-change queue.
 - `preferred_size()` has no side effect. On a mounted composable it never
-  calls `build()`. The one exception: a lazy container given no item extent
-  builds its first item, once, to measure it ([LAYOUT.md](LAYOUT.md)).
+  calls `build()`.
 
 ## The Loop
 

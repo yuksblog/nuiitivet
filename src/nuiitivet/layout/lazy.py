@@ -41,7 +41,9 @@ class LazyItems:
     ``Column.lazy``, ``Row.lazy`` and ``UniformFlow.lazy`` each own one. It
     answers the item count, the one main-axis extent every item takes, the
     span of the container its scroll viewport shows, and the index range that
-    span covers. While attached it keeps the container laid out as the viewport
+    span covers. An extent not given is measured on the first item held, in
+    the container's layout pass; a size query before that pass knows no
+    extent. While attached it keeps the container laid out as the viewport
     scrolls, builds the items ahead of the view while the loop is idle, and
     keeps the ones that left the view until they lie a view's length away.
     Inside a frame a pass builds until a share of the frame has passed; the
@@ -55,11 +57,12 @@ class LazyItems:
             provider: The ForEach that builds the items.
             axis: ``"vertical"`` or ``"horizontal"``: the axis the items run along.
             extent: Main-axis length of every item, in pixels; ``None`` measures
-                the first item in view and gives its length to all.
+                the first item held and gives its length to all.
         """
         self.provider = provider
         self.axis = axis
         self._given_extent: Optional[int] = None if extent is None else max(0, int(extent))
+        self._measured_extent: Optional[int] = None
         self._offset_disposable: Optional[Any] = None
         self._container_ref: Callable[[], Optional[Widget]] = back_reference(None)
         self._place: Optional[PlaceFn] = None
@@ -82,32 +85,69 @@ class LazyItems:
         """The number of items."""
         return self.provider.item_count()
 
-    def sample_size(self, cross_limit: Optional[int]) -> Tuple[int, int]:
-        """Measure one item under ``cross_limit`` on the cross axis.
+    def sample_size(self, cross_limit: Optional[int]) -> Optional[Tuple[int, int]]:
+        """The size of the first built item held, under ``cross_limit`` on the cross axis.
 
-        The item is the first one in the current window; with no window yet,
-        item 0 is materialized for it.
+        ``None`` when no built item is held. Builds nothing.
         """
-        children = self.provider.window_children()
-        if not children:
+        sample = self._held_sample()
+        if sample is None:
+            return None
+        return self._measure(sample, cross_limit)
+
+    def known_extent(self) -> Optional[int]:
+        """The main-axis length of every item: the given one, else the one the last layout pass measured.
+
+        ``None`` before the first layout pass of a container given no extent.
+        Builds nothing.
+        """
+        if self._given_extent is not None:
+            return self._given_extent
+        return self._measured_extent
+
+    def item_extent(self, container: Widget, cross_limit: Optional[int]) -> int:
+        """The main-axis length of every item, settled for this layout pass.
+
+        The given one, else the first built item held measured under
+        ``cross_limit``; item 0 is built for it when nothing is held yet. A
+        length that differs from the one :meth:`known_extent` answered before
+        marks ``container`` for layout, which drops the measure caches of the
+        container and its ancestors. Called from the container's ``layout``.
+        """
+        if self._given_extent is not None:
+            return self._given_extent
+        before = self._measured_extent
+        sample = self._held_sample()
+        if sample is None and before is None:
             self.provider.set_window(0, 1)
             self._held = (0, 1)
-            children = self.provider.window_children()
+            sample = self._held_sample()
+        if sample is not None:
+            w, h = self._measure(sample, cross_limit)
+            self._measured_extent = h if self.axis == "vertical" else w
+        extent = self._measured_extent or 0
+        if extent != before:
+            container.mark_needs_layout()
+        return extent
+
+    def _held_sample(self) -> Optional[Widget]:
+        """The first built item held, in item order; ``None`` when every held item is a placeholder."""
+        children = self.provider.window_children()
         if not children:
-            return (0, 0)
-        sample = children[0]
+            return None
+        placeholders = set(self.provider.placeholder_indices())
+        first = self._held[0]
+        for position, child in enumerate(children):
+            if first + position not in placeholders:
+                return child
+        return None
+
+    def _measure(self, sample: Widget, cross_limit: Optional[int]) -> Tuple[int, int]:
         if self.axis == "vertical":
             w, h = measure_preferred_size(sample, max_width=cross_limit)
         else:
             w, h = measure_preferred_size(sample, max_height=cross_limit)
         return (max(0, int(w)), max(0, int(h)))
-
-    def item_extent(self, cross_limit: Optional[int]) -> int:
-        """The main-axis length of every item: the given one, else the sample's."""
-        if self._given_extent is not None:
-            return self._given_extent
-        w, h = self.sample_size(cross_limit)
-        return h if self.axis == "vertical" else w
 
     def materialize(
         self,

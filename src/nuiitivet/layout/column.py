@@ -311,8 +311,8 @@ class Column(Widget):
             inner_max_w = max(0, int(self.width_sizing.value) - int(l) - int(r))
 
         count = lazy.count()
-        extent = lazy.item_extent(inner_max_w) if count else 0
-        content_height = count * extent + max(0, count - 1) * self.gap
+        extent = lazy.known_extent() if count else 0
+        content_height = 0 if extent is None else count * extent + max(0, count - 1) * self.gap
 
         w_dim = self.width_sizing
         if w_dim.kind == "fixed":
@@ -320,8 +320,8 @@ class Column(Widget):
         elif max_width is not None:
             width = int(max_width)
         else:
-            sample_w = lazy.sample_size(inner_max_w)[0] if count else 0
-            width = sample_w + l + r
+            sample = lazy.sample_size(inner_max_w) if count else None
+            width = (sample[0] if sample else 0) + l + r
 
         h_dim = self.height_sizing
         if h_dim.kind == "fixed":
@@ -337,7 +337,7 @@ class Column(Widget):
         cw = max(0, width - l - r)
 
         count = lazy.count()
-        extent = lazy.item_extent(cw) if count else 0
+        extent = lazy.item_extent(self, cw) if count else 0
         span = lazy.visible_span(self, height)
         first, stop = lazy.index_range(span, count, extent, self.gap, t)
         pitch = extent + self.gap
