@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable, Optional, Tuple, Type, Union, TYPE_CHECKING, cast
 
+from nuiitivet.input.cursor import MouseCursor
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.observable import ReadOnlyObservableProtocol
@@ -463,6 +464,10 @@ class TextField(InteractiveWidget):
             return (r, r, 0, 0)
         return (r, r, r, r)
 
+    def _default_mouse_cursor(self) -> Optional[MouseCursor]:
+        """The I-beam over the whole field while enabled; the arrow while disabled."""
+        return MouseCursor.DEFAULT if self.state.disabled else MouseCursor.TEXT
+
     def _apply_disabled(self, value: bool) -> None:
         next_disabled = bool(value)
 
@@ -492,6 +497,7 @@ class TextField(InteractiveWidget):
                 pass
             self._editable.state.focused = False
 
+        self._mouse_cursor_changed()
         self.invalidate()
 
     def _set_label(self, value: Any) -> None:

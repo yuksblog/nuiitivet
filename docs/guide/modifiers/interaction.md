@@ -51,6 +51,50 @@ class HoverDemo(nv.ComposableWidget):
 
 ![Hoverable](../../assets/modifier_interaction_hoverable.png)
 
+## Cursor
+
+`cursor` sets the mouse cursor shown while the pointer is over a widget. A `Button` and a `clickable` widget show the hand without it.
+
+```python
+import nuiitivet.material as nv
+
+
+def build_root() -> nv.Widget:
+    # resize arrows over the divider
+    divider = nv.Container(width=8, height=120).modifier(
+        nv.background("#BDBDBD") | nv.cursor(nv.MouseCursor.RESIZE_LEFT_RIGHT)
+    )
+
+    # a clickable card without the hand
+    card = nv.Container(
+        width=220,
+        height=120,
+        padding=16,
+        alignment="center",
+        child=nv.Column(
+            children=[nv.Text("Open on click"), nv.Button("Details", on_click=lambda: print("Details"))],
+            gap=12,
+        ),
+    ).modifier(
+        nv.background("#E3F2FD")
+        | nv.corner_radius(12)
+        | nv.clickable(on_click=lambda: print("Card clicked"))
+        | nv.cursor(nv.MouseCursor.DEFAULT)
+    )
+
+    return nv.Row(children=[nv.Button("Save", on_click=lambda: print("Saved")), divider, card], gap=24, padding=16)
+```
+
+![Cursor](../../assets/modifier_interaction_cursor.png)
+
+The hand still shows over the *Details* button inside the card. A cursor set with the modifier stays while the widget is disabled.
+
+The same value is the widget's `mouse_cursor` property. Writing it from code changes the cursor at once, with the pointer sitting still:
+
+```python
+divider.mouse_cursor = nv.MouseCursor.DEFAULT  # the panel is locked
+```
+
 ## Focusable
 
 You can make a Widget focusable using the `focusable` modifier. It takes an `on_focus_change` callback that is invoked when the Widget gains or loses focus.
@@ -204,7 +248,9 @@ delivering a `PointerEvent` synthesized at the current position:
 import nuiitivet.material as nv
 
 def on_modifier_keys_change(e: nv.PointerEvent) -> None:
-    set_cursor(EYEDROPPER if e.modifier_keys & nv.MOD_ALT else BRUSH)
+    # the pointer sits still, and the cursor still switches
+    picking = e.modifier_keys & nv.MOD_ALT
+    surface.mouse_cursor = nv.MouseCursor.CROSSHAIR if picking else nv.MouseCursor.DEFAULT
 
 surface.modifier(nv.pointer_input(on_modifier_keys_change=on_modifier_keys_change))
 ```

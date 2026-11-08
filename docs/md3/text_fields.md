@@ -40,10 +40,6 @@ callback (`on_tap_leading_icon` / `on_tap_trailing_icon`) is built as a standard
 `Icon`. Hit testing is handled by the framework's coordinate-translating widget
 tree (offset-safe; see #300), not a field-local rectangle test.
 
-**Known gap:** the framework has no mouse-cursor-shape API, so the pointer does
-not change to a hand over the tappable icon (no existing widget changes the
-cursor either). Tracked separately in #316.
-
 ## Tokens & Specs
 
 ### Token Sets Discovered

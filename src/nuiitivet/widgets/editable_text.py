@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any, Optional, Tuple, Union, cast
 
+from nuiitivet.input.cursor import MouseCursor
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgeting.callbacks import invoke_event_handler, StrCallback
@@ -249,6 +250,10 @@ class EditableText(InteractionHostMixin, Widget):
 
         if disabled:
             self.state.disabled = True
+
+    def _default_mouse_cursor(self) -> Optional[MouseCursor]:
+        """The I-beam while enabled; the arrow while disabled."""
+        return MouseCursor.DEFAULT if self.state.disabled else MouseCursor.TEXT
 
     @property
     def text_color(self) -> ColorSpec:

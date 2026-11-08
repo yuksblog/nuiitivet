@@ -18,6 +18,7 @@ import pyglet
 
 from nuiitivet.rendering.skia import get_skia
 
+from nuiitivet.input.cursor import MouseCursor
 from nuiitivet.input.codes import (
     BUTTON_LEFT,
     BUTTON_MIDDLE,
@@ -46,6 +47,18 @@ from nuiitivet.runtime.renderer import RendererError, RendererMode
 from nuiitivet.widgeting.callbacks import drop_pending_tasks
 
 logger = logging.getLogger(__name__)
+
+
+# The pyglet system cursor each shape is shown as (``pyglet.window.Window.CURSOR_*``).
+PYGLET_CURSOR_NAMES: dict[MouseCursor, str] = {
+    MouseCursor.DEFAULT: pyglet.window.Window.CURSOR_DEFAULT,
+    MouseCursor.POINTER: pyglet.window.Window.CURSOR_HAND,
+    MouseCursor.TEXT: pyglet.window.Window.CURSOR_TEXT,
+    MouseCursor.NOT_ALLOWED: pyglet.window.Window.CURSOR_NO,
+    MouseCursor.CROSSHAIR: pyglet.window.Window.CURSOR_CROSSHAIR,
+    MouseCursor.RESIZE_LEFT_RIGHT: pyglet.window.Window.CURSOR_SIZE_LEFT_RIGHT,
+    MouseCursor.RESIZE_UP_DOWN: pyglet.window.Window.CURSOR_SIZE_UP_DOWN,
+}
 
 
 def _env_flag(name: str, default: bool = False) -> bool:
@@ -326,6 +339,11 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
 
     setattr(win, "_window", window)
     setattr(win, "_event_loop", event_loop)
+
+    def _show_mouse_cursor(cursor: MouseCursor) -> None:
+        window.set_mouse_cursor(window.get_system_mouse_cursor(PYGLET_CURSOR_NAMES[cursor]))
+
+    win._mouse_cursor_sink = _show_mouse_cursor
 
     # The window (and on macOS the NSApplication) now exists: give the App a
     # chance to attach platform integrations that need it (the menu bar's

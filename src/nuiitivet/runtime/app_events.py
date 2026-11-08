@@ -8,6 +8,7 @@ from typing import Any, Optional, Sequence
 
 from .pointer import PointerCaptureManager
 from nuiitivet.input.codes import is_primary_button
+from nuiitivet.input.cursor import MouseCursor
 from nuiitivet.input.events import FileDropEvent
 from nuiitivet.input.pointer import PointerEvent, PointerEventType
 from nuiitivet.common.logging_once import exception_once
@@ -95,7 +96,51 @@ def _track_pointer_pos(app: Any, x: int, y: int, buttons: int) -> None:
         exception_once(logger, "app_events_track_pointer_pos_exc", "Failed to record pointer position")
 
 
+def resolve_mouse_cursor(target: Any) -> MouseCursor:
+    """The cursor to show over ``target``: its own answer, else the nearest ancestor's, else the arrow."""
+    current = target
+    visited: set[int] = set()
+    while current is not None and id(current) not in visited:
+        visited.add(id(current))
+        answer = getattr(current, "mouse_cursor", None)
+        if isinstance(answer, MouseCursor):
+            return answer
+        current = getattr(current, "_parent", None)
+    return MouseCursor.DEFAULT
+
+
+def _show_mouse_cursor_for(app: Any, target: Any) -> None:
+    apply = getattr(app, "_apply_mouse_cursor", None)
+    if callable(apply):
+        apply(resolve_mouse_cursor(target))
+
+
+def sync_mouse_cursor(app: Any) -> None:
+    """Show the cursor of the widget the pointer is on: the capture owner during a drag, else the hover target."""
+    manager = _pointer_manager(app)
+    target = manager.owner_of(_primary_pointer_id(app)) if manager is not None else None
+    if target is None:
+        target = getattr(app, "_last_hover_target", None)
+    _show_mouse_cursor_for(app, target)
+
+
+def _hit_target(app: Any, x: int, y: int) -> Any:
+    root = getattr(app, "root", None)
+    if root is None:
+        return None
+    try:
+        return root.hit_test(x, y)
+    except Exception:
+        exception_once(logger, "app_events_hit_test_exc", "hit_test raised")
+        return None
+
+
 def dispatch_mouse_motion(app: Any, x: int, y: int, *, buttons: int = 0, modifier_keys: int = 0):
+    _dispatch_mouse_motion(app, x, y, buttons=buttons, modifier_keys=modifier_keys)
+    sync_mouse_cursor(app)
+
+
+def _dispatch_mouse_motion(app: Any, x: int, y: int, *, buttons: int = 0, modifier_keys: int = 0):
     _track_pointer_pos(app, x, y, buttons)
     manager = _pointer_manager(app)
     pointer_id = _primary_pointer_id(app)
@@ -204,6 +249,11 @@ def _handler_hosts_focused_node(handler: Any, focused_node: Any) -> bool:
 
 
 def dispatch_mouse_press(app: Any, x: int, y: int, *, button: Optional[int] = None, modifier_keys: int = 0):
+    _dispatch_mouse_press(app, x, y, button=button, modifier_keys=modifier_keys)
+    sync_mouse_cursor(app)
+
+
+def _dispatch_mouse_press(app: Any, x: int, y: int, *, button: Optional[int] = None, modifier_keys: int = 0):
     held = getattr(app, "_last_pointer_buttons", 0) | (button or 0)
     _track_pointer_pos(app, x, y, held)
     if app.root is None:
@@ -278,6 +328,17 @@ def dispatch_mouse_press(app: Any, x: int, y: int, *, button: Optional[int] = No
 
 
 def dispatch_mouse_release(app: Any, x: int, y: int, *, button: Optional[int] = None, modifier_keys: int = 0):
+    manager = _pointer_manager(app)
+    dragged = manager is not None and manager.owner_of(_primary_pointer_id(app)) is not None
+    _dispatch_mouse_release(app, x, y, button=button, modifier_keys=modifier_keys)
+    if dragged:
+        # The hover target was frozen for the drag; the widget under the release point decides now.
+        _show_mouse_cursor_for(app, _hit_target(app, x, y))
+    else:
+        sync_mouse_cursor(app)
+
+
+def _dispatch_mouse_release(app: Any, x: int, y: int, *, button: Optional[int] = None, modifier_keys: int = 0):
     held = getattr(app, "_last_pointer_buttons", 0) & ~(button or 0)
     _track_pointer_pos(app, x, y, held)
     pointer_id = _primary_pointer_id(app)

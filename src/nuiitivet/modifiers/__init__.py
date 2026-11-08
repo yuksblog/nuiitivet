@@ -7,6 +7,7 @@ from .clickable import clickable
 from .clip import clip
 from .context_menu import context_menu
 from .corner_radius import corner_radius
+from .cursor import cursor
 from .defer_pointer import defer_pointer
 from .drop_target import drop_target
 from .focus import focusable
@@ -34,6 +35,7 @@ __all__ = [
     "clip",
     "context_menu",
     "corner_radius",
+    "cursor",
     "defer_pointer",
     "drop_target",
     "focusable",

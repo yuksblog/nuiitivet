@@ -9,9 +9,11 @@ from collections.abc import Awaitable
 from typing import Any, Callable, Optional, Sequence, Tuple, Union, cast
 
 from ..input.codes import is_primary_button
+from ..input.cursor import MouseCursor
 from ..input.events import FileDropEvent
 from ..input.pointer import PointerEvent, PointerEventType
 from ..input.shortcut import Shortcut, ShortcutBinding, ShortcutScope
+from ..widgeting.context_lookup import find_window
 from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
 from nuiitivet.common.back_reference import back_reference, is_bound_to, weak_method_call
@@ -166,6 +168,11 @@ class PointerInputNode(InteractionNode):
         if self._explicit_state:
             return self._explicit_state
         return super().state
+
+    @property
+    def click_enabled(self) -> bool:
+        """Whether a click, press or release handler was enabled on this node."""
+        return self._click_enabled
 
     def enable_hover(self, *, on_change: Optional[BoolCallback] = None) -> None:
         self._hover_enabled = True
@@ -1384,6 +1391,7 @@ class InteractionHostMixin:
             self._state = InteractionState()
 
         self._nodes: list[InteractionNode] = []
+        self._mouse_cursor_override: Optional[MouseCursor] = None
 
         # Default PointerInputNode
         self._pointer_node = PointerInputNode()
@@ -1404,6 +1412,36 @@ class InteractionHostMixin:
     @property
     def state(self) -> InteractionState:
         return self._state
+
+    @property
+    def mouse_cursor(self) -> Optional[MouseCursor]:
+        """The cursor shown while the pointer rests on this host.
+
+        The one set here, through the ``cursor()`` modifier or this setter,
+        wins over the host's own answer; set ``None`` to hand the choice back
+        to it. The host's own answer follows its role: a disabled host answers
+        the arrow, a host with nothing to say defers to its parent.
+        """
+        if self._mouse_cursor_override is not None:
+            return self._mouse_cursor_override
+        return self._default_mouse_cursor()
+
+    @mouse_cursor.setter
+    def mouse_cursor(self, value: Optional[MouseCursor]) -> None:
+        if value is self._mouse_cursor_override:
+            return
+        self._mouse_cursor_override = value
+        self._mouse_cursor_changed()
+
+    def _default_mouse_cursor(self) -> Optional[MouseCursor]:
+        """The cursor this host's role calls for; ``None`` defers to the parent."""
+        return None
+
+    def _mouse_cursor_changed(self) -> None:
+        """Tell the owning window the answer changed, so a still pointer sees it."""
+        window = find_window(self)
+        if window is not None:
+            window._sync_mouse_cursor()
 
     def _hit_self_opaque(self) -> bool:
         """Interactive hosts catch on their own surface (S = all).

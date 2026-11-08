@@ -77,6 +77,7 @@ SAMPLES = [
     ("samples/modifiers/decoration/shadow.py", "modifier_decoration_shadow.png"),
     ("samples/modifiers/interaction/clickable.py", "modifier_interaction_clickable.png"),
     ("samples/modifiers/interaction/hoverable.py", "modifier_interaction_hoverable.png"),
+    ("samples/modifiers/interaction/cursor.py", "modifier_interaction_cursor.png"),
     ("samples/modifiers/interaction/focusable.py", "modifier_interaction_focusable.png"),
     (
         "samples/modifiers/interaction/block_focus_traversal.py",

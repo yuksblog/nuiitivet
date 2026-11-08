@@ -12,7 +12,7 @@ from pyodide.ffi import create_proxy
 
 from nuiitivet.backends.web import skia
 from nuiitivet.backends.web.clock import BrowserClock
-from nuiitivet.backends.web.input import button_code, buttons_mask, key_name, wheel_steps
+from nuiitivet.backends.web.input import button_code, buttons_mask, cursor_css, key_name, wheel_steps
 from nuiitivet.common.logging_once import exception_once, warning_once
 from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT, text_motion_for_key
 from nuiitivet.observable.runtime import set_clock
@@ -283,6 +283,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
         if title is not None:
             js.document.title = str(title)
         win._event_loop = loop
+        win._mouse_cursor_sink = lambda cursor: loop._host.setCursor(cursor_css(cursor))
         loop.attach(win)
 
     app._event_loop = loop

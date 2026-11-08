@@ -3,6 +3,7 @@
 This package contains backend-agnostic, mostly pure input event types.
 """
 
+from .cursor import MouseCursor
 from .events import FocusEvent, InputHandler, InputKind, KeyInputEvent
 from .pointer import PointerEvent, PointerEventType, PointerType
 from .codes import (
@@ -51,6 +52,7 @@ __all__ = [
     "MOD_CTRL",
     "MOD_META",
     "MOD_SHIFT",
+    "MouseCursor",
     "PointerEvent",
     "PointerEventType",
     "PointerType",

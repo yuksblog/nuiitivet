@@ -25,6 +25,7 @@ from ..widgeting.context_lookup import find_provider, raise_if_premature_lookup
 from ..widgeting.widget import ComposableWidget, Widget
 from .pointer import PointerCaptureManager
 from .renderer import RendererError
+from nuiitivet.input.cursor import MouseCursor
 from nuiitivet.input.pointer import PointerEvent, PointerEventType, PointerType
 from ..widgeting.widget_binding import flush_binding_invalidations
 from ..widgeting.widget_builder import flush_scope_recompositions
@@ -53,6 +54,7 @@ from .app_events import (
     dispatch_mouse_press as _dispatch_mouse_press_fn,
     dispatch_mouse_release as _dispatch_mouse_release_fn,
     dispatch_mouse_scroll as _dispatch_mouse_scroll_fn,
+    sync_mouse_cursor as _sync_mouse_cursor_fn,
 )
 from .chrome import OSChrome, CustomChrome
 from .title_bar import WindowDragArea
@@ -631,6 +633,10 @@ class Window:
         self._window = None
         self._event_loop: Any = None
         self._last_hover_target = None
+        self._mouse_cursor: MouseCursor = MouseCursor.DEFAULT
+        # Installed by the backend once the OS window exists; it shows the
+        # shape it is handed. ``None`` while there is no OS window.
+        self._mouse_cursor_sink: Optional[Callable[[MouseCursor], None]] = None
         self._focused_target: Optional[InteractionHostMixin] = None
         self._focused_node: Optional[FocusNode] = None
         # Open blocking overlay entries, innermost last, each paired with the node
@@ -1589,8 +1595,26 @@ class Window:
 
     def _dispatch_mouse_motion(self, x: int, y: int, *, buttons: int = 0, modifier_keys: int = 0):
         if self._modal_blocked():
+            self._apply_mouse_cursor(MouseCursor.DEFAULT)
             return
         _dispatch_mouse_motion_fn(self, x, y, buttons=buttons, modifier_keys=modifier_keys)
+
+    def _sync_mouse_cursor(self) -> None:
+        """Re-resolve the cursor for the pointer where it is."""
+        _sync_mouse_cursor_fn(self)
+
+    def _apply_mouse_cursor(self, cursor: MouseCursor) -> None:
+        """Show ``cursor`` on the OS window; the same shape twice reaches the backend once."""
+        if cursor is self._mouse_cursor:
+            return
+        self._mouse_cursor = cursor
+        sink = self._mouse_cursor_sink
+        if sink is None:
+            return
+        try:
+            sink(cursor)
+        except Exception:
+            exception_once(logger, "window_mouse_cursor_sink_exc", "Mouse cursor sink raised")
 
     # --- Keyboard / focus helpers ---------------------------------
     def request_focus(self, node: Optional[FocusNode], source: FocusSource = FocusSource.KEYBOARD) -> None:
@@ -2444,6 +2468,7 @@ class Window:
         self._focused_node = None
         self._focused_target = None
         self._last_hover_target = None
+        self._apply_mouse_cursor(MouseCursor.DEFAULT)
         self._pressed_target = None
         manager = getattr(self, "_pointer_capture_manager", None)
         if manager is not None:

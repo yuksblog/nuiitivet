@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Optional
 
 from nuiitivet.input.codes import BUTTON_LEFT, BUTTON_MIDDLE, BUTTON_RIGHT
+from nuiitivet.input.cursor import MouseCursor
 
 # MouseEvent.button, in the browser's numbering.
 _BUTTONS = {0: BUTTON_LEFT, 1: BUTTON_MIDDLE, 2: BUTTON_RIGHT}
@@ -56,4 +57,21 @@ def key_name(key: str, code: str) -> str:
     return name
 
 
-__all__ = ["button_code", "buttons_mask", "key_name", "wheel_steps"]
+# The CSS ``cursor`` value each shape is shown as.
+CSS_CURSOR_NAMES: dict[MouseCursor, str] = {
+    MouseCursor.DEFAULT: "default",
+    MouseCursor.POINTER: "pointer",
+    MouseCursor.TEXT: "text",
+    MouseCursor.NOT_ALLOWED: "not-allowed",
+    MouseCursor.CROSSHAIR: "crosshair",
+    MouseCursor.RESIZE_LEFT_RIGHT: "ew-resize",
+    MouseCursor.RESIZE_UP_DOWN: "ns-resize",
+}
+
+
+def cursor_css(cursor: MouseCursor) -> str:
+    """The CSS ``cursor`` value that shows ``cursor``."""
+    return CSS_CURSOR_NAMES[cursor]
+
+
+__all__ = ["CSS_CURSOR_NAMES", "button_code", "buttons_mask", "cursor_css", "key_name", "wheel_steps"]
