@@ -8,7 +8,7 @@ from typing import Optional, Sequence, Tuple, Union
 from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
 from .alignment import AlignmentLike, normalize_alignment
-from .layout_utils import expand_layout_children
+from .layout_utils import expand_layout_children, layout_child_if_needed, sized_by_parent
 from .for_each import ForEach, ItemsLike, BuilderFn, KeyFn
 from .measure import preferred_size as measure_preferred_size
 
@@ -153,25 +153,31 @@ class Stack(Widget):
             return 0  # start
 
         for child in children:
-            cw, ch = measure_preferred_size(child, max_width=content_w, max_height=content_h)
+            parent_sized = sized_by_parent(child)
+            if parent_sized:
+                # Neither axis asks the child: the fixed value, or the whole extent.
+                target_w = int(child.width_sizing.value) if child.width_sizing.kind == "fixed" else content_w
+                target_h = int(child.height_sizing.value) if child.height_sizing.kind == "fixed" else content_h
+            else:
+                cw, ch = measure_preferred_size(child, max_width=content_w, max_height=content_h)
 
-            target_w = cw
-            target_h = ch
+                target_w = cw
+                target_h = ch
 
-            # Flex is a weight, not a fraction of the parent. Stacked children
-            # overlap instead of sharing an axis, so each weight child is the sole
-            # claimant on its axis and takes the whole content extent.
-            if hasattr(child, "width_sizing") and child.width_sizing.kind == "weight":
-                target_w = content_w
+                # Flex is a weight, not a fraction of the parent. Stacked children
+                # overlap instead of sharing an axis, so each weight child is the sole
+                # claimant on its axis and takes the whole content extent.
+                if child.width_sizing.kind == "weight":
+                    target_w = content_w
 
-            if hasattr(child, "height_sizing") and child.height_sizing.kind == "weight":
-                target_h = content_h
+                if child.height_sizing.kind == "weight":
+                    target_h = content_h
 
             # Calculate position based on alignment
             x = get_pos(ax, content_w, target_w)
             y = get_pos(ay, content_h, target_h)
 
-            child.layout(target_w, target_h)
+            layout_child_if_needed(child, target_w, target_h, sized_by_parent=parent_sized)
             child.set_layout_rect(l + x, t + y, target_w, target_h)
 
     @replay_safe
@@ -180,7 +186,7 @@ class Stack(Widget):
         children = expand_layout_children(self.children_snapshot())
         for child in children:
             rect = child.layout_rect
-            if rect is None:
+            if rect is None or child._layout_pending:
                 continue
 
             rx, ry, rw, rh = rect

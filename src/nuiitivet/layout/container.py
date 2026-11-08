@@ -8,6 +8,7 @@ from ..widgeting.widget_children import ChildContainerMixin
 from ..rendering.sizing import SizingLike
 from .alignment import normalize_alignment
 from .layout_engine import LayoutEngine
+from .layout_utils import layout_child_if_needed, sized_by_parent
 from .measure import preferred_size as measure_preferred_size
 
 
@@ -93,7 +94,8 @@ class Container(Widget):
             if child_max_h is not None:
                 child_max_h = max(0, int(child_max_h) - int(pad[1]) - int(pad[3]))
 
-        if len(self.children) == 0:
+        # With both sides fixed the child's size is not read.
+        if len(self.children) == 0 or (w_dim.kind == "fixed" and h_dim.kind == "fixed"):
             inner_w, inner_h = 0, 0
         else:
             inner_w, inner_h = measure_preferred_size(self.children[0], max_width=child_max_w, max_height=child_max_h)
@@ -126,7 +128,7 @@ class Container(Widget):
         ix, iy, iw, ih = self._layout.compute_inner_rect(0, 0, width, height)
         cx, cy, child_w, child_h = self._layout.resolve_child_geometry(child, ix, iy, iw, ih)
 
-        child.layout(child_w, child_h)
+        layout_child_if_needed(child, child_w, child_h, sized_by_parent=sized_by_parent(child))
         child.set_layout_rect(cx, cy, child_w, child_h)
 
     @replay_safe
@@ -142,6 +144,8 @@ class Container(Widget):
         # Auto-layout fallback for tests or direct paint calls
         if child.layout_rect is None:
             self.layout(width, height)
+        if child._layout_pending:
+            return
 
         rect = child.layout_rect
         if rect:

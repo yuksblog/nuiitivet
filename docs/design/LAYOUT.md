@@ -115,6 +115,7 @@ flowchart LR
     grid[layout/grid.py]
     stack[layout/stack.py]
     container[layout/container.py]
+    deck[layout/deck.py]
     flow[layout/flow.py · uniform_flow.py]
     alignment[layout/alignment.py]
     engine[layout/layout_engine.py]
@@ -122,11 +123,11 @@ flowchart LR
     utils[layout/layout_utils.py]
     children[the children]
 
-    row & grid & stack & flow & container -- "preferred_size(max_w, max_h) · layout_child_if_needed · set_layout_rect(x, y, w, h)" --> children
-    row & grid & stack & flow & container -- "preferred_size(widget, max_w, max_h)" --> measure
+    row & grid & stack & flow & container & deck -- "preferred_size(max_w, max_h) · set_layout_rect(x, y, w, h)" --> children
+    row & grid & stack & flow & container & deck -- "preferred_size(widget, max_w, max_h), a child sized by its content" --> measure
     container -- "preferred_size · compute_inner_rect · compute_child_placement · resolve_child_geometry" --> engine
     row & grid & stack & container -- "normalize_alignment(value) · alignment_to_point(alignment, w, h)" --> alignment
-    row & flow -- "layout_child_if_needed(child, w, h) · paint_laid_out_children(...)" --> utils
+    row & grid & stack & flow & container & deck -- "layout_child_if_needed(child, w, h, sized_by_parent) · paint_laid_out_children(...)" --> utils
 ```
 
 | Module | Role |
@@ -135,11 +136,12 @@ flowchart LR
 | `layout/grid.py` | rows, columns and areas; allocates each cell's rect |
 | `layout/stack.py` | children over one another, each the sole claimant of both axes |
 | `layout/container.py` | one child, placed by `alignment` |
+| `layout/deck.py` | one page of several shown; every page laid out at the whole content box |
 | `layout/flow.py · uniform_flow.py` | children wrapped into lines |
 | `layout/alignment.py` | the nine-point vocabulary and its point in a rect |
 | `layout/layout_engine.py` | the padding, border and placement arithmetic, cached ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
 | `layout/measure.py` | the measurement cache ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
-| `layout/layout_utils.py` | lays a child out and paints the children ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
+| `layout/layout_utils.py` | lays a child out, or leaves it pending past the frame's deadline; paints the children ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
 | the children | measured and placed |
 
 ### Promises
@@ -147,13 +149,19 @@ flowchart LR
 - Alignment positions a child. It never stretches one.
 - Whether a child fills its `Grid` cell is the child's own sizing.
 - Nothing clips a child larger than its rect.
+- A child sized by its parent on both axes, each fixed or weighted, is placed
+  without being measured.
+- A pass short of time stops only at a child whose rect its parent decided:
+  one sized by its parent on both axes, a `Deck` page, a `Grid` item in fixed
+  tracks. The child keeps the rect and waits for idle time
+  ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)).
 
 ## The Providers
 
 A provider builds a container's children from a data collection. A lazy
 container's provider builds the items in view, and the ones around them
-while the loop is idle. Inside a frame it builds what a share of the frame
-allows; placeholders hold the rest of the view until idle time.
+while the loop is idle. Inside a frame it builds until the layout deadline;
+placeholders hold the rest of the view until idle time.
 
 ### Structure
 
@@ -167,7 +175,6 @@ flowchart LR
     controller[scrolling/controller.py]
     builder[widgeting/widget_builder.py]
     idle[widgeting/idle_work.py]
-    frame[widgeting/frame_clock.py]
 
     containers -- "ForEach(items, fn, key_fn) · LazyItems(provider, axis, extent)" --> for_each & lazy
     containers -- "expand_layout_children(children)" --> utils
@@ -179,21 +186,20 @@ flowchart LR
     lazy -- "visual_clip_rect() · visual_offset() · controller" --> viewport
     lazy -- "axis_state(axis).offset.subscribe(cb)" --> controller
     lazy -- "request_idle_work(prefetch) · cancel_idle_work(prefetch)" --> idle
-    lazy -- "frame_deadline(share)" --> frame
+    lazy -- "layout_deadline()" --> utils
     for_each -- "render_scope_with_handle(handle, factory) · _prune_unused_scopes()" --> builder
 ```
 
 | Module | Role |
 | --- | --- |
 | `layout/for_each.py` | `ForEach`: one scoped fragment per item, found by its key; with a window, per item in the window, and a placeholder for an item not built yet |
-| `layout/lazy.py` | `LazyItems`: the item extent, measured on the first built item held in the container's layout pass when none is given, the span the viewport shows, the index range it covers, the held range around it, the lead and the deadline of a pass inside a frame; follows the viewport's offset while mounted, builds ahead of it in idle time and keeps the items a view's length behind it |
+| `layout/lazy.py` | `LazyItems`: the item extent, measured on the first built item held in the container's layout pass when none is given, the span the viewport shows, the index range it covers, the held range around it and the lead; inside a frame builds until the layout deadline; follows the viewport's offset while mounted, builds ahead of it in idle time and keeps the items a view's length behind it |
 | `layout/row.py · column.py · uniform_flow.py` | `builder()` and `lazy()`; place the provided children, a lazy one at its index times the pitch (The Containers) |
-| `layout/layout_utils.py` | replaces a provider with its children (The Containers) |
+| `layout/layout_utils.py` | replaces a provider with its children; the layout deadline (The Containers) |
 | `layout/scroll_viewport.py` | the clip rect, the displacement and the controller it scrolls by ([BOX_MODEL.md](BOX_MODEL.md)) |
 | `scrolling/controller.py` | the offset `Observable` |
 | `widgeting/widget_builder.py` | the recompose scopes ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)) |
 | `widgeting/idle_work.py` | the tasks the frame loop runs before it waits ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
-| `widgeting/frame_clock.py` | when the frame began and how long a frame is, as the loop reports them ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
 
 ### Sequence
 
@@ -237,7 +243,7 @@ sequenceDiagram
     C->>L: index_range(span, count, extent, gap, pad)
     C->>L: materialize(self, first, stop, pitch, place)
     L->>L: the held range: the view, plus the built items within a view's length on each side
-    L->>L: the deadline: a share of the frame, when a frame is under way
+    L->>L: the layout deadline, when a frame is under way
     L->>F: set_window(held_first, held_stop, build)
     F->>F: build the items that entered the view, unmount the ones a view's length away. Inside a frame, a placeholder per item entered
     loop inside a frame, until the deadline
@@ -285,8 +291,8 @@ sequenceDiagram
 - An item that left the view keeps its widget until it lies a view's length
   away. The item comes back into view without a build.
 - The layout pass builds the items that entered the view and no other. Inside
-  a frame it builds them one at a time, from the scroll's side, until a share
-  of the frame has passed; a placeholder holds each item left. Outside a
+  a frame it builds them one at a time, from the scroll's side, until the
+  layout deadline; a placeholder holds each item left. Outside a
   frame, where no loop runs, it builds every item in view.
 - Idle time builds the placeholders first, the view before the rest, then the
   lead, one item at a time, the scroll's side first. A placeholder in view

@@ -11,7 +11,7 @@ from typing import List
 
 import pytest
 
-from nuiitivet.layout import lazy as lazy_module
+from nuiitivet.layout import layout_utils
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.scrollable import VerticalScrollable
 from nuiitivet.layout.spacer import Spacer
@@ -52,7 +52,7 @@ def no_leftover_state():
 @pytest.fixture
 def no_time_to_build(monkeypatch):
     """The budget is spent before the first item: a pass inside a frame builds nothing."""
-    monkeypatch.setattr(lazy_module, "BUILD_SHARE", 0.0)
+    monkeypatch.setattr(layout_utils, "LAYOUT_SHARE", 0.0)
 
 
 def _column(log: _Log, count: int = 1000, *, in_a_frame: bool = False):

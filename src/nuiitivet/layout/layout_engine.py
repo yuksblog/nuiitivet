@@ -205,9 +205,14 @@ class LayoutEngine:
         Handles child's preferred size and weight sizing.
         Returns absolute coordinates (cx, cy, cw, ch).
         """
-        pref_w, pref_h = measure_preferred_size(child, max_width=int(iw), max_height=int(ih))
-
         w_dim = getattr(child, "width_sizing", None)
+        h_dim = getattr(child, "height_sizing", None)
+        # A child sized by the parent on both axes is placed without a measurement.
+        if w_dim is not None and h_dim is not None and w_dim.kind != "auto" and h_dim.kind != "auto":
+            pref_w, pref_h = 0, 0
+        else:
+            pref_w, pref_h = measure_preferred_size(child, max_width=int(iw), max_height=int(ih))
+
         clamp_w = True
         if w_dim:
             kind = getattr(w_dim, "kind", None)
@@ -220,7 +225,6 @@ class LayoutEngine:
                 except Exception:
                     pref_w = max(pref_w, 0)
 
-        h_dim = getattr(child, "height_sizing", None)
         clamp_h = True
         if h_dim:
             kind = getattr(h_dim, "kind", None)
