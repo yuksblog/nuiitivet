@@ -1443,7 +1443,7 @@ wheels = [
 
 [[package]]
 name = "nuiitivet"
-version = "0.27.1"
+version = "0.28.0"
 source = { editable = "." }
 dependencies = [
     { name = "jeepney", marker = "sys_platform == 'linux'" },
