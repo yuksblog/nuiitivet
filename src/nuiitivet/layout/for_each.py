@@ -70,6 +70,13 @@ class _ForEachEntry:
     value: Any
     fragment: Optional[Widget] = None
     scope_id: Optional[str] = None
+    # The fragment is a placeholder: the item waits to be built.
+    placeholder: bool = False
+
+
+def _placeholder() -> Widget:
+    """The widget that holds an unbuilt item's place: it takes no room of its own."""
+    return Spacer(width=0, height=0)
 
 
 class ForEach(ComposableWidget):
@@ -105,6 +112,8 @@ class ForEach(ComposableWidget):
         self._provider_children: List[Widget] = []
         self._pending_tokens: Optional[List[_TokenInfo]] = None
         self._window: Optional[Tuple[int, int]] = None
+        # Set for the rebuild one set_window() call runs: the items it builds.
+        self._build_range: Optional[Tuple[int, int]] = None
 
     def build(self) -> Widget:
         self._rebuild_children()
@@ -124,23 +133,84 @@ class ForEach(ComposableWidget):
         """The number of items in the source, built or not."""
         return len(self._materialize_items())
 
-    def set_window(self, start: int, stop: int) -> None:
+    def set_window(self, start: int, stop: int, *, build: Optional[Tuple[int, int]] = None) -> None:
         """Hold a widget for each item in ``range(start, stop)`` and none outside it.
 
         For a lazy container, which calls it from ``layout``. An item leaving
-        the window is unmounted; one entering it is built.
+        the window is unmounted. An item entering it is built when it lies in
+        ``build``; otherwise a placeholder holds its place until
+        :meth:`build_item` builds it.
+
+        Args:
+            start: The first item held.
+            stop: One past the last item held.
+            build: The items built now, as ``(first, stop)``; every unbuilt
+                item of the window when ``None``.
         """
         start = max(0, int(start))
         window = (start, max(start, int(stop)))
-        if self._window == window and (self._provider_children or window[0] == window[1]):
+        unchanged = self._window == window and (self._provider_children or window[0] == window[1])
+        if unchanged and not self._has_placeholder_in(build):
             return
         self._window = window
         self._pending_tokens = None
-        self._rebuild_children()
+        self._build_range = build
+        try:
+            self._rebuild_children()
+        finally:
+            self._build_range = None
 
     def window_children(self) -> List[Widget]:
         """The widgets currently held, in item order, without building any."""
         return list(self._provider_children)
+
+    def placeholder_indices(self) -> List[int]:
+        """The items of the window a placeholder stands for, in item order."""
+        return [entry.index for entry in self._ordered_entries if entry.placeholder]
+
+    def build_item(self, index: int) -> Optional[Widget]:
+        """Build the item at ``index`` in place of its placeholder.
+
+        Returns:
+            The item's widget, the one already held when it was built; ``None``
+            when the index lies outside the window.
+        """
+        window = self._window
+        if window is None:
+            return None
+        position = index - window[0]
+        if not (0 <= position < len(self._ordered_entries)):
+            return None
+        entry = self._ordered_entries[position]
+        if not entry.placeholder:
+            return entry.fragment
+        placeholder = entry.fragment
+        managed_ctx = self._build_ctx is None
+        if managed_ctx:
+            self.create_build_context()
+        if self._build_ctx is None:
+            return None
+        try:
+            fragment = self._ensure_fragment(entry)
+        finally:
+            if managed_ctx:
+                self._active_scope_ids.clear()
+                self._build_ctx = None
+        if fragment is None:
+            return None
+        entry.placeholder = False
+        self._replace_children([fragment if child is placeholder else child for child in self._provider_children])
+        return fragment
+
+    def _has_placeholder_in(self, build: Optional[Tuple[int, int]]) -> bool:
+        if build is None:
+            return any(entry.placeholder for entry in self._ordered_entries)
+        return any(entry.placeholder and build[0] <= entry.index < build[1] for entry in self._ordered_entries)
+
+    def _may_build(self, index: int) -> bool:
+        """Whether the rebuild under way builds the item at ``index`` now."""
+        build = self._build_range
+        return build is None or build[0] <= index < build[1]
 
     # ---- Passive widget surface --------------------------------------
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
@@ -237,9 +307,20 @@ class ForEach(ComposableWidget):
                 entry.value = info.value
                 if value_changed and entry.scope_id:
                     self.invalidate_scope_id(entry.scope_id)
-            fragment = self._reuse_fragment(entry)
-            if fragment is None:
-                fragment = self._ensure_fragment(entry)
+            if entry.fragment is None or entry.placeholder:
+                if self._may_build(info.index):
+                    fragment = self._ensure_fragment(entry)
+                    entry.placeholder = False
+                else:
+                    fragment = entry.fragment
+                    if fragment is None:
+                        fragment = _placeholder()
+                        entry.fragment = fragment
+                    entry.placeholder = True
+            else:
+                fragment = self._reuse_fragment(entry)
+                if fragment is None:
+                    fragment = self._ensure_fragment(entry)
             if fragment is not None:
                 next_children.append(fragment)
             next_entries.append(entry)
@@ -333,6 +414,7 @@ class ForEach(ComposableWidget):
                 logger.exception("failed removing ForEach fragment during dispose")
         entry.fragment = None
         entry.scope_id = None
+        entry.placeholder = False
 
     # ---- Data change handling -----------------------------------------
     def _handle_items_changed(self, _value=None) -> None:

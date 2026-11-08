@@ -189,8 +189,10 @@ class UniformFlow(Widget):
         Inside a ``VerticalScrollable`` the grid builds the rows the viewport
         shows, builds the next ones ahead of the scroll while the app is idle,
         and unmounts the ones that scrolled a view's length away; its height is the
-        height of every row, so the scrollbar is exact. Outside one it holds the rows
-        inside its own rect. Every row takes the same height: from
+        height of every row, so the scrollbar is exact. A frame short of time
+        builds the items it can and the rest of the view stays blank until the
+        app is idle. Outside a scrollable it holds the rows inside its
+        own rect. Every row takes the same height: from
         *aspect_ratio* when given, else the first item in view is measured and
         its height given to all.
 

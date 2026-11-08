@@ -141,9 +141,11 @@ class Row(Widget):
         Inside a ``HorizontalScrollable`` the Row builds the items the viewport
         shows, builds the next ones ahead of the scroll while the app is idle,
         and unmounts the ones that scrolled a view's length away; its width is the
-        width of every item, so the scrollbar is exact. Outside one it holds the items
-        inside its own rect. Every item takes the same width, and the Row takes
-        the height it is offered.
+        width of every item, so the scrollbar is exact. A frame short of time
+        builds the items it can and the rest of the view stays blank until the
+        app is idle. Outside a scrollable it holds the items inside
+        its own rect. Every item takes the same width, and the Row takes the
+        height it is offered.
 
         Args:
             items: Source data: a collection, or an observable of one -- the

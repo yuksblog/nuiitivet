@@ -22,7 +22,7 @@ flowchart LR
 
     app -- "width · height · padding · gap · alignment" --> containers
     app -- "builder(items, fn) · lazy(items, fn)" --> providers
-    containers -- "provide_layout_children() · item_count() · set_window(start, stop)" --> providers
+    containers -- "provide_layout_children() · item_count() · set_window(start, stop, build)" --> providers
     containers -- "parse_sizing(value) · width_sizing · height_sizing · padding" --> sizing
     containers -- "width_sizing · height_sizing · layout_align · cross_align" --> composable
     material -- "width · length · size, per open axis" --> sizing
@@ -35,7 +35,7 @@ flowchart LR
 | --- | --- |
 | The Sizing | how a widget asks for space on one axis |
 | The Containers | place their children and share the room out |
-| The Providers | build a container's children from data, all of them or the ones in view |
+| The Providers | build a container's children from data, all of them or the ones in view as the frame allows |
 | The Composable | reports the layout metadata of the widget it built |
 | The Fit | places a widget's content inside the rect it was given |
 | The Window Sizing | the window's size and position, resolved before layout |
@@ -152,7 +152,8 @@ flowchart LR
 
 A provider builds a container's children from a data collection. A lazy
 container's provider builds the items in view, and the ones around them
-while the loop is idle.
+while the loop is idle. Inside a frame it builds what a share of the frame
+allows; placeholders hold the rest of the view until idle time.
 
 ### Structure
 
@@ -166,29 +167,32 @@ flowchart LR
     controller[scrolling/controller.py]
     builder[widgeting/widget_builder.py]
     idle[widgeting/idle_work.py]
+    frame[widgeting/frame_clock.py]
 
     containers -- "ForEach(items, fn, key_fn) · LazyItems(provider, axis, extent)" --> for_each & lazy
     containers -- "expand_layout_children(children)" --> utils
     utils -- "provide_layout_children()" --> for_each
     containers -- "count() · item_extent(cross_limit) · visible_span(container, length) · index_range(span, count, extent, gap, pad) · materialize(container, first, stop, pitch, place)" --> lazy
-    lazy -- "place(child, index), for an item built in idle time" --> containers
-    lazy -- "item_count() · set_window(start, stop) · window_children()" --> for_each
+    lazy -- "place(child, index), for an item built one at a time" --> containers
+    lazy -- "item_count() · set_window(start, stop, build) · window_children() · placeholder_indices() · build_item(index)" --> for_each
     lazy -- "visual_clip_rect() · visual_offset() · controller" --> viewport
     lazy -- "axis_state(axis).offset.subscribe(cb)" --> controller
     lazy -- "request_idle_work(prefetch) · cancel_idle_work(prefetch)" --> idle
+    lazy -- "frame_deadline(share)" --> frame
     for_each -- "render_scope_with_handle(handle, factory) · _prune_unused_scopes()" --> builder
 ```
 
 | Module | Role |
 | --- | --- |
-| `layout/for_each.py` | `ForEach`: one scoped fragment per item, found by its key; with a window, per item in the window |
-| `layout/lazy.py` | `LazyItems`: the item extent, the span the viewport shows, the index range it covers, the held range around it and the lead; follows the viewport's offset while mounted, builds ahead of it in idle time and keeps the items a view's length behind it |
+| `layout/for_each.py` | `ForEach`: one scoped fragment per item, found by its key; with a window, per item in the window, and a placeholder for an item not built yet |
+| `layout/lazy.py` | `LazyItems`: the item extent, the span the viewport shows, the index range it covers, the held range around it, the lead and the deadline of a pass inside a frame; follows the viewport's offset while mounted, builds ahead of it in idle time and keeps the items a view's length behind it |
 | `layout/row.py · column.py · uniform_flow.py` | `builder()` and `lazy()`; place the provided children, a lazy one at its index times the pitch (The Containers) |
 | `layout/layout_utils.py` | replaces a provider with its children (The Containers) |
 | `layout/scroll_viewport.py` | the clip rect, the displacement and the controller it scrolls by ([BOX_MODEL.md](BOX_MODEL.md)) |
 | `scrolling/controller.py` | the offset `Observable` |
 | `widgeting/widget_builder.py` | the recompose scopes ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)) |
 | `widgeting/idle_work.py` | the tasks the frame loop runs before it waits ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
+| `widgeting/frame_clock.py` | when the frame began and how long a frame is, as the loop reports them ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
 
 ### Sequence
 
@@ -212,9 +216,14 @@ sequenceDiagram
     C->>L: index_range(span, count, extent, gap, pad)
     C->>L: materialize(self, first, stop, pitch, place)
     L->>L: the held range: the view, plus the built items within a view's length on each side
-    L->>F: set_window(held_first, held_stop)
-    F->>F: build the items that entered the view, unmount the ones a view's length away
-    L->>I: request_idle_work(prefetch), when the lead is not full
+    L->>L: the deadline: a share of the frame, when a frame is under way
+    L->>F: set_window(held_first, held_stop, build)
+    F->>F: build the items that entered the view, unmount the ones a view's length away. Inside a frame, a placeholder per item entered
+    loop inside a frame, until the deadline
+        L->>F: build_item(index): the view, from the scroll's side
+        L->>C: place(child, index)
+    end
+    L->>I: request_idle_work(prefetch), when a placeholder remains or the lead is not full
     C->>C: place item i at pad + i × (extent + gap)
 ```
 
@@ -230,13 +239,18 @@ sequenceDiagram
 
     E->>I: run_idle_work(budget), before a wait
     I->>L: prefetch(deadline)
-    loop until the deadline or the lead is full
-        L->>L: the next item: the scroll's side first, at rest the side with fewer
-        L->>F: set_window(the held range grown by one)
-        F->>F: build the item
-        L->>C: place(child, index)
+    loop until the deadline, or no placeholder remains and the lead is full
+        alt a placeholder remains
+            L->>F: build_item(index): the view first, then the nearest to it
+            L->>C: place(child, index) · mark_needs_layout(), for an item in view
+        else
+            L->>L: the next item: the scroll's side first, at rest the side with fewer
+            L->>F: set_window(the held range grown by one, build)
+            F->>F: build the item
+            L->>C: place(child, index)
+        end
     end
-    L-->>I: whether the lead is still not full
+    L-->>I: whether a placeholder remains or the lead is not full
     I-->>E: whether work remains
 ```
 
@@ -244,13 +258,18 @@ sequenceDiagram
 
 - A provider is never laid out or painted. Its children take its place in the
   container.
-- A lazy container holds a widget for each item in view, for the built items
-  within a view's length on each side of it, and for none beyond.
+- A lazy container holds a widget or a placeholder for each item in view, for
+  the built items within a view's length on each side of it, and for none
+  beyond. A placeholder takes the item's slot and no width.
 - An item that left the view keeps its widget until it lies a view's length
   away. The item comes back into view without a build.
-- The layout pass builds the items that entered the view and no other.
-- The lead is filled in idle time, one item at a time, the scroll's side
-  first.
+- The layout pass builds the items that entered the view and no other. Inside
+  a frame it builds them one at a time, from the scroll's side, until a share
+  of the frame has passed; a placeholder holds each item left. Outside a
+  frame, where no loop runs, it builds every item in view.
+- Idle time builds the placeholders first, the view before the rest, then the
+  lead, one item at a time, the scroll's side first. A placeholder in view
+  replaced asks the container for a layout.
 - At rest the lead is the same on both sides. While scrolling it grows with
   the items one scroll step moves.
 - Every item of a lazy container has one main-axis extent: the given one,

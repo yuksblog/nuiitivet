@@ -433,3 +433,36 @@ def test_before_wait_comes_straight_back_while_work_remains(idle_tasks):
     loop._draw_pending = False
 
     assert loop._before_wait(time.perf_counter()) == 0.0, "no sleep: more work waits"
+
+
+# ---------------------------------------------------------------------------
+# The frame clock: the loop says when a frame began and how long a frame is
+# ---------------------------------------------------------------------------
+
+
+def test_perform_draw_brackets_the_frame_for_the_frame_clock():
+    from nuiitivet.widgeting.frame_clock import frame_started_at
+
+    seen = []
+
+    def _draw(dt: float) -> None:
+        seen.append(frame_started_at())
+
+    loop = ResponsiveEventLoop(_draw, draw_fps=None)
+    loop._draw_pending = True
+    now = time.perf_counter()
+
+    loop._perform_draw(0.016, now)
+    assert seen == [now], "inside the draw the frame is under way"
+    assert frame_started_at() is None, "after it no frame is"
+
+
+def test_a_cadence_longer_than_the_display_period_is_the_frame_interval():
+    from nuiitivet.widgeting.frame_clock import frame_interval
+
+    loop = ResponsiveEventLoop(_noop_draw, draw_fps=10.0)
+    loop._publish_frame_interval()
+    assert frame_interval() == pytest.approx(0.1)
+
+    loop.set_draw_fps(None)
+    assert 0.0 < frame_interval() < 0.1, "the display's period, or the default"

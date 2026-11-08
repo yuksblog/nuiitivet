@@ -42,7 +42,8 @@ flowchart LR
 - `layout()` issues no draw command. `layout()` writes no `Observable`. A
   measured result reaches an `Observable` through the size-change queue.
 - `preferred_size()` has no side effect. On a mounted composable it never
-  calls `build()`.
+  calls `build()`. The one exception: a lazy container given no item extent
+  builds its first item, once, to measure it ([LAYOUT.md](LAYOUT.md)).
 
 ## The Loop
 
@@ -58,6 +59,7 @@ flowchart LR
     clock[observable/runtime.py]
     pacer[runtime/gc_pacing.py]
     idle[widgeting/idle_work.py]
+    frame[widgeting/frame_clock.py]
     pyglet[pyglet]
     collector[the collector]
 
@@ -68,8 +70,9 @@ flowchart LR
     loop -- "update_time() · call_scheduled_functions(dt) · get_sleep_time()" --> clock
     loop -- "install() · before_frame() · after_frame(now) · idle(now) · uninstall()" --> pacer
     loop -- "run_idle_work(budget)" --> idle
+    loop -- "set_frame_interval(seconds) · begin_frame(now) · end_frame()" --> frame
     pacer -- "disable() · collect(generation) · freeze() · unfreeze() · enable()" --> collector
-    loop -- "platform_event_loop.step(timeout) · set_timer(_blocking_timer, timeout)" --> pyglet
+    loop -- "platform_event_loop.step(timeout) · set_timer(_blocking_timer, timeout) · the default screen's refresh rate" --> pyglet
     pyglet -- "idle(), from the OS drag loop" --> loop
     pyglet -- "on_resize" --> runner
 ```
@@ -82,7 +85,8 @@ flowchart LR
 | `observable/runtime.py` | the clock the loop ticks ([OBSERVABLE.md](OBSERVABLE.md)) |
 | `runtime/gc_pacing.py` | `GcPacer`: holds the collector while the loop runs; picks the generation collected at a wait, before a frame past the backstop, and in a quiet stretch |
 | `widgeting/idle_work.py` | the tasks the loop runs before it waits, each until the deadline ([LAYOUT.md](LAYOUT.md)) |
-| `pyglet` | the platform event loop |
+| `widgeting/frame_clock.py` | whether a frame is under way, when it began and how long a frame is, for work inside a frame that stops at a deadline ([LAYOUT.md](LAYOUT.md)) |
+| `pyglet` | the platform event loop; the screen's refresh rate |
 | the collector | CPython's cyclic garbage collector |
 
 ### Sequence
@@ -95,9 +99,11 @@ sequenceDiagram
     participant L as backends/pyglet/event_loop.py
     participant G as runtime/gc_pacing.py
     participant I as widgeting/idle_work.py
+    participant F as widgeting/frame_clock.py
     participant P as pyglet
 
     L->>G: install(), as the loop starts
+    L->>F: set_frame_interval(the screen's refresh period, or the cadence when longer)
     W->>L: request_draw(immediate)
     L->>L: _draw_pending = True
     loop each iteration
@@ -105,8 +111,10 @@ sequenceDiagram
         L->>L: tick the clock
         alt _draw_pending, and no cadence or the deadline passed
             L->>L: _draw_pending = False
+            L->>F: begin_frame(now)
             L->>G: before_frame()
             L->>W: _render_frame(dt), each open window
+            L->>F: end_frame()
             L->>G: after_frame(now)
         end
         L->>L: _compute_sleep_timeout(): the deadline when a frame is pending, else the clock's next due time
@@ -147,6 +155,8 @@ sequenceDiagram
   main loop.
 - Idle work runs before a wait, within its budget. A frame due now runs
   first. Work left over brings the loop back at once.
+- The frame clock learns when each frame begins and ends, and how long a
+  frame is: the screen's refresh period, or the cadence when that is longer.
 - While the loop runs, the collector runs only where the loop calls it.
 - No collection runs inside a frame. The loop collects before a wait, or
   before a frame once the allocations after the last collection passed the
@@ -213,7 +223,9 @@ sequenceDiagram
 
 ### Promises
 
-- Layout runs to completion before the first draw command.
+- Layout runs to its end before the first draw command. A pass short of time
+  leaves placeholders laid out in their items' slots, never an unfinished
+  tree ([LAYOUT.md](LAYOUT.md)).
 - The GPU path and the raster path lay out and paint the same tree with the
   same calls.
 

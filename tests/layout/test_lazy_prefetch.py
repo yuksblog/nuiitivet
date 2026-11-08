@@ -119,7 +119,7 @@ def test_scrolling_back_over_one_view_builds_nothing():
 
     scroller._controller.scroll_to(100)
     scroller.layout(200, 100)
-    assert log.built == [5, 6, 7, 8, 9], "two views back lies beyond the kept range"
+    assert sorted(log.built) == [5, 6, 7, 8, 9], "two views back lies beyond the kept range"
 
 
 def test_the_items_held_stay_within_three_views():

@@ -129,6 +129,12 @@ A row that scrolls more than a screen away is thrown away. It is built again
 from the builder when it scrolls back in. A checkbox the user ticked inside
 the row is unticked by then. Keep such state in the item data.
 
+A row costs what its widgets cost: a row of nineteen widgets builds ten times
+slower than a row of one `Text`, so keep wrappers out of a row that scrolls.
+A frame short of time builds the rows it can, and the rest of the screen
+stays blank until the app has a moment; a fast fling of heavy rows is where
+this shows. Lighter rows mean fewer blanks.
+
 The lazy Column is as wide as the scrollable. `cross_alignment` places each row
 inside that width. Outside a scrollable it builds only the rows that fit its
 height. The rest are not drawn, where a plain `Column` would overflow.

@@ -20,6 +20,7 @@ from nuiitivet.platform.clipboard import BrowserClipboard, get_system_clipboard
 from nuiitivet.rendering.skia.color import rgba_to_skia_color
 from nuiitivet.runtime.gc_pacing import GcPacer
 from nuiitivet.runtime.threading import set_ui_thread
+from nuiitivet.widgeting.frame_clock import begin_frame, end_frame
 from nuiitivet.widgeting.idle_work import run_idle_work
 
 logger = logging.getLogger(__name__)
@@ -91,12 +92,14 @@ class _Loop:
         if not self._draw_wanted or self._window is None:
             return
         self._draw_wanted = False
+        begin_frame(time.perf_counter())
         self._gc_pacer.before_frame()
         try:
             self._draw(self._window)
         except Exception:
             exception_once(logger, "web_frame_exc", "Drawing a frame raised")
         finally:
+            end_frame()
             self._gc_pacer.after_frame(time.perf_counter())
             # The browser has no wait to collect before; the moment after the
             # frame is presented is the nearest thing.
