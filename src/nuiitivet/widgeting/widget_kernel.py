@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from nuiitivet.widgeting.paint_replay import replay_safe
 import logging
-from typing import Any, List, Optional, Tuple, TypeAlias, Union
+from typing import Any, Callable, List, Optional, Tuple, TypeAlias, Union
 
+from ..common.back_reference import back_reference
 from ..common.logging_once import exception_once
 from ..rendering.padding import PaddingLike, parse_padding
 from ..rendering.size import Size
@@ -25,7 +26,7 @@ VisualRect: TypeAlias = Tuple[float, float, float, float]
 class WidgetKernel:
     """Provides layout primitives and shared widget state."""
 
-    _parent: Optional["WidgetKernel"]
+    _parent_ref: Callable[[], Optional["WidgetKernel"]]
     _last_rect: Optional[Rect]
     _layout_rect: Optional[Rect]
     # ``None`` until a size callback is attached: every widget carries these, so
@@ -49,7 +50,7 @@ class WidgetKernel:
         **_: Any,
     ) -> None:
         super().__init__()
-        self._parent = None
+        self._parent_ref = back_reference(None)
         self._last_rect = None
         self._layout_rect = None
         self._size_callbacks = None
@@ -81,7 +82,17 @@ class WidgetKernel:
 
     @property
     def parent(self) -> Optional["WidgetKernel"]:
-        return self._parent
+        return self._parent_ref()
+
+    # The parent holds the child; the child's link back is weak, so a subtree
+    # dropped by its parent is freed at once instead of waiting for the collector.
+    @property
+    def _parent(self) -> Optional["WidgetKernel"]:
+        return self._parent_ref()
+
+    @_parent.setter
+    def _parent(self, parent: Optional["WidgetKernel"]) -> None:
+        self._parent_ref = back_reference(parent)
 
     # Set by a parent container on a child that lies wholly inside the canvas clip,
     # for the paint that follows; a container reads it to skip culling.

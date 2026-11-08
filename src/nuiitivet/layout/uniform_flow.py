@@ -184,12 +184,15 @@ class UniformFlow(Widget):
         height: SizingLike = None,
         key: Optional[str] = None,
     ) -> "UniformFlow":
-        """Create a UniformFlow that holds widgets for the rows in view only.
+        """Create a UniformFlow that holds widgets for the rows in view and the ones around them.
 
         Inside a ``VerticalScrollable`` the grid builds the rows the viewport
-        shows and unmounts the ones that scroll out; its height is the height
-        of every row, so the scrollbar is exact. Outside one it holds the rows
-        inside its own rect. Every row takes the same height: from
+        shows, builds the next ones ahead of the scroll while the app is idle,
+        and unmounts the ones that scrolled a view's length away; its height is the
+        height of every row, so the scrollbar is exact. A frame short of time
+        builds the items it can and the rest of the view stays blank until the
+        app is idle. Outside a scrollable it holds the rows inside its
+        own rect. Every row takes the same height: from
         *aspect_ratio* when given, else the first item in view is measured and
         its height given to all.
 
@@ -468,7 +471,7 @@ class UniformFlow(Widget):
 
         count = lazy.count()
         if count == 0:
-            self._laid_out_children = lazy.materialize(self, 0, 0)
+            self._laid_out_children = lazy.materialize(self, 0, 0, pitch=0, place=lambda child, index: None)[1]
             return
 
         cols = max(1, self._resolve_columns(count, inner_w))
@@ -489,12 +492,10 @@ class UniformFlow(Widget):
         first_row, stop_row = lazy.index_range(span, rows, row_h, self.cross_gap, start_y)
         first = first_row * cols
         stop = min(count, stop_row * cols)
-        children = lazy.materialize(self, first, stop)
-        self._laid_out_children = children
-
         align_x, align_y = self.item_alignment
-        for i, child in enumerate(children):
-            r, c = divmod(first + i, cols)
+
+        def place(child: Widget, index: int) -> None:
+            r, c = divmod(index, cols)
             cell_w = col_widths[c]
             cell_x = start_x + col_offsets[c]
             cell_y = start_y + r * pitch
@@ -507,6 +508,13 @@ class UniformFlow(Widget):
 
             layout_child_if_needed(child, child_w, child_h)
             child.set_layout_rect(int(cell_x), int(cell_y), int(child_w), int(child_h))
+
+        start, children = lazy.materialize(self, first, stop, pitch=pitch, place=place, per_pitch=cols)
+        self._laid_out_children = children
+        for i, child in enumerate(children):
+            if lazy.placed(child, start_y + ((start + i) // cols) * pitch, inner_w):
+                continue
+            place(child, start + i)
 
     def _intrinsic_columns(self, child_count: int) -> int:
         if self.columns:

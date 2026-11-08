@@ -137,13 +137,16 @@ class Column(Widget):
         cross_alignment: str = "start",
         key: Optional[str] = None,
     ) -> "Column":
-        """Create a Column that holds widgets for the items in view only.
+        """Create a Column that holds widgets for the items in view and the ones around them.
 
         Inside a ``VerticalScrollable`` the Column builds the items the viewport
-        shows and unmounts the ones that scroll out; its height is the height
-        of every item, so the scrollbar is exact. Outside one it holds the
-        items inside its own rect. Every item takes the same height, and the
-        Column takes the width it is offered.
+        shows, builds the next ones ahead of the scroll while the app is idle,
+        and unmounts the ones that scrolled a view's length away; its height is the
+        height of every item, so the scrollbar is exact. A frame short of time
+        builds the items it can and the rest of the view stays blank until the
+        app is idle. Outside a scrollable it holds the items inside
+        its own rect. Every item takes the same height, and the Column takes the
+        width it is offered.
 
         Args:
             items: Source data: a collection, or an observable of one -- the
@@ -337,19 +340,25 @@ class Column(Widget):
         extent = lazy.item_extent(cw) if count else 0
         span = lazy.visible_span(self, height)
         first, stop = lazy.index_range(span, count, extent, self.gap, t)
-        children = lazy.materialize(self, first, stop)
-        self._laid_out_children = children
-
         pitch = extent + self.gap
-        for i, child in enumerate(children):
+
+        def place(child: Widget, index: int) -> None:
             pref_w, _ = measure_preferred_size(child, max_width=cw)
             resolved_width = self._resolve_cross_size(child, pref_w, cw)
             child_align = getattr(child, "cross_align", None)
             alignment = str(child_align) if child_align else self.cross_alignment
             rel_x = l + align_offset(cw, resolved_width, alignment)
-            rel_y = t + (first + i) * pitch
             layout_child_if_needed(child, resolved_width, extent)
-            child.set_layout_rect(rel_x, rel_y, resolved_width, extent)
+            child.set_layout_rect(rel_x, t + index * pitch, resolved_width, extent)
+
+        start, children = lazy.materialize(self, first, stop, pitch=pitch, place=place)
+        self._laid_out_children = children
+        for i, child in enumerate(children):
+            # A clean item already at its slot, from an earlier pass or from
+            # idle time, is left as it is.
+            if lazy.placed(child, t + (start + i) * pitch, cw):
+                continue
+            place(child, start + i)
 
     @staticmethod
     def _allocate_main_sizes(base_sizes: List[int], weights: List[float], usable: int) -> List[int]:

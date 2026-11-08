@@ -206,7 +206,8 @@ def test_reading_from_a_detached_widget_falls_back_instead_of_raising() -> None:
     """Paint code runs on every frame, including for deliberately detached
     trees, so a missing provider must not crash."""
     child = Widget()
-    Container().add_child(child)
+    parent = Container()  # held: a child's link does not keep its parent alive
+    parent.add_child(child)
 
     assert Theme.of(child).mode == "light"
 

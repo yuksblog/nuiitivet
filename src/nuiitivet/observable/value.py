@@ -6,6 +6,7 @@ import warnings
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from typing import Any, Awaitable, Callable, Generic, List, Literal, Optional, TypeVar, TYPE_CHECKING, Union
 
+from nuiitivet.common.back_reference import back_reference
 from nuiitivet.common.logging_once import debug_once
 from nuiitivet.runtime.threading import is_ui_thread
 
@@ -42,7 +43,7 @@ class _ObservableValue(MutableObservableBase[T]):
     ):
         self._value = initial
         self._subs: List[Callable[[T], None]] = []
-        self._owner = owner
+        self._owner_ref = back_reference(owner)
         self._name = name
         self._compare = compare
         self._dispatch_to_ui = dispatch
@@ -52,8 +53,15 @@ class _ObservableValue(MutableObservableBase[T]):
         self._is_scheduled = False
 
     @property
+    def _owner(self) -> Optional[Any]:
+        # The object this value is an attribute of, while it lives; it holds
+        # the value, so the link back is weak.
+        return self._owner_ref()
+
+    @property
     def _owner_name(self) -> str:
-        return type(self._owner).__name__ if self._owner is not None else "ObservableOwner"
+        owner = self._owner
+        return type(owner).__name__ if owner is not None else "ObservableOwner"
 
     def _values_equal(self, a: T, b: T) -> bool:
         if self._compare is not None:

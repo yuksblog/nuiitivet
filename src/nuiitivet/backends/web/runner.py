@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import sys
+import time
 from typing import Any, Optional
 
 import js
@@ -17,9 +18,15 @@ from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT, text_m
 from nuiitivet.observable.runtime import set_clock
 from nuiitivet.platform.clipboard import BrowserClipboard, get_system_clipboard
 from nuiitivet.rendering.skia.color import rgba_to_skia_color
+from nuiitivet.runtime.gc_pacing import GcPacer
 from nuiitivet.runtime.threading import set_ui_thread
+from nuiitivet.widgeting.frame_clock import begin_frame, end_frame
+from nuiitivet.widgeting.idle_work import run_idle_work
 
 logger = logging.getLogger(__name__)
+
+# Idle work per timer run: a slice of a frame, so the next frame is never far away.
+IDLE_BUDGET_SECONDS = 0.008
 
 
 class _Loop:
@@ -33,6 +40,10 @@ class _Loop:
         self._host = js.NV_HOST
         self._on_frame = create_proxy(self._frame)
         self._on_timer = create_proxy(self._tick)
+        self._on_gc_idle = create_proxy(self._gc_idle)
+        self._gc_timer: Any = None
+        self._gc_pacer = GcPacer()
+        self._gc_pacer.install()
         self._frame_pending = False
         self._draw_wanted = False
         self._window: Any = None
@@ -81,10 +92,32 @@ class _Loop:
         if not self._draw_wanted or self._window is None:
             return
         self._draw_wanted = False
+        begin_frame(time.perf_counter())
+        self._gc_pacer.before_frame()
         try:
             self._draw(self._window)
         except Exception:
             exception_once(logger, "web_frame_exc", "Drawing a frame raised")
+        finally:
+            end_frame()
+            self._gc_pacer.after_frame(time.perf_counter())
+            # The browser has no wait to collect before; the moment after the
+            # frame is presented is the nearest thing.
+            self._schedule_gc_idle(0.0)
+
+    def _schedule_gc_idle(self, delay: float) -> None:
+        if self._gc_timer is not None:
+            js.clearTimeout(self._gc_timer)
+        self._gc_timer = js.setTimeout(self._on_gc_idle, delay * 1000.0)
+
+    def _gc_idle(self, *_args: Any) -> None:
+        self._gc_timer = None
+        more = run_idle_work(IDLE_BUDGET_SECONDS)
+        wake = self._gc_pacer.idle(time.perf_counter())
+        if more:
+            self._schedule_gc_idle(0.0)
+        elif wake is not None:
+            self._schedule_gc_idle(wake)
 
     def _pointer(self, kind: str, x: float, y: float, button: int, buttons: int, modifier_keys: int) -> None:
         win = self._window

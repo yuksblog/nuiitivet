@@ -12,10 +12,28 @@ from typing import Callable, Optional
 import pyglet
 
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.runtime.gc_pacing import GcPacer
 from nuiitivet.runtime.renderer import RendererError
 from nuiitivet.widgeting.callbacks import drop_pending_tasks, start_pending_tasks
+from nuiitivet.widgeting.frame_clock import DEFAULT_FRAME_INTERVAL, begin_frame, end_frame, set_frame_interval
+from nuiitivet.widgeting.idle_work import run_idle_work
 
 logger = logging.getLogger(__name__)
+
+# Idle work per loop iteration: a slice of a frame, so a frame that becomes
+# pending meanwhile is never far away.
+IDLE_BUDGET_SECONDS = 0.008
+
+
+def _display_refresh_interval() -> float:
+    """The default screen's refresh period; a 60 Hz frame when pyglet does not report one."""
+    try:
+        rate = pyglet.display.get_display().get_default_screen().get_mode().rate
+    except Exception:
+        return DEFAULT_FRAME_INTERVAL
+    if not rate or rate <= 0:
+        return DEFAULT_FRAME_INTERVAL
+    return 1.0 / float(rate)
 
 
 class ResponsiveEventLoop(pyglet.app.EventLoop):
@@ -55,6 +73,7 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
 
         self._planned_wait_seconds: Optional[float] = None
         self._in_idle_draw: bool = False
+        self._gc_pacer = GcPacer()
 
         self._freeze_backstop_reset: Optional[Callable[[], None]] = None
         self._freeze_backstop_last_reset: float = 0.0
@@ -206,6 +225,7 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
     def set_draw_fps(self, draw_fps: Optional[float]) -> None:
         """Update draw interval at runtime."""
         self._draw_interval = self._normalise_interval(draw_fps)
+        self._publish_frame_interval()
         if self._draw_interval is None:
             self._next_draw_deadline = None
         else:
@@ -239,7 +259,7 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
                     self._perform_draw(dt, now)
             finally:
                 self._in_idle_draw = False
-        return self._compute_sleep_timeout(time.perf_counter())
+        return self._before_wait(time.perf_counter())
 
     def _blocking_timer(self) -> None:
         # pyglet's version presents through ``window.draw()``, outside the
@@ -295,6 +315,8 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
         pyglet.app.event_loop = self
         self.dispatch_event("on_enter")
         self.is_running = True
+        self._gc_pacer.install()
+        self._publish_frame_interval()
 
         try:
             while not self.has_exit:
@@ -316,7 +338,7 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
                     self._enter_phase("draw")
                     self._perform_draw(dt, now)
 
-                timeout = self._compute_sleep_timeout(now)
+                timeout = self._before_wait(now)
                 try:
                     max_step = float(os.environ.get("NUIITIVET_PYGLET_MAX_STEP", "0.05"))
                 except Exception:
@@ -360,6 +382,7 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
                 self._planned_wait_seconds = None
         finally:
             self.is_running = False
+            self._gc_pacer.uninstall()
             try:
                 self.dispatch_event("on_exit")
             finally:
@@ -385,6 +408,8 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
         pyglet.app.event_loop = self
         self.dispatch_event("on_enter")
         self.is_running = True
+        self._gc_pacer.install()
+        self._publish_frame_interval()
         # The windows were mounted before this loop existed; their async
         # mount work has been waiting for it.
         start_pending_tasks()
@@ -403,7 +428,7 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
                 if self._should_draw(now):
                     self._perform_draw(dt, now)
 
-                timeout = self._compute_sleep_timeout(now)
+                timeout = self._before_wait(now)
                 if timeout is None:
                     # No timeout: wait indefinitely for an event
                     # But we must yield to asyncio loop
@@ -426,6 +451,7 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
 
         finally:
             self.is_running = False
+            self._gc_pacer.uninstall()
             try:
                 self.dispatch_event("on_exit")
             finally:
@@ -438,6 +464,13 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
         if fps_value <= 0:
             return None
         return 1.0 / fps_value
+
+    def _publish_frame_interval(self) -> None:
+        """Tell the frame clock the time one frame has: the display's refresh period, or the cadence when longer."""
+        interval = _display_refresh_interval()
+        if self._draw_interval is not None:
+            interval = max(interval, self._draw_interval)
+        set_frame_interval(interval)
 
     def _keep_alive_without_windows(self) -> bool:
         """Whether the loop should keep running with zero open windows.
@@ -500,6 +533,8 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
     def _perform_draw(self, dt: float, now: float) -> None:
         self._draw_pending = False
         self._last_draw_ts = float(now)
+        begin_frame(now)
+        self._gc_pacer.before_frame()
         try:
             self._draw_callback(dt)
         except RendererError:
@@ -507,8 +542,25 @@ class ResponsiveEventLoop(pyglet.app.EventLoop):
         except Exception:
             exception_once(logger, "pyglet_event_loop_draw_callback_exc", "Draw callback raised")
         finally:
+            end_frame()
+            self._gc_pacer.after_frame(time.perf_counter())
             if self._draw_interval is not None:
                 self._next_draw_deadline = now + self._draw_interval
+
+    def _before_wait(self, now: float) -> Optional[float]:
+        """The sleep timeout, idle work and the collector having run first when there is a wait ahead.
+
+        Idle work left over makes the timeout zero, so the loop comes straight
+        back for it.
+        """
+        timeout = self._compute_sleep_timeout(now)
+        if timeout is not None and timeout <= 0.0:
+            return timeout
+        budget = IDLE_BUDGET_SECONDS if timeout is None else min(timeout, IDLE_BUDGET_SECONDS)
+        if run_idle_work(budget):
+            timeout = 0.0
+        self._gc_pacer.idle(time.perf_counter())
+        return timeout
 
     def _compute_sleep_timeout(self, now: float) -> Optional[float]:
         clock_timeout = self.clock.get_sleep_time(True)

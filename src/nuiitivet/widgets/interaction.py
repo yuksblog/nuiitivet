@@ -14,6 +14,7 @@ from ..input.pointer import PointerEvent, PointerEventType
 from ..input.shortcut import Shortcut, ShortcutBinding, ShortcutScope
 from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
+from nuiitivet.common.back_reference import back_reference, is_bound_to, weak_method_call
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.widgeting.callbacks import invoke_event_handler, VoidCallback, BoolCallback
 
@@ -74,17 +75,34 @@ class InteractionNode:
     """Base class for interaction logic nodes attached to a Widget (usually InteractionRegion)."""
 
     def __init__(self) -> None:
-        self._owner: Optional["Widget"] = None
+        self._owner_ref: Callable[[], Optional["Widget"]] = back_reference(None)
 
     def attach(self, owner: "Widget") -> None:
-        self._owner = owner
+        self._owner_ref = back_reference(owner)
+        # The owner holds this node; a callback bound to the owner is held
+        # weakly, so the node does not hold the owner back through it.
+        for name, value in list(vars(self).items()):
+            if is_bound_to(value, owner):
+                setattr(self, name, weak_method_call(value))
+            elif isinstance(value, list) and any(is_bound_to(item, owner) for item in value):
+                setattr(self, name, [weak_method_call(item) if is_bound_to(item, owner) else item for item in value])
 
     def detach(self) -> None:
-        self._owner = None
+        self._owner_ref = back_reference(None)
+
+    def _kept(self, callback: Any) -> Any:
+        """``callback`` as this node stores it: weakly when bound to the owner."""
+        if is_bound_to(callback, self.owner):
+            return weak_method_call(callback)
+        return callback
 
     @property
     def owner(self) -> Optional["Widget"]:
-        return self._owner
+        return self._owner_ref()
+
+    @property
+    def _owner(self) -> Optional["Widget"]:
+        return self._owner_ref()
 
     @property
     def region(self) -> Optional["InteractionHostMixin"]:
@@ -152,7 +170,7 @@ class PointerInputNode(InteractionNode):
     def enable_hover(self, *, on_change: Optional[BoolCallback] = None) -> None:
         self._hover_enabled = True
         if on_change is not None:
-            self._hover_callbacks.append(on_change)
+            self._hover_callbacks.append(self._kept(on_change))
 
     def enable_click(
         self,
@@ -178,17 +196,17 @@ class PointerInputNode(InteractionNode):
         # Repeated calls (common in recomposition/modifiers) must not accumulate
         # callbacks, otherwise one click triggers N handlers and can freeze UI.
         if on_click is not None:
-            self._click_callbacks = [on_click]
+            self._click_callbacks = [self._kept(on_click)]
         if on_press is not None:
-            self._press_callbacks = [on_press]
+            self._press_callbacks = [self._kept(on_press)]
         if on_release is not None:
-            self._release_callbacks = [on_release]
+            self._release_callbacks = [self._kept(on_release)]
 
     def add_hover_listener(self, callback: BoolCallback) -> None:
         """Add a hover listener without replacing existing ones."""
         self._hover_enabled = True
         if callback not in self._hover_callbacks:
-            self._hover_callbacks.append(callback)
+            self._hover_callbacks.append(self._kept(callback))
 
     def remove_hover_listener(self, callback: BoolCallback) -> None:
         """Remove a previously added hover listener. No-op if not found."""
@@ -201,7 +219,7 @@ class PointerInputNode(InteractionNode):
         """Additively register a press listener without replacing existing ones."""
         self._click_enabled = True
         if callback not in self._press_callbacks:
-            self._press_callbacks.append(callback)
+            self._press_callbacks.append(self._kept(callback))
 
     def remove_press_listener(self, callback: PointerEventCallback) -> None:
         """Remove a previously added press listener. No-op if not found."""
@@ -214,7 +232,7 @@ class PointerInputNode(InteractionNode):
         """Additively register a release listener without replacing existing ones."""
         self._click_enabled = True
         if callback not in self._release_callbacks:
-            self._release_callbacks.append(callback)
+            self._release_callbacks.append(self._kept(callback))
 
     def remove_release_listener(self, callback: PointerEventCallback) -> None:
         """Remove a previously added release listener. No-op if not found."""

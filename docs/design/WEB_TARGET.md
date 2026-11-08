@@ -160,6 +160,9 @@ flowchart LR
     input[backends/web/input.py]
     adapter[backends/web/skia.py]
     dialogs[platform/file_dialog_browser.py]
+    pacer[runtime/gc_pacing.py]
+    idle[widgeting/idle_work.py]
+    frame[widgeting/frame_clock.py]
     host[host.mjs]
     window[runtime/window.py]
     browser[the browser]
@@ -172,7 +175,10 @@ flowchart LR
     runner -- "tick()" --> clock
     clock -- "_request_frame()" --> runner
     clock -- "setTimeout · clearTimeout" --> browser
-    runner -- "requestAnimationFrame" --> browser
+    runner -- "requestAnimationFrame · setTimeout, for the idle call after a frame" --> browser
+    runner -- "before_frame() · after_frame(now) · idle(now)" --> pacer
+    runner -- "run_idle_work(budget)" --> idle
+    runner -- "begin_frame(now) · end_frame()" --> frame
     window -- "Paint · Path · TextBlob · Picture …" --> adapter
     adapter -- "the matrix once per run of draws, geometry and paint state as numbers" --> canvaskit
     runner -- "frame() · placeInput · writeClipboard" --> host
@@ -187,6 +193,9 @@ flowchart LR
 | `backends/web/input.py` | translates buttons, wheel deltas and key names once, at the host boundary |
 | `backends/web/skia.py` | the `skia` module the rendering code imports in the browser |
 | `platform/file_dialog_browser.py` | the file picker, and a download in place of a save dialog |
+| `runtime/gc_pacing.py` | `GcPacer`: holds the collector for the page's life; collects on the timer after a frame ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
+| `widgeting/idle_work.py` | the tasks the timer after a frame runs ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
+| `widgeting/frame_clock.py` | whether a frame is under way and when it began; the frame interval stays its default ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
 | `host.mjs` | the canvas, the input element, the clipboard, the picker, the download (The Page) |
 | `runtime/window.py` | the dispatch methods and the paint the pyglet backend also calls ([APP_WINDOW.md](APP_WINDOW.md)) |
 | the browser | `requestAnimationFrame` and `setTimeout` |
@@ -252,7 +261,11 @@ sequenceDiagram
   draws.
 - Geometry and paint state cross to JS as plain numbers, once per draw.
 - Every font family name resolves to the typefaces the page loaded.
-- A frame runs only when one was asked for.
+- A frame runs only when one was asked for. It tells the frame clock when it
+  begins and ends.
+- No collection runs inside a frame. The collector runs on a timer the frame
+  arms as it ends, after the idle work. Idle work left over re-arms the
+  timer at once.
 - The WebGL surface is made again when the canvas or the device pixel ratio
   changes. That frame repaints everything.
 - A deadline within a frame's time waits for the next frame. A later one is a

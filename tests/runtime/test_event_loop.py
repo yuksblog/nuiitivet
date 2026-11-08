@@ -1,3 +1,4 @@
+import gc
 import time
 
 import pytest
@@ -291,6 +292,54 @@ class _StubPlatformLoopRunnable(_StubPlatformLoop):
         return None
 
 
+class _RecordingPacer:
+    def __init__(self, record):
+        self.record = record
+
+    def before_frame(self):
+        self.record.append("before_frame")
+
+    def after_frame(self, now):
+        self.record.append("after_frame")
+
+    def idle(self, now):
+        self.record.append("idle")
+        return None
+
+
+def test_perform_draw_brackets_the_frame_with_the_pacer():
+    record = []
+
+    def _draw(dt: float) -> None:
+        record.append("draw")
+
+    loop = ResponsiveEventLoop(_draw, draw_fps=None)
+    loop._gc_pacer = _RecordingPacer(record)  # type: ignore[assignment]
+    loop._draw_pending = True
+
+    loop._perform_draw(0.016, time.perf_counter())
+
+    assert record == ["before_frame", "draw", "after_frame"]
+
+
+def test_idle_collects_only_when_a_wait_is_ahead():
+    loop, _ = _idle_loop(draw_fps=None, sleep_time=None)
+    record = []
+    loop._gc_pacer = _RecordingPacer(record)  # type: ignore[assignment]
+    loop._draw_pending = False
+
+    loop.idle()
+    assert record == ["idle"], "an indefinite wait is collected before"
+
+    loop, _ = _idle_loop(draw_fps=None, sleep_time=0.0)
+    record = []
+    loop._gc_pacer = _RecordingPacer(record)  # type: ignore[assignment]
+    loop._draw_pending = False
+
+    loop.idle()
+    assert record == [], "a wake due now leaves no time to collect"
+
+
 def test_run_async_starts_the_work_spawned_before_it(monkeypatch):
     """A root widget's async on_mount is spawned at App construction, before any loop."""
     import asyncio
@@ -318,3 +367,102 @@ def test_run_async_starts_the_work_spawned_before_it(monkeypatch):
 
     assert ran == [True]
     assert pending.done() is True
+
+
+def test_run_async_owns_the_collector_while_it_runs(monkeypatch):
+    import asyncio
+
+    import pyglet
+
+    monkeypatch.setattr(pyglet.app, "platform_event_loop", _StubPlatformLoopRunnable(), raising=False)
+    monkeypatch.setattr(pyglet.app, "windows", [], raising=False)
+    monkeypatch.setattr(pyglet.app, "event_loop", None, raising=False)
+
+    seen = []
+
+    def _draw(dt: float) -> None:
+        seen.append(gc.isenabled())
+        loop.exit()
+
+    loop = ResponsiveEventLoop(_draw, draw_fps=None, keep_running_without_windows=lambda: True)
+    assert gc.isenabled()
+
+    asyncio.run(loop.run_async())
+
+    assert seen == [False], "inside the loop the pacer holds the collector"
+    assert gc.isenabled(), "the loop hands it back on exit"
+
+
+# ---------------------------------------------------------------------------
+# _before_wait(): idle work runs before a wait, never before a pending frame
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def idle_tasks():
+    from nuiitivet.widgeting import idle_work
+
+    idle_work._tasks.clear()
+    yield idle_work
+    idle_work._tasks.clear()
+
+
+def test_before_wait_runs_idle_work_when_a_wait_is_ahead(idle_tasks):
+    runs = []
+    idle_tasks.request_idle_work(lambda deadline: runs.append(deadline) and False)
+    loop, _ = _idle_loop(draw_fps=None, sleep_time=None)
+    loop._draw_pending = False
+
+    assert loop._before_wait(time.perf_counter()) is None
+    assert len(runs) == 1
+
+
+def test_before_wait_skips_idle_work_before_a_pending_frame(idle_tasks):
+    runs = []
+    idle_tasks.request_idle_work(lambda deadline: runs.append(deadline) and False)
+    loop, _ = _idle_loop(draw_fps=None, sleep_time=None)
+    loop._draw_pending = True
+
+    assert loop._before_wait(time.perf_counter()) == 0.0
+    assert runs == [], "a frame is due now; the work waits"
+
+
+def test_before_wait_comes_straight_back_while_work_remains(idle_tasks):
+    idle_tasks.request_idle_work(lambda deadline: True)
+    loop, _ = _idle_loop(draw_fps=None, sleep_time=0.5)
+    loop._draw_pending = False
+
+    assert loop._before_wait(time.perf_counter()) == 0.0, "no sleep: more work waits"
+
+
+# ---------------------------------------------------------------------------
+# The frame clock: the loop says when a frame began and how long a frame is
+# ---------------------------------------------------------------------------
+
+
+def test_perform_draw_brackets_the_frame_for_the_frame_clock():
+    from nuiitivet.widgeting.frame_clock import frame_started_at
+
+    seen = []
+
+    def _draw(dt: float) -> None:
+        seen.append(frame_started_at())
+
+    loop = ResponsiveEventLoop(_draw, draw_fps=None)
+    loop._draw_pending = True
+    now = time.perf_counter()
+
+    loop._perform_draw(0.016, now)
+    assert seen == [now], "inside the draw the frame is under way"
+    assert frame_started_at() is None, "after it no frame is"
+
+
+def test_a_cadence_longer_than_the_display_period_is_the_frame_interval():
+    from nuiitivet.widgeting.frame_clock import frame_interval
+
+    loop = ResponsiveEventLoop(_noop_draw, draw_fps=10.0)
+    loop._publish_frame_interval()
+    assert frame_interval() == pytest.approx(0.1)
+
+    loop.set_draw_fps(None)
+    assert 0.0 < frame_interval() < 0.1, "the display's period, or the default"

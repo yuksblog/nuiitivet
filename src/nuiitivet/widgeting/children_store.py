@@ -1,7 +1,8 @@
 from collections import deque
 import logging
-from typing import Deque, Iterable, List, Optional, Sequence, Union
+from typing import Any, Deque, Iterable, List, Optional, Sequence, Union
 
+from nuiitivet.common.back_reference import back_reference
 from nuiitivet.common.logging_once import debug_once, exception_once
 from nuiitivet.common.call import safe_call  # centralized error-handling helper
 
@@ -53,13 +54,18 @@ class ChildrenStore:
         max_children: Optional[int] = None,
         overflow_policy: str = "none",
     ) -> None:
-        self.owner = owner
+        self._owner_ref = back_reference(owner)
         self._items: Deque = deque()
         self.max_children: Optional[int] = None
         self.overflow_policy: str = "none"
         self._configure(max_children=max_children, overflow_policy=overflow_policy)
         self._dirty_snapshot = True
         self._snapshot_cache: Optional[List] = None
+
+    @property
+    def owner(self) -> Any:
+        """The widget whose children these are, while it lives."""
+        return self._owner_ref()
 
     # NOTE: use module-level safe_call imported above to keep lifecycle calls
     # concise and consistent. Avoid assigning to instance attributes at module

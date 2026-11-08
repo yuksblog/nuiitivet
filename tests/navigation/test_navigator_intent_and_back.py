@@ -53,7 +53,8 @@ def test_navigator_of_not_found_raises() -> None:
     # Widget would (correctly) report the pre-mount case instead. With no Window
     # above it either, there is no fallback to reach for.
     w = Widget()
-    Container().add_child(w)
+    parent = Container()  # held: a child's link does not keep its parent alive
+    parent.add_child(w)
     with pytest.raises(RuntimeError, match="not attached to a Window"):
         Navigator.of(w)
 

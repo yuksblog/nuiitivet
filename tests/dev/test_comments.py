@@ -302,11 +302,12 @@ def test_see_comments_without_a_buffer_is_an_empty_payload() -> None:
 def test_a_region_is_marked_and_numbered_alongside_nodes() -> None:
     """One ordinal sequence across both, because the human sees one numbering."""
     node = Text("A")
+    other = Text("B")  # held: a mark does not keep its widget alive
     comments = Comments()
 
     comments.add(node)
     comments.add_region((10.0, 10.0, 40.0, 20.0))
-    comments.add(Text("B"))
+    comments.add(other)
 
     assert [(index, kind) for index, kind, _mark in comments.marks()] == [
         (1, "node"),
@@ -327,7 +328,8 @@ def test_a_zero_area_drag_is_not_a_region() -> None:
 def test_undo_takes_back_whichever_kind_came_last() -> None:
     comments = Comments()
     comments.enter()
-    comments.add(Text("A"))
+    node = Text("A")  # held: a mark does not keep its widget alive
+    comments.add(node)
     comments.add_region((0.0, 0.0, 10.0, 10.0))
 
     comments.undo()
