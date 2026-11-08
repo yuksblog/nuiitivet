@@ -182,7 +182,7 @@ flowchart LR
 | Module | Role |
 | --- | --- |
 | `layout/for_each.py` | `ForEach`: one scoped fragment per item, found by its key; with a window, per item in the window |
-| `layout/lazy.py` | `LazyItems`: the item extent, the span the viewport shows, the index range it covers, the held range around it and the lead; follows the viewport's offset while mounted and builds ahead of it in idle time |
+| `layout/lazy.py` | `LazyItems`: the item extent, the span the viewport shows, the index range it covers, the held range around it and the lead; follows the viewport's offset while mounted, builds ahead of it in idle time and keeps the items a view's length behind it |
 | `layout/row.py · column.py · uniform_flow.py` | `builder()` and `lazy()`; place the provided children, a lazy one at its index times the pitch (The Containers) |
 | `layout/layout_utils.py` | replaces a provider with its children (The Containers) |
 | `layout/scroll_viewport.py` | the clip rect, the displacement and the controller it scrolls by ([BOX_MODEL.md](BOX_MODEL.md)) |
@@ -211,9 +211,9 @@ sequenceDiagram
     L->>V: visual_clip_rect() · visual_offset()
     C->>L: index_range(span, count, extent, gap, pad)
     C->>L: materialize(self, first, stop, pitch, place)
-    L->>L: the held range: the view, plus the built items within the lead on each side
+    L->>L: the held range: the view, plus the built items within a view's length on each side
     L->>F: set_window(held_first, held_stop)
-    F->>F: build the items that entered the view, unmount the ones beyond the lead
+    F->>F: build the items that entered the view, unmount the ones a view's length away
     L->>I: request_idle_work(prefetch), when the lead is not full
     C->>C: place item i at pad + i × (extent + gap)
 ```
@@ -245,7 +245,9 @@ sequenceDiagram
 - A provider is never laid out or painted. Its children take its place in the
   container.
 - A lazy container holds a widget for each item in view, for the built items
-  within the lead on each side of the view, and for none beyond.
+  within a view's length on each side of it, and for none beyond.
+- An item that left the view keeps its widget until it lies a view's length
+  away. The item comes back into view without a build.
 - The layout pass builds the items that entered the view and no other.
 - The lead is filled in idle time, one item at a time, the scroll's side
   first.

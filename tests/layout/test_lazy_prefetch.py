@@ -2,7 +2,8 @@
 
 The layout pass builds only the items that entered the view. Idle time fills
 a lead on each side: at rest a few items on both sides, while scrolling more
-on the side the scroll heads for, and the items behind stay within the lead.
+on the side the scroll heads for. The items that left the view stay built
+until they lie a view's length away.
 """
 
 from __future__ import annotations
@@ -100,7 +101,37 @@ def test_the_lead_grows_with_the_scroll_speed_in_its_direction():
     assert lazy_module.LEAD_STEPS * 5 > 5, "the lead the speed asks for exceeds one view"
     assert len(ahead) == 5, "one view's worth ahead: the lead's cap"
     assert behind == [], "nothing new behind while scrolling down"
-    assert column._lazy._held == (0, 15), "the five behind kept within the lead"
+    assert column._lazy._held == (0, 15), "the five behind kept: within a view's length"
+
+
+def test_scrolling_back_over_one_view_builds_nothing():
+    log = _Log()
+    column, scroller = _column(log)
+    for offset in (100, 200, 300):  # one view per step, no idle time between
+        scroller._controller.scroll_to(offset)
+        scroller.layout(200, 100)
+    assert column._lazy._held == (10, 20), "the view before the current one is kept, the one before that let go"
+    log.built.clear()
+
+    scroller._controller.scroll_to(200)
+    scroller.layout(200, 100)
+    assert log.built == [], "the whole view behind came back built"
+
+    scroller._controller.scroll_to(100)
+    scroller.layout(200, 100)
+    assert log.built == [5, 6, 7, 8, 9], "two views back lies beyond the kept range"
+
+
+def test_the_items_held_stay_within_three_views():
+    log = _Log()
+    column, scroller = _column(log)
+    for step in range(1, 80):
+        scroller._controller.scroll_to(step * 40)  # two items per step
+        scroller.layout(200, 100)
+        run_idle_work(1.0)
+        held_first, held_stop = column._lazy._held
+        assert held_stop - held_first <= 15, "the view, one view kept behind, at most one view ahead"
+    assert held_stop - held_first >= 10, "the view and the view behind it"
 
 
 def test_a_reversal_finds_the_items_behind_still_built():

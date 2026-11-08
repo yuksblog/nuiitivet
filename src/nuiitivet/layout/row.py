@@ -136,11 +136,11 @@ class Row(Widget):
         cross_alignment: str = "start",
         key: Optional[str] = None,
     ) -> "Row":
-        """Create a Row that holds widgets for the items in view and the few around them.
+        """Create a Row that holds widgets for the items in view and the ones around them.
 
         Inside a ``HorizontalScrollable`` the Row builds the items the viewport
         shows, builds the next ones ahead of the scroll while the app is idle,
-        and unmounts the ones that scrolled out of reach; its width is the
+        and unmounts the ones that scrolled a view's length away; its width is the
         width of every item, so the scrollbar is exact. Outside one it holds the items
         inside its own rect. Every item takes the same width, and the Row takes
         the height it is offered.

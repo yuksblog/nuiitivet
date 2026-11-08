@@ -184,11 +184,11 @@ class UniformFlow(Widget):
         height: SizingLike = None,
         key: Optional[str] = None,
     ) -> "UniformFlow":
-        """Create a UniformFlow that holds widgets for the rows in view and the few around them.
+        """Create a UniformFlow that holds widgets for the rows in view and the ones around them.
 
         Inside a ``VerticalScrollable`` the grid builds the rows the viewport
         shows, builds the next ones ahead of the scroll while the app is idle,
-        and unmounts the ones that scrolled out of reach; its height is the
+        and unmounts the ones that scrolled a view's length away; its height is the
         height of every row, so the scrollbar is exact. Outside one it holds the rows
         inside its own rect. Every row takes the same height: from
         *aspect_ratio* when given, else the first item in view is measured and

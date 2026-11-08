@@ -1,9 +1,11 @@
 """Steady-state scroll passes over a ``Column.lazy`` table, under each collector policy.
 
 One pass scrolls the lazy table by a number of rows and lays it out, which
-builds the rows that came into view and drops the ones that left. The passes
-run as frames of a scroll do: back to back, with the time a frame leaves over
-given to idle work, which builds the rows ahead of the view.
+builds the rows that came into view and drops the ones a view's length
+behind. The passes run as frames of a scroll do: back to back, with the time
+a frame leaves over given to idle work, which builds the rows ahead of the
+view. ``--turn-every N`` reverses the scroll every N passes, so the rows kept
+behind the view are scrolled back over.
 
 Policies:
 
@@ -103,6 +105,7 @@ def run(
     rows_per_pass: int,
     passes: int,
     eager_alive: bool,
+    turn_every: int,
     middle_budget: Optional[int],
     old_budget: Optional[int],
 ) -> None:
@@ -132,17 +135,22 @@ def run(
     collections = _Collections()
     gc.callbacks.append(collections)
     step_px = rows_per_pass * compare.ROW_HEIGHT
+    end_px = rows * compare.ROW_HEIGHT - compare.TABLE_HEIGHT
     offset = 0
+    direction = 1
     times: List[float] = []
     allocated: List[int] = []
     built_in_passes = 0
     built_in_idle = 0
     now = 0.0
     try:
-        for _ in range(passes):
-            offset += step_px
-            if offset + compare.TABLE_HEIGHT > rows * compare.ROW_HEIGHT:
+        for index in range(passes):
+            if turn_every and index and index % turn_every == 0:
+                direction = -direction
+            offset += direction * step_px
+            if offset > end_px:
                 offset = 0
+            offset = max(0, offset)
             now += FRAME_SECONDS
             started = perf_counter()
             before = gc.get_count()[0]
@@ -162,6 +170,7 @@ def run(
             built_before = stats.built
             run_idle_work(max(0.0, FRAME_SECONDS - elapsed))
             built_in_idle += stats.built - built_before
+        held = len(scroller._child._laid_out_children)
         waiting = len(gc.get_objects()) - alive
         rss_growth = _peak_rss_mb() - rss_before
         # What a quiet moment would pay: the full collection the pacer runs
@@ -186,7 +195,7 @@ def run(
     )
     print(
         f"{'':>13} | rows built: {built_in_passes / passes:.1f} per pass inside the frame, "
-        f"{built_in_idle / passes:.1f} per pass in idle time"
+        f"{built_in_idle / passes:.1f} per pass in idle time; {held} rows held at the end"
     )
     print(
         f"{'':>13} | after the passes: {waiting:,} tracked objects more than before, peak RSS +{rss_growth:.0f} MB, "
@@ -201,6 +210,7 @@ def main() -> None:
     parser.add_argument("--rows-per-pass", type=int, default=11)
     parser.add_argument("--passes", type=int, default=120)
     parser.add_argument("--eager-alive", action="store_true", help="keep an eager table of the same rows alive")
+    parser.add_argument("--turn-every", type=int, default=0, help="reverse the scroll every N passes; 0 never")
     parser.add_argument("--middle-budget", type=int, default=None, help="the pacer's middle_budget")
     parser.add_argument("--old-budget", type=int, default=None, help="the pacer's old_budget")
     parser.add_argument(
@@ -221,6 +231,7 @@ def main() -> None:
         rows_per_pass=args.rows_per_pass,
         passes=args.passes,
         eager_alive=args.eager_alive,
+        turn_every=args.turn_every,
         middle_budget=args.middle_budget,
         old_budget=args.old_budget,
     )

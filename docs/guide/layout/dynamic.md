@@ -125,9 +125,9 @@ Pass `item_height=` (`item_width=` on a `Row`) when the first row is not
 typical. `UniformFlow.lazy()` takes its row height from `aspect_ratio`, else
 from the first item.
 
-A row that scrolls well out of view is thrown away. It is built again from
-the builder when it scrolls back in. A checkbox the user ticked inside the
-row is unticked by then. Keep such state in the item data.
+A row that scrolls more than a screen away is thrown away. It is built again
+from the builder when it scrolls back in. A checkbox the user ticked inside
+the row is unticked by then. Keep such state in the item data.
 
 The lazy Column is as wide as the scrollable. `cross_alignment` places each row
 inside that width. Outside a scrollable it builds only the rows that fit its

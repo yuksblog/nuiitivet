@@ -137,11 +137,11 @@ class Column(Widget):
         cross_alignment: str = "start",
         key: Optional[str] = None,
     ) -> "Column":
-        """Create a Column that holds widgets for the items in view and the few around them.
+        """Create a Column that holds widgets for the items in view and the ones around them.
 
         Inside a ``VerticalScrollable`` the Column builds the items the viewport
         shows, builds the next ones ahead of the scroll while the app is idle,
-        and unmounts the ones that scrolled out of reach; its height is the
+        and unmounts the ones that scrolled a view's length away; its height is the
         height of every item, so the scrollbar is exact. Outside one it holds the
         items inside its own rect. Every item takes the same height, and the
         Column takes the width it is offered.

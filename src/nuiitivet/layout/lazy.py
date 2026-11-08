@@ -38,7 +38,8 @@ class LazyItems:
     answers the item count, the one main-axis extent every item takes, the
     span of the container its scroll viewport shows, and the index range that
     span covers. While attached it keeps the container laid out as the viewport
-    scrolls, and builds the items ahead of the view while the loop is idle.
+    scrolls, builds the items ahead of the view while the loop is idle, and
+    keeps the ones that left the view until they lie a view's length away.
     """
 
     def __init__(self, provider: ForEach, axis: str, extent: Optional[int]) -> None:
@@ -115,8 +116,8 @@ class LazyItems:
         """Hold widgets for ``range(first, stop)`` and the built ones around it.
 
         The items in view that have no widget yet are built here. The ones
-        around the view are kept while they lie within the lead, and the lead
-        is filled in idle time.
+        around the view are kept while they lie within a view's length of it,
+        and the lead is filled in idle time.
 
         Args:
             container: The lazy container.
@@ -139,12 +140,12 @@ class LazyItems:
         self._per_pitch = max(1, int(per_pitch))
         self._visible = (first, stop)
         self._cross_limit_of_pass = self._cross_limit
-        # The built items around the view stay while they lie within the lead;
-        # an old range that no longer reaches the view is let go whole.
+        # The built items around the view stay while they lie within a view's
+        # length; an old range that no longer reaches the view is let go whole.
         old_first, old_stop = self._held
-        lead = self._lead()
-        held_first = max(first - lead, old_first) if old_first <= first <= old_stop else first
-        held_stop = min(stop + lead, old_stop, count) if old_first <= stop <= old_stop else stop
+        keep = self._keep()
+        held_first = max(first - keep, old_first) if old_first <= first <= old_stop else first
+        held_stop = min(stop + keep, old_stop, count) if old_first <= stop <= old_stop else stop
         self._held = (held_first, held_stop)
         self.provider.set_window(held_first, held_stop)
         children = expand_layout_children(container.children_snapshot())
@@ -210,8 +211,13 @@ class LazyItems:
         return (first, max(first, stop))
 
     # ---- The lead ---------------------------------------------------------
+    def _keep(self) -> int:
+        """Built items kept on a side of the view: one view's worth."""
+        first, stop = self._visible
+        return max(MIN_AHEAD * self._per_pitch, stop - first)
+
     def _lead(self) -> int:
-        """Items kept and built on a side of the view: at most one view's worth."""
+        """Items built ahead on a side of the view: at most one view's worth."""
         floor = MIN_AHEAD * self._per_pitch
         if self._direction == 0:
             return floor
