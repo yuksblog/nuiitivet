@@ -181,7 +181,7 @@ flowchart LR
     runner -- "begin_frame(now) · end_frame()" --> frame
     window -- "Paint · Path · TextBlob · Picture …" --> adapter
     adapter -- "the matrix once per run of draws, geometry and paint state as numbers" --> canvaskit
-    runner -- "frame() · placeInput · writeClipboard" --> host
+    runner -- "frame() · placeInput · setCursor · writeClipboard" --> host
     dialogs -- "pick(accept, multiple, directory) · download(name, bytes)" --> host
     dialogs -- "a fresh directory, the files copied in" --> pyodide
 ```

@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Optional, Tuple, Union, cast
 
+from nuiitivet.input.cursor import MouseCursor
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.interaction import (
     FocusTraversalBlocker,
@@ -109,6 +110,14 @@ class Clickable(InteractionHostMixin, FocusTraversalBlocker, Box):
         if isinstance(node, FocusNode):
             node.traversable = self._traversable
 
+    def _default_mouse_cursor(self) -> Optional[MouseCursor]:
+        """The pointing hand while enabled with a click handler; the arrow while disabled."""
+        if self._disabled:
+            return MouseCursor.DEFAULT
+        if self._pointer_node.click_enabled:
+            return MouseCursor.POINTER
+        return None
+
     @property
     def blocks_focus_traversal(self) -> bool:
         """Keep a disabled widget, and anything nested in it, out of the Tab sequence."""
@@ -142,6 +151,7 @@ class Clickable(InteractionHostMixin, FocusTraversalBlocker, Box):
             if self._focusable and self.get_node(FocusNode) is None:
                 self.add_node(self._create_focus_node())
 
+        self._mouse_cursor_changed()
         self.invalidate()
 
     def on_mount(self) -> None:

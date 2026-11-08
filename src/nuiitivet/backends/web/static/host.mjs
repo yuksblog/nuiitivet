@@ -49,6 +49,9 @@ export function installHost(CK, canvas, input, fonts) {
       input.style.height = `${Math.max(1, height)}px`;
       input.inputMode = editing ? "text" : "none";
     },
+    setCursor(name) {
+      canvas.style.cursor = name;
+    },
     writeClipboard(text) {
       navigator.clipboard?.writeText(text).catch((error) => console.warn("copy failed:", error));
     },

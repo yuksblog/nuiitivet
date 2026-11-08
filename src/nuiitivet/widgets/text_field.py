@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from typing import Optional, Tuple, Union
 
+from nuiitivet.input.cursor import MouseCursor
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.observable import ReadOnlyObservableProtocol
@@ -151,6 +152,10 @@ class TextFieldBase(InteractionHostMixin, ComposableWidget):
     def focus(self) -> None:
         """Focus the text field."""
         self._editable.focus()
+
+    def _default_mouse_cursor(self) -> Optional[MouseCursor]:
+        """The I-beam over the whole field while enabled; the arrow while disabled."""
+        return MouseCursor.DEFAULT if self.state.disabled else MouseCursor.TEXT
 
     def _handle_press(self, event: PointerEvent) -> None:
         """Handle press event."""

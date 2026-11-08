@@ -21,17 +21,20 @@ flowchart LR
     owners[The Owners]
 
     backend -- "pointer · key · text events" --> window
+    window -- "the mouse cursor to show" --> backend
     window -- "on_pointer_event · handle_key_event · _set_focused" --> nodes
+    window -- "mouse_cursor, up from the hit target" --> hosts
     window -- "blocks_focus_traversal · focus_traversal_children · occluding_content_widget" --> hooks
     hosts -- "add_node · ensure_interaction_region" --> nodes
     owners -- "FocusScope(policy) · request_focus" --> nodes
     nodes -- "request_focus(node, source)" --> window
+    hosts -- "_sync_mouse_cursor()" --> window
 ```
 
 | Module | Role |
 | --- | --- |
-| the backend | delivers pointer, key and text events to the window |
-| The Window | dispatches the events, holds the focused node, walks the Tab sequence, traps focus in a modal |
+| the backend | delivers pointer, key and text events to the window, shows the mouse cursor it is handed |
+| The Window | dispatches the events, holds the focused node, walks the Tab sequence, traps focus in a modal, resolves the mouse cursor |
 | The Nodes | the nodes a host carries, the state they share, the scope and its policies |
 | The Hosts | the ways a widget becomes a host: a modifier wrapping it, or inheriting through `Clickable` |
 | The Hooks | what hides or narrows the Tab walk, and the shortcut layer that asks the same hooks |
@@ -41,6 +44,8 @@ flowchart LR
 
 - Input reaches a widget only through the nodes on its host.
 - A widget requests focus. Only the window sets it.
+- A widget answers the mouse cursor over itself. Only the window decides
+  which one the backend shows.
 
 ## The Window
 
@@ -53,6 +58,8 @@ node, and walks the tree for the Tab sequence.
 flowchart LR
     backend[the backend]
     window[Window]
+    widget[Widget]
+    capture[PointerCaptureManager]
     node[FocusNode]
     scope[FocusScope]
     hooks[the hooks]
@@ -60,7 +67,11 @@ flowchart LR
     bindings[runtime/shortcut_dispatch.py]
     navigator[Navigator]
 
-    backend -- "pointer · key · text · IME events" --> window
+    backend -- "pointer · key · text · IME events · _mouse_cursor_sink" --> window
+    window -- "_mouse_cursor_sink(cursor)" --> backend
+    window -- "mouse_cursor" --> widget
+    widget -- "_sync_mouse_cursor()" --> window
+    window -- "owner_of(pointer_id)" --> capture
     window -- "_set_focused(value, source) · notify_focus_source · handle_key_event · handle_text_event" --> node
     window -- "handle_tab(backwards) · on_enter(backwards)" --> scope
     window -- "blocks_focus_traversal · focus_traversal_children" --> hooks
@@ -71,8 +82,10 @@ flowchart LR
 
 | Module | Role |
 | --- | --- |
-| the backend | delivers pointer, key, text and IME events |
-| `Window` | dispatches the events, holds the focused node and the last input source, walks the tree from the traversal root for the stops, drops focus the walk no longer reaches, traps focus inside an open modal |
+| the backend | delivers pointer, key, text and IME events, and the sink that shows a mouse cursor on the OS window |
+| `Window` | dispatches the events, holds the focused node and the last input source, walks the tree from the traversal root for the stops, drops focus the walk no longer reaches, traps focus inside an open modal, resolves the mouse cursor |
+| `Widget` | answers the mouse cursor over itself, or answers nothing |
+| `PointerCaptureManager` | the widget that holds the pointer during a drag |
 | `FocusNode`, `FocusScope` | the nodes the window calls (The Nodes) |
 | the hooks | what the walk asks on the way down (The Hooks) |
 | `Overlay` | the occluding entry the walk starts from (The Hooks) |
@@ -178,6 +191,9 @@ sequenceDiagram
 - Escape is consumed on press. Its release runs back navigation.
 - Key input to a window blocked by a modal child is consumed and delivered to
   nobody.
+- The mouse cursor is the hit target's answer, else the nearest ancestor's,
+  else the arrow. During a drag the capture owner stands in for the hit
+  target.
 
 ## The Nodes
 
@@ -293,20 +309,25 @@ flowchart LR
     interactive[InteractiveWidget]
     mixin[InteractionHostMixin]
     node[FocusNode]
+    window[Window]
 
     focusable -- "ensure_interaction_region(widget), once" --> region
     focusable -- "add_node(FocusNode(...)) when none" --> region
+    focusable -- "mouse_cursor = a MouseCursor" --> region
     clickable -- "is a" --> mixin
     interactive -- "is a" --> clickable
     clickable -- "FocusNode(traversable=...)" --> node
+    window -- "mouse_cursor" --> mixin
+    mixin -- "_sync_mouse_cursor()" --> window
 ```
 
 | Module | Role |
 | --- | --- |
-| the interaction modifiers | `focusable()`, `clickable()`, `hoverable()`: wrap any widget in one shared region and add the node each needs |
+| the interaction modifiers | `focusable()`, `clickable()`, `hoverable()`, `cursor()`: wrap any widget in one shared region, then add the node or write the `mouse_cursor` it needs |
 | `Clickable` | the host every control inherits; carries `traversable`, and blocks the Tab walk while disabled |
 | `InteractiveWidget` | the Material host: the state layer, the focus ring, activation on Space and Enter |
 | `InteractionRegion`, `InteractionHostMixin`, `FocusNode` | what the hosts are built from (The Nodes) |
+| `Window` | resolves the cursor from the answers (The Window) |
 
 ### Promises
 
@@ -316,6 +337,9 @@ flowchart LR
 - A primary-button press on a host with a `FocusNode` requests focus for it,
   with the pointer as the source.
 - A new capability is a new node on the same host.
+- A `mouse_cursor` written on a host, by `cursor()` or by code, replaces the
+  host's own answer.
+- A write to `mouse_cursor` on a mounted host reaches the window at once.
 
 ## The Hooks
 

@@ -47,6 +47,7 @@ from __future__ import annotations
 import logging
 from typing import Callable, Optional, Tuple, TYPE_CHECKING, Union
 
+from nuiitivet.input.cursor import MouseCursor
 from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.animation import Animatable
 from nuiitivet.common.logging_once import exception_once
@@ -176,6 +177,10 @@ class _SearchBarCore(InteractiveWidget):
         self.add_child(self._editable)
 
         self.enable_click(on_press=self._handle_press)
+
+    def _default_mouse_cursor(self) -> Optional[MouseCursor]:
+        """The I-beam over the whole bar."""
+        return MouseCursor.TEXT
 
     # ------------------------------------------------------------------
     # Style / theme

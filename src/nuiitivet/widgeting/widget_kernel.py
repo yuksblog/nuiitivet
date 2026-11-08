@@ -7,6 +7,7 @@ import logging
 from typing import Any, Callable, List, Optional, Tuple, TypeAlias, Union
 
 from ..common.back_reference import back_reference
+from ..input.cursor import MouseCursor
 from ..common.logging_once import exception_once
 from ..rendering.padding import PaddingLike, parse_padding
 from ..rendering.size import Size
@@ -498,6 +499,17 @@ class WidgetKernel:
         """
 
         return self._hit_is_interactive()
+
+    @property
+    def mouse_cursor(self) -> Optional["MouseCursor"]:
+        """The cursor shown while the pointer rests on this widget.
+
+        ``None`` leaves the choice to the nearest ancestor that answers; the
+        window shows the arrow when no ancestor does. A widget that hosts
+        interaction answers from its role, a button the pointing hand, a text
+        field the I-beam, unless the ``cursor()`` modifier set one.
+        """
+        return None
 
     def _hit_is_interactive(self) -> bool:
         """Whether this widget participates in pointer input (drives ``auto``).
