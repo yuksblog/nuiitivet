@@ -9,10 +9,7 @@ skip where the daemon binary or jeepney is missing.
 from __future__ import annotations
 
 import queue
-import shutil
 import socket
-import subprocess
-import sys
 import threading
 from pathlib import Path
 from typing import Any, Callable, Iterator, List, Tuple
@@ -265,28 +262,6 @@ class _Client:
 
 class _App:
     """Weakref-able stand-in for the App a tray is installed on."""
-
-
-@pytest.fixture
-def session_bus(monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
-    """A private session bus; ``DBUS_SESSION_BUS_ADDRESS`` points at it."""
-    if sys.platform != "linux":
-        pytest.skip("StatusNotifierItem backend is Linux-only")
-    pytest.importorskip("jeepney")
-    daemon = shutil.which("dbus-daemon")
-    if daemon is None:
-        pytest.skip("dbus-daemon is not installed")
-    process = subprocess.Popen(
-        [daemon, "--session", "--nofork", "--print-address"], stdout=subprocess.PIPE, text=True
-    )
-    assert process.stdout is not None
-    address = process.stdout.readline().strip()
-    monkeypatch.setenv("DBUS_SESSION_BUS_ADDRESS", address)
-    try:
-        yield address
-    finally:
-        process.terminate()
-        process.wait(timeout=_TIMEOUT)
 
 
 @pytest.fixture

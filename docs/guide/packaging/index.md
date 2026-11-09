@@ -166,5 +166,5 @@ Exec=/opt/myapp/MyApp
 Icon=/opt/myapp/assets/app_icon.png
 ```
 
-Save it as `~/.local/share/applications/myapp.desktop` for one user, or
+Save it as `~/.local/share/applications/MyApp.desktop` for one user, or
 under `/usr/share/applications/` for every user. The [Desktop Entry Specification](https://specifications.freedesktop.org/desktop-entry/latest/) lists the other keys.

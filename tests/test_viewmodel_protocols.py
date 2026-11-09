@@ -93,6 +93,7 @@ def test_concrete_classes_expose_every_protocol_member() -> None:
         assert callable(getattr(MaterialOverlay, name))
     for name in ("exit", "set_theme", "register_themes"):
         assert callable(getattr(CoreApp, name))
+    assert isinstance(getattr(CoreApp, "badge"), property)
     for name in (
         "close",
         "hide",
@@ -346,6 +347,11 @@ class FakeApp:
         self.exit_codes: list[int] = []
         self.themes: list[Any] = []
         self.registry: dict[str, Any] = {}
+        self._badge: core.Observable[int | str | None] = core.Observable(None)
+
+    @property
+    def badge(self) -> core.Observable[int | str | None]:
+        return self._badge
 
     def exit(self, exit_code: int = 0) -> None:
         self.exit_codes.append(exit_code)
@@ -442,6 +448,9 @@ class ShellViewModel:
     def apply_dark_mode(self, app: nv.AppProtocol) -> None:
         app.set_theme("dark")
 
+    def show_unread(self, app: nv.AppProtocol, count: int) -> None:
+        app.badge.value = count
+
 
 def test_view_model_commands_the_window_without_a_tree() -> None:
     window = FakeWindow()
@@ -457,9 +466,11 @@ def test_view_model_commands_the_app_without_a_tree() -> None:
     vm = ShellViewModel()
 
     vm.apply_dark_mode(app)
+    vm.show_unread(app, 3)
     vm.quit(app)
 
     assert app.themes == ["dark"]
+    assert app.badge.value == 3
     assert app.exit_codes == [0]
 
 
