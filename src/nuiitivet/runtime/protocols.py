@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Awaitable, Protocol
 
 if TYPE_CHECKING:
-    from nuiitivet.observable.protocols import ObservableBase
+    from nuiitivet.observable.protocols import MutableObservableBase, ObservableBase
     from nuiitivet.theme.theme import Theme
 
 
@@ -21,7 +21,7 @@ class AppProtocol(Protocol):
                 app.set_theme("dark")
 
     ``App.of(context)`` returns the running app typed as this protocol, and a
-    hand-written fake needs only these three methods -- no widget tree and no
+    hand-written fake needs only these members -- no widget tree and no
     event loop.
     """
 
@@ -36,6 +36,12 @@ class AppProtocol(Protocol):
 
     def register_themes(self, themes: "dict[str, Theme]") -> None:
         """Register named themes for later :meth:`set_theme` calls by name."""
+        ...
+
+    @property
+    def badge(self) -> "MutableObservableBase[int | str | None]":
+        """The badge on the app's Dock or taskbar icon: a count, a short
+        text, or ``None`` for no badge."""
         ...
 
 

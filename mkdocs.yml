@@ -171,6 +171,7 @@ nav:
           - Window Chrome: guide/window/chrome.md
           - Size and Position: guide/window/size_position.md
           - App Icon: guide/window/app_icon.md
+          - App Badge: guide/window/app_badge.md
           - Operations: guide/window/operations.md
           - Renderer Selection: guide/window/renderer_selection.md
           - File Dialogs: guide/window/file_dialogs.md

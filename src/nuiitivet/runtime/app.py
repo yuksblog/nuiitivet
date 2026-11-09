@@ -19,6 +19,8 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.common.target import is_web
+from nuiitivet.observable import Observable
+from nuiitivet.platform.badge import BadgeBinding, BadgeValue, WindowHandle
 from nuiitivet.platform.tray import TrayIcon
 from nuiitivet.theme.manager import ThemeManager
 from nuiitivet.theme.plain_theme import PlainTheme
@@ -139,6 +141,8 @@ class App:
         if tray is not None and not isinstance(tray, TrayIcon):
             raise TypeError("App(tray=...) takes a TrayIcon.")
         self._tray = tray
+        self._badge: Observable[BadgeValue] = Observable(None)
+        self._badge_binding: Optional[BadgeBinding] = None
         self._windows: list[Window] = []
         self._main_window: Window | None = None
         # Set by the running backend so a Window opened mid-run gets its OS
@@ -229,7 +233,7 @@ class App:
 
         The declared type is :class:`~nuiitivet.runtime.protocols.AppProtocol`
         so callers in the widget tree depend only on the narrow surface
-        (``exit``, ``set_theme``, ``register_themes``). Valid from
+        (``exit``, ``set_theme``, ``register_themes``, ``badge``). Valid from
         ``on_mount``, not from ``__init__``, like every ``.of()`` lookup.
 
         Args:
@@ -348,6 +352,36 @@ class App:
         if self._tray is not None:
             self._tray._uninstall()
 
+    @property
+    def badge(self) -> Observable[BadgeValue]:
+        """The badge on the app's Dock or taskbar icon.
+
+        Write a count or a short text to show it; ``None``, ``0`` or ``""``
+        removes it. The badge shows while :meth:`run` runs: the Dock's red
+        bubble on macOS, an overlay on the main window's taskbar button on
+        Windows, the launcher count on Linux. Windows shows a count above 99
+        as ``99+`` and the first three characters of a text; Linux shows a
+        count only. A platform that cannot show the badge logs once.
+        """
+        return self._badge
+
+    def _install_badge(self, window_handle: WindowHandle) -> None:
+        """Backend hook: show the badge once the loop is up.
+
+        Args:
+            window_handle: Returns the main window's native handle, or ``None``
+                while it has none.
+        """
+        if self._badge_binding is None:
+            self._badge_binding = BadgeBinding(self._badge, window_handle)
+            self._badge_binding.install()
+
+    def _uninstall_badge(self) -> None:
+        """Backend hook: remove the badge when the loop stops."""
+        binding, self._badge_binding = self._badge_binding, None
+        if binding is not None:
+            binding.uninstall()
+
     def _visible_window_count(self) -> int:
         """How many open windows are currently visible (hidden ones excluded)."""
         return sum(
@@ -360,10 +394,13 @@ class App:
         """A window was shown, hidden, opened, or closed.
 
         Feeds the tray's ``dock_visibility="auto"`` policy (macOS: Dock icon
-        only while some window is visible).
+        only while some window is visible), and shows the badge again: a
+        window shown again has a new taskbar button on Windows.
         """
         if self._tray is not None:
             self._tray._refresh_dock(self._visible_window_count())
+        if self._badge_binding is not None:
+            self._badge_binding.refresh()
 
     def _stop_loop(self) -> None:
         import sys

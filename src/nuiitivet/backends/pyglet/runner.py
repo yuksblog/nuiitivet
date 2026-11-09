@@ -193,10 +193,23 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
         exception_once(logger, "pyglet_install_tray_exc", "Tray icon install raised")
 
     try:
+        install_badge = getattr(app, "_install_badge", None)
+        if callable(install_badge):
+            install_badge(lambda: _main_window_handle(app))
+    except Exception:
+        exception_once(logger, "pyglet_install_badge_exc", "App badge install raised")
+
+    try:
         event_loop.run()
     finally:
         # Work spawned after the loop ended would otherwise wait forever.
         drop_pending_tasks()
+        try:
+            uninstall_badge = getattr(app, "_uninstall_badge", None)
+            if callable(uninstall_badge):
+                uninstall_badge()
+        except Exception:
+            exception_once(logger, "pyglet_uninstall_badge_exc", "App badge uninstall raised")
         try:
             uninstall_tray = getattr(app, "_uninstall_tray", None)
             if callable(uninstall_tray):
@@ -221,6 +234,16 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
                 pyglet.app.event_loop = _DefaultEventLoop()
         except Exception:
             exception_once(logger, "pyglet_restore_event_loop_exc", "Failed to restore pyglet.app.event_loop")
+
+
+def _main_window_handle(app: Any) -> Optional[int]:
+    """The main window's ``HWND``; ``None`` off Windows and while the window is not realized."""
+    try:
+        window = getattr(app.main_window, "_window", None)
+    except RuntimeError:
+        return None
+    hwnd = getattr(window, "_hwnd", None)
+    return int(hwnd) if hwnd else None
 
 
 def load_app_icon(path: Any) -> Any:

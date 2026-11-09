@@ -307,6 +307,8 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
     app._realize_window_hook = realize
     for win in list(app.windows):
         realize(win)
+    # A page has no badge: the first one the app writes is logged, once.
+    app._install_badge(lambda: None)
 
 
 __all__ = ["prepare", "run_app"]
