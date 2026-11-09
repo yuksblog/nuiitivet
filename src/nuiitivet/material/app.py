@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from pathlib import Path
+from typing import Any, Optional, Union
 
 from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.platform.tray import TrayIcon
@@ -26,6 +27,7 @@ class MaterialApp(App):
         *,
         theme: Optional[Any] = None,
         exit_policy: ExitPolicy = ExitPolicy.LAST_WINDOW_CLOSED,
+        icon: Optional[Union[str, Path]] = None,
         tray: Optional[TrayIcon] = None,
     ) -> None:
         """Initialize a MaterialApp.
@@ -36,10 +38,13 @@ class MaterialApp(App):
             theme: The MaterialThemeFactory to use. Defaults to Light theme.
             exit_policy: When :meth:`run` returns; see
                 :class:`~nuiitivet.runtime.app.ExitPolicy`.
+            icon: Path to the app's icon image, shown in the Dock, on the
+                taskbar and as the page's favicon; see
+                :class:`~nuiitivet.runtime.app.App`.
             tray: A :class:`~nuiitivet.platform.tray.TrayIcon` to show while
                 the app runs; see :attr:`TrayIcon.installed`.
         """
         if theme is None:
             theme = MaterialThemeFactory.light("#6750A4")
 
-        super().__init__(window, theme=theme, exit_policy=exit_policy, tray=tray)
+        super().__init__(window, theme=theme, exit_policy=exit_policy, icon=icon, tray=tray)

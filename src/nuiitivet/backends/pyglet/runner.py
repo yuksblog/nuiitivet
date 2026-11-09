@@ -223,6 +223,28 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
             exception_once(logger, "pyglet_restore_event_loop_exc", "Failed to restore pyglet.app.event_loop")
 
 
+def load_app_icon(path: Any) -> Any:
+    """Decode the App's icon file for ``Window.set_icon``; ``None``, logged once, when it cannot be read."""
+    try:
+        return pyglet.image.load(str(path))
+    except Exception:
+        exception_once(logger, "pyglet_app_icon_load_exc", "App icon could not be loaded: %s", path)
+        return None
+
+
+def _apply_app_icon(owner_app: Any, window: Any) -> None:
+    path = getattr(owner_app, "icon_path", None)
+    if path is None:
+        return
+    image = load_app_icon(path)
+    if image is None:
+        return
+    try:
+        window.set_icon(image)
+    except Exception:
+        exception_once(logger, "pyglet_set_icon_exc", "Window.set_icon raised")
+
+
 def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: RendererMode = "auto") -> None:
     """Create and wire the OS window for one open ``Window``.
 
@@ -339,6 +361,8 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
 
     setattr(win, "_window", window)
     setattr(win, "_event_loop", event_loop)
+
+    _apply_app_icon(owner_app, window)
 
     def _show_mouse_cursor(cursor: MouseCursor) -> None:
         window.set_mouse_cursor(window.get_system_mouse_cursor(PYGLET_CURSOR_NAMES[cursor]))

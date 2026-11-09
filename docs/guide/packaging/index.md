@@ -45,7 +45,7 @@ pyinstaller main.py --name "MyApp" --onedir --noconsole --clean
 uv run pyinstaller main.py --name "MyApp" --onedir --noconsole --clean
 ```
 
-### Common Options
+#### Common Options
 
 | Option | Required? | Description |
 | :--- | :--- | :--- |
@@ -53,9 +53,10 @@ uv run pyinstaller main.py --name "MyApp" --onedir --noconsole --clean
 | `--onefile` | No | Bundle everything into a single executable. <br> **Pros:** Easy distribution. **Cons:** Slower startup (unpacks to a temp dir). |
 | `--clean` | No | Clean PyInstaller cache before building. |
 | `--name "Name"` | No | Specify the name of the executable. |
-| `--icon path/to/icon` | No | Set the app icon. Cross-platform flag; only the file format differs (`.ico` on Windows, `.icns` on macOS). |
+| `--icon path/to/icon` | No | Set the app icon: an `.ico` file on Windows, an `.icns` file on macOS. Ignored on Linux; see [Linux Desktop Entry](#linux-desktop-entry). |
+| `--add-data "assets:assets"` | No | Bundle the app's own files, such as images and fonts, as `source:destination`. A path built from `__file__` finds them in the bundle. |
 
-### Platform-Specific Options
+#### Platform-Specific Options
 
 | Option | Required? | Description |
 | :--- | :--- | :--- |
@@ -101,24 +102,25 @@ python -m nuitka main.py \
 # uv run python -m nuitka ...
 ```
 
-### Common Options
+#### Common Options
 
 | Option | Required? | Description |
 | :--- | :--- | :--- |
 | `--standalone` | **YES** | Make the executable standalone (includes Python runtime). Produces a directory (recommended for faster startup). |
 | `--include-package=nuiitivet` | **YES** | Must be set to `nuiitivet`. Forces inclusion of the package to handle lazy imports. |
 | `--include-package-data=nuiitivet` | **YES** | Must be set to `nuiitivet`. Bundles assets like fonts and icons. |
+| `--include-data-dir=assets=assets` | No | Bundle the app's own files, such as images and fonts, as `source=destination`. A path built from `__file__` finds them in the bundle. |
 | `--onefile` | No | Bundle into a single executable. Easier to distribute, but slower to start (unpacks to a temp dir). |
 | `--output-dir` | No | Directory to put the result in (e.g., `dist`). |
 | `--enable-plugin` | No | `anti-bloat` is recommended to reduce file size. |
 
-### Platform-Specific Options
+#### Platform-Specific Options
 
 | Option | Required? | Description |
 | :--- | :--- | :--- |
 | `--windows-console-mode=disable` | No | **Windows only.** Hide the console window for GUI apps. Ignored on macOS/Linux — no need to write it there. |
 | `--macos-create-app-bundle` | No | **macOS only.** Build a `.app` bundle. A `.app` is a directory, so pair it with the recommended `--standalone` build (not with `--onefile`). |
-| `--macos-app-icon=icon` / `--windows-icon-from-ico=icon` | No | Set the app icon on macOS / Windows. Nuitka has no Linux icon flag — on Linux, the icon is set via a `.desktop` file, not embedded in the binary. |
+| `--macos-app-icon=icon` / `--windows-icon-from-ico=icon` | No | Set the app icon on macOS / Windows. Nuitka has no Linux icon flag; see [Linux Desktop Entry](#linux-desktop-entry). |
 | `--macos-signed-app-name=com.example.myapp` | No | **macOS only.** Set the bundle identifier the `.app` is signed under — see [macOS App Identity](#macos-app-identity). |
 
 ### 3. Result
@@ -149,3 +151,20 @@ To give your app an identity:
 
 Windows and Linux need nothing here: no notification feature in nuiitivet
 requires a registered app identity on those platforms.
+
+## Linux Desktop Entry
+
+Neither tool puts the app in the app menu on Linux. A desktop entry does. It
+is a `.desktop` file you write yourself. It names the app, the executable
+and the icon.
+
+```ini
+[Desktop Entry]
+Type=Application
+Name=MyApp
+Exec=/opt/myapp/MyApp
+Icon=/opt/myapp/assets/app_icon.png
+```
+
+Save it as `~/.local/share/applications/myapp.desktop` for one user, or
+under `/usr/share/applications/` for every user. The [Desktop Entry Specification](https://specifications.freedesktop.org/desktop-entry/latest/) lists the other keys.

@@ -68,7 +68,8 @@ def _launch(playwright: playwright_api.Playwright) -> playwright_api.Browser:
     pytest.skip(f"no Chromium to drive: {last}")
 
 
-def _browser_render(url: str, out: Path) -> str:
+def _browser_render(url: str, out: Path) -> tuple[str, str]:
+    """The page's state once the app started, and its favicon's URL."""
     with playwright_api.sync_playwright() as playwright:
         browser = _launch(playwright)
         try:
@@ -78,13 +79,14 @@ def _browser_render(url: str, out: Path) -> str:
             page.goto(url)
             page.wait_for_function("document.body.dataset.state !== undefined", timeout=180_000)
             state = page.evaluate("document.body.dataset.state")
+            icon = page.evaluate("document.querySelector('link[rel=icon]')?.href ?? ''")
             # One frame after the app started, so what the first paint drew is on the canvas.
             page.wait_for_timeout(500)
             page.screenshot(path=str(out))
         finally:
             browser.close()
     assert not errors, errors
-    return state
+    return state, icon
 
 
 def _desktop_render(out: Path) -> None:
@@ -128,8 +130,10 @@ def _differing_blocks(a: list[tuple[float, float, float]], b: list[tuple[float, 
 
 
 def test_the_browser_paints_the_sample_as_the_desktop_does(page_url: str, tmp_path: Path) -> None:
-    state = _browser_render(page_url, tmp_path / "browser.png")
+    state, icon = _browser_render(page_url, tmp_path / "browser.png")
     assert state == "running"
+    # The sample's icon.png became the favicon, served from the page's own memory.
+    assert icon.startswith("blob:"), icon
 
     _desktop_render(tmp_path / "desktop.png")
 
