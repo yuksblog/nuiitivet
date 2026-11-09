@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import logging
+import mimetypes
 import sys
 import time
+from pathlib import Path
 from typing import Any, Optional
 
 import js
-from pyodide.ffi import create_proxy
+from pyodide.ffi import create_proxy, to_js
 
 from nuiitivet.backends.web import skia
 from nuiitivet.backends.web.clock import BrowserClock
@@ -256,6 +258,20 @@ def prepare() -> None:
         set_clock(_loop.clock)
 
 
+def _apply_app_icon(app: Any, host: Any) -> None:
+    """Make the App's icon file the page's favicon; a file that cannot be read is logged once."""
+    path = app.icon_path
+    if path is None:
+        return
+    try:
+        data = Path(path).read_bytes()
+    except Exception:
+        exception_once(logger, "web_app_icon_load_exc", "App icon could not be loaded: %s", path)
+        return
+    media_type = mimetypes.guess_type(str(path))[0] or "image/png"
+    host.setIcon(to_js(data), media_type)
+
+
 def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
     """Start drawing ``app`` onto the page's canvas, and return.
 
@@ -282,6 +298,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None) -> None:
         title = getattr(win._title_value, "value", win._title_value)
         if title is not None:
             js.document.title = str(title)
+        _apply_app_icon(app, loop._host)
         win._event_loop = loop
         win._mouse_cursor_sink = lambda cursor: loop._host.setCursor(cursor_css(cursor))
         loop.attach(win)

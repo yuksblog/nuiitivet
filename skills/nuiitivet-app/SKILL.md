@@ -169,6 +169,7 @@ catalog below), not a job for `Container` — its box is layout-only.
 | --- | --- | --- |
 | Secondary / modal window | `Window` | `nv.Window(content=lambda: Palette(state), title="Palette").open()` |
 | Application menu bar | `MenuBar` / `MenuEntry` | `nv.Window(..., menu=nv.MenuBar([nv.MenuEntry("File", submenu=[...])]))` |
+| Dock / taskbar icon, favicon | `App(icon=...)` | `nv.App(win, icon="assets/app.png")` |
 | System tray icon / resident app | `TrayIcon` | `nv.App(win, tray=nv.TrayIcon(icon="tray.png", menu=[...]))` |
 | Native open / save / folder dialog | `FileDialog` | `path = await nv.FileDialog.open_file(file_types=["txt", "md"])` |
 | OS desktop notification | `Desktop.notify` | `nv.Desktop.notify("Import done", "1,000 rows written")` |

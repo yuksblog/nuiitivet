@@ -95,7 +95,7 @@ flowchart LR
 | `boot.mjs` | starts the worker, loads the runtimes, the zip and the fonts in parallel, unpacks the zip, installs the host, runs the entry |
 | `config.json` | where Pyodide and CanvasKit are, the Pyodide packages the app imports and where their wheels are, the fonts, the entry, the modules that hold a `@worker` function |
 | `bundle.zip` | the framework under `lib/` and the app's directory under `app/` |
-| `host.mjs` | owns the canvas, the WebGL surface, the input element, the clipboard, the file picker and the download |
+| `host.mjs` | owns the canvas, the WebGL surface, the input element, the clipboard, the file picker, the download and the favicon |
 | `workers.mjs` | starts Web Workers on request and relays their messages |
 | `worker.mjs` | a second Pyodide that imports the worker modules and runs calls |
 | the app's entry script | the app's `main()`, run as `__main__` |
@@ -181,7 +181,7 @@ flowchart LR
     runner -- "begin_frame(now) · end_frame()" --> frame
     window -- "Paint · Path · TextBlob · Picture …" --> adapter
     adapter -- "the matrix once per run of draws, geometry and paint state as numbers" --> canvaskit
-    runner -- "frame() · placeInput · setCursor · writeClipboard" --> host
+    runner -- "frame() · placeInput · setCursor · setIcon(bytes, type) · writeClipboard" --> host
     dialogs -- "pick(accept, multiple, directory) · download(name, bytes)" --> host
     dialogs -- "a fresh directory, the files copied in" --> pyodide
 ```
@@ -196,7 +196,7 @@ flowchart LR
 | `runtime/gc_pacing.py` | `GcPacer`: holds the collector for the page's life; collects on the timer after a frame ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
 | `widgeting/idle_work.py` | the tasks the timer after a frame runs ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
 | `widgeting/frame_clock.py` | whether a frame is under way and when it began; the frame interval stays its default ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
-| `host.mjs` | the canvas, the input element, the clipboard, the picker, the download (The Page) |
+| `host.mjs` | the canvas, the input element, the clipboard, the picker, the download, the favicon (The Page) |
 | `runtime/window.py` | the dispatch methods and the paint the pyglet backend also calls ([APP_WINDOW.md](APP_WINDOW.md)) |
 | the browser | `requestAnimationFrame` and `setTimeout` |
 | Pyodide | the page's file system, where a picked or saved file lives |
@@ -271,6 +271,7 @@ sequenceDiagram
 - A deadline within a frame's time waits for the next frame. A later one is a
   `setTimeout`.
 - The main window fills the canvas.
+- The page's favicon is the App's icon file.
 - From the host boundary on, the key handling is the desktop's.
 - The clipboard crosses in one direction at a time. A copy writes through
   `navigator.clipboard`. A paste arrives only as a paste event.

@@ -14,7 +14,8 @@ from __future__ import annotations
 import logging
 import weakref
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.common.target import is_web
@@ -100,6 +101,7 @@ class App:
         *,
         theme: Optional[Any] = None,
         exit_policy: ExitPolicy = ExitPolicy.LAST_WINDOW_CLOSED,
+        icon: Optional[Union[str, Path]] = None,
         tray: Optional[TrayIcon] = None,
     ):
         """Initialize the App (and open its main window).
@@ -108,6 +110,11 @@ class App:
             window: The main :class:`Window`.
             theme: Theme to install, app-wide.
             exit_policy: When :meth:`run` returns; see :class:`ExitPolicy`.
+            icon: Path to the app's icon image (PNG recommended). Shown in the
+                Dock (macOS), on the window and its taskbar button (Windows),
+                as the X11 window icon (Linux) and as the page's favicon (web),
+                on every window the app opens. A file that cannot be read is
+                logged once; the app runs with the platform's default icon.
             tray: A :class:`~nuiitivet.platform.tray.TrayIcon` to show while
                 the app runs. Installed when :meth:`run` starts, removed when
                 it returns; see :attr:`TrayIcon.installed` for whether the
@@ -126,6 +133,9 @@ class App:
         self._theme_registry: dict[str, Any] = {}
 
         self.exit_policy = exit_policy
+        if icon is not None and not isinstance(icon, (str, Path)):
+            raise TypeError("App(icon=...) takes a path to an image file.")
+        self._icon_path: Optional[Path] = Path(icon) if icon is not None else None
         if tray is not None and not isinstance(tray, TrayIcon):
             raise TypeError("App(tray=...) takes a TrayIcon.")
         self._tray = tray
@@ -317,6 +327,11 @@ class App:
                     exception_once(logger, "app_exit_close_window_exc", "Closing a window on exit raised")
         finally:
             self._stop_loop()
+
+    @property
+    def icon_path(self) -> Optional[Path]:
+        """Path to the app's icon image, or ``None``."""
+        return self._icon_path
 
     @property
     def tray(self) -> Optional[TrayIcon]:

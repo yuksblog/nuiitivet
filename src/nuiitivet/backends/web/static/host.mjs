@@ -52,6 +52,17 @@ export function installHost(CK, canvas, input, fonts) {
     setCursor(name) {
       canvas.style.cursor = name;
     },
+    // The page's favicon, from the icon file the App names.
+    setIcon(bytes, type) {
+      let link = document.querySelector('link[rel="icon"]');
+      if (!link) {
+        link = document.createElement("link");
+        link.rel = "icon";
+        document.head.append(link);
+      }
+      if (link.href.startsWith("blob:")) URL.revokeObjectURL(link.href);
+      link.href = URL.createObjectURL(new Blob([bytes], { type }));
+    },
     writeClipboard(text) {
       navigator.clipboard?.writeText(text).catch((error) => console.warn("copy failed:", error));
     },

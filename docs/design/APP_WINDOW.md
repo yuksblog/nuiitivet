@@ -68,7 +68,7 @@ flowchart LR
     session[dev/session.py]
     code[the app's code]
 
-    code -- "App(window, theme, exit_policy) · run(draw_fps, renderer) · exit(code) · set_theme(theme) · render_to_png(path)" --> app
+    code -- "App(window, theme, exit_policy, icon, tray) · run(draw_fps, renderer) · exit(code) · set_theme(theme) · render_to_png(path)" --> app
     window -- "_register_window(self) · _unregister_window(self)" --> app
     app -- "_attach_app(self) · close() · window.root · _background_uses_theme() · _update_background_color() · invalidate() · render_to_png(path)" --> window
     app -- "ThemeManager(theme) · set_theme(theme) · on_change" --> manager
@@ -80,7 +80,7 @@ flowchart LR
 
 | Module | Role |
 | --- | --- |
-| `runtime/app.py` | `App`: the window list, the main window, `ExitPolicy`, the one `ThemeManager`, the loop handle, the realise hook; `AppScope` |
+| `runtime/app.py` | `App`: the window list, the main window, `ExitPolicy`, the one `ThemeManager`, the icon path, the loop handle, the realise hook; `AppScope` |
 | `runtime/window.py` | registers on open, unregisters on close (The Window) |
 | `backends/pyglet/runner.py` | the loop `run()` blocks on (The Runner) |
 | `theme/manager.py` | holds the current theme ([STYLE_THEME.md](STYLE_THEME.md)) |
@@ -222,14 +222,14 @@ flowchart LR
     runner -- "ResponsiveEventLoop(draw, fps, keep_running_without_windows) · run()" --> loop
     runner -- "set_ui_thread() · set_clock(clock)" --> clock
     runner -- "_realize_window_hook = _realize · _event_loop · _install_tray() · _uninstall_tray()" --> app
-    runner -- "pyglet.window.Window(...) · the event handlers · the GPU context · the IME and first-mouse patches" --> pyglet
+    runner -- "pyglet.window.Window(...) · set_icon(image) · the event handlers · the GPU context · the IME and first-mouse patches" --> pyglet
     runner -- "_render_frame(dt) · _dispatch_*(...) · _handle_close_request() · _on_window_created() · _set_os_active(active)" --> window
     runner -- "drop_pending_tasks()" --> callbacks
 ```
 
 | Module | Role |
 | --- | --- |
-| `backends/pyglet/runner.py` | `run_app`: the DPI awareness, the clock, the loop, the realise hook, the tray; `_realize_window`: the pyglet window, its event wiring, the per-window GPU state, the patches |
+| `backends/pyglet/runner.py` | `run_app`: the DPI awareness, the clock, the loop, the realise hook, the tray; `_realize_window`: the pyglet window, the App's icon on it, its event wiring, the per-window GPU state, the patches |
 | `backends/pyglet/event_loop.py` | `ResponsiveEventLoop`: draws the open windows on demand, keeps running without windows when told to ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
 | `runtime/window.py` | the host protocol the OS events are dispatched into (The Window) |
 | `runtime/app.py` | the windows to realise, the hook for later ones (The App) |
@@ -270,5 +270,6 @@ sequenceDiagram
 
 - The UI thread is the thread that installs the clock.
 - Every open window has an OS window while the loop runs.
+- Every OS window the runner makes carries the App's icon.
 - A window's OS events enter the `Window`'s dispatch methods. Nothing in the
   runner reads the tree.

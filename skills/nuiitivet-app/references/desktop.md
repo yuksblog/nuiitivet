@@ -42,6 +42,17 @@ take Observables. `shortcut` also fires window-wide, so never duplicate it with
 `key_shortcut`. Replace the bar with `window.menu = ...`; `nv.MenuBarArea()`
 relocates it.
 
+## App icon
+
+```python
+nv.App(win, icon="assets/app.png")
+```
+
+- One image for every window the app opens: the Dock tile, the Windows title
+  bar and taskbar button, the X11 window icon, the favicon.
+- A file that cannot be read is logged once; the app keeps the default icon.
+- Not the tray icon: `TrayIcon(icon=...)` is a separate image in the tray.
+
 ## System tray
 
 ```python
@@ -119,6 +130,7 @@ font files carry over as they are. The rest:
 | --- | --- |
 | `nv.Window(width=..., height=...)` | Ignored: the main window fills the canvas |
 | `nv.Window(title=...)` | The tab title |
+| `nv.App(..., icon=...)` | The tab's favicon |
 | A second `nv.Window(...).open()` | Not shown |
 | `nv.Desktop.notify(...)` | Nothing |
 | A system font name | The shipped text font |

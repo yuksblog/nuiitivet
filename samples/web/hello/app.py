@@ -4,7 +4,12 @@ Run on the desktop:   python app.py
 Run in a browser:     python -m nuiitivet.web run app.py
 """
 
+from pathlib import Path
+
 import nuiitivet.material as nv
+
+# The Dock / taskbar icon on the desktop, the favicon in the browser.
+ICON = Path(__file__).with_name("icon.png")
 
 
 class Counter(nv.ComposableWidget):
@@ -27,7 +32,7 @@ class Counter(nv.ComposableWidget):
 
 
 def main() -> None:
-    nv.App(nv.Window(content=Counter, title="Hello", width=320, height=200)).run()
+    nv.App(nv.Window(content=Counter, title="Hello", width=320, height=200), icon=ICON).run()
 
 
 if __name__ == "__main__":
