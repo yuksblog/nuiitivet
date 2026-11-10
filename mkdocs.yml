@@ -179,6 +179,7 @@ nav:
           - Multiple Windows: guide/window/multi_window.md
           - Desktop Notifications: guide/window/notifications.md
           - Tray Icon: guide/window/tray_icon.md
+          - Screen Reader: guide/window/screen_reader.md
       - Modifiers:
           - guide/modifiers/index.md
           - Decoration: guide/modifiers/decoration.md

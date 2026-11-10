@@ -19,6 +19,7 @@ dependencies = [
   "pyopengl>=3.1.10",
   "skia-python>=138.0",
   'jeepney>=0.9.0; sys_platform == "linux"',
+  'accesskit>=0.7.0; sys_platform == "darwin"',
 ]
 description = "An intuitive UI framework for Python"
 keywords = ["ui", "desktop", "framework", "graphics", "opengl", "skia", "material design"]
@@ -63,6 +64,9 @@ dev = [
   # installed: extras are not synced by default, and the sync is exact.
   "nuiitivet[dev]",
   "nuiitivet[matplotlib]",
+  # The bridge's tree conversion is tested on every platform; the app needs
+  # the package only where a bridge exists.
+  "accesskit>=0.7.0",
   "flake8>=7.0.0",
   "mypy>=1.18.2",
   "pytest>=9.0.1",

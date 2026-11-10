@@ -49,7 +49,8 @@ tend to go wrong.
   [notifications](docs/guide/window/notifications.md),
   [tray icon](docs/guide/window/tray_icon.md),
   [multiple windows](docs/guide/window/multi_window.md),
-  [window chrome](docs/guide/window/chrome.md)
+  [window chrome](docs/guide/window/chrome.md),
+  [screen reader](docs/guide/window/screen_reader.md)
 - **Shipping an executable**: recipes for PyInstaller and Nuitka
   ([Packaging](docs/guide/packaging/index.md)). One executable, onto a machine
   with no Python on it
@@ -62,10 +63,10 @@ tend to go wrong.
 
 ### 1.4 Not there yet
 
-- Mouse cursor shapes
-- OS accessibility: screen readers and VoiceOver cannot inspect the UI
+- Screen readers on Windows and Linux: VoiceOver on macOS reads the UI, the
+  others cannot yet
 
-Both are tracked in [issues](https://github.com/yuksblog/nuiitivet/issues).
+It is tracked in [issues](https://github.com/yuksblog/nuiitivet/issues).
 By design, a desktop app opens an OS window, so a headless machine with no
 display cannot run one. A GPU is recommended; without one, rendering falls
 back to CPU raster

@@ -1,11 +1,13 @@
 # Accessibility
 
 The window assembles what its widgets say about themselves into a tree of
-entries. A reader hands that tree to assistive technology.
+entries. A bridge hands that tree to the OS, where assistive technology
+reads it.
 
 ## Overview
 
-Two groups of modules take part, and the reader that asks them.
+Three groups of modules take part, between the widgets and the assistive
+technology.
 
 ### Structure
 
@@ -13,26 +15,31 @@ Two groups of modules take part, and the reader that asks them.
 flowchart LR
     semantics[The Semantics]
     tree[The Tree]
-    reader[the reader]
+    bridge[The Bridge]
+    at[the assistive technology]
 
     tree -- "semantics_node · describe() · parts()" --> semantics
     tree -- "activate() · adjust(part, direction)" --> semantics
-    reader -- "semantics_tree() · perform_semantics_action(id, action)" --> tree
-    tree -- "a SemanticsTree" --> reader
+    bridge -- "semantics_tree() · perform_semantics_action(id, action)" --> tree
+    tree -- "a SemanticsTree" --> bridge
+    bridge -- "the tree, as AccessKit nodes" --> at
+    at -- "the first ask · an action" --> bridge
 ```
 
 | Module | Role |
 | --- | --- |
 | The Semantics | the node, the value it answers in, the modifier that overrides the answer, the widgets that attach one |
 | The Tree | the walk that turns the answers into entries, the focused entry, the actions |
-| the reader | asks a window for its tree, sends an action back |
+| The Bridge | the tree as AccessKit takes it, the adapter on the OS window, the frame that pushes an update |
+| the assistive technology | reads the tree through the OS, sends an action back |
 
 ### Promises
 
-- A widget says what it is. Only the window builds the tree.
+- A widget says what it is. Only the window builds the tree. Only the bridge
+  talks to the OS.
 - A widget's answer is read when the tree is built. Nothing is kept between
   two trees but the ids.
-- A tree holds no widget. The reader names an entry by its id.
+- A tree holds no widget. The bridge names an entry by its id.
 - The tree is asked for on the UI thread, after a layout.
 
 ## The Semantics
@@ -104,7 +111,7 @@ the focused one, or carries one action to a widget.
 
 ```mermaid
 flowchart LR
-    reader[the reader]
+    reader[AccessKitBridge]
     window[Window]
     builder[_Builder]
     tree[SemanticsTree]
@@ -127,7 +134,7 @@ flowchart LR
 
 | Module | Role |
 | --- | --- |
-| the reader | asks for the tree, sends an action back |
+| `AccessKitBridge` | asks for the tree, sends an action back (The Bridge) |
 | `Window` | `semantics_tree()` and `perform_semantics_action()`, the walk's root, the focused node, the last input source |
 | `_Builder` | builds the entries from the nodes the walk meets, finds the focused entry, finds the node an action goes to |
 | `SemanticsTree` | the entries by id, the window's own at the root, the id of the focused one |
@@ -142,7 +149,7 @@ flowchart LR
 
 ```mermaid
 sequenceDiagram
-    participant R as the reader
+    participant R as AccessKitBridge
     participant W as Window
     participant B as _Builder
     participant N as SemanticsNode
@@ -191,3 +198,103 @@ sequenceDiagram
 - An action runs only when its entry lists it.
 - A disabled entry lists no action.
 - An action counts as keyboard input.
+
+## The Bridge
+
+An `AccessKitBridge` keeps one window's tree in an AccessKit adapter on the
+OS window. The pyglet runner installs it on macOS.
+
+### Structure
+
+```mermaid
+flowchart LR
+    realize["_realize_window()"]
+    bridge[AccessKitBridge]
+    convert["tree_update()"]
+    installer["install()"]
+    adapter[the AccessKit adapter]
+    oswindow[the OS window]
+    window[Window]
+    at[the assistive technology]
+
+    realize -- "AccessKitBridge(win, pixel_ratio, defer) · sync() after a dirty frame · set_view_focused(active)" --> bridge
+    realize -- "install(window, bridge)" --> installer
+    installer -- "add_focus_forwarder_to_window_class · setAccessibilityElement_(False) on the content view's subviews" --> oswindow
+    installer -- "SubclassingAdapter.for_window(activation_handler, action_handler)" --> adapter
+    installer -- "attach(adapter)" --> bridge
+    bridge -- "semantics_tree() · perform_semantics_action(id, action) · settle(window), when never laid out" --> window
+    bridge -- "tree_update(tree, pixel_ratio)" --> convert
+    bridge -- "update_if_active(build) · update_view_focus_state(focused), the events raised" --> adapter
+    adapter -- "activation_handler() · action_handler(request)" --> bridge
+    bridge -- "defer(perform)" --> realize
+    adapter -- "the content view's accessibility" --> oswindow
+    oswindow -- "NSAccessibility" --> at
+```
+
+| Module | Role |
+| --- | --- |
+| `_realize_window()` | the runner's setup of one OS window; installs the bridge, pushes after a frame that changed something, reports the window's activation, runs a deferred action on the next loop turn |
+| `AccessKitBridge` | answers the adapter's two callbacks, builds the update, pushes it |
+| `tree_update()` | turns a `SemanticsTree` into the whole-tree update AccessKit takes, with the root scaled to backing pixels |
+| `install()` | `accessibility_macos.py`; subclasses the content view with the adapter, routes the OS window's focused element to the content view, hides the content view's subviews |
+| the AccessKit adapter | AccessKit's macOS adapter; answers for the content view |
+| the OS window | the NSWindow and its content view; asks the content view for the focused element |
+| `Window` | the tree and the actions (The Tree) |
+| the assistive technology | VoiceOver, or any client of the accessibility API |
+
+### Sequence
+
+#### The assistive technology asks for the tree
+
+```mermaid
+sequenceDiagram
+    participant AT as the assistive technology
+    participant A as the AccessKit adapter
+    participant B as AccessKitBridge
+    participant W as Window
+
+    AT->>A: the first ask
+    A->>B: activation_handler()
+    opt the window never laid out
+        B->>W: settle(window)
+    end
+    B->>W: semantics_tree()
+    W-->>B: a SemanticsTree
+    B-->>A: a TreeUpdate
+    A-->>AT: the nodes
+```
+
+#### An action from the assistive technology
+
+```mermaid
+sequenceDiagram
+    participant AT as the assistive technology
+    participant A as the AccessKit adapter
+    participant B as AccessKitBridge
+    participant R as _realize_window()
+    participant W as Window
+
+    AT->>A: a press, a focus, an increment
+    A->>B: action_handler(request)
+    B->>R: defer(perform)
+    Note over R: the next loop turn
+    R->>B: perform
+    B->>W: perform_semantics_action(id, action)
+    B->>A: update_if_active(build)
+    A-->>AT: the events raised
+```
+
+### Promises
+
+- A callback the adapter runs never raises. It returns the tree or queues;
+  it never pushes an update.
+- An action runs on the next turn of the UI loop.
+- The tree is pushed after a frame that changed something. It is pushed
+  after an action.
+- Nothing is built while no assistive technology listens.
+- The adapter holds the OS window's activation, from the install on and at
+  each change.
+- The OS window answers the focused element through its content view. No
+  subview of the content view is an accessibility element.
+- The rects go out in backing pixels, through the root's transform.
+- An install that fails leaves the app running without a bridge.

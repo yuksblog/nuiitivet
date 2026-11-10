@@ -44,6 +44,14 @@ the user's cursor" is something the reader will hit; "two observables
 describing one thing" is not. Reach for the exact form only where the picture
 would be wrong.
 
+**A feature the framework runs on its own has two parts, in this order: what
+the reader gets with no code, then what they change.** The first part is a
+table of what each widget yields ("a checkbox: its role and its state, no
+words"), and it is where the reader learns whether their app needs the second
+part at all. A page that carries only the second part tells the reader to fix
+something they cannot see is broken. A section of the second part opens with
+what the reader sees or hears without the fix, then gives the fix.
+
 **A surprise is written where the reader meets it, in the shape of what
 they see.** Its place follows from when they meet it:
 
@@ -123,14 +131,17 @@ and the headings carry the rest.
 first; comments carry the point (`# bind this` / `# use this`). Prose after,
 only for what the code cannot show.
 
-**A reference closes the page.** A table or list that enumerates a
-vocabulary, every gesture, every command, every option, is a dictionary: the
-reader can use it only once they know what the feature is and how one round
-of it goes. It sits after the round and any reference of ways, as the page's
-last section, under a heading such as "Every gesture". The one table that
-opens a page is a chooser, the "You want to… / Read" table of a hub, since
-there the reader's first act is to choose. A page written table-first hands
-the reader the keys before the actions they belong to.
+**A dictionary closes the page; a model opens its part.** A table or list
+that enumerates a vocabulary, every gesture, every command, every option, is
+a dictionary: the reader can use it only once they know what the feature is
+and how one round of it goes. It sits after the round and any reference of
+ways, as the page's last section, under a heading such as "Every gesture". A
+table that carries the reader's model of the feature is not a dictionary: the
+"You want to… / Read" chooser of a hub, the OS × place matrix of where a
+badge shows, the widget × what-is-read table of a screen-reader page. It
+opens the part it belongs to, where the reader forms the picture the rest
+rests on. A page that puts a gesture table first hands the reader the keys
+before the actions they belong to.
 
 **Every snippet runs.** Execute each one before shipping, the inline ones too.
 A snippet that drifted from the API is worse than none.
@@ -305,7 +316,8 @@ read is not reviewed.
 - [ ] Each step one action; its ways sit one level below while each is a few lines; ways that outgrew the step moved to a reference of ways after the round, its cases one level below, and the step shows one and names that section
 - [ ] Sequence headings are numbered, set headings are not
 - [ ] Opens with what the thing is, in a sentence or two, then the code or the first step; no summary of the page
-- [ ] Every table or list that enumerates a vocabulary sits after the round and any reference of ways, as the page's last section; the only table that opens a page is a chooser on a hub
+- [ ] Every table or list that enumerates a vocabulary sits after the round and any reference of ways, as the page's last section; a table that carries the reader's model (a chooser, a matrix, what each widget yields) opens the part it belongs to
+- [ ] A feature the framework runs on its own: what the reader gets with no code comes first, as a table of what each widget yields; every section that changes a default opens with what is seen or heard without the fix, then the fix
 - [ ] Every snippet executed, including inline ones
 - [ ] Short sentences, one fact each, dense throughout; a fact repeated only where two places are far apart
 - [ ] Each sentence checked against `docs/design/` and the docstrings, both open beside the draft; what either already says is deleted

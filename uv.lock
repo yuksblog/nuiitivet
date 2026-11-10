@@ -11,6 +11,21 @@ resolution-markers = [
 ]
 
 [[package]]
+name = "accesskit"
+version = "0.7.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b2/e3/654ef585caa0425204687b1008921e99133ddd13c2390633637adf51dcdb/accesskit-0.7.0.tar.gz", hash = "sha256:d996be0cc6e573f6d308aea2727f95e72670dd0c86409e28e84575b7cc165639", size = 33253, upload-time = "2025-09-30T20:22:50.145Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/11/e2/8b52a46fe94cd1cf3caedfca9a771e4256c71bc15d5f8b732eaabaf115c1/accesskit-0.7.0-cp38-abi3-macosx_10_12_x86_64.macosx_11_0_arm64.macosx_10_12_universal2.whl", hash = "sha256:26ef439b2140926ebbf93976363122d24b6640a30766d5d2255d12046d64f897", size = 931556, upload-time = "2025-09-30T20:22:40.696Z" },
+    { url = "https://files.pythonhosted.org/packages/e1/19/f7399d471dc5da987b634c3b104f1dd5aab5d7e7a3dfc999a7c2cf5308c9/accesskit-0.7.0-cp38-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ab663a0a1ad379f7641b4b2a12f5a9fe01a5e68a42d004667132091988187b8f", size = 1387960, upload-time = "2025-09-30T20:22:42.043Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/88/10a64e061993c6cb4c9ddc2625ec0d5c2e7cb8e6b733c57a1dbeb2648b02/accesskit-0.7.0-cp38-abi3-manylinux_2_17_armv7l.manylinux2014_armv7l.whl", hash = "sha256:e316b15cc0e9f18506030b87b67823e972a74ebcb74380c1709022944d811d9e", size = 1267688, upload-time = "2025-09-30T20:22:43.117Z" },
+    { url = "https://files.pythonhosted.org/packages/c5/fc/265700385be49a8a57529e1f30622f675181a575878cca36ef0140c980fd/accesskit-0.7.0-cp38-abi3-manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:a77d9b8519afdef212f870352f08733b524ea10431b12560f451a0c057da75ee", size = 1338898, upload-time = "2025-09-30T20:22:45.167Z" },
+    { url = "https://files.pythonhosted.org/packages/67/46/d454996faf24ff1d44c227b3c0288d0bcd4565a80fdbce5f11320751f873/accesskit-0.7.0-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:49ecb2cef46251ae142c8b03d304ccfbf8ad97ece07c21e16b048c14fd4828f8", size = 1287241, upload-time = "2025-09-30T20:22:46.652Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/28/2bf2da9785495834f1dbbc8f5cf5bd0cbb7f8e2964f314a0f0ca67d37bc6/accesskit-0.7.0-cp38-abi3-win32.whl", hash = "sha256:e3263b794ee22dca9c7738cd214baddfaf4d36d24c03d835a8a9207f28c83efe", size = 290910, upload-time = "2025-09-30T20:22:48.052Z" },
+    { url = "https://files.pythonhosted.org/packages/bd/50/12c6c170ae31490a5a74a276783d6dbdbb089663bbce3c856b78230e6ea3/accesskit-0.7.0-cp38-abi3-win_amd64.whl", hash = "sha256:b3b61ce57ffbca99797dfec99be944f96c83ee1e3a336a3f37ea9a043e3ed8d8", size = 323241, upload-time = "2025-09-30T20:22:49.122Z" },
+]
+
+[[package]]
 name = "annotated-types"
 version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1446,6 +1461,7 @@ name = "nuiitivet"
 version = "0.28.0"
 source = { editable = "." }
 dependencies = [
+    { name = "accesskit", marker = "sys_platform == 'darwin'" },
     { name = "jeepney", marker = "sys_platform == 'linux'" },
     { name = "materialyoucolor" },
     { name = "pyglet" },
@@ -1466,6 +1482,7 @@ browser = [
     { name = "playwright" },
 ]
 dev = [
+    { name = "accesskit" },
     { name = "flake8" },
     { name = "mypy" },
     { name = "nuiitivet", extra = ["dev", "matplotlib"] },
@@ -1482,6 +1499,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
+    { name = "accesskit", marker = "sys_platform == 'darwin'", specifier = ">=0.7.0" },
     { name = "jeepney", marker = "sys_platform == 'linux'", specifier = ">=0.9.0" },
     { name = "materialyoucolor", specifier = ">=3.0.3" },
     { name = "matplotlib", marker = "extra == 'matplotlib'", specifier = ">=3.6" },
@@ -1495,6 +1513,7 @@ provides-extras = ["dev", "matplotlib"]
 [package.metadata.requires-dev]
 browser = [{ name = "playwright", specifier = ">=1.63.0" }]
 dev = [
+    { name = "accesskit", specifier = ">=0.7.0" },
     { name = "flake8", specifier = ">=7.0.0" },
     { name = "mypy", specifier = ">=1.18.2" },
     { name = "nuiitivet", extras = ["dev"] },
