@@ -35,6 +35,7 @@ from nuiitivet.material.styles.toggle_button_style import ToggleButtonStyle
 from nuiitivet.material.theme.form_factor import min_extent
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.interactive_widget import InteractiveWidget
+from nuiitivet.widgets.semantics import Semantics, SemanticsRole, ToggleState
 from nuiitivet.theme.dependency import theme_generation
 from nuiitivet.theme.theme import Theme
 from nuiitivet.theme.types import ColorSpec
@@ -993,6 +994,13 @@ class ToggleButtonBase(MaterialButtonBase):
                 pass
             return
         self._selected_internal = bool(new_value)
+
+    def _semantics(self) -> Optional[Semantics]:
+        return Semantics(
+            role=SemanticsRole.BUTTON,
+            toggled=ToggleState.ON if self.selected else ToggleState.OFF,
+            disabled=self.disabled,
+        )
 
     @property
     def style(self) -> ButtonStyle:

@@ -216,10 +216,12 @@ flowchart LR
     virt[VirtualStopPolicy]
     blocker[FocusTraversalBlocker]
     source[FocusSource]
+    semantics[SemanticsNode]
     window[Window]
 
     region -- "is a" --> mixin
     mixin -- "add_node · get_node · on_pointer_event" --> pointer & focus & drag & scope
+    mixin -- "add_node" --> semantics
     pointer -- "hovered · pressed" --> state
     focus -- "focused" --> state
     pointer -- "request_focus_from_pointer()" --> mixin
@@ -245,6 +247,7 @@ flowchart LR
 | `FocusTraversalPolicy`, `FocusNodePolicy`, `VirtualStopPolicy` | enumerates a scope's members and moves between them; over real child nodes, or over stops the owner keeps |
 | `FocusTraversalBlocker` | the protocol a host implements to hide its subtree from the Tab walk |
 | `FocusSource` | whether a focus change came from the keyboard or the pointer |
+| `SemanticsNode` | what the host says to assistive technology ([ACCESSIBILITY.md](ACCESSIBILITY.md)) |
 | `Window` | the one that sets focus (The Window) |
 
 ### Sequence

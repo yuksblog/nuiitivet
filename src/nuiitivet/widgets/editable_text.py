@@ -29,6 +29,7 @@ from nuiitivet.widgets.interaction import (
     FocusSource,
 )
 from nuiitivet.widgets.input_filter import InputFilter, InputFilterLike, to_input_filter
+from nuiitivet.widgets.semantics import Semantics, SemanticsNode, SemanticsRole, attach_semantics
 from nuiitivet.widgets.text_editing import (
     TextEditingValue,
     TextRange,
@@ -248,12 +249,26 @@ class EditableText(InteractionHostMixin, Widget):
 
         self.enable_click(on_press=self._handle_press)
 
+        #: The name assistive technology reads for the field; a wrapping field sets it.
+        self.semantics_label: Optional[str] = None
+        attach_semantics(self, SemanticsNode(self._semantics))
+
         if disabled:
             self.state.disabled = True
 
     def _default_mouse_cursor(self) -> Optional[MouseCursor]:
         """The I-beam while enabled; the arrow while disabled."""
         return MouseCursor.DEFAULT if self.state.disabled else MouseCursor.TEXT
+
+    def _semantics(self) -> Optional[Semantics]:
+        text = self.value
+        return Semantics(
+            role=SemanticsRole.TEXT_FIELD,
+            label=self.semantics_label,
+            # A masked field says how much was typed, never what.
+            value="•" * len(text) if self.obscure_text else text,
+            disabled=self.state.disabled,
+        )
 
     @property
     def text_color(self) -> ColorSpec:

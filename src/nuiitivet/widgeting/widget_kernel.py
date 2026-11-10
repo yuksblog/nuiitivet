@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from nuiitivet.widgeting.paint_replay import replay_safe
 import logging
-from typing import Any, Callable, List, Optional, Tuple, TypeAlias, Union
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple, TypeAlias, Union
 
 from ..common.back_reference import back_reference
 from ..input.cursor import MouseCursor
@@ -15,6 +15,9 @@ from ..rendering.sizing import Sizing, SizingLike, parse_sizing
 from ..runtime.threading import assert_ui_thread
 from .widget_size_change import SizeCallback, invoke_size_callback, queue_size_change
 from nuiitivet.observable.protocols import ObservableBase
+
+if TYPE_CHECKING:
+    from ..widgets.semantics import SemanticsNode
 
 
 _logger = logging.getLogger(__name__)
@@ -41,6 +44,8 @@ class WidgetKernel:
     # The ``AppScope`` this widget resolved on its first ``.of()`` lookup after
     # mounting; owned by ``context_lookup.find_app_scope``, reset by mount/unmount.
     _app_scope: Any = None
+    # Set by ``attach_semantics``; ``None`` while the widget says nothing.
+    _semantics_node: Optional["SemanticsNode"] = None
 
     def __init__(
         self,
@@ -510,6 +515,15 @@ class WidgetKernel:
         field the I-beam, unless the ``cursor()`` modifier set one.
         """
         return None
+
+    @property
+    def semantics_node(self) -> Optional["SemanticsNode"]:
+        """The node this widget answers assistive technology with, or ``None``.
+
+        A widget with none has no entry of its own in the semantics tree; its
+        children still do.
+        """
+        return self._semantics_node
 
     def _hit_is_interactive(self) -> bool:
         """Whether this widget participates in pointer input (drives ``auto``).

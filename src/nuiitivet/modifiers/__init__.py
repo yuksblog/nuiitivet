@@ -17,6 +17,7 @@ from .lifecycle import on_mount, on_unmount
 from .passthrough_pointer import passthrough_pointer
 from .pointer_input import pointer_input
 from .popup import popup
+from .semantics import semantics
 from .tooltip import tooltip
 from .shadow import shadows
 from .size_changed import on_size_changed
@@ -51,6 +52,7 @@ __all__ = [
     "tooltip",
     "rotate",
     "scale",
+    "semantics",
     "shadows",
     "stick",
     "translate",

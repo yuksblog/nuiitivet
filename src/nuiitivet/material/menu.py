@@ -29,6 +29,7 @@ from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.theme.theme import Theme
 from nuiitivet.theme.types import ColorBase, ColorSpec
 from nuiitivet.widgets.interaction import FocusNode, FocusScope, FocusSource, FocusTraversalPolicy
+from nuiitivet.widgets.semantics import Semantics, SemanticsNode, SemanticsRole
 from nuiitivet.widgeting.widget import Widget
 
 if TYPE_CHECKING:
@@ -168,6 +169,13 @@ class MenuItem(InteractiveWidget):
     def _set_selected(self, selected: bool) -> None:
         self._selected = bool(selected)
         self._apply_style(self._menu_style)
+
+    def _semantics(self) -> Semantics | None:
+        return Semantics(
+            role=SemanticsRole.MENU_ITEM,
+            selected=True if self._selected else None,
+            disabled=self.disabled,
+        )
 
     def _build_content(self, style: MenuStyle) -> None:
         children: list[Widget] = []
@@ -647,6 +655,13 @@ class Menu(InteractiveWidget):
         self._HOVER_OPACITY = 0.0
         self._PRESS_OPACITY = 0.0
         self._FOCUS_OPACITY = 0.0
+
+    def _create_semantics_node(self) -> SemanticsNode:
+        # The surface is no control: a press on it does nothing.
+        return SemanticsNode(self._semantics)
+
+    def _semantics(self) -> Semantics | None:
+        return Semantics(role=SemanticsRole.MENU)
 
     def on_mount(self) -> None:
         super().on_mount()

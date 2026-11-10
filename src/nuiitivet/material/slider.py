@@ -18,9 +18,13 @@ from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.rendering.sizing import Sizing, SizingLike, parse_sizing
 from nuiitivet.widgeting.paint_replay import replay_safe
 from nuiitivet.widgets.interaction import DraggableNode, FocusScope, PointerInputNode, VirtualStopPolicy
+from nuiitivet.widgets.semantics import Semantics, SemanticsNode, SemanticsRole
 from nuiitivet.animation import Animatable
 
 _logger = logging.getLogger(__name__)
+
+# Read for a range slider's handles unless semantics() names them.
+_HANDLE_LABELS = ("Range start", "Range end")
 
 
 class Orientation(Enum):
@@ -281,6 +285,21 @@ class _SliderBase(InteractiveWidget):
         """Make the handle at ``index`` the keyboard target. Called by the FocusScope."""
         self._active_handle_index = max(0, min(self._handle_count - 1, int(index)))
         self.invalidate()
+
+    def _create_semantics_node(self) -> SemanticsNode:
+        return SemanticsNode(self._semantics, parts=self._semantics_parts, on_adjust=self._semantics_adjust)
+
+    def _semantics_parts(self) -> Sequence[Semantics]:
+        """What each handle says, when the slider has more than one."""
+        return ()
+
+    def _semantics_adjust(self, part: int, direction: int) -> None:
+        """Step the handle ``part``, or the only one, as an arrow key does."""
+        if self.disabled:
+            return
+        if part >= 0:
+            self._set_active_handle_index(part)
+        self._step_active_handle(direction * self._keyboard_step(0))
 
     def _keyboard_step(self, modifier_keys: int, *, large: bool = False) -> float:
         span = max(1e-6, self._max_value - self._min_value)
@@ -818,6 +837,15 @@ class _Slider(_SliderBase):
         if self._on_change is not None:
             self._on_change(self.value)
 
+    def _semantics(self) -> Optional[Semantics]:
+        return Semantics(
+            role=SemanticsRole.SLIDER,
+            disabled=self.disabled,
+            numeric_value=self.value,
+            min_value=self._min_value,
+            max_value=self._max_value,
+        )
+
     def _handle_centers(self, track: _TrackGeometry) -> Sequence[Tuple[float, float]]:
         return [self._point_on_track(track, self._value_to_ratio(self.value))]
 
@@ -1064,6 +1092,31 @@ class _RangeSlider(_SliderBase):
             self.value_end = self.value_end + delta
         if self._on_change is not None:
             self._on_change((self.value_start, self.value_end))
+
+    def _semantics(self) -> Optional[Semantics]:
+        return Semantics(role=SemanticsRole.GROUP, disabled=self.disabled)
+
+    def _semantics_parts(self) -> Sequence[Semantics]:
+        start, end = self.value_start, self.value_end
+        start_label, end_label = _HANDLE_LABELS
+        return (
+            Semantics(
+                role=SemanticsRole.SLIDER,
+                label=start_label,
+                disabled=self.disabled,
+                numeric_value=start,
+                min_value=self._min_value,
+                max_value=end,
+            ),
+            Semantics(
+                role=SemanticsRole.SLIDER,
+                label=end_label,
+                disabled=self.disabled,
+                numeric_value=end,
+                min_value=start,
+                max_value=self._max_value,
+            ),
+        )
 
     def _handle_centers(self, track: _TrackGeometry) -> Sequence[Tuple[float, float]]:
         return [

@@ -8,6 +8,7 @@ from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
 from nuiitivet.material.icon import Icon
 from nuiitivet.material.interactive_widget import InteractiveWidget
+from nuiitivet.widgets.semantics import Semantics, SemanticsRole, ToggleState
 from nuiitivet.material.styles.icon_style import IconStyle
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.text import Text
@@ -356,6 +357,13 @@ class FilterChip(MaterialChipBase):
     def selected(self) -> bool:
         """Return current selected state."""
         return bool(self._selected)
+
+    def _semantics(self) -> Optional[Semantics]:
+        return Semantics(
+            role=SemanticsRole.BUTTON,
+            toggled=ToggleState.ON if self._selected else ToggleState.OFF,
+            disabled=self.disabled,
+        )
 
     def on_mount(self) -> None:
         super().on_mount()

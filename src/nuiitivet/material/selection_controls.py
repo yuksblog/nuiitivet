@@ -32,6 +32,7 @@ from nuiitivet.rendering.skia import (
 from nuiitivet.theme.dependency import ThemeKept
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.interaction import FocusNode, FocusNodePolicy, FocusScope, InteractionHostMixin
+from nuiitivet.widgets.semantics import Semantics, SemanticsNode, SemanticsRole, attach_semantics
 from nuiitivet.widgets.toggleable import Toggleable
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS, EXPRESSIVE_DEFAULT_SPATIAL
@@ -590,6 +591,7 @@ class RadioGroup(InteractionHostMixin, Container):
         self.add_node(self._focus_node)
         self._focus_scope = FocusScope(_RadioTraversalPolicy(self), tab_roves=False)
         self.add_node(self._focus_scope)
+        attach_semantics(self, SemanticsNode(lambda: Semantics(role=SemanticsRole.RADIO_GROUP)))
 
     @property
     def value(self) -> object | None:
@@ -695,6 +697,8 @@ class RadioGroup(InteractionHostMixin, Container):
 
 class RadioButton(Toggleable, InteractiveWidget):
     """Material Design 3 RadioButton controlled by nearest RadioGroup."""
+
+    _semantics_role = SemanticsRole.RADIO_BUTTON
 
     def __init__(
         self,
@@ -925,6 +929,8 @@ class RadioButton(Toggleable, InteractiveWidget):
 
 class Switch(Toggleable, InteractiveWidget):
     """Material Design 3 Switch widget."""
+
+    _semantics_role = SemanticsRole.SWITCH
 
     def __init__(
         self,
