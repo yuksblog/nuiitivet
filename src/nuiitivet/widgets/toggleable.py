@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Optional, Union, cast
 
 from nuiitivet.widgets.clickable import Clickable
+from nuiitivet.widgets.semantics import Semantics, SemanticsRole, ToggleState
 from nuiitivet.observable import Observable, ObservableProtocol, ReadOnlyObservableProtocol
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgeting.callbacks import invoke_event_handler, OptionalBoolCallback
@@ -16,6 +17,9 @@ class Toggleable(Clickable):
 
     # Internal descriptor-backed observable for simple usage
     _state_internal = Observable(False)
+
+    # What assistive technology calls this toggle; a subclass names its own.
+    _semantics_role: SemanticsRole = SemanticsRole.CHECKBOX
 
     def __init__(
         self,
@@ -85,6 +89,14 @@ class Toggleable(Clickable):
         obj = self._get_state_obj()
         if hasattr(obj, "value"):
             setattr(obj, "value", new_val)
+
+    def _semantics(self) -> Optional[Semantics]:
+        value = self.value
+        if value is None:
+            toggled = ToggleState.MIXED
+        else:
+            toggled = ToggleState.ON if value else ToggleState.OFF
+        return Semantics(role=self._semantics_role, toggled=toggled, disabled=self.disabled)
 
     def _handle_click(self):
         if self.disabled:

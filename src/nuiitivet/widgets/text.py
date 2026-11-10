@@ -27,6 +27,7 @@ from nuiitivet.theme.dependency import ThemeKept
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.theme.type_scale import DEFAULT_TYPE_SCALE, TypeScale, TypeScaleToken
 from nuiitivet.rendering.sizing import SizingLike
+from nuiitivet.widgets.semantics import Semantics, SemanticsNode, SemanticsRole, attach_semantics
 from nuiitivet.widgets.text_style import TextStyle, TextStyleProtocol
 
 if TYPE_CHECKING:
@@ -514,6 +515,20 @@ class TextBase(Widget):
                 continue
             ty = top + i * line_h + baseline_offset
             canvas.drawTextBlob(run.blob, self._aligned_x(run, cx, cw, alignment), ty, paint)
+
+    @property
+    def semantics_node(self) -> SemanticsNode:
+        """The node that says this text to assistive technology."""
+        node = self._semantics_node
+        if node is None:
+            # Built on the first ask, so a text nobody reads aloud carries none.
+            node = SemanticsNode(self._semantics)
+            attach_semantics(self, node)
+        return node
+
+    def _semantics(self) -> Optional[Semantics]:
+        text = self._resolve_label().strip()
+        return Semantics(role=SemanticsRole.TEXT, label=text) if text else None
 
     def _resolve_label(self) -> str:
         lbl = self.label

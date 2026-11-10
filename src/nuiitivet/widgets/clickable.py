@@ -14,6 +14,7 @@ from nuiitivet.widgets.interaction import (
     BoolCallback,
     PointerEventCallback,
 )
+from nuiitivet.widgets.semantics import Semantics, SemanticsNode, SemanticsRole, attach_semantics
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.observable import ReadOnlyObservableProtocol
 from nuiitivet.theme.types import ColorSpec
@@ -87,6 +88,36 @@ class Clickable(InteractionHostMixin, FocusTraversalBlocker, Box):
 
         if not initial_disabled and focusable:
             self.add_node(self._create_focus_node())
+
+        semantics_node = self._create_semantics_node()
+        if semantics_node is not None:
+            attach_semantics(self, semantics_node)
+
+    def _create_semantics_node(self) -> Optional[SemanticsNode]:
+        """Build the node this widget answers assistive technology with.
+
+        ``None`` for a widget that answers with another widget's node.
+        """
+        return SemanticsNode(self._semantics, on_activate=self._semantics_activate)
+
+    def _semantics(self) -> Optional[Semantics]:
+        """What this widget says to assistive technology now.
+
+        A button while it can be clicked or focused, nothing otherwise. A
+        subclass with another role overrides this.
+        """
+        if not (self._pointer_node.click_enabled or self._focusable):
+            return None
+        return Semantics(
+            role=SemanticsRole.BUTTON,
+            selected=True if self.state.selected else None,
+            disabled=self._disabled,
+        )
+
+    def _semantics_activate(self) -> None:
+        """Run the click a press from assistive technology stands for."""
+        if not self._disabled:
+            self._pointer_node._emit_click()
 
     def _create_focus_node(self) -> FocusNode:
         """Build the FocusNode this widget holds while enabled.

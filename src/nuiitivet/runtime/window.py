@@ -46,6 +46,8 @@ from ..widgets.interaction import (
 )
 from nuiitivet.input.shortcut import ShortcutBinding, ShortcutScope, produces_text
 from nuiitivet.platform.ime import IMEManager
+from .semantics_tree import SemanticsTree, build_semantics_tree, perform_semantics_action
+from ..widgets.semantics import SemanticsAction
 from .shortcut_dispatch import is_foreground
 from nuiitivet.common.logging_once import debug_once, exception_once, warning_once
 from .app_events import (
@@ -1639,6 +1641,26 @@ class Window:
                 self._focused_target = node.region
         else:
             self._focused_target = None
+
+    def semantics_tree(self) -> SemanticsTree:
+        """Return what this window says to assistive technology now.
+
+        The entries are the widgets Tab can reach, and the disabled controls
+        among them. While a modal is open they are the modal's alone.
+        """
+        return build_semantics_tree(self)
+
+    def perform_semantics_action(self, entry_id: int, action: SemanticsAction) -> bool:
+        """Do what assistive technology asked of one entry of the tree.
+
+        Args:
+            entry_id: The entry's id in :meth:`semantics_tree`.
+            action: What to do.
+
+        Returns:
+            Whether the entry exists and takes the action.
+        """
+        return perform_semantics_action(self, entry_id, action)
 
     def _occluding_overlay_content(self) -> Optional[Widget]:
         """Return the content of the topmost input-blocking overlay entry, if any."""

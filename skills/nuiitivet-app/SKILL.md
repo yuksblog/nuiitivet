@@ -206,6 +206,7 @@ and spacing stay widget *parameters*, not modifiers.
 | Hover handling | `hoverable` | `hoverable(on_hover)` |
 | Mouse cursor shape while hovered | `cursor` | `cursor(MouseCursor.RESIZE_LEFT_RIGHT)` |
 | Tooltip on hover | `tooltip` | `tooltip("Submit")` |
+| Screen-reader label for a control with no words (an icon button, a bare checkbox) | `semantics` | `semantics(label="Close")` |
 | Receive OS file drops | `drop_target` | `drop_target(on_drop)` |
 | React to this widget's own measured size (adaptive placement, responsive reflow) | `on_size_changed` | `on_size_changed(self._on_size)` |
 

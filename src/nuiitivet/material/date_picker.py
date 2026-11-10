@@ -54,6 +54,7 @@ from nuiitivet.overlay import OverlayAware
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.interaction import FocusChangeCallback, VoidCallback
+from nuiitivet.widgets.semantics import Semantics, SemanticsRole
 from nuiitivet.common.logging_once import exception_once
 
 if TYPE_CHECKING:
@@ -196,6 +197,12 @@ class _DayCell(InteractiveWidget):
         self._is_range_start = is_range_start
         self._is_range_end = is_range_end
         self._style = style
+
+    def _semantics(self) -> Optional[Semantics]:
+        if self._day <= 0:
+            return None
+        chosen = self._is_selected or self._is_range_start or self._is_range_end
+        return Semantics(role=SemanticsRole.BUTTON, label=str(self._day), selected=chosen, disabled=self.disabled)
 
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Render the day cell with circle background, text, and state layer.
@@ -442,6 +449,9 @@ class _YearChip(InteractiveWidget):
         self._is_selected = is_selected
         self._style = style
 
+    def _semantics(self) -> Optional[Semantics]:
+        return Semantics(role=SemanticsRole.BUTTON, label=str(self._year), selected=self._is_selected)
+
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Render the year chip with pill background and centred year text."""
         self.set_last_rect(x, y, width, height)
@@ -669,6 +679,9 @@ class _MenuListItem(InteractiveWidget):
             icon = Icon("check", size=self._CHECK_ICON_SIZE)
             icon._parent = self  # parent link so Theme.of() resolves during paint
             self._check_icon = icon
+
+    def _semantics(self) -> Optional[Semantics]:
+        return Semantics(role=SemanticsRole.BUTTON, label=self._label, selected=self._is_selected)
 
     def draw_children(self, canvas, x: int, y: int, width: int, height: int) -> None:
         """Draw the leading check glyph (selected only) and the left-aligned label."""

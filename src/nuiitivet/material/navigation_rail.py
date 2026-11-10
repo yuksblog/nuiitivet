@@ -24,6 +24,7 @@ from nuiitivet.material.styles.icon_style import IconStyle
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.theme.type_scale import TypeScale
 from nuiitivet.material.interactive_widget import InteractiveWidget
+from nuiitivet.widgets.semantics import Semantics, SemanticsRole
 from nuiitivet.rendering.skia import make_paint, make_rect, draw_round_rect
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.theme.resolver import resolve_color_to_rgba
@@ -260,6 +261,8 @@ class _RailItemButton(InteractiveWidget):
             soft_wrap=False,
         )
 
+        self._label_spec = rail_item.label_spec
+
         # Fixed content size with animated clip window.
         # Inset content box (centered in the full-width container below), which
         # keeps the 8dp margin on each side while the outer container stays at
@@ -336,6 +339,19 @@ class _RailItemButton(InteractiveWidget):
         self.on_dispose(self._dispose_badge)
 
     # Bindings are automatically disposed by BindingHostMixin/observe.
+
+    def _semantics(self) -> Optional[Semantics]:
+        # The label is drawn twice, collapsed and expanded; say it once.
+        spec = self._label_spec
+        label = str(spec.value if isinstance(spec, ObservableBase) else spec)
+        if self._large_badge_value:
+            label = f"{label}, {self._large_badge_value}"
+        return Semantics(
+            role=SemanticsRole.BUTTON,
+            label=label,
+            selected=True if self.state.selected else None,
+            disabled=self.disabled,
+        )
 
     def _dispose_badge(self) -> None:
         if self._small_badge_subscription is not None:

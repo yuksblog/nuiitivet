@@ -1271,10 +1271,11 @@ class FocusScope(InteractionNode):
     where the policy either consumes the key (a menu dismisses itself) or lets Tab
     escape to the next stop outside the scope (a slider, a toolbar).
 
-    ``tab_roves`` says which key drives the roving. A slider roves on Tab, so its
-    scope reaches the boundary only at the far handle. A menu roves on the arrow
-    keys instead (WAI-ARIA); its scope sets ``tab_roves=False`` so that any Tab is
-    a boundary — which, for a menu, means dismissal.
+    ``tab_roves`` says whether Tab drives the roving too. A slider and a menu
+    rove on Tab, so their scopes reach the boundary only past the last member.
+    A radio group, a button group and a navigation rail rove on the arrow keys
+    alone; their scopes set ``tab_roves=False``, so any Tab is a boundary and
+    leaves the group.
     """
 
     def __init__(self, policy: FocusTraversalPolicy, *, tab_roves: bool = True) -> None:

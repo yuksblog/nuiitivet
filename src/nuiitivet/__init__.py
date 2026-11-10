@@ -100,6 +100,7 @@ from nuiitivet.input.shortcut import Shortcut, ShortcutBinding, ShortcutScope
 # Second argument of every ``on_focus_change`` callback -- ``focusable()`` and
 # the text inputs alike -- so it belongs to the public surface with them.
 from nuiitivet.widgets.interaction import FocusSource
+from nuiitivet.widgets.semantics import SemanticsRole
 
 # Theme
 from nuiitivet.theme.theme import Theme
@@ -149,6 +150,7 @@ from nuiitivet.modifiers import (
     pointer_input,
     rotate,
     scale,
+    semantics,
     shadows,
     stick,
     tooltip,
@@ -283,6 +285,7 @@ __all__: list[str] = [
     "pointer_input",
     "rotate",
     "scale",
+    "semantics",
     "shadows",
     "stick",
     "tooltip",
@@ -303,6 +306,7 @@ __all__: list[str] = [
     "MouseCursor",
     "PointerEvent",
     "PointerEventType",
+    "SemanticsRole",
     "Shortcut",
     "ShortcutBinding",
     "ShortcutScope",

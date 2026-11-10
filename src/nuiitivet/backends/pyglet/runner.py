@@ -521,6 +521,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
 
     _install_ime_patch(window, win)
     _install_first_mouse_patch(window, win)
+    accessibility = _install_accessibility(window, win)
 
     def _get_windows_dpi_scale() -> float:
         if sys.platform != "win32":
@@ -710,6 +711,14 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
 
     @window.event
     def on_draw():
+        # The tree is pushed after a frame that changed something; a frame
+        # that only re-presents has nothing new to say.
+        dirty = bool(getattr(win, "_dirty", False)) or getattr(win, "_last_image", None) is None
+        _draw_frame()
+        if accessibility is not None and dirty:
+            accessibility.sync()
+
+    def _draw_frame():
         nonlocal gpu_enabled
         try:
             # IME state is per window: each window publishes its own geometry
@@ -790,6 +799,8 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
             win._set_os_active(True)
         except Exception:
             exception_once(logger, "pyglet_on_activate_os_active_exc", "OS-active focus hook raised")
+        if accessibility is not None:
+            accessibility.set_view_focused(True)
         # Best-effort keep-above: a parent activated while a modal child is
         # open hands the OS focus back to the child (the parent's input is
         # blocked anyway).
@@ -830,6 +841,8 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
             win._set_os_active(False)
         except Exception:
             exception_once(logger, "pyglet_on_deactivate_os_active_exc", "OS-active focus hook raised")
+        if accessibility is not None:
+            accessibility.set_view_focused(False)
         # After the model committed its pending composition (in _set_os_active):
         # drop the OS input method's conversation for this window, so refocusing
         # it later cannot resume marked text the widget no longer holds.
@@ -1296,6 +1309,31 @@ def _discard_ime_conversation(window: object) -> None:
             discard_conversation(window)
     except Exception:
         exception_once(logger, "pyglet_discard_ime_conversation_exc", "Failed to discard IME conversation")
+
+
+def _install_accessibility(window: Any, win: Any) -> Any:
+    """Hand ``win``'s semantics tree to the OS through AccessKit, where a bridge exists.
+
+    Returns the bridge, or ``None`` on a platform without one or when the
+    install fails; the app runs on without accessibility either way.
+    """
+    if sys.platform != "darwin":
+        return None
+    try:
+        from .accessibility import AccessKitBridge
+        from .accessibility_macos import install
+
+        bridge = AccessKitBridge(
+            win,
+            pixel_ratio=lambda: float(window.get_pixel_ratio()),
+            defer=lambda run: pyglet.clock.schedule_once(lambda dt: run(), 0),
+        )
+        install(window, bridge)
+        bridge.set_view_focused(True)
+        return bridge
+    except Exception:
+        exception_once(logger, "pyglet_install_accessibility_exc", "Failed to install the accessibility bridge")
+        return None
 
 
 def _install_first_mouse_patch(window: object, win: object) -> None:

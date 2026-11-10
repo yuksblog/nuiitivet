@@ -75,6 +75,7 @@ from nuiitivet.widgeting.callbacks import invoke_event_handler
 from nuiitivet.widgets.editable_text import EditableText
 from nuiitivet.widgets.interaction import FocusChangeCallback, FocusSource
 from nuiitivet.widgets.input_filter import InputFilterLike
+from nuiitivet.widgets.semantics import SemanticsNode
 
 # The "decorative Icon vs tappable IconButton" rule is identical for a search
 # bar and a text field, so the helper is shared rather than restated. Importing
@@ -174,6 +175,8 @@ class _SearchBarCore(InteractiveWidget):
             selection_color=resolved.selection_color,
             font_size=resolved.font_size,
         )
+        # The placeholder is painted here, not by a Text; it names the field.
+        self._editable.semantics_label = placeholder
         self.add_child(self._editable)
 
         self.enable_click(on_press=self._handle_press)
@@ -181,6 +184,14 @@ class _SearchBarCore(InteractiveWidget):
     def _default_mouse_cursor(self) -> Optional[MouseCursor]:
         """The I-beam over the whole bar."""
         return MouseCursor.TEXT
+
+    def _create_semantics_node(self) -> Optional[SemanticsNode]:
+        return None
+
+    @property
+    def semantics_node(self) -> Optional[SemanticsNode]:
+        """The editable text's node: the bar and its text are one entry."""
+        return self._editable.semantics_node
 
     # ------------------------------------------------------------------
     # Style / theme

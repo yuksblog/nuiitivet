@@ -216,10 +216,12 @@ flowchart LR
     virt[VirtualStopPolicy]
     blocker[FocusTraversalBlocker]
     source[FocusSource]
+    semantics[SemanticsNode]
     window[Window]
 
     region -- "is a" --> mixin
     mixin -- "add_node · get_node · on_pointer_event" --> pointer & focus & drag & scope
+    mixin -- "add_node" --> semantics
     pointer -- "hovered · pressed" --> state
     focus -- "focused" --> state
     pointer -- "request_focus_from_pointer()" --> mixin
@@ -245,6 +247,7 @@ flowchart LR
 | `FocusTraversalPolicy`, `FocusNodePolicy`, `VirtualStopPolicy` | enumerates a scope's members and moves between them; over real child nodes, or over stops the owner keeps |
 | `FocusTraversalBlocker` | the protocol a host implements to hide its subtree from the Tab walk |
 | `FocusSource` | whether a focus change came from the keyboard or the pointer |
+| `SemanticsNode` | what the host says to assistive technology ([ACCESSIBILITY.md](ACCESSIBILITY.md)) |
 | `Window` | the one that sets focus (The Window) |
 
 ### Sequence
@@ -403,6 +406,7 @@ flowchart LR
     slider[_RangeSlider]
     radio[RadioGroup]
     rail[NavigationRail]
+    menupolicy[_MenuTraversalPolicy]
     radiopolicy[_RadioTraversalPolicy]
     railpolicy[_RailTraversalPolicy]
     nodep[FocusNodePolicy]
@@ -410,17 +414,18 @@ flowchart LR
     scope[FocusScope]
     window[Window]
 
-    menu & group -- "FocusScope(FocusNodePolicy(items), tab_roves=False)" --> nodep
+    menu -- "FocusScope(_MenuTraversalPolicy(self))" --> menupolicy
+    group -- "FocusScope(FocusNodePolicy(items), tab_roves=False)" --> nodep
     slider -- "FocusScope(VirtualStopPolicy(handles))" --> virt
     radio -- "FocusScope(_RadioTraversalPolicy(self), tab_roves=False)" --> radiopolicy
     rail -- "FocusScope(_RailTraversalPolicy(self), tab_roves=False)" --> railpolicy
-    nodep & virt & radiopolicy & railpolicy -- "the policy of" --> scope
+    menupolicy & nodep & virt & radiopolicy & railpolicy -- "the policy of" --> scope
     menu -- "request_focus(_last_input_source) on open" --> window
 ```
 
 | Module | Role |
 | --- | --- |
-| `Menu` | items as real focus nodes; the arrows rove, Tab is a boundary |
+| `Menu`, `_MenuTraversalPolicy` | the enabled items as real focus nodes; the arrows rove and wrap, Tab roves without wrapping; past the last item a popup dismisses itself and an inline menu lets Tab escape |
 | `_ButtonGroupBase` | items as real focus nodes; Left and Right rove, stopping at the ends |
 | `_RangeSlider` | the two handles as virtual stops; Tab roves between them |
 | `RadioGroup`, `_RadioTraversalPolicy` | entered at the selected radio; the arrows rove, wrap, and move the selection |
@@ -436,3 +441,6 @@ flowchart LR
   decisions.
 - A widget that takes focus on its own inherits the window's last input
   source.
+- A popup opened by the pointer focuses its surface with no item current. A
+  popup opened by the keyboard, or by assistive technology, makes its first
+  enabled item current.

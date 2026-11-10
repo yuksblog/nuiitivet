@@ -19,6 +19,7 @@ from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgets.input_filter import InputFilterLike
 from nuiitivet.widgeting.callbacks import invoke_event_handler
 from nuiitivet.widgets.interaction import FocusChangeCallback, FocusNode, FocusSource
+from nuiitivet.widgets.semantics import SemanticsNode
 from nuiitivet.material.styles.text_field_style import TextFieldStyle
 from nuiitivet.rendering.skia import (
     draw_round_rect,
@@ -314,6 +315,7 @@ class TextField(InteractiveWidget):
             disabled=initial_disabled,
             obscure_text=bool(obscure_text),
         )
+        self._editable.semantics_label = self.label
         self.add_child(self._editable)
 
         # Animation state
@@ -502,7 +504,16 @@ class TextField(InteractiveWidget):
 
     def _set_label(self, value: Any) -> None:
         self.label = str(value) if value is not None else None
+        self._editable.semantics_label = self.label
         self.invalidate()
+
+    def _create_semantics_node(self) -> Optional[SemanticsNode]:
+        return None
+
+    @property
+    def semantics_node(self) -> Optional[SemanticsNode]:
+        """The editable text's node: the field and its text are one entry."""
+        return self._editable.semantics_node
 
     def _set_supporting_text(self, value: Any) -> None:
         self.supporting_text = str(value) if value is not None else None
