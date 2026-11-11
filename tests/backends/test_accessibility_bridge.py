@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import importlib
 import sys
+import threading
+import time
 import types
 from typing import Any, Callable, Optional
 
@@ -211,6 +213,40 @@ def test_the_view_focus_state_reaches_the_adapter() -> None:
     assert adapter.focus_states == [True, False]
 
 
+def test_the_first_ask_from_another_thread_is_built_on_the_ui_thread() -> None:
+    bridge, _, deferred, _ = _bridge(Column([Button("Save", on_click=lambda: None)]))
+    answers: list[Any] = []
+
+    asker = threading.Thread(target=lambda: answers.append(bridge.activation_handler()))
+    asker.start()
+    while not deferred:
+        time.sleep(0.01)
+    assert answers == []
+    (build,) = deferred
+    build()
+    asker.join(timeout=5)
+
+    (update,) = answers
+    assert any(node.role == accesskit.Role.BUTTON for _, node in update.nodes)
+
+
+def test_the_first_ask_from_another_thread_gets_the_empty_tree_when_the_ui_thread_is_silent(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import nuiitivet.backends.pyglet.accessibility as module
+
+    monkeypatch.setattr(module, "ACTIVATION_TIMEOUT", 0.05)
+    bridge, _, _, _ = _bridge(Column([Button("Save", on_click=lambda: None)]))
+    answers: list[Any] = []
+
+    asker = threading.Thread(target=lambda: answers.append(bridge.activation_handler()))
+    asker.start()
+    asker.join(timeout=5)
+
+    (update,) = answers
+    assert [entry_id for entry_id, _ in update.nodes] == [ROOT_ID]
+
+
 def test_a_raising_tree_build_answers_an_empty_tree() -> None:
     window = _mounted(Column([]))
     bridge = AccessKitBridge(window, pixel_ratio=lambda: 1 / 0, defer=lambda run: None)
@@ -240,20 +276,21 @@ class _FakeSubclassingAdapter:
         return _Events([])
 
 
-def _windows_install(monkeypatch: pytest.MonkeyPatch) -> Any:
-    """Import ``accessibility_windows`` as it imports on Windows, over a fake ``accesskit.windows``."""
-    name = "nuiitivet.backends.pyglet.accessibility_windows"
-    fake = types.ModuleType("accesskit.windows")
-    fake.SubclassingAdapter = _FakeSubclassingAdapter  # type: ignore[attr-defined]
-    monkeypatch.setattr(sys, "platform", "win32")
-    monkeypatch.setitem(sys.modules, "accesskit.windows", fake)
-    monkeypatch.setattr(accesskit, "windows", fake, raising=False)
+def _platform_install(monkeypatch: pytest.MonkeyPatch, module: str, platform: str, submodule: str, **fakes: Any) -> Any:
+    """Import ``accessibility_<module>`` as it imports on ``platform``, over a fake ``accesskit.<submodule>``."""
+    name = f"nuiitivet.backends.pyglet.accessibility_{module}"
+    fake = types.ModuleType(f"accesskit.{submodule}")
+    for attr, value in fakes.items():
+        setattr(fake, attr, value)
+    monkeypatch.setattr(sys, "platform", platform)
+    monkeypatch.setitem(sys.modules, f"accesskit.{submodule}", fake)
+    monkeypatch.setattr(accesskit, submodule, fake, raising=False)
     sys.modules.pop(name, None)
     return importlib.import_module(name).install
 
 
 def test_the_windows_install_subclasses_the_hwnd_with_the_bridge_callbacks(monkeypatch: pytest.MonkeyPatch) -> None:
-    install = _windows_install(monkeypatch)
+    install = _platform_install(monkeypatch, "windows", "win32", "windows", SubclassingAdapter=_FakeSubclassingAdapter)
     try:
         _FakeSubclassingAdapter.created.clear()
         bridge = AccessKitBridge(_mounted(Column([Text("Hi")])), pixel_ratio=lambda: 1.0, defer=lambda run: None)
@@ -269,3 +306,72 @@ def test_the_windows_install_subclasses_the_hwnd_with_the_bridge_callbacks(monke
         assert len(adapter.updates) == 1
     finally:
         sys.modules.pop("nuiitivet.backends.pyglet.accessibility_windows", None)
+
+
+# --- the Linux install --------------------------------------------------------
+
+
+class _FakeUnixAdapter:
+    """``accesskit.unix.Adapter`` as the install sees it: every call returns nothing."""
+
+    created: list["_FakeUnixAdapter"] = []
+
+    def __init__(self, activation_handler: Any, action_handler: Any, deactivation_handler: Any) -> None:
+        self.activation_handler = activation_handler
+        self.action_handler = action_handler
+        self.deactivation_handler = deactivation_handler
+        self.updates: list[Any] = []
+        self.focus_states: list[bool] = []
+        self.bounds: list[tuple[Any, Any]] = []
+        _FakeUnixAdapter.created.append(self)
+
+    def update_if_active(self, update_factory: Callable[[], Any]) -> None:
+        self.updates.append(update_factory())
+
+    def update_window_focus_state(self, is_focused: bool) -> None:
+        self.focus_states.append(is_focused)
+
+    def set_root_window_bounds(self, outer: Any, inner: Any) -> None:
+        self.bounds.append((outer, inner))
+
+
+class _FakeXlibWindow:
+    def __init__(self) -> None:
+        self.handlers: dict[str, Callable[..., Any]] = {}
+
+    def push_handlers(self, **handlers: Callable[..., Any]) -> None:
+        self.handlers.update(handlers)
+
+    def get_location(self) -> tuple[int, int]:
+        return (100, 50)
+
+    def get_framebuffer_size(self) -> tuple[int, int]:
+        return (800, 600)
+
+
+def test_the_linux_install_hands_the_adapter_the_callbacks_the_bounds_and_the_focus(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    install = _platform_install(monkeypatch, "linux", "linux", "unix", Adapter=_FakeUnixAdapter)
+    try:
+        _FakeUnixAdapter.created.clear()
+        bridge = AccessKitBridge(_mounted(Column([Text("Hi")])), pixel_ratio=lambda: 1.0, defer=lambda run: None)
+        window = _FakeXlibWindow()
+
+        install(window, bridge)
+        window.handlers["on_resize"](800, 600)
+        bridge.sync()
+        bridge.set_view_focused(True)
+
+        (adapter,) = _FakeUnixAdapter.created
+        assert adapter.activation_handler == bridge.activation_handler
+        assert adapter.action_handler == bridge.action_handler
+        adapter.deactivation_handler()
+        assert set(window.handlers) == {"on_show", "on_resize", "on_move"}
+        ((outer, inner),) = adapter.bounds
+        assert (outer.x0, outer.y0, outer.x1, outer.y1) == (100.0, 50.0, 900.0, 650.0)
+        assert (inner.x0, inner.y0, inner.x1, inner.y1) == (100.0, 50.0, 900.0, 650.0)
+        assert len(adapter.updates) == 1
+        assert adapter.focus_states == [True]
+    finally:
+        sys.modules.pop("nuiitivet.backends.pyglet.accessibility_linux", None)

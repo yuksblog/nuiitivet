@@ -201,9 +201,10 @@ sequenceDiagram
 
 ## The Bridge
 
-An `AccessKitBridge` keeps one window's tree in an AccessKit adapter on the
-OS window. The pyglet runner installs it on macOS and on Windows, on a
-window not yet shown.
+An `AccessKitBridge` keeps one window's tree in an AccessKit adapter. The
+pyglet runner installs it on macOS, Windows and Linux, on a window not yet
+shown. On macOS and Windows the adapter sits on the OS window; on Linux it
+sits on the AT-SPI bus and is told where the window is.
 
 ### Structure
 
@@ -221,7 +222,8 @@ flowchart LR
     realize -- "AccessKitBridge(win, pixel_ratio, defer) · sync() after a dirty frame · set_view_focused(active)" --> bridge
     realize -- "install(window, bridge), before the window is shown" --> installer
     installer -- "macOS: add_focus_forwarder_to_window_class · setAccessibilityElement_(False) on the content view's subviews" --> oswindow
-    installer -- "macOS: SubclassingAdapter.for_window(activation_handler, action_handler) · Windows: SubclassingAdapter(hwnd, activation_handler, action_handler)" --> adapter
+    installer -- "macOS: SubclassingAdapter.for_window(activation_handler, action_handler) · Windows: SubclassingAdapter(hwnd, activation_handler, action_handler) · Linux: Adapter(activation_handler, action_handler, deactivation_handler)" --> adapter
+    installer -- "Linux: set_root_window_bounds(client rect) on show, resize, move" --> adapter
     installer -- "attach(adapter)" --> bridge
     bridge -- "semantics_tree() · perform_semantics_action(id, action) · settle(window), when never laid out" --> window
     bridge -- "tree_update(tree, pixel_ratio)" --> convert
@@ -230,18 +232,19 @@ flowchart LR
     bridge -- "defer(perform)" --> realize
     adapter -- "macOS: the content view's accessibility · Windows: WM_GETOBJECT, WM_SETFOCUS, WM_KILLFOCUS" --> oswindow
     oswindow -- "NSAccessibility · UI Automation" --> at
+    adapter -- "Linux: AT-SPI, over D-Bus" --> at
 ```
 
 | Module | Role |
 | --- | --- |
 | `_realize_window()` | the runner's setup of one OS window; creates it hidden, installs the bridge, shows it, pushes after a frame that changed something, reports the window's activation, runs a deferred action on the next loop turn through a posted event |
-| `AccessKitBridge` | answers the adapter's two callbacks, builds the update, pushes it |
+| `AccessKitBridge` | answers the adapter's two callbacks, builds the update on the UI thread, pushes it |
 | `tree_update()` | turns a `SemanticsTree` into the whole-tree update AccessKit takes, with the root scaled to backing pixels |
-| `install()` | `accessibility_macos.py`: subclasses the content view with the adapter, routes the OS window's focused element to the content view, hides the content view's subviews. `accessibility_windows.py`: subclasses the HWND with the adapter; the bridge's report of the activation is a no-op there |
-| the AccessKit adapter | AccessKit's macOS adapter, answering for the content view; or its Windows adapter, answering `WM_GETOBJECT` and following `WM_SETFOCUS` / `WM_KILLFOCUS` itself |
-| the OS window | the NSWindow and its content view, which answers the focused element; or the HWND |
+| `install()` | `accessibility_macos.py`: subclasses the content view with the adapter, routes the OS window's focused element to the content view, hides the content view's subviews. `accessibility_windows.py`: subclasses the HWND with the adapter; the bridge's report of the activation is a no-op there. `accessibility_linux.py`: creates the adapter with the callbacks, hands it the window's client area on show, resize and move |
+| the AccessKit adapter | AccessKit's macOS adapter, answering for the content view; its Windows adapter, answering `WM_GETOBJECT` and following `WM_SETFOCUS` / `WM_KILLFOCUS` itself; or its Unix adapter, serving the tree on AT-SPI from its own thread and calling every callback from there |
+| the OS window | the NSWindow and its content view, which answers the focused element; or the HWND. On Linux the adapter knows the window only as a rect |
 | `Window` | the tree and the actions (The Tree) |
-| the assistive technology | VoiceOver, Narrator, NVDA, or any client of the accessibility API |
+| the assistive technology | VoiceOver, Narrator, NVDA, Orca, or any client of the accessibility API |
 
 ### Sequence
 
@@ -255,13 +258,39 @@ sequenceDiagram
     participant W as Window
 
     AT->>A: the first ask
-    A->>B: activation_handler()
+    A->>B: activation_handler(), on the UI thread
     opt the window never laid out
         B->>W: settle(window)
     end
     B->>W: semantics_tree()
     W-->>B: a SemanticsTree
     B-->>A: a TreeUpdate
+    A-->>AT: the nodes
+```
+
+#### The first ask arrives on another thread
+
+```mermaid
+sequenceDiagram
+    participant AT as the assistive technology
+    participant A as the AccessKit adapter
+    participant B as AccessKitBridge
+    participant R as _realize_window()
+    participant W as Window
+
+    AT->>A: the first ask
+    A->>B: activation_handler(), on the adapter's thread
+    B->>R: defer(build)
+    Note over B: waits, at most ACTIVATION_TIMEOUT
+    alt the UI thread answers in time
+        Note over R: the next loop turn
+        R->>B: build
+        B->>W: semantics_tree()
+        W-->>B: a SemanticsTree
+        B-->>A: a TreeUpdate
+    else the UI thread is silent
+        B-->>A: a TreeUpdate with the root alone
+    end
     A-->>AT: the nodes
 ```
 
@@ -288,6 +317,8 @@ sequenceDiagram
 ### Promises
 
 - The adapter is installed before the OS window is first shown.
+- The tree is built on the UI thread, whichever thread asks for it. A first
+  ask the UI thread does not answer in time gets a tree with the root alone.
 - A callback the adapter runs never raises. It returns the tree or queues;
   it never pushes an update.
 - An action runs on the next turn of the UI loop, on the UI thread,
@@ -296,7 +327,8 @@ sequenceDiagram
   after an action.
 - Nothing is built while no assistive technology listens.
 - The adapter holds the OS window's activation, from the install on and at
-  each change.
+  each change. On Linux it holds the window's client area too, from the
+  first show on and at each resize and move.
 - On macOS the OS window answers the focused element through its content
   view. No subview of the content view is an accessibility element.
 - The rects go out in backing pixels, through the root's transform.

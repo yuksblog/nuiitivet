@@ -9,11 +9,12 @@ after a frame.
 from __future__ import annotations
 
 import logging
+import threading
 from typing import TYPE_CHECKING, Any, Callable, Optional, Protocol
 
 import accesskit
 
-from nuiitivet.common.logging_once import exception_once
+from nuiitivet.common.logging_once import exception_once, warning_once
 from nuiitivet.runtime.semantics_tree import ROOT_ID, SemanticsEntry, SemanticsTree
 from nuiitivet.widgets.semantics import Semantics, SemanticsAction, SemanticsRole, ToggleState
 
@@ -21,6 +22,9 @@ if TYPE_CHECKING:
     from nuiitivet.runtime.window import Window
 
 logger = logging.getLogger(__name__)
+
+#: Seconds the first ask from another thread waits for the UI thread's tree.
+ACTIVATION_TIMEOUT = 2.0
 
 _ROLES = {
     SemanticsRole.BUTTON: accesskit.Role.BUTTON,
@@ -125,7 +129,9 @@ class AccessKitBridge:
     The adapter's callbacks run inside the adapter: one that raises aborts the
     process, and one that updates the tree deadlocks. So the two callbacks
     here catch everything and only queue. An action runs on the next loop
-    turn, through ``defer``, whichever thread it arrived on.
+    turn, through ``defer``, whichever thread it arrived on. The tree is
+    built on the thread that made the bridge, the UI thread, whichever
+    thread asks for it.
     """
 
     def __init__(
@@ -135,7 +141,7 @@ class AccessKitBridge:
         pixel_ratio: Callable[[], float],
         defer: Callable[[Callable[[], None]], None],
     ) -> None:
-        """Initialize the bridge.
+        """Initialize the bridge, on the UI thread.
 
         Args:
             window: The window whose tree is handed over.
@@ -146,6 +152,7 @@ class AccessKitBridge:
         self._window = window
         self._pixel_ratio = pixel_ratio
         self._defer = defer
+        self._ui_thread = threading.current_thread()
         self._adapter: Optional[Adapter] = None
 
     def attach(self, adapter: Adapter) -> None:
@@ -163,14 +170,43 @@ class AccessKitBridge:
         return tree_update(window.semantics_tree(), self._pixel_ratio())
 
     def activation_handler(self) -> accesskit.TreeUpdate:
-        """The adapter's first ask: the whole tree. Never raises."""
+        """The adapter's first ask: the whole tree, built on the UI thread. Never raises.
+
+        Asked from another thread, the build is deferred to the UI thread and
+        waited for. A UI thread that does not answer within
+        ``ACTIVATION_TIMEOUT`` gets the empty tree.
+        """
         try:
-            return self.build()
+            if threading.current_thread() is self._ui_thread:
+                return self.build()
+            return self._build_on_ui_thread()
         except Exception:
             exception_once(logger, "accesskit_activation_exc", "Building the semantics tree raised")
-            # A tree without its root is one the adapter cannot take.
-            empty = SemanticsEntry(id=ROOT_ID, semantics=Semantics(role=SemanticsRole.GROUP), rect=(0.0, 0.0, 0.0, 0.0))
-            return tree_update(SemanticsTree(entries={ROOT_ID: empty}), 1.0)
+            return self._empty_tree()
+
+    def _build_on_ui_thread(self) -> accesskit.TreeUpdate:
+        answered = threading.Event()
+        answer: list[accesskit.TreeUpdate] = []
+
+        def build() -> None:
+            try:
+                answer.append(self.build())
+            except Exception:
+                exception_once(logger, "accesskit_activation_build_exc", "Building the semantics tree raised")
+            finally:
+                answered.set()
+
+        self._defer(build)
+        if not answered.wait(ACTIVATION_TIMEOUT) or not answer:
+            warning_once(logger, "accesskit_activation_timeout", "The UI thread did not answer the first ask in time")
+            return self._empty_tree()
+        return answer[0]
+
+    @staticmethod
+    def _empty_tree() -> accesskit.TreeUpdate:
+        # A tree without its root is one the adapter cannot take.
+        empty = SemanticsEntry(id=ROOT_ID, semantics=Semantics(role=SemanticsRole.GROUP), rect=(0.0, 0.0, 0.0, 0.0))
+        return tree_update(SemanticsTree(entries={ROOT_ID: empty}), 1.0)
 
     def action_handler(self, request: Any) -> None:
         """The adapter's action: queued for the next loop turn. Never raises."""
@@ -220,4 +256,4 @@ class AccessKitBridge:
             exception_once(logger, "accesskit_view_focus_exc", "Updating the view focus state raised")
 
 
-__all__ = ["AccessKitBridge", "Adapter", "tree_update"]
+__all__ = ["ACTIVATION_TIMEOUT", "AccessKitBridge", "Adapter", "tree_update"]

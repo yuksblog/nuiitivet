@@ -1333,18 +1333,20 @@ def _install_accessibility(window: Any, win: Any) -> Any:
     install fails; the app runs on without accessibility either way. The
     window must not have been shown yet.
     """
-    if sys.platform not in ("darwin", "win32"):
+    if sys.platform not in ("darwin", "win32", "linux"):
         return None
     try:
         from .accessibility import AccessKitBridge
 
         if sys.platform == "darwin":
             from .accessibility_macos import install
-        else:
+        elif sys.platform == "win32":
             from .accessibility_windows import install
+        else:
+            from .accessibility_linux import install
 
-        # An action may arrive on another thread. A posted event runs on the
-        # loop's thread and wakes the loop.
+        # An action, or on Linux the first ask, may arrive on another thread.
+        # A posted event runs on the loop's thread and wakes the loop.
         if _ACCESSIBILITY_ACTION_EVENT not in pyglet.window.Window.event_types:
             pyglet.window.Window.register_event_type(_ACCESSIBILITY_ACTION_EVENT)
         setattr(window, _ACCESSIBILITY_ACTION_EVENT, lambda run: run())

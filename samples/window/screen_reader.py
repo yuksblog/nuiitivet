@@ -6,7 +6,8 @@ icon button or a bare checkbox, is read by the label ``nv.semantics`` gives it.
 
 Interactions (macOS: turn VoiceOver on with Cmd+F5, then VO+Right through the
 window. Windows: turn Narrator on with Win+Ctrl+Enter, then Caps Lock+Right
-through the window):
+through the window. Linux: turn Orca on with Super+Alt+S, then Tab through
+the window):
     - "Save" is read as "Save, button" with nothing added.
     - The close icon is read as "Close, button" from its ``nv.semantics`` label.
     - The warning icon is read as "Warning, image".
@@ -15,10 +16,10 @@ through the window):
     - The cart row is read once, as "Cart, 3 items", not as two texts.
     - The range slider is read as two sliders, "Lowest price" and
       "Highest price". VO+Shift+Down on one starts interacting with it; Up
-      and Down then move its handle, and VO+Shift+Up stops. With Narrator,
-      Tab to a handle and press Left or Right.
-    - VO+Space (Narrator: Caps Lock+Enter) on "Save" runs its click like a
-      press.
+      and Down then move its handle, and VO+Shift+Up stops. With Narrator or
+      Orca, Tab to a handle and press Left or Right.
+    - VO+Space (Narrator: Caps Lock+Enter, Orca: Enter) on "Save" runs its
+      click like a press.
 """
 
 from __future__ import annotations
@@ -42,7 +43,8 @@ class Screen(nv.ComposableWidget):
             children=[
                 nv.Text("Screen reader", type_scale=nv.TypeScale.TITLE_MEDIUM),
                 nv.Text(
-                    "Turn the screen reader on (VoiceOver: Cmd+F5, Narrator: Win+Ctrl+Enter) and step through it.",
+                    "Turn the screen reader on (VoiceOver: Cmd+F5, Narrator: Win+Ctrl+Enter, Orca: Super+Alt+S) "
+                    "and step through it.",
                     style=_MUTED,
                 ),
                 nv.Row(
