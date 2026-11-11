@@ -343,8 +343,11 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
     except Exception:
         exception_once(logger, "pyglet_get_chrome_exc", "Failed to determine window style from chrome")
 
+    # A window hidden before realization starts hidden (start-in-tray)
+    # instead of flashing on screen.
+    visible_obs = getattr(win, "_visible_obs", None)
+    show_on_create = True if visible_obs is None else bool(visible_obs.value)
     try:
-        visible_obs = getattr(win, "_visible_obs", None)
         window = pyglet.window.Window(
             width=getattr(win, "width", 0),
             height=getattr(win, "height", 0),
@@ -353,9 +356,9 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
             vsync=False,
             resizable=getattr(win, "resizable", True),
             file_drops=True,
-            # A window hidden before realization starts hidden (start-in-tray)
-            # instead of flashing on screen.
-            visible=True if visible_obs is None else bool(visible_obs.value),
+            # Shown after the setup below: the accessibility bridge must be
+            # installed on a window that was never visible.
+            visible=False,
         )
     except Exception:
         logger.error(
@@ -522,6 +525,13 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
     _install_ime_patch(window, win)
     _install_first_mouse_patch(window, win)
     accessibility = _install_accessibility(window, win)
+
+    if show_on_create:
+        try:
+            window.set_visible(True)
+            window.activate()
+        except Exception:
+            exception_once(logger, "pyglet_show_window_exc", "Failed to show the window")
 
     def _get_windows_dpi_scale() -> float:
         if sys.platform != "win32":
@@ -1311,22 +1321,39 @@ def _discard_ime_conversation(window: object) -> None:
         exception_once(logger, "pyglet_discard_ime_conversation_exc", "Failed to discard IME conversation")
 
 
+# The pyglet window event an accessibility action is posted as; its one
+# argument is the callable to run.
+_ACCESSIBILITY_ACTION_EVENT = "on_accessibility_action"
+
+
 def _install_accessibility(window: Any, win: Any) -> Any:
     """Hand ``win``'s semantics tree to the OS through AccessKit, where a bridge exists.
 
     Returns the bridge, or ``None`` on a platform without one or when the
-    install fails; the app runs on without accessibility either way.
+    install fails; the app runs on without accessibility either way. The
+    window must not have been shown yet.
     """
-    if sys.platform != "darwin":
+    if sys.platform not in ("darwin", "win32"):
         return None
     try:
         from .accessibility import AccessKitBridge
-        from .accessibility_macos import install
+
+        if sys.platform == "darwin":
+            from .accessibility_macos import install
+        else:
+            from .accessibility_windows import install
+
+        # An action may arrive on another thread. A posted event runs on the
+        # loop's thread and wakes the loop.
+        if _ACCESSIBILITY_ACTION_EVENT not in pyglet.window.Window.event_types:
+            pyglet.window.Window.register_event_type(_ACCESSIBILITY_ACTION_EVENT)
+        setattr(window, _ACCESSIBILITY_ACTION_EVENT, lambda run: run())
+        platform_loop = pyglet.app.platform_event_loop
 
         bridge = AccessKitBridge(
             win,
             pixel_ratio=lambda: float(window.get_pixel_ratio()),
-            defer=lambda run: pyglet.clock.schedule_once(lambda dt: run(), 0),
+            defer=lambda run: platform_loop.post_event(window, _ACCESSIBILITY_ACTION_EVENT, run),
         )
         install(window, bridge)
         bridge.set_view_focused(True)

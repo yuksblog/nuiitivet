@@ -63,8 +63,8 @@ tend to go wrong.
 
 ### 1.4 Not there yet
 
-- Screen readers on Windows and Linux: VoiceOver on macOS reads the UI, the
-  others cannot yet
+- Screen readers on Linux: VoiceOver on macOS and Narrator on Windows read
+  the UI, Linux ones cannot yet
 
 It is tracked in [issues](https://github.com/yuksblog/nuiitivet/issues).
 By design, a desktop app opens an OS window, so a headless machine with no

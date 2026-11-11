@@ -1461,7 +1461,7 @@ name = "nuiitivet"
 version = "0.28.0"
 source = { editable = "." }
 dependencies = [
-    { name = "accesskit", marker = "sys_platform == 'darwin'" },
+    { name = "accesskit", marker = "sys_platform == 'darwin' or sys_platform == 'win32'" },
     { name = "jeepney", marker = "sys_platform == 'linux'" },
     { name = "materialyoucolor" },
     { name = "pyglet" },
@@ -1499,7 +1499,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "accesskit", marker = "sys_platform == 'darwin'", specifier = ">=0.7.0" },
+    { name = "accesskit", marker = "sys_platform == 'darwin' or sys_platform == 'win32'", specifier = ">=0.7.0" },
     { name = "jeepney", marker = "sys_platform == 'linux'", specifier = ">=0.9.0" },
     { name = "materialyoucolor", specifier = ">=3.0.3" },
     { name = "matplotlib", marker = "extra == 'matplotlib'", specifier = ">=3.6" },

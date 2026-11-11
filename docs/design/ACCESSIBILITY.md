@@ -202,7 +202,8 @@ sequenceDiagram
 ## The Bridge
 
 An `AccessKitBridge` keeps one window's tree in an AccessKit adapter on the
-OS window. The pyglet runner installs it on macOS.
+OS window. The pyglet runner installs it on macOS and on Windows, on a
+window not yet shown.
 
 ### Structure
 
@@ -218,29 +219,29 @@ flowchart LR
     at[the assistive technology]
 
     realize -- "AccessKitBridge(win, pixel_ratio, defer) · sync() after a dirty frame · set_view_focused(active)" --> bridge
-    realize -- "install(window, bridge)" --> installer
-    installer -- "add_focus_forwarder_to_window_class · setAccessibilityElement_(False) on the content view's subviews" --> oswindow
-    installer -- "SubclassingAdapter.for_window(activation_handler, action_handler)" --> adapter
+    realize -- "install(window, bridge), before the window is shown" --> installer
+    installer -- "macOS: add_focus_forwarder_to_window_class · setAccessibilityElement_(False) on the content view's subviews" --> oswindow
+    installer -- "macOS: SubclassingAdapter.for_window(activation_handler, action_handler) · Windows: SubclassingAdapter(hwnd, activation_handler, action_handler)" --> adapter
     installer -- "attach(adapter)" --> bridge
     bridge -- "semantics_tree() · perform_semantics_action(id, action) · settle(window), when never laid out" --> window
     bridge -- "tree_update(tree, pixel_ratio)" --> convert
     bridge -- "update_if_active(build) · update_view_focus_state(focused), the events raised" --> adapter
-    adapter -- "activation_handler() · action_handler(request)" --> bridge
+    adapter -- "activation_handler() · action_handler(request), on any thread" --> bridge
     bridge -- "defer(perform)" --> realize
-    adapter -- "the content view's accessibility" --> oswindow
-    oswindow -- "NSAccessibility" --> at
+    adapter -- "macOS: the content view's accessibility · Windows: WM_GETOBJECT, WM_SETFOCUS, WM_KILLFOCUS" --> oswindow
+    oswindow -- "NSAccessibility · UI Automation" --> at
 ```
 
 | Module | Role |
 | --- | --- |
-| `_realize_window()` | the runner's setup of one OS window; installs the bridge, pushes after a frame that changed something, reports the window's activation, runs a deferred action on the next loop turn |
+| `_realize_window()` | the runner's setup of one OS window; creates it hidden, installs the bridge, shows it, pushes after a frame that changed something, reports the window's activation, runs a deferred action on the next loop turn through a posted event |
 | `AccessKitBridge` | answers the adapter's two callbacks, builds the update, pushes it |
 | `tree_update()` | turns a `SemanticsTree` into the whole-tree update AccessKit takes, with the root scaled to backing pixels |
-| `install()` | `accessibility_macos.py`; subclasses the content view with the adapter, routes the OS window's focused element to the content view, hides the content view's subviews |
-| the AccessKit adapter | AccessKit's macOS adapter; answers for the content view |
-| the OS window | the NSWindow and its content view; asks the content view for the focused element |
+| `install()` | `accessibility_macos.py`: subclasses the content view with the adapter, routes the OS window's focused element to the content view, hides the content view's subviews. `accessibility_windows.py`: subclasses the HWND with the adapter; the bridge's report of the activation is a no-op there |
+| the AccessKit adapter | AccessKit's macOS adapter, answering for the content view; or its Windows adapter, answering `WM_GETOBJECT` and following `WM_SETFOCUS` / `WM_KILLFOCUS` itself |
+| the OS window | the NSWindow and its content view, which answers the focused element; or the HWND |
 | `Window` | the tree and the actions (The Tree) |
-| the assistive technology | VoiceOver, or any client of the accessibility API |
+| the assistive technology | VoiceOver, Narrator, NVDA, or any client of the accessibility API |
 
 ### Sequence
 
@@ -275,9 +276,9 @@ sequenceDiagram
     participant W as Window
 
     AT->>A: a press, a focus, an increment
-    A->>B: action_handler(request)
+    A->>B: action_handler(request), on any thread
     B->>R: defer(perform)
-    Note over R: the next loop turn
+    Note over R: the next loop turn, on the UI thread
     R->>B: perform
     B->>W: perform_semantics_action(id, action)
     B->>A: update_if_active(build)
@@ -286,15 +287,17 @@ sequenceDiagram
 
 ### Promises
 
+- The adapter is installed before the OS window is first shown.
 - A callback the adapter runs never raises. It returns the tree or queues;
   it never pushes an update.
-- An action runs on the next turn of the UI loop.
+- An action runs on the next turn of the UI loop, on the UI thread,
+  whichever thread it arrived on.
 - The tree is pushed after a frame that changed something. It is pushed
   after an action.
 - Nothing is built while no assistive technology listens.
 - The adapter holds the OS window's activation, from the install on and at
   each change.
-- The OS window answers the focused element through its content view. No
-  subview of the content view is an accessibility element.
+- On macOS the OS window answers the focused element through its content
+  view. No subview of the content view is an accessibility element.
 - The rects go out in backing pixels, through the root's transform.
 - An install that fails leaves the app running without a bridge.
