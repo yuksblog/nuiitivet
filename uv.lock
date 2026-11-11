@@ -1461,7 +1461,7 @@ name = "nuiitivet"
 version = "0.28.0"
 source = { editable = "." }
 dependencies = [
-    { name = "accesskit", marker = "sys_platform == 'darwin' or sys_platform == 'win32'" },
+    { name = "accesskit" },
     { name = "jeepney", marker = "sys_platform == 'linux'" },
     { name = "materialyoucolor" },
     { name = "pyglet" },
@@ -1482,7 +1482,6 @@ browser = [
     { name = "playwright" },
 ]
 dev = [
-    { name = "accesskit" },
     { name = "flake8" },
     { name = "mypy" },
     { name = "nuiitivet", extra = ["dev", "matplotlib"] },
@@ -1499,7 +1498,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "accesskit", marker = "sys_platform == 'darwin' or sys_platform == 'win32'", specifier = ">=0.7.0" },
+    { name = "accesskit", specifier = ">=0.7.0" },
     { name = "jeepney", marker = "sys_platform == 'linux'", specifier = ">=0.9.0" },
     { name = "materialyoucolor", specifier = ">=3.0.3" },
     { name = "matplotlib", marker = "extra == 'matplotlib'", specifier = ">=3.6" },
@@ -1513,7 +1512,6 @@ provides-extras = ["dev", "matplotlib"]
 [package.metadata.requires-dev]
 browser = [{ name = "playwright", specifier = ">=1.63.0" }]
 dev = [
-    { name = "accesskit", specifier = ">=0.7.0" },
     { name = "flake8", specifier = ">=7.0.0" },
     { name = "mypy", specifier = ">=1.18.2" },
     { name = "nuiitivet", extras = ["dev"] },

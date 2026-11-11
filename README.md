@@ -56,21 +56,15 @@ tend to go wrong.
   with no Python on it
 - **Background work**: a write to an `Observable` from a worker thread is
   marshalled onto the UI thread. Progress, cancellation, leaving the screen
-  mid-run, a worker that raises: all of them have an answer
-  ([Background Work](docs/guide/state-management/background_work.md))
+  mid-run, a worker that raises: all of them have an answer   ([Background Work](docs/guide/state-management/background_work.md))
 - **Hot reload**: a save rebuilds the window in place, and the state your
   `Observable`s hold survives
 
-### 1.4 Not there yet
+### 1.4 Limits
 
-- Screen readers on Linux: VoiceOver on macOS and Narrator on Windows read
-  the UI, Linux ones cannot yet
-
-It is tracked in [issues](https://github.com/yuksblog/nuiitivet/issues).
 By design, a desktop app opens an OS window, so a headless machine with no
 display cannot run one. A GPU is recommended; without one, rendering falls
-back to CPU raster
-([Renderer Selection](docs/guide/window/renderer_selection.md)).
+back to CPU raster ([Renderer Selection](docs/guide/window/renderer_selection.md)).
 
 ### 1.5 Getting started
 
@@ -82,11 +76,9 @@ python -m nuiitivet.dev run app.py
 ```
 
 Plain `nuiitivet` runs an app and the dev runner, hot reload included. `[dev]`
-adds the dev bridge that coding agents use. Installing the skills and
-registering the MCP server is covered in
-[Set up](docs/guide/coding_agent/setup.md). For a first app, the
-card at the end of [3. The intuitive grammar](#3-the-intuitive-grammar) runs
-as it is.
+adds the dev bridge that coding agents use. Installing the skills and registering
+the MCP server is covered in [Set up](docs/guide/coding_agent/setup.md). For a first app, the card at the end of
+[3. The intuitive grammar](#3-the-intuitive-grammar) runs as it is.
 
 ---
 
@@ -402,12 +394,10 @@ here.
 
 ## 4. Documentation
 
-For a deep dive into Nuiitivet's design, visit the
-**[docs site](https://yuksblog.github.io/nuiitivet/)**. Browse runnable
+For a deep dive into Nuiitivet's design, visit the **[docs site](https://yuksblog.github.io/nuiitivet/)**. Browse runnable
 examples in **[samples/](samples/)**. The calendar app shown in this README is
 [samples/readme/readme_calendar_app.py](samples/readme/readme_calendar_app.py),
-and the card is
-[samples/intuitive_grammar/counter_card.py](samples/intuitive_grammar/counter_card.py).
+and the card is [samples/intuitive_grammar/counter_card.py](samples/intuitive_grammar/counter_card.py).
 
 | Guide | Summary |
 | ----- | ------- |

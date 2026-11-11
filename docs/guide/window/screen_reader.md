@@ -92,5 +92,5 @@ nv.HorizontalRangeSlider(value_start=20, value_end=80, min_value=0, max_value=10
 | --- | --- |
 | macOS | VoiceOver |
 | Windows | Narrator, NVDA |
-| Linux | Nothing yet |
+| Linux | Orca |
 | Browser | Nothing yet |
