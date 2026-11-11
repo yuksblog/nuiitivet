@@ -125,7 +125,7 @@ class AccessKitBridge:
     The adapter's callbacks run inside the adapter: one that raises aborts the
     process, and one that updates the tree deadlocks. So the two callbacks
     here catch everything and only queue. An action runs on the next loop
-    turn, through ``defer``.
+    turn, through ``defer``, whichever thread it arrived on.
     """
 
     def __init__(
@@ -140,7 +140,8 @@ class AccessKitBridge:
         Args:
             window: The window whose tree is handed over.
             pixel_ratio: Returns the OS window's backing pixels per logical pixel.
-            defer: Runs a callable on the next turn of the UI loop.
+            defer: Runs a callable on the next turn of the UI loop; callable
+                from any thread.
         """
         self._window = window
         self._pixel_ratio = pixel_ratio

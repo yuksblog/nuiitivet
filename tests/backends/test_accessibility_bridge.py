@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import importlib
+import sys
+import types
 from typing import Any, Callable, Optional
 
 import pytest
@@ -215,3 +218,54 @@ def test_a_raising_tree_build_answers_an_empty_tree() -> None:
     update = bridge.activation_handler()
 
     assert [entry_id for entry_id, _ in update.nodes] == [ROOT_ID]
+
+
+# --- the Windows install ------------------------------------------------------
+
+
+class _FakeSubclassingAdapter:
+    """``accesskit.windows.SubclassingAdapter`` as the install sees it."""
+
+    created: list["_FakeSubclassingAdapter"] = []
+
+    def __init__(self, hwnd: Any, activation_handler: Any, action_handler: Any) -> None:
+        self.hwnd = hwnd
+        self.activation_handler = activation_handler
+        self.action_handler = action_handler
+        self.updates: list[Any] = []
+        _FakeSubclassingAdapter.created.append(self)
+
+    def update_if_active(self, update_factory: Callable[[], Any]) -> _Events:
+        self.updates.append(update_factory())
+        return _Events([])
+
+
+def _windows_install(monkeypatch: pytest.MonkeyPatch) -> Any:
+    """Import ``accessibility_windows`` as it imports on Windows, over a fake ``accesskit.windows``."""
+    name = "nuiitivet.backends.pyglet.accessibility_windows"
+    fake = types.ModuleType("accesskit.windows")
+    fake.SubclassingAdapter = _FakeSubclassingAdapter  # type: ignore[attr-defined]
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setitem(sys.modules, "accesskit.windows", fake)
+    monkeypatch.setattr(accesskit, "windows", fake, raising=False)
+    sys.modules.pop(name, None)
+    return importlib.import_module(name).install
+
+
+def test_the_windows_install_subclasses_the_hwnd_with_the_bridge_callbacks(monkeypatch: pytest.MonkeyPatch) -> None:
+    install = _windows_install(monkeypatch)
+    try:
+        _FakeSubclassingAdapter.created.clear()
+        bridge = AccessKitBridge(_mounted(Column([Text("Hi")])), pixel_ratio=lambda: 1.0, defer=lambda run: None)
+
+        install(types.SimpleNamespace(_hwnd=0x1234), bridge)
+        bridge.sync()
+        bridge.set_view_focused(True)
+
+        (adapter,) = _FakeSubclassingAdapter.created
+        assert adapter.hwnd == 0x1234
+        assert adapter.activation_handler == bridge.activation_handler
+        assert adapter.action_handler == bridge.action_handler
+        assert len(adapter.updates) == 1
+    finally:
+        sys.modules.pop("nuiitivet.backends.pyglet.accessibility_windows", None)

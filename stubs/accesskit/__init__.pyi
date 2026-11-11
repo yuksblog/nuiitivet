@@ -12,3 +12,4 @@ Toggled: Any
 Tree: Any
 TreeUpdate: Any
 macos: Any
+windows: Any
