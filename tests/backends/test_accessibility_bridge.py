@@ -15,9 +15,11 @@ accesskit = pytest.importorskip("accesskit")
 
 from nuiitivet.backends.pyglet.accessibility import AccessKitBridge, tree_update  # noqa: E402
 from nuiitivet.layout.column import Column  # noqa: E402
-from nuiitivet.material import Checkbox, Text  # noqa: E402
+from nuiitivet.layout.row import Row  # noqa: E402
+from nuiitivet.material import Checkbox, Icon, Text  # noqa: E402
 from nuiitivet.material.buttons import Button  # noqa: E402
 from nuiitivet.material.slider import HorizontalRangeSlider  # noqa: E402
+from nuiitivet.modifiers import semantics  # noqa: E402
 from nuiitivet.runtime.app import App  # noqa: E402
 from nuiitivet.runtime.semantics_tree import ROOT_ID, SemanticsEntry, SemanticsTree  # noqa: E402
 from nuiitivet.runtime.window import Window  # noqa: E402
@@ -82,6 +84,28 @@ def test_a_text_says_its_words_as_its_value() -> None:
 
     assert node.role == accesskit.Role.LABEL
     assert node.value == "Hello"
+    assert node.label is None
+
+
+def test_a_labelled_group_with_nothing_beneath_it_is_said_as_a_text() -> None:
+    row = Row([Icon("shopping_cart"), Text("3 items")]).modifier(semantics(label="Cart, 3 items"))
+    tree = _mounted(Column([row])).semantics_tree()
+
+    node = _nodes(tree_update(tree, 1.0))[_entry(tree, SemanticsRole.GROUP).id]
+
+    assert node.role == accesskit.Role.LABEL
+    assert node.value == "Cart, 3 items"
+    assert node.label is None
+
+
+def test_a_group_with_children_stays_a_group() -> None:
+    tree = _mounted(
+        Column([HorizontalRangeSlider(value_start=20.0, value_end=80.0, max_value=100.0)])
+    ).semantics_tree()
+
+    node = _nodes(tree_update(tree, 1.0))[_entry(tree, SemanticsRole.GROUP).id]
+
+    assert node.role == accesskit.Role.GROUP
     assert node.label is None
 
 

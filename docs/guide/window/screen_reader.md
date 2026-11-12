@@ -63,8 +63,8 @@ nv.Icon("warning").modifier(nv.semantics(label="Warning", role=nv.SemanticsRole.
 ### A row of texts that belong together
 
 Read as two texts, "3 items" after the icon that is not read. Put
-`nv.semantics(label=...)` on the layout: "Cart, 3 items, group", once. The
-texts inside are no longer read. A control inside the layout is still read,
+`nv.semantics(label=...)` on the layout: "Cart, 3 items", once, as a text.
+The texts inside are no longer read. A control inside the layout is still read,
 after the label.
 
 ```python
