@@ -5,9 +5,9 @@ its label, a slider by its value. A control with no words of its own, an
 icon button or a bare checkbox, is read by the label ``nv.semantics`` gives it.
 
 Interactions (macOS: turn VoiceOver on with Cmd+F5, then VO+Right through the
-window. Windows: turn Narrator on with Win+Ctrl+Enter, then Caps Lock+Right
-through the window. Linux: turn Orca on with Super+Alt+S, then Tab through
-the window):
+window. Windows: turn Narrator on with Win+Ctrl+Enter, then Narrator+Right
+through the window; the Narrator key is Caps Lock or Insert. Linux: turn Orca
+on with Super+Alt+S, then Tab through the window):
     - "Save" is read as "Save, button" with nothing added.
     - The close icon is read as "Close, button" from its ``nv.semantics`` label.
     - The warning icon is read as "Warning, image".
@@ -18,7 +18,7 @@ the window):
       "Highest price". VO+Shift+Down on one starts interacting with it; Up
       and Down then move its handle, and VO+Shift+Up stops. With Narrator or
       Orca, Tab to a handle and press Left or Right.
-    - VO+Space (Narrator: Caps Lock+Enter, Orca: Enter) on "Save" runs its
+    - VO+Space (Narrator: Narrator+Enter, Orca: Enter) on "Save" runs its
       click like a press.
 """
 

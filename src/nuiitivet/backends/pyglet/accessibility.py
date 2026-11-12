@@ -71,17 +71,44 @@ class Adapter(Protocol):
     def update_view_focus_state(self, is_focused: bool) -> Any: ...
 
 
+def _is_text(entry: SemanticsEntry) -> bool:
+    """Whether ``entry`` goes out as a static text.
+
+    A labelled group with nothing beneath it and no action, such as a row
+    whose texts folded into its label, counts as one: Narrator skips a group
+    with nothing in it, and reads a text.
+    """
+    said = entry.semantics
+    if said.role is SemanticsRole.TEXT:
+        return True
+    return (
+        entry.id != ROOT_ID
+        and said.role is SemanticsRole.GROUP
+        and said.label is not None
+        and not entry.children
+        and not entry.actions
+    )
+
+
 def _node(entry: SemanticsEntry) -> accesskit.Node:
     said = entry.semantics
-    node = accesskit.Node(accesskit.Role.WINDOW if entry.id == ROOT_ID else _ROLES[said.role])
-    if said.role is SemanticsRole.TEXT:
+    text = _is_text(entry)
+    if entry.id == ROOT_ID:
+        role = accesskit.Role.WINDOW
+    elif text:
+        role = accesskit.Role.LABEL
+    else:
+        role = _ROLES[said.role]
+    node = accesskit.Node(role)
+    if text:
         # A static text's words are its value; VoiceOver reads a label's
         # value and a button's label.
         node.set_value(said.label or "")
-    elif said.label is not None:
-        node.set_label(said.label)
-    if said.value is not None and said.role is not SemanticsRole.TEXT:
-        node.set_value(said.value)
+    else:
+        if said.label is not None:
+            node.set_label(said.label)
+        if said.value is not None:
+            node.set_value(said.value)
     if said.toggled is not None:
         node.set_toggled(_TOGGLED[said.toggled])
     if said.selected is not None:
