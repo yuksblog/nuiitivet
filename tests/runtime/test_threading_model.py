@@ -2,7 +2,7 @@ import threading
 import pytest
 from unittest.mock import patch
 
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.runtime import threading as nv_threading
 from nuiitivet.runtime.threading import assert_ui_thread, is_ui_thread, set_ui_thread
 
@@ -89,11 +89,11 @@ def test_reset_after_fork_reseats_the_main_thread():
         set_ui_thread(threading.main_thread().ident)
 
 
-def test_observable_coalescing(mock_clock):
-    class State:
-        value = Observable(0)
+def test_state_coalescing(mock_clock):
+    class Model:
+        value = State(0)
 
-    s = State()
+    s = Model()
 
     updates = []
     s.value.subscribe(lambda v: updates.append(v))
@@ -120,7 +120,7 @@ def test_observable_coalescing(mock_clock):
     assert s.value.value == 5
 
 
-def test_computed_observable_coalescing_direct_source(mock_clock):
+def test_computed_state_coalescing_direct_source(mock_clock):
     """The *computed* coalesces when its source hands it every write inline.
 
     The source opts out, so a worker's writes apply immediately on the worker
@@ -130,10 +130,10 @@ def test_computed_observable_coalescing_direct_source(mock_clock):
     *before* the computed ever saw them and prove nothing about this path.
     """
 
-    class State:
-        source = Observable(0, dispatch=False)
+    class Model:
+        source = State(0, dispatch=False)
 
-    state = State()
+    state = Model()
 
     computed = state.source.map(lambda v: v * 2)
     assert computed._dispatch_to_ui is False, "map inherits the source's opt-out"

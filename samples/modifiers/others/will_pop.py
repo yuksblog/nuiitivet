@@ -22,7 +22,7 @@ class HomeScreen(nv.ComposableWidget):
 class EditScreen(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.text = nv.Observable("Hello")
+        self.text = nv.State("Hello")
         self._initial_text = str(self.text.value)
 
     def _is_dirty(self) -> bool:

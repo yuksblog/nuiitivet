@@ -4,7 +4,7 @@ from typing import Optional, Union, cast
 
 from nuiitivet.widgets.clickable import Clickable
 from nuiitivet.widgets.semantics import Semantics, SemanticsRole, ToggleState
-from nuiitivet.observable import Observable, ObservableProtocol, ReadOnlyObservableProtocol
+from nuiitivet.observable import ReadOnlyStateProtocol, State, StateProtocol
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgeting.callbacks import invoke_event_handler, OptionalBoolCallback
 
@@ -15,18 +15,18 @@ class Toggleable(Clickable):
     Handles value state (checked/unchecked/indeterminate) and toggling logic.
     """
 
-    # Internal descriptor-backed observable for simple usage
-    _state_internal = Observable(False)
+    # Internal descriptor-backed State for simple usage
+    _state_internal = State(False)
 
     # What assistive technology calls this toggle; a subclass names its own.
     _semantics_role: SemanticsRole = SemanticsRole.CHECKBOX
 
     def __init__(
         self,
-        value: Union[bool, None, ObservableProtocol[Optional[bool]]] = False,
+        value: Union[bool, None, StateProtocol[Optional[bool]]] = False,
         on_change: Optional[OptionalBoolCallback] = None,
         tristate: bool = False,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         # Clickable args
         width: SizingLike = None,
         height: SizingLike = None,
@@ -42,12 +42,12 @@ class Toggleable(Clickable):
 
         self.tristate = tristate
         self.on_change = on_change
-        self._state_external: ObservableProtocol[Optional[bool]] | None = None
+        self._state_external: StateProtocol[Optional[bool]] | None = None
 
         if hasattr(value, "subscribe") and hasattr(value, "value"):
-            self._state_external = cast("ObservableProtocol[Optional[bool]]", value)
+            self._state_external = cast("StateProtocol[Optional[bool]]", value)
         else:
-            # Initialize internal observable
+            # Initialize internal State
             # We allow None (indeterminate) even if tristate is False (e.g. initial state)
             if value is None:
                 setattr(self, "_state_internal", None)
@@ -63,7 +63,7 @@ class Toggleable(Clickable):
         """Track the value source for as long as this widget is in the tree.
 
         Bound rather than subscribed bare, and taken here rather than in
-        ``__init__``, because the source may be an ``Observable`` the *app* owns
+        ``__init__``, because the source may be a ``State`` the *app* owns
         and outlives this widget by far. A bare ``subscribe`` in the constructor
         left it holding ``self._on_value_change`` forever, so every unmounted
         checkbox stayed alive and kept writing to its interaction state.
@@ -75,7 +75,7 @@ class Toggleable(Clickable):
         # The value may have moved while this widget was out of the tree.
         self._on_value_change(self.value)
 
-    def _get_state_obj(self) -> ObservableProtocol[Optional[bool]]:
+    def _get_state_obj(self) -> StateProtocol[Optional[bool]]:
         if self._state_external is not None:
             return self._state_external
         return self._state_internal  # type: ignore

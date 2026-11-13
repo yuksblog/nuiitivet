@@ -1,7 +1,7 @@
 """Material Widgets - deriving a typed value from a text field.
 
 ``DockedDatePicker`` binds the field's *text*. The date, the error state and the
-supporting text are all derived from that one observable, so nothing has to be
+supporting text are all derived from that one State, so nothing has to be
 kept in sync and each has exactly one writer.
 
 The two spellings of the derivation mean different things, and both are here:
@@ -42,8 +42,8 @@ def _error(text: str) -> str | None:
 class Booking(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        # The observable the field writes into. Everything below derives from it.
-        self.arrival_text = nv.Observable("")
+        # The State the field writes into. Everything below derives from it.
+        self.arrival_text = nv.State("")
 
         self.arrival = self.arrival_text.map(nv.parse_date)
         # One decision, two presentations of it. Deriving both from this rather

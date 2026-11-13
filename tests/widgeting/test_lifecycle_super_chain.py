@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgets.box import Box
@@ -228,7 +228,7 @@ def test_unmount_completes_before_the_report() -> None:
 
 def test_bindings_registered_in_on_mount_are_disposed_on_unmount() -> None:
     """What the on_unmount check exists to protect: no accumulation on re-mount."""
-    source: Observable[int] = Observable(0)
+    source: State[int] = State(0)
     seen: list[int] = []
 
     class _Observer(Box):

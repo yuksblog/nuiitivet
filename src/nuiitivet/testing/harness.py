@@ -58,7 +58,7 @@ class AppHarness(_HarnessBase):
 
         Args:
             content: The screen under test -- a ``Widget`` instance (the normal
-                form: the test keeps it and asserts on its ``Observable``s) or a
+                form: the test keeps it and asserts on its ``State``s) or a
                 zero-argument factory returning one, for the rebuild path.
             size: ``(width, height)``, **required**. There is no default on
                 purpose: ``App`` would otherwise resolve ``"auto"`` against the

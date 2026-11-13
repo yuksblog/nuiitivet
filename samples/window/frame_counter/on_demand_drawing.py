@@ -32,7 +32,7 @@ import nuiitivet.material as nv
 class FrameCounterApp(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.count = nv.Observable(0)
+        self.count = nv.State(0)
 
     def increment(self) -> None:
         self.count.value += 1

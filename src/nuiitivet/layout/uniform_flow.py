@@ -25,7 +25,7 @@ class UniformFlow(Widget):
     tall as its tallest child measures; a row whose children all have a ``"wt"``
     height also takes a share of the height the other rows leave.
 
-    From a data collection, or an observable of one: :meth:`builder`. The
+    From a data collection, or a State of one: :meth:`builder`. The
     items in view only, for a long grid: :meth:`lazy`.
     """
 
@@ -121,7 +121,7 @@ class UniformFlow(Widget):
         """Create a UniformFlow whose children are built from *items*.
 
         Args:
-            items: Source data: a collection, or an observable of one -- the
+            items: Source data: a collection, or a State of one -- the
                 children then follow its changes.
             builder: Called as ``builder(item, index)`` for each item; returns
                 the item's widget.
@@ -197,7 +197,7 @@ class UniformFlow(Widget):
         its height given to all.
 
         Args:
-            items: Source data: a collection, or an observable of one -- the
+            items: Source data: a collection, or a State of one -- the
                 children then follow its changes.
             builder: Called as ``builder(item, index)`` for an item entering
                 the view; returns the item's widget.

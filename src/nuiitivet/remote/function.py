@@ -15,12 +15,12 @@ import typing
 from typing import Any, Callable, Coroutine, Generic, Optional, ParamSpec, TypeVar
 
 from nuiitivet.common.target import is_web
-from nuiitivet.observable.protocols import MutableObservableBase
+from nuiitivet.observable.protocols import MutableStateBase
 from nuiitivet.observable.switched import CancelToken
 
 from .codec import Codec, Json, _at, codec_for
 from .scope import is_server_only
-from .writer import CallWriter, WriteOnlyObservable
+from .writer import CallWriter, WriteOnlyState
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -136,9 +136,9 @@ class RemoteFunction(Generic[P, R]):
                 # accepts that for a parameter with a default.
                 raise self._error(f"parameter {name} needs a default: {name}: CancelToken = CancelToken()")
             self._tokens.append(name)
-        elif hint is WriteOnlyObservable:
-            raise self._error(f"parameter {name} needs its value type: WriteOnlyObservable[T]")
-        elif typing.get_origin(hint) is WriteOnlyObservable:
+        elif hint is WriteOnlyState:
+            raise self._error(f"parameter {name} needs its value type: WriteOnlyState[T]")
+        elif typing.get_origin(hint) is WriteOnlyState:
             self._writers[name] = self._codec(f"parameter {name}", typing.get_args(hint)[0])
         else:
             self._values[name] = self._codec(f"parameter {name}", hint)
@@ -148,7 +148,7 @@ class RemoteFunction(Generic[P, R]):
     async def call(self, *args: P.args, **kwargs: P.kwargs) -> R:
         """Run the function away from the UI and return its result.
 
-        Arguments, the result and every Observable write are copied the way
+        Arguments, the result and every State write are copied the way
         a network connection carries them, so the function shares no object
         with its caller. Cancelling the awaiting task sets the function's
         ``CancelToken`` on a thread, and ends the Python running it anywhere
@@ -169,8 +169,8 @@ class RemoteFunction(Generic[P, R]):
         values: dict[str, Json] = {}
         for name, value in bound.arguments.items():
             if name in self._writers:
-                if not isinstance(value, MutableObservableBase):
-                    raise TypeError(f"{self.name}: {name} takes an Observable, got {type(value).__name__}")
+                if not isinstance(value, MutableStateBase):
+                    raise TypeError(f"{self.name}: {name} takes a State, got {type(value).__name__}")
                 writers[name] = CallWriter(value, self._writers[name])
             else:
                 values[name] = _at(f"{self.name}: {name}", self._values[name].encode, value)
@@ -216,7 +216,7 @@ class RemoteFunction(Generic[P, R]):
 
         Args:
             values: Each data argument by name, encoded.
-            writers: For each ``WriteOnlyObservable`` parameter, where the
+            writers: For each ``WriteOnlyState`` parameter, where the
                 function's writes go, encoded.
             token: The function's ``CancelToken``.
 
@@ -292,7 +292,7 @@ class ServerFunction(RemoteFunction[P, R]):
 
 
 class _Writer:
-    """What a running function holds for a ``WriteOnlyObservable`` parameter."""
+    """What a running function holds for a ``WriteOnlyState`` parameter."""
 
     __slots__ = ("_codec", "_send")
 
@@ -302,7 +302,7 @@ class _Writer:
 
     @property
     def value(self) -> object:
-        raise AttributeError("a WriteOnlyObservable cannot be read; the caller's Observable is not on this side")
+        raise AttributeError("a WriteOnlyState cannot be read; the caller's State is not on this side")
 
     @value.setter
     def value(self, v: Any) -> None:
@@ -333,7 +333,7 @@ def answer(
 
     The worker's side of a call, the same on a Web Worker, in a child process
     and on a pooled thread. Each message carries the call's number: ``{"id",
-    "w": name, "v": data}`` for a write to a ``WriteOnlyObservable``
+    "w": name, "v": data}`` for a write to a ``WriteOnlyState``
     parameter, then ``{"id", "r": data}`` with the result or ``{"id", "e":
     {...}}`` with the exception.
 
@@ -438,8 +438,8 @@ def server(fn: Callable[P, R]) -> Callable[P, Coroutine[Any, Any, R]]:
     ``T | None``. An ``Enum`` or dataclass in the signature is defined in a
     module the page gets, not in a server-only one.
 
-    Two parameter types are not data. ``WriteOnlyObservable[T]`` receives an
-    ``Observable`` of the caller for the function to report progress into.
+    Two parameter types are not data. ``WriteOnlyState[T]`` receives a
+    ``State`` of the caller for the function to report progress into.
     ``CancelToken``, declared with a default and never passed by the caller,
     is set when the awaiting task is cancelled.
 

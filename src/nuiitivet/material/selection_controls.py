@@ -17,7 +17,7 @@ from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.animation import Animatable
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.container import Container
-from nuiitivet.observable import Observable, ObservableProtocol, ReadOnlyObservableProtocol
+from nuiitivet.observable import ReadOnlyStateProtocol, State, StateProtocol
 from nuiitivet.rendering.skia import (
     draw_oval,
     draw_round_rect,
@@ -105,11 +105,11 @@ class Checkbox(Toggleable, InteractiveWidget):
 
     def __init__(
         self,
-        checked: bool | ObservableProtocol[bool] | ObservableProtocol[Optional[bool]] = False,
+        checked: bool | StateProtocol[bool] | StateProtocol[Optional[bool]] = False,
         *,
         on_toggle: Optional[Callable[[Optional[bool]], None]] = None,
-        indeterminate: bool | ObservableProtocol[bool] = False,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        indeterminate: bool | StateProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["CheckboxStyle"] = None,
         key: Optional[str] = None,
@@ -117,31 +117,31 @@ class Checkbox(Toggleable, InteractiveWidget):
         """Initialize Checkbox.
 
         Args:
-            checked: Checked state, or the observable holding it. An observable
+            checked: Checked state, or the State holding it. A State
                 of ``Optional[bool]`` carries the indeterminate state as ``None``.
             on_toggle: Callback invoked with the new state when toggled.
             indeterminate: Whether the checkbox shows the indeterminate mark, or
-                an observable of it, kept apart from a two-state *checked*.
-            disabled: Whether the checkbox ignores interaction, or an observable
+                a State of it, kept apart from a two-state *checked*.
+            disabled: Whether the checkbox ignores interaction, or a State
                 of it.
             padding: Insets from the allocated rect to the touch target.
             style: Visual style; the theme's checkbox style when omitted.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        self._checked_external_tri: ObservableProtocol[Optional[bool]] | None = None
-        self._checked_external_bool: ObservableProtocol[bool] | None = None
-        self._indeterminate_external: ObservableProtocol[bool] | None = None
+        self._checked_external_tri: StateProtocol[Optional[bool]] | None = None
+        self._checked_external_bool: StateProtocol[bool] | None = None
+        self._indeterminate_external: StateProtocol[bool] | None = None
 
         checked_is_obs = hasattr(checked, "subscribe") and hasattr(checked, "value")
         indeterminate_is_obs = hasattr(indeterminate, "subscribe") and hasattr(indeterminate, "value")
 
         if checked_is_obs and not (indeterminate_is_obs or bool(indeterminate)):
-            self._checked_external_tri = cast("ObservableProtocol[Optional[bool]]", checked)
+            self._checked_external_tri = cast("StateProtocol[Optional[bool]]", checked)
         elif checked_is_obs:
-            self._checked_external_bool = cast("ObservableProtocol[bool]", checked)
+            self._checked_external_bool = cast("StateProtocol[bool]", checked)
 
         if indeterminate_is_obs:
-            self._indeterminate_external = cast("ObservableProtocol[bool]", indeterminate)
+            self._indeterminate_external = cast("StateProtocol[bool]", indeterminate)
 
         # Determine initial value for Toggleable (internal state is the render source-of-truth)
         value: Optional[bool]
@@ -556,7 +556,7 @@ class RadioGroup(InteractionHostMixin, Container):
         self,
         child: Widget,
         *,
-        value: object | ObservableProtocol[object | None] | None = None,
+        value: object | StateProtocol[object | None] | None = None,
         on_change: Optional[Callable[[object | None], None]] = None,
         padding: PaddingLike = 0,
         key: Optional[str] = None,
@@ -565,7 +565,7 @@ class RadioGroup(InteractionHostMixin, Container):
 
         Args:
             child: Root child subtree that contains radio options.
-            value: Selected value or external observable selected value.
+            value: Selected value, or an external State of it.
             on_change: Callback invoked when selection changes.
             padding: Insets from the allocated rect to the group.
             key: Stable widget identity for dev-bridge targeting and hot reload.
@@ -574,14 +574,14 @@ class RadioGroup(InteractionHostMixin, Container):
             raise TypeError(f"child must be Widget, got {type(child)}")
         super().__init__(child=child, padding=padding, key=key)
 
-        self._value_external: ObservableProtocol[object | None] | None = None
+        self._value_external: StateProtocol[object | None] | None = None
         if hasattr(value, "subscribe") and hasattr(value, "value"):
-            self._value_external = cast("ObservableProtocol[object | None]", value)
+            self._value_external = cast("StateProtocol[object | None]", value)
             initial_value = self._value_external.value
         else:
             initial_value = value
 
-        self._value_internal: Observable[object | None] = Observable(initial_value)
+        self._value_internal: State[object | None] = State(initial_value)
         self._on_change = on_change
 
         # The group is the Tab stop; the radios inside it are not (see
@@ -704,7 +704,7 @@ class RadioButton(Toggleable, InteractiveWidget):
         self,
         value: object | None,
         *,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["RadioButtonStyle"] = None,
         key: Optional[str] = None,
@@ -934,10 +934,10 @@ class Switch(Toggleable, InteractiveWidget):
 
     def __init__(
         self,
-        checked: bool | ObservableProtocol[bool] = False,
+        checked: bool | StateProtocol[bool] = False,
         *,
         on_change: Optional[Callable[[bool], None]] = None,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["SwitchStyle"] = None,
         key: Optional[str] = None,
@@ -945,7 +945,7 @@ class Switch(Toggleable, InteractiveWidget):
         """Initialize Switch.
 
         Args:
-            checked: Checked state source (bool or observable bool).
+            checked: Checked state source (a bool, or a State of one).
             on_change: Callback invoked when checked state changes.
             disabled: Disable interaction when True.
             padding: Insets from the allocated rect to the touch target.
@@ -961,7 +961,7 @@ class Switch(Toggleable, InteractiveWidget):
             if self._on_change_bool is not None:
                 self._on_change_bool(bool(next_val))
 
-        toggleable_value = cast("bool | ObservableProtocol[Optional[bool]]", checked)
+        toggleable_value = cast("bool | StateProtocol[Optional[bool]]", checked)
 
         super().__init__(
             value=toggleable_value,

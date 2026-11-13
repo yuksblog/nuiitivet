@@ -29,7 +29,7 @@ class AddEventDialog(nv.ComposableWidget):
         super().__init__()
         self.overlay = overlay
         self.date = date
-        self.title = nv.Observable("")
+        self.title = nv.State("")
 
     def build(self) -> nv.Widget:
         return nv.Card(
@@ -72,7 +72,7 @@ class CalendarApp(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
         self.today = datetime.date.today()
-        self.events: nv.Observable[dict[int, list[str]]] = nv.Observable(initial_events(self.today))
+        self.events: nv.State[dict[int, list[str]]] = nv.State(initial_events(self.today))
 
     def build(self) -> nv.Widget:
         return nv.Row(

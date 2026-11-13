@@ -2,8 +2,8 @@
 
 The menu is a declarative model registered on the App — not widgets in the
 tree. It renders as a bar below the chrome, popups included; items carry
-accelerators (displayed and registered from the same declaration), Observable
-``enabled`` / ``checked`` state, nested submenus, and standard items like
+accelerators (displayed and registered from the same declaration), State-backed
+``enabled`` / ``checked``, nested submenus, and standard items like
 ``MenuEntry.quit()``.
 
 Interactions:
@@ -20,14 +20,14 @@ import nuiitivet.material as nv
 _MUTED = nv.TextStyle(color=nv.ColorRole.ON_SURFACE_VARIANT)
 
 
-class State:
+class AppState:
     """App-level state: the menu binds to it, so it is created once in main
     and survives hot reloads of the widget tree."""
 
     def __init__(self) -> None:
-        self.log = nv.Observable("Pick something from the menu.")
-        self.can_save = nv.Observable(False)
-        self.word_wrap = nv.Observable(False)
+        self.log = nv.State("Pick something from the menu.")
+        self.can_save = nv.State(False)
+        self.word_wrap = nv.State(False)
 
     def open(self) -> None:
         self.can_save.value = True
@@ -37,7 +37,7 @@ class State:
         self.log.value = message
 
 
-def _menu(state: State) -> nv.MenuBar:
+def _menu(state: AppState) -> nv.MenuBar:
     return nv.MenuBar(
         [
             nv.MenuEntry(
@@ -84,7 +84,7 @@ def _menu(state: State) -> nv.MenuBar:
 
 
 class Screen(nv.ComposableWidget):
-    def __init__(self, state: State) -> None:
+    def __init__(self, state: AppState) -> None:
         super().__init__()
         self.state = state
 
@@ -101,7 +101,7 @@ class Screen(nv.ComposableWidget):
 
 
 def main(png: str = ""):
-    state = State()
+    state = AppState()
     app = nv.App(
         nv.Window(content=lambda: Screen(state), title="menu_bar", width=560, height=320, menu=_menu(state))
     )

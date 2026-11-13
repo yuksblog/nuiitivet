@@ -206,7 +206,7 @@ def mount(
     """Mount ``widget`` on a minimal host, for a single-widget test.
 
     Use it as a context manager; the widget is unmounted on exit, so a test
-    cannot leave one subscribed to a live observable for the rest of the
+    cannot leave one subscribed to a live State for the rest of the
     session::
 
         with mount(card) as host:

@@ -5,7 +5,7 @@ A text field with a trailing calendar icon button. Tapping the icon opens a
 typed directly.
 
 ``value`` is the field's *text*, so typing and the calendar write to the same
-observable. The date is derived from it -- see ``date_field_derived_value.py``
+State. The date is derived from it -- see ``date_field_derived_value.py``
 for what an application does with it, including reporting errors.
 """
 
@@ -17,7 +17,7 @@ import nuiitivet.material as nv
 
 
 def build_root() -> nv.Widget:
-    text = nv.Observable(nv.format_date(date(2026, 6, 25)))
+    text = nv.State(nv.format_date(date(2026, 6, 25)))
     selected = text.map(nv.parse_date)
     return nv.Container(
         padding=24,
@@ -36,7 +36,7 @@ def build_root() -> nv.Widget:
 
 def main(png_path: str = "") -> None:
     if png_path:
-        text = nv.Observable(nv.format_date(date(2026, 6, 25)))
+        text = nv.State(nv.format_date(date(2026, 6, 25)))
         selected = text.map(nv.parse_date)
         # For screenshot: place the dropdown calendar directly in the layout,
         # since render_to_png does not capture overlay content.
@@ -44,7 +44,7 @@ def main(png_path: str = "") -> None:
         content = nv.Column(
             children=[
                 nv.DockedDatePicker(value=text),
-                nv.DatePicker(nv.Observable(selected.value), style=style.calendar),
+                nv.DatePicker(nv.State(selected.value), style=style.calendar),
             ],
             gap=int(style.dropdown_gap),
             padding=24,

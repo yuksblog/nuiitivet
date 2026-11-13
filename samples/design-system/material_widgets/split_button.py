@@ -18,8 +18,8 @@ import nuiitivet.material as nv
 
 _ACTIONS = ["Start driving", "Navigate home", "Navigate to work", "Explore nearby"]
 
-_label: nv.Observable[str] = nv.Observable(_ACTIONS[0])
-_menu_open: nv.Observable[bool] = nv.Observable(False)
+_label: nv.State[str] = nv.State(_ACTIONS[0])
+_menu_open: nv.State[bool] = nv.State(False)
 
 
 def _close_menu() -> None:
@@ -32,7 +32,7 @@ def _select_action(action: str) -> None:
 
 
 def _make_interactive_split_button() -> nv.SplitButton:
-    """Build the interactive SplitButton bound to module-level observables."""
+    """Build the interactive SplitButton bound to module-level States."""
     return nv.SplitButton(
         _label,
         icon="directions_car",

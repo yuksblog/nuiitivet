@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Callable, Optional, TypeVar, Any, cast
 
-from nuiitivet.observable.protocols import ObservableBase
-from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.observable.protocols import StateBase
+from nuiitivet.observable.value import _StateValue
 from nuiitivet.observable import runtime
 
 from .converter import FloatConverter, VectorConverter
@@ -15,15 +15,15 @@ T = TypeVar("T")
 V = TypeVar("V")
 
 
-class Animatable(ObservableBase[T]):
+class Animatable(StateBase[T]):
     """Declarative, retargetable animation value.
 
     Assign to ``target`` to retarget motion without reversing.
     ``value`` is read-only and reflects the current animated value.
 
-    Subclasses :class:`ObservableBase` so it is recognised by the pure-C
+    Subclasses :class:`StateBase` so it is recognised by the pure-C
     ``isinstance`` fast path used on the widget construction hot path;
-    it also structurally satisfies :class:`ReadOnlyObservableProtocol`.
+    it also structurally satisfies :class:`ReadOnlyStateProtocol`.
     """
 
     def __init__(self: "Animatable[float]", initial_value: float, motion: Optional[Motion] = None) -> None:
@@ -56,7 +56,7 @@ class Animatable(ObservableBase[T]):
 
     def _initialize(self, initial_value: T, converter: VectorConverter[T], motion: Optional[Motion]) -> None:
         self._converter = converter
-        self._value = _ObservableValue(initial_value)
+        self._value = _StateValue(initial_value)
         self._target = initial_value
         self._motion = motion
         self._state: Optional[MotionState] = None

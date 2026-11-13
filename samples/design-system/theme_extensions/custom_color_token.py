@@ -113,7 +113,7 @@ class BrandCard(nv.ComposableWidget):
 
 class HomeScreen(nv.ComposableWidget):
     _is_dark: bool = True
-    _toggle_label: nv.Observable[str] = nv.Observable("Switch to Light")
+    _toggle_label: nv.State[str] = nv.State("Switch to Light")
 
     def build(self) -> nv.Widget:
         return nv.Container(

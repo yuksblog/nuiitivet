@@ -10,7 +10,7 @@ from ..rendering.sizing import Sizing, SizingLike
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.input.events import FocusEvent
 from nuiitivet.input.pointer import PointerEvent
-from nuiitivet.observable.protocols import ObservableBase, ReadOnlyObservableProtocol
+from nuiitivet.observable.protocols import ReadOnlyStateProtocol, StateBase
 from .modifier import Modifier, ModifierElement
 from .widget_binding import BindingHostMixin
 from .widget_builder import BuilderHostMixin
@@ -45,9 +45,9 @@ class Widget(
     def __init__(
         self,
         *,
-        width: Union[SizingLike, ReadOnlyObservableProtocol] = None,
-        height: Union[SizingLike, ReadOnlyObservableProtocol] = None,
-        padding: Union[PaddingLike, ReadOnlyObservableProtocol] = None,
+        width: Union[SizingLike, ReadOnlyStateProtocol] = None,
+        height: Union[SizingLike, ReadOnlyStateProtocol] = None,
+        padding: Union[PaddingLike, ReadOnlyStateProtocol] = None,
         max_children: Optional[int] = None,
         overflow_policy: str = "none",
         key: Optional[str] = None,
@@ -289,7 +289,7 @@ class ComposableWidget(BuilderHostMixin, Widget):
         return self._width_sizing
 
     @width_sizing.setter
-    def width_sizing(self, value: Union[SizingLike, ObservableBase]) -> None:
+    def width_sizing(self, value: Union[SizingLike, StateBase]) -> None:
         # ``None`` is the "undeclared" marker; an explicit "auto" is a
         # declaration and pins the intrinsic size (the opt-out from derivation).
         self._width_declared = value is not None
@@ -304,7 +304,7 @@ class ComposableWidget(BuilderHostMixin, Widget):
         return self._height_sizing
 
     @height_sizing.setter
-    def height_sizing(self, value: Union[SizingLike, ObservableBase]) -> None:
+    def height_sizing(self, value: Union[SizingLike, StateBase]) -> None:
         self._height_declared = value is not None
         WidgetKernel.height_sizing.fset(self, value)  # type: ignore[attr-defined]
 

@@ -1,7 +1,7 @@
 """Material Widgets - DatePicker.
 
 An inline calendar that always stays visible (not a dialog) and writes the
-selected :class:`datetime.date` back to a shared observable.
+selected :class:`datetime.date` back to a shared State.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import nuiitivet.material as nv
 
 
 def build_root() -> nv.Widget:
-    selected: nv.Observable[date | None] = nv.Observable(date(2026, 6, 25))
+    selected: nv.State[date | None] = nv.State(date(2026, 6, 25))
     content = nv.Container(
         padding=24,
         child=nv.DatePicker(

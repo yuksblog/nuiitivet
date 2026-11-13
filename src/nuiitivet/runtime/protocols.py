@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Awaitable, Protocol
 
 if TYPE_CHECKING:
-    from nuiitivet.observable.protocols import MutableObservableBase, ObservableBase
+    from nuiitivet.observable.protocols import MutableStateBase, StateBase
     from nuiitivet.theme.theme import Theme
 
 
@@ -39,7 +39,7 @@ class AppProtocol(Protocol):
         ...
 
     @property
-    def badge(self) -> "MutableObservableBase[int | str | None]":
+    def badge(self) -> "MutableStateBase[int | str | None]":
         """The badge on the app's Dock or taskbar icon: a count, a short
         text, or ``None`` for no badge."""
         ...
@@ -104,13 +104,13 @@ class WindowProtocol(Protocol):
         ...
 
     @property
-    def is_open(self) -> "ObservableBase[bool]":
-        """Observable open state: ``True`` between open and close."""
+    def is_open(self) -> "StateBase[bool]":
+        """State open state: ``True`` between open and close."""
         ...
 
     @property
-    def is_visible(self) -> "ObservableBase[bool]":
-        """Observable visibility: ``False`` while hidden or minimized."""
+    def is_visible(self) -> "StateBase[bool]":
+        """State visibility: ``False`` while hidden or minimized."""
         ...
 
     @property

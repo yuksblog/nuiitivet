@@ -39,7 +39,7 @@ def semantics(label: Optional[SemanticsLabel] = None, *, role: Optional[Semantic
     their order.
 
     Args:
-        label: The name to read, a string or an observable of one; or one
+        label: The name to read, a string or a State of one; or one
             name per part, as a list.
         role: What kind of thing the widget is.
 

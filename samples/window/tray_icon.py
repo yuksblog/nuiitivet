@@ -9,7 +9,7 @@ Interactions (run from a real terminal so the OS shows the icon):
     - Find the icon in the system tray (macOS: right side of the menu bar;
       without an ``icon=`` image it shows the tooltip text).
     - "Ping" bumps the counter in the window; its label live-updates in the
-      native menu (Observable label).
+      native menu (State label).
     - "Muted" is checkable; the window readout follows it.
     - "Quit" exits the app — the same standard item as in a menu bar.
 """
@@ -24,7 +24,7 @@ _MUTED = nv.TextStyle(color=nv.ColorRole.ON_SURFACE_VARIANT)
 class Screen(nv.ComposableWidget):
     # The tray menu must keep working across hot reloads, so the state it
     # binds to is app-level (created once in main) and passed in here.
-    def __init__(self, pings: nv.Observable[int], muted: nv.Observable[bool]) -> None:
+    def __init__(self, pings: nv.State[int], muted: nv.State[bool]) -> None:
         super().__init__()
         self.pings = pings
         self.muted = muted
@@ -45,7 +45,7 @@ class Screen(nv.ComposableWidget):
         )
 
 
-def _tray(pings: nv.Observable[int], muted: nv.Observable[bool]) -> nv.TrayIcon:
+def _tray(pings: nv.State[int], muted: nv.State[bool]) -> nv.TrayIcon:
     def ping() -> None:
         pings.value += 1
 
@@ -64,8 +64,8 @@ def _tray(pings: nv.Observable[int], muted: nv.Observable[bool]) -> nv.TrayIcon:
 
 
 def main(png: str = ""):
-    pings = nv.Observable(0)
-    muted = nv.Observable(False)
+    pings = nv.State(0)
+    muted = nv.State(False)
     app = nv.App(
         nv.Window(content=lambda: Screen(pings, muted), title="tray_icon", width=480, height=240),
         tray=_tray(pings, muted),

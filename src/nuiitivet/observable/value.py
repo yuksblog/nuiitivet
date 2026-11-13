@@ -13,16 +13,16 @@ from nuiitivet.runtime.threading import is_ui_thread
 from ._notify import notify_all
 from ._sentinel import UNSET, _Unset
 from .contexts import _batch_context, _tracking_context
-from .protocols import CompareFunc, Disposable, MutableObservableBase, ReadOnlyObservableProtocol
+from .protocols import CompareFunc, Disposable, MutableStateBase, ReadOnlyStateProtocol
 from . import runtime
 
 if TYPE_CHECKING:
     from .combine import CombineBuilder
-    from .computed import ComputedObservable
-    from .filtered import FilteredObservable
-    from .scanned import ScannedObservable
-    from .switched import CancelToken, SwitchMappedObservable
-    from .timed import DebouncedObservable, ThrottledObservable
+    from .computed import ComputedState
+    from .filtered import FilteredState
+    from .scanned import ScannedState
+    from .switched import CancelToken, SwitchMappedState
+    from .timed import DebouncedState, ThrottledState
 
 T = TypeVar("T")
 _R = TypeVar("_R")
@@ -32,7 +32,7 @@ _A = TypeVar("_A")
 logger = logging.getLogger(__name__)
 
 
-class _ObservableValue(MutableObservableBase[T]):
+class _StateValue(MutableStateBase[T]):
     def __init__(
         self,
         initial: T,
@@ -61,25 +61,25 @@ class _ObservableValue(MutableObservableBase[T]):
     @property
     def _owner_name(self) -> str:
         owner = self._owner
-        return type(owner).__name__ if owner is not None else "ObservableOwner"
+        return type(owner).__name__ if owner is not None else "StateOwner"
 
     def _values_equal(self, a: T, b: T) -> bool:
         if self._compare is not None:
             try:
                 return bool(self._compare(a, b))
             except Exception as exc:
-                msg = f"Observable compare failed for '{self._name}' on {self._owner_name}: {exc}"
+                msg = f"State compare failed for '{self._name}' on {self._owner_name}: {exc}"
                 warnings.warn(msg, RuntimeWarning, stacklevel=2)
                 return False
         try:
             result = a == b
         except Exception as exc:  # pragma: no cover
-            msg = f"Observable equality failed for '{self._name}' on {self._owner_name}: {exc}"
+            msg = f"State equality failed for '{self._name}' on {self._owner_name}: {exc}"
             warnings.warn(msg, RuntimeWarning, stacklevel=2)
             return False
         if isinstance(result, bool):
             return result
-        msg = f"Observable equality for '{self._name}' on {self._owner_name} returned non-bool {result!r}"
+        msg = f"State equality for '{self._name}' on {self._owner_name} returned non-bool {result!r}"
         warnings.warn(msg, RuntimeWarning, stacklevel=2)
         return False
 
@@ -139,7 +139,7 @@ class _ObservableValue(MutableObservableBase[T]):
         self._apply(pending)
 
     def _notify_subs(self) -> None:
-        notify_all(self._subs, lambda: self._value, logger=logger, key="observable")
+        notify_all(self._subs, lambda: self._value, logger=logger, key="state")
 
     def _latest_value(self) -> T:
         """The most recent write, whether applied or still queued for the UI thread."""
@@ -165,81 +165,81 @@ class _ObservableValue(MutableObservableBase[T]):
                 async with self.busy.while_value(True):
                     ...
 
-        The observable must have a single writer; a value written by someone else
+        The State must have a single writer; a value written by someone else
         during the block is logged as a warning on exit and overwritten by the
         restore.
         """
         return WhileValue(self, value)
 
-    def map(self, fn: Callable[[T], Any]) -> "ComputedObservable[Any]":
-        from .computed import ComputedObservable
+    def map(self, fn: Callable[[T], Any]) -> "ComputedState[Any]":
+        from .computed import ComputedState
 
         def compute_fn() -> Any:
             return fn(self.value)
 
-        # The opt-out propagates: a logic-layer observable's derivations are
+        # The opt-out propagates: a logic-layer State's derivations are
         # logic-layer too, and re-enabling dispatch here would silently start
         # coalescing values the source was declared to deliver in full.
-        return ComputedObservable(compute_fn, dispatch=self._dispatch_to_ui)
+        return ComputedState(compute_fn, dispatch=self._dispatch_to_ui)
 
-    def combine(self, *others: ReadOnlyObservableProtocol[Any]) -> "CombineBuilder":
+    def combine(self, *others: ReadOnlyStateProtocol[Any]) -> "CombineBuilder":
         from .combine import CombineBuilder
 
         return CombineBuilder(self, *others)
 
-    def filter(self, pred: Callable[[T], bool], *, initial: T) -> "FilteredObservable[T]":
-        """Observable of the values passing ``pred``, seeded with ``initial``.
+    def filter(self, pred: Callable[[T], bool], *, initial: T) -> "FilteredState[T]":
+        """State of the values passing ``pred``, seeded with ``initial``.
 
-        ``initial`` is required because a filtered observable has no value of
+        ``initial`` is required because a filtered State has no value of
         its own until something passes; see
-        :class:`~nuiitivet.observable.filtered.FilteredObservable`.
+        :class:`~nuiitivet.observable.filtered.FilteredState`.
         """
-        from .filtered import FilteredObservable
+        from .filtered import FilteredState
 
-        return FilteredObservable(self, pred, initial=initial)
+        return FilteredState(self, pred, initial=initial)
 
-    def debounce(self, seconds: float) -> "DebouncedObservable[T]":
-        from .timed import DebouncedObservable
+    def debounce(self, seconds: float) -> "DebouncedState[T]":
+        from .timed import DebouncedState
 
-        return DebouncedObservable(self, seconds)
+        return DebouncedState(self, seconds)
 
-    def throttle(self, seconds: float) -> "ThrottledObservable[T]":
-        from .timed import ThrottledObservable
+    def throttle(self, seconds: float) -> "ThrottledState[T]":
+        from .timed import ThrottledState
 
-        return ThrottledObservable(self, seconds)
+        return ThrottledState(self, seconds)
 
     def switch_map(
         self,
         fn: Union[Callable[[T, "CancelToken"], _R], Callable[[T], Awaitable[_R]]],
         *,
         initial: _R,
-    ) -> "SwitchMappedObservable[T, _R]":
+    ) -> "SwitchMappedState[T, _R]":
         """Asynchronous :meth:`map`: the newest run's result, older runs discarded.
 
         ``fn`` is a plain function of ``(value, CancelToken)``, run on a
         thread, or a coroutine function of ``(value)`` such as a ``@server``
         function, run as a task. See
-        :class:`~nuiitivet.observable.switched.SwitchMappedObservable`.
+        :class:`~nuiitivet.observable.switched.SwitchMappedState`.
         """
-        from .switched import SwitchMappedObservable
+        from .switched import SwitchMappedState
 
-        return SwitchMappedObservable(self, fn, initial=initial)
+        return SwitchMappedState(self, fn, initial=initial)
 
     def scan(
         self,
         fn: Callable[[_A, T], _A],
         *,
         initial: _A,
-    ) -> "ScannedObservable[T, _A]":
-        """Observable of ``fn`` folded over every value this one emits.
+    ) -> "ScannedState[T, _A]":
+        """State of ``fn`` folded over every value this one emits.
 
         ``initial`` is required because the accumulator has no value until the
         source emits; see
-        :class:`~nuiitivet.observable.scanned.ScannedObservable`.
+        :class:`~nuiitivet.observable.scanned.ScannedState`.
         """
-        from .scanned import ScannedObservable
+        from .scanned import ScannedState
 
-        return ScannedObservable(self, fn, initial=initial)
+        return ScannedState(self, fn, initial=initial)
 
     def subscribe(self, cb: Callable[[T], None]) -> Disposable:
         self._subs.append(cb)
@@ -248,19 +248,19 @@ class _ObservableValue(MutableObservableBase[T]):
             try:
                 self._subs.remove(cb)
             except ValueError:
-                debug_once(logger, "value_observable_dispose_remove_missing", "Subscriber callback was already removed")
+                debug_once(logger, "value_state_dispose_remove_missing", "Subscriber callback was already removed")
 
         return Disposable(_dispose)
 
 
 class WhileValue(AbstractContextManager[None], AbstractAsyncContextManager[None], Generic[T]):
-    """Context manager that holds a temporary value on an observable.
+    """Context manager that holds a temporary value on a State.
 
-    Returned by :meth:`_ObservableValue.while_value`; see that docstring for
+    Returned by :meth:`_StateValue.while_value`; see that docstring for
     the semantics and caveats. Supports both ``with`` and ``async with``.
     """
 
-    def __init__(self, obs: _ObservableValue[T], value: T) -> None:
+    def __init__(self, obs: _StateValue[T], value: T) -> None:
         self._obs = obs
         self._temporary = value
         self._saved: T | _Unset = UNSET
@@ -279,7 +279,7 @@ class WhileValue(AbstractContextManager[None], AbstractAsyncContextManager[None]
             return False
         if not self._obs._values_equal(self._obs._latest_value(), self._temporary):
             logger.warning(
-                "Observable '%s' on %s was written while while_value held it; restoring the saved value anyway",
+                "State '%s' on %s was written while while_value held it; restoring the saved value anyway",
                 self._obs._name,
                 self._obs._owner_name,
             )
@@ -293,12 +293,12 @@ class WhileValue(AbstractContextManager[None], AbstractAsyncContextManager[None]
         return self.__exit__(exc_type, exc, tb)
 
 
-class Observable(_ObservableValue[T]):
-    """Descriptor for a per-instance observable that can also be used standalone.
+class State(_StateValue[T]):
+    """Descriptor for a per-instance State that can also be used standalone.
 
     Writes from a thread other than the UI thread are marshalled onto it and
     coalesced, so a subscriber may safely touch widgets whichever thread set
-    the value. Pass ``dispatch=False`` for an observable no widget will ever
+    the value. Pass ``dispatch=False`` for a State no widget will ever
     bind to: notification then stays synchronous on the writing thread, and
     every intermediate value is delivered rather than only the latest per tick.
     """
@@ -310,7 +310,7 @@ class Observable(_ObservableValue[T]):
         compare: Optional[CompareFunc[T]] = None,
         dispatch: bool = True,
     ):
-        """Initialize Observable.
+        """Initialize State.
 
         Args:
             default: Initial value; as a class attribute, the value each instance
@@ -318,7 +318,7 @@ class Observable(_ObservableValue[T]):
             compare: ``compare(old, new)`` returning whether the two are equal; a
                 write of an equal value notifies nobody. ``==`` when omitted.
             dispatch: Whether a write from another thread is delivered on the UI
-                thread. ``False`` is for an observable no widget binds to.
+                thread. ``False`` is for a State no widget binds to.
         """
         super().__init__(initial=default, owner=None, name=None, compare=compare, dispatch=dispatch)
         self.default = default
@@ -330,11 +330,11 @@ class Observable(_ObservableValue[T]):
         self._name = name
         self.name = name
 
-    def _ensure(self, instance) -> _ObservableValue[T]:
+    def _ensure(self, instance) -> _StateValue[T]:
         storage_name = "_obs_" + (self.name if self.name is not None else "")
         storage = instance.__dict__.get(storage_name)
         if storage is None:
-            storage = _ObservableValue(
+            storage = _StateValue(
                 self.default,
                 owner=instance,
                 name=self.name,
@@ -353,16 +353,16 @@ class Observable(_ObservableValue[T]):
         self._ensure(instance).value = value
 
     @staticmethod
-    def compute(fn: Callable[[], T], *, dispatch: bool = True) -> "ComputedObservable[T]":
-        """Create a read-only observable whose value is ``fn()``.
+    def compute(fn: Callable[[], T], *, dispatch: bool = True) -> "ComputedState[T]":
+        """Create a read-only State whose value is ``fn()``.
 
-        It recomputes when an observable that *fn* read changes.
+        It recomputes when a State that *fn* read changes.
 
         Args:
-            fn: Computes the value from the ``.value`` of other observables.
+            fn: Computes the value from the ``.value`` of other States.
             dispatch: Whether a change from another thread is delivered on
                 the UI thread. ``False`` is for a value no widget binds to.
         """
-        from .computed import ComputedObservable
+        from .computed import ComputedState
 
-        return ComputedObservable(fn, dispatch=dispatch)
+        return ComputedState(fn, dispatch=dispatch)

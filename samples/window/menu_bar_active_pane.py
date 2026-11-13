@@ -1,9 +1,9 @@
 """One shared menu command acting on whichever pane is focused.
 
 A shared "Save" entry must save the document the user is working in. The app
-owns an ``active`` Observable: each pane writes it when it gains focus, and
+owns an ``active`` State: each pane writes it when it gains focus, and
 the entry's ``on_select`` reads it. The entry's label binds to the same
-observable, so the menu itself shows which document the command will hit.
+State, so the menu itself shows which document the command will hit.
 
 Interactions:
     - Click into either editor, then File > Save (or Accel+S): the log names
@@ -23,25 +23,25 @@ class Document:
 
     def __init__(self, name: str) -> None:
         self.name = name
-        self.text = nv.Observable("")
+        self.text = nv.State("")
 
 
-class State:
+class AppState:
     """App-level state: the shared Save entry reads ``active`` instead of
     hard-wiring a document; each pane writes it on focus."""
 
     def __init__(self) -> None:
         self.notes = Document("notes.txt")
         self.draft = Document("draft.txt")
-        self.active = nv.Observable(self.notes)
-        self.log = nv.Observable("Click into a pane, then File > Save (or Accel+S).")
+        self.active = nv.State(self.notes)
+        self.log = nv.State("Click into a pane, then File > Save (or Accel+S).")
 
     def save(self) -> None:
         document = self.active.value
         self.log.value = f"Saved {document.name} ({len(document.text.value)} characters)."
 
 
-def _menu(state: State) -> nv.MenuBar:
+def _menu(state: AppState) -> nv.MenuBar:
     return nv.MenuBar(
         [
             nv.MenuEntry(
@@ -61,7 +61,7 @@ def _menu(state: State) -> nv.MenuBar:
 
 
 class Pane(nv.ComposableWidget):
-    def __init__(self, state: State, document: Document) -> None:
+    def __init__(self, state: AppState, document: Document) -> None:
         super().__init__()
         self.state = state
         self.document = document
@@ -79,7 +79,7 @@ class Pane(nv.ComposableWidget):
 
 
 class Screen(nv.ComposableWidget):
-    def __init__(self, state: State) -> None:
+    def __init__(self, state: AppState) -> None:
         super().__init__()
         self.state = state
 
@@ -101,7 +101,7 @@ class Screen(nv.ComposableWidget):
 
 
 def main(png: str = ""):
-    state = State()
+    state = AppState()
     app = nv.App(
         nv.Window(
             content=lambda: Screen(state),

@@ -32,7 +32,7 @@ from nuiitivet.material.styles.date_picker_style import (
     ModalDateInputStyle,
 )
 from nuiitivet.modifiers.popup import PopupBox
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.runtime.app import App
 from nuiitivet.runtime.window import Window
 from nuiitivet.widgets.box import Box
@@ -167,16 +167,16 @@ def test_next_month_year_boundary():
 
 
 def test_date_picker_init():
-    """DatePicker can be constructed with an Observable."""
-    obs: Observable[date | None] = Observable(None)
+    """DatePicker can be constructed with a State."""
+    obs: State[date | None] = State(None)
     picker = DatePicker(obs)
     assert picker is not None
 
 
 def test_date_picker_view_follows_value():
-    """DatePicker initialises view month from the observable value."""
+    """DatePicker initialises view month from the State value."""
     initial = date(2025, 3, 15)
-    obs: Observable[date | None] = Observable(initial)
+    obs: State[date | None] = State(initial)
     picker = DatePicker(obs)
     assert picker._view_year == 2025
     assert picker._view_month == 3
@@ -185,7 +185,7 @@ def test_date_picker_view_follows_value():
 def test_date_picker_view_defaults_to_today_when_no_value():
     """DatePicker uses today's month when value is None."""
     today = date.today()
-    obs: Observable[date | None] = Observable(None)
+    obs: State[date | None] = State(None)
     picker = DatePicker(obs)
     assert picker._view_year == today.year
     assert picker._view_month == today.month
@@ -193,7 +193,7 @@ def test_date_picker_view_defaults_to_today_when_no_value():
 
 def test_date_picker_month_navigation():
     """_go_prev_month and _go_next_month update view state."""
-    obs: Observable[date | None] = Observable(date(2026, 6, 1))
+    obs: State[date | None] = State(date(2026, 6, 1))
     picker = DatePicker(obs)
 
     picker._go_prev_month()
@@ -208,16 +208,16 @@ def test_date_picker_month_navigation():
 
 def test_date_picker_month_navigation_year_boundary():
     """Month navigation wraps correctly across year boundaries."""
-    obs: Observable[date | None] = Observable(date(2026, 1, 1))
+    obs: State[date | None] = State(date(2026, 1, 1))
     picker = DatePicker(obs)
     picker._go_prev_month()
     assert picker._view_year == 2025
     assert picker._view_month == 12
 
 
-def test_date_picker_on_day_tap_updates_observable():
-    """Tapping a day updates the observable and calls on_change."""
-    obs: Observable[date | None] = Observable(None)
+def test_date_picker_on_day_tap_updates_state():
+    """Tapping a day updates the State and calls on_change."""
+    obs: State[date | None] = State(None)
     changed: list[date | None] = []
     picker = DatePicker(obs, on_change=changed.append)
 
@@ -228,7 +228,7 @@ def test_date_picker_on_day_tap_updates_observable():
 
 def test_date_picker_show_month_moves_view_without_changing_value():
     """show_month() retargets the calendar and leaves the selection alone."""
-    obs: Observable[date | None] = Observable(date(2026, 6, 10))
+    obs: State[date | None] = State(date(2026, 6, 10))
     picker = DatePicker(obs)
     picker._view_mode = "year"
 
@@ -241,7 +241,7 @@ def test_date_picker_show_month_moves_view_without_changing_value():
 
 def test_date_picker_ok_is_inert_without_on_confirm():
     """Standalone there is nothing to confirm to, so OK leaves the value alone."""
-    obs: Observable[date | None] = Observable(date(2026, 6, 10))
+    obs: State[date | None] = State(date(2026, 6, 10))
     picker = DatePicker(obs)
 
     picker._on_ok()
@@ -251,7 +251,7 @@ def test_date_picker_ok_is_inert_without_on_confirm():
 
 def test_date_picker_ok_invokes_on_confirm_with_the_selected_date():
     """An embedder takes over OK via on_confirm."""
-    obs: Observable[date | None] = Observable(date(2026, 6, 10))
+    obs: State[date | None] = State(date(2026, 6, 10))
     confirmed: list[date | None] = []
     picker = DatePicker(obs, on_confirm=confirmed.append)
 
@@ -262,7 +262,7 @@ def test_date_picker_ok_invokes_on_confirm_with_the_selected_date():
 
 def test_date_picker_cancel_clears_the_value_by_default():
     """Standalone, Cancel means "clear the selection"."""
-    obs: Observable[date | None] = Observable(date(2026, 6, 10))
+    obs: State[date | None] = State(date(2026, 6, 10))
     changed: list[date | None] = []
     picker = DatePicker(obs, on_change=changed.append)
 
@@ -274,7 +274,7 @@ def test_date_picker_cancel_clears_the_value_by_default():
 
 def test_date_picker_on_cancel_replaces_the_clear_behavior():
     """An embedder takes over Cancel; the value is left for it to decide."""
-    obs: Observable[date | None] = Observable(date(2026, 6, 10))
+    obs: State[date | None] = State(date(2026, 6, 10))
     cancelled: list[bool] = []
     picker = DatePicker(obs, on_cancel=lambda: cancelled.append(True))
 
@@ -286,7 +286,7 @@ def test_date_picker_on_cancel_replaces_the_clear_behavior():
 
 def test_date_picker_build_returns_box():
     """DatePicker.build() returns a Box."""
-    obs: Observable[date | None] = Observable(None)
+    obs: State[date | None] = State(None)
     picker = DatePicker(obs)
     result = picker.build()
     assert isinstance(result, Box)
@@ -295,7 +295,7 @@ def test_date_picker_build_returns_box():
 def test_date_picker_custom_style():
     """DatePicker accepts a custom style."""
     custom = DatePickerStyle().copy_with(corner_radius=8.0)
-    obs: Observable[date | None] = Observable(None)
+    obs: State[date | None] = State(None)
     picker = DatePicker(obs, style=custom)
     assert picker.style.corner_radius == 8.0
 
@@ -307,14 +307,14 @@ def test_date_picker_custom_style():
 
 def test_docked_date_picker_value_is_keyword_only():
     """A positional value argument raises, so pre-rename call sites fail loudly."""
-    obs: Observable[str] = Observable("")
+    obs: State[str] = State("")
     with pytest.raises(TypeError):
         DockedDatePicker(obs)  # type: ignore[misc]
 
 
-def test_docked_date_picker_binds_the_text_observable_itself():
-    """The observable passed in *is* the field's cell; the widget keeps no copy."""
-    obs: Observable[str] = Observable("06/10/2026")
+def test_docked_date_picker_binds_the_text_state_itself():
+    """The State passed in *is* the field's cell; the widget keeps no copy."""
+    obs: State[str] = State("06/10/2026")
     picker = DockedDatePicker(value=obs)
     assert picker._text_field._editable._external_str_obs is obs
     assert picker._text_field._editable.value == "06/10/2026"
@@ -322,7 +322,7 @@ def test_docked_date_picker_binds_the_text_observable_itself():
 
 def test_docked_date_picker_starts_from_whatever_text_it_is_given():
     """Unparseable initial text is displayed as-is, not corrected or flagged."""
-    obs: Observable[str] = Observable("later")
+    obs: State[str] = State("later")
     picker = DockedDatePicker(value=obs)
     assert picker._text_field._editable.value == "later"
     assert picker._draft_obs.value is None
@@ -330,14 +330,14 @@ def test_docked_date_picker_starts_from_whatever_text_it_is_given():
 
 def test_docked_date_picker_dropdown_starts_closed():
     """The calendar dropdown is closed until the icon button is tapped."""
-    obs: Observable[str] = Observable("")
+    obs: State[str] = State("")
     picker = DockedDatePicker(value=obs)
     assert picker._is_open.value is False
 
 
 def test_docked_date_picker_icon_button_toggles_dropdown():
     """Tapping the trailing calendar icon opens and closes the dropdown."""
-    obs: Observable[str] = Observable("")
+    obs: State[str] = State("")
     picker = DockedDatePicker(value=obs)
 
     picker._toggle_dropdown()
@@ -349,7 +349,7 @@ def test_docked_date_picker_icon_button_toggles_dropdown():
 
 def test_docked_date_picker_day_tap_edits_the_draft_only():
     """A day tap is a selection, not a commit: the text stays put."""
-    obs: Observable[str] = Observable("06/25/2026")
+    obs: State[str] = State("06/25/2026")
     picker = DockedDatePicker(value=obs)
     picker.on_mount()
     picker._is_open.value = True
@@ -363,8 +363,8 @@ def test_docked_date_picker_day_tap_edits_the_draft_only():
 
 
 def test_docked_date_picker_ok_writes_the_draft_back_as_text():
-    """OK formats the draft into the bound observable and closes the dropdown."""
-    obs: Observable[str] = Observable("06/25/2026")
+    """OK formats the draft into the bound State and closes the dropdown."""
+    obs: State[str] = State("06/25/2026")
     picker = DockedDatePicker(value=obs)
     picker.on_mount()
     picker._is_open.value = True
@@ -380,7 +380,7 @@ def test_docked_date_picker_ok_writes_the_draft_back_as_text():
 
 def test_docked_date_picker_cancel_discards_the_draft():
     """Cancel abandons the selection; the text never saw it."""
-    obs: Observable[str] = Observable("06/25/2026")
+    obs: State[str] = State("06/25/2026")
     picker = DockedDatePicker(value=obs)
     picker.on_mount()
     picker._is_open.value = True
@@ -394,7 +394,7 @@ def test_docked_date_picker_cancel_discards_the_draft():
 
 def test_docked_date_picker_cancel_does_not_clear_the_text():
     """Cancel must not fall through to DatePicker's clear-the-value default."""
-    obs: Observable[str] = Observable("06/25/2026")
+    obs: State[str] = State("06/25/2026")
     picker = DockedDatePicker(value=obs)
     picker.on_mount()
     picker._is_open.value = True
@@ -406,7 +406,7 @@ def test_docked_date_picker_cancel_does_not_clear_the_text():
 
 def test_docked_date_picker_dismissing_by_outside_tap_discards_the_draft():
     """An outside tap closes the dropdown without committing the selection."""
-    obs: Observable[str] = Observable("06/25/2026")
+    obs: State[str] = State("06/25/2026")
     picker = DockedDatePicker(value=obs)
     picker.on_mount()
     picker._is_open.value = True
@@ -420,7 +420,7 @@ def test_docked_date_picker_dismissing_by_outside_tap_discards_the_draft():
 
 def test_docked_date_picker_reopening_reseeds_the_draft_from_the_text():
     """A draft abandoned by cancel does not survive into the next open."""
-    obs: Observable[str] = Observable("06/25/2026")
+    obs: State[str] = State("06/25/2026")
     picker = DockedDatePicker(value=obs)
     picker.on_mount()
 
@@ -435,7 +435,7 @@ def test_docked_date_picker_reopening_reseeds_the_draft_from_the_text():
 
 def test_docked_date_picker_opening_moves_the_calendar_to_the_typed_month():
     """The dropdown opens on the month the text reads as."""
-    obs: Observable[str] = Observable("06/25/2026")
+    obs: State[str] = State("06/25/2026")
     picker = DockedDatePicker(value=obs)
     picker.on_mount()
     picker._calendar.show_month(2020, 1)
@@ -447,7 +447,7 @@ def test_docked_date_picker_opening_moves_the_calendar_to_the_typed_month():
 
 def test_docked_date_picker_typing_moves_the_calendar_without_writing_anything():
     """Text drives the calendar one way only; the widget writes to no cell of its own."""
-    obs: Observable[str] = Observable("")
+    obs: State[str] = State("")
     picker = DockedDatePicker(value=obs)
     picker.on_mount()
 
@@ -464,7 +464,7 @@ def test_docked_date_picker_half_typed_text_leaves_the_month_alone():
     Reformatting or jumping the calendar under a date being typed is what the
     old date-bound binding needed its echo guard for.
     """
-    obs: Observable[str] = Observable("03/15/2025")
+    obs: State[str] = State("03/15/2025")
     picker = DockedDatePicker(value=obs)
     picker.on_mount()
 
@@ -477,7 +477,7 @@ def test_docked_date_picker_half_typed_text_leaves_the_month_alone():
 
 def test_docked_date_picker_reports_no_errors_of_its_own():
     """Unparseable text is a normal state of a typeable field: not the widget's call."""
-    obs: Observable[str] = Observable("")
+    obs: State[str] = State("")
     picker = DockedDatePicker(value=obs)
     picker.on_mount()
 
@@ -489,9 +489,9 @@ def test_docked_date_picker_reports_no_errors_of_its_own():
 
 def test_docked_date_picker_takes_supporting_text_and_is_error_from_the_caller():
     """Both are parameters, so the application is their only writer."""
-    obs: Observable[str] = Observable("")
-    err: Observable[bool] = Observable(False)
-    msg: Observable[str | None] = Observable("mm/dd/yyyy")
+    obs: State[str] = State("")
+    err: State[bool] = State(False)
+    msg: State[str | None] = State("mm/dd/yyyy")
     picker = DockedDatePicker(value=obs, supporting_text=msg, is_error=err)
     picker.on_mount()
 
@@ -501,7 +501,7 @@ def test_docked_date_picker_takes_supporting_text_and_is_error_from_the_caller()
 
 def test_docked_date_picker_accepts_an_is_error_derived_from_the_same_text():
     """The idiom this binding exists for: one cell, error state derived from it."""
-    obs: Observable[str] = Observable("")
+    obs: State[str] = State("")
     picker = DockedDatePicker(
         value=obs,
         is_error=obs.map(lambda t: bool(t) and not is_date(t)),
@@ -516,7 +516,7 @@ def test_docked_date_picker_accepts_an_is_error_derived_from_the_same_text():
 
 def test_docked_date_picker_min_max_scope_the_calendar_only():
     """Bounds constrain what can be picked; typed text is the application's to police."""
-    obs: Observable[str] = Observable("")
+    obs: State[str] = State("")
     picker = DockedDatePicker(value=obs, min_date=date(2026, 1, 1), max_date=date(2026, 12, 31))
     picker.on_mount()
 
@@ -532,7 +532,7 @@ def test_docked_date_picker_min_max_scope_the_calendar_only():
 
 def test_docked_date_picker_reads_the_text_with_the_given_format():
     """A custom format places the calendar, so it agrees with the caller's derivation."""
-    obs: Observable[str] = Observable("15.03.2025")
+    obs: State[str] = State("15.03.2025")
     picker = DockedDatePicker(value=obs, date_format=DateFormat("dd.mm.yyyy"))
     picker.on_mount()
 
@@ -541,7 +541,7 @@ def test_docked_date_picker_reads_the_text_with_the_given_format():
 
 def test_docked_date_picker_writes_back_in_the_given_format():
     """The calendar emits the caller's pattern, not the default one."""
-    obs: Observable[str] = Observable("")
+    obs: State[str] = State("")
     picker = DockedDatePicker(value=obs, date_format=DateFormat("dd.mm.yyyy"))
     picker.on_mount()
     picker._is_open.value = True
@@ -555,7 +555,7 @@ def test_docked_date_picker_writes_back_in_the_given_format():
 def test_docked_date_picker_round_trips_through_one_format():
     """The two directions cannot disagree, because they come from one object."""
     fmt = DateFormat("yyyy-mm-dd")
-    obs: Observable[str] = Observable("")
+    obs: State[str] = State("")
     picker = DockedDatePicker(value=obs, date_format=fmt)
     picker.on_mount()
     picker._is_open.value = True
@@ -570,14 +570,14 @@ def test_docked_date_picker_round_trips_through_one_format():
 def test_docked_date_picker_says_nothing_below_the_field_by_default():
     """The slot belongs to the application's error message, so the widget leaves
     it empty rather than spending it on a format hint."""
-    obs: Observable[str] = Observable("")
+    obs: State[str] = State("")
     picker = DockedDatePicker(value=obs, date_format=DateFormat("dd.mm.yyyy"))
     assert picker._text_field.supporting_text is None
 
 
 def test_docked_date_picker_supporting_text_is_passed_through():
     """Including the format hint, for a caller that wants one there."""
-    obs: Observable[str] = Observable("")
+    obs: State[str] = State("")
     fmt = DateFormat("dd.mm.yyyy")
     assert DockedDatePicker(value=obs, supporting_text=str(fmt))._text_field.supporting_text == "dd.mm.yyyy"
     assert DockedDatePicker(value=obs, supporting_text="Arrival")._text_field.supporting_text == "Arrival"
@@ -585,7 +585,7 @@ def test_docked_date_picker_supporting_text_is_passed_through():
 
 def test_docked_date_picker_read_only_value_is_display_only():
     """With nowhere to write, OK is a no-op -- the same rule TextField applies."""
-    source: Observable[str] = Observable("06/25/2026")
+    source: State[str] = State("06/25/2026")
     picker = DockedDatePicker(value=source.map(lambda t: t))
     picker.on_mount()
     picker._is_open.value = True
@@ -599,7 +599,7 @@ def test_docked_date_picker_read_only_value_is_display_only():
 
 def test_docked_date_picker_mount_does_not_write_to_the_bound_text():
     """Mounting replays the current value; that is not an edit."""
-    obs: Observable[str] = Observable("06/10/2026")
+    obs: State[str] = State("06/10/2026")
     picker = DockedDatePicker(value=obs)
 
     picker.on_mount()
@@ -615,11 +615,11 @@ def picker_in_app():
     has to be genuinely attached — building it standalone leaves it with nothing
     to resolve against.
 
-    Returns a callable taking the value Observable and yielding
+    Returns a callable taking the value State and yielding
     ``(picker, overlay)``, with the field's layout rect already stood in for.
     """
 
-    def _make(obs: "Observable[str]", **kwargs):
+    def _make(obs: "State[str]", **kwargs):
         picker = DockedDatePicker(value=obs, **kwargs)
         app = App(Window(content=picker, width=800, height=600)).main_window
         app.root.mount(app)
@@ -635,7 +635,7 @@ def picker_in_app():
 
 def test_docked_date_picker_build_anchors_the_calendar_to_the_field():
     """build() wraps the text field in a popup carrying the calendar as content."""
-    obs: Observable[str] = Observable("")
+    obs: State[str] = State("")
     picker = DockedDatePicker(value=obs)
 
     popup = picker.build()
@@ -653,7 +653,7 @@ def test_docked_date_picker_build_anchors_the_calendar_to_the_field():
 
 def test_docked_date_picker_opens_an_overlay_entry(picker_in_app):
     """Tapping the icon button pushes the calendar into the overlay."""
-    obs: Observable[str] = Observable("")
+    obs: State[str] = State("")
     picker, overlay = picker_in_app(obs)
 
     assert overlay.has_entries() is False
@@ -666,7 +666,7 @@ def test_docked_date_picker_opens_an_overlay_entry(picker_in_app):
 
 def test_docked_date_picker_confirming_dismisses_the_overlay(picker_in_app):
     """Picking a day keeps the overlay up; OK writes through and tears it down."""
-    obs: Observable[str] = Observable("")
+    obs: State[str] = State("")
     picker, overlay = picker_in_app(obs)
     picker._toggle_dropdown()
     assert overlay.has_entries() is True
@@ -684,7 +684,7 @@ def test_docked_date_picker_confirming_dismisses_the_overlay(picker_in_app):
 
 def test_docked_date_picker_commit_reaches_the_field_and_on_change(picker_in_app):
     """A calendar commit is announced exactly like typing: one cell, one signal."""
-    obs: Observable[str] = Observable("")
+    obs: State[str] = State("")
     changed: list[str] = []
     picker, _ = picker_in_app(obs, on_change=changed.append)
 
@@ -698,7 +698,7 @@ def test_docked_date_picker_commit_reaches_the_field_and_on_change(picker_in_app
 
 def test_docked_date_picker_cancelling_dismisses_the_overlay(picker_in_app):
     """Cancel tears the overlay down without touching the text."""
-    obs: Observable[str] = Observable("06/25/2026")
+    obs: State[str] = State("06/25/2026")
     picker, overlay = picker_in_app(obs)
     picker._toggle_dropdown()
     picker._calendar._on_day_tap(date(2026, 7, 4))
@@ -715,7 +715,7 @@ def test_docked_date_picker_custom_style():
         field_width=280.0,
         calendar=DatePickerStyle().copy_with(corner_radius=8.0),
     )
-    obs: Observable[str] = Observable("")
+    obs: State[str] = State("")
     picker = DockedDatePicker(value=obs, style=custom)
     assert picker.style.field_width == 280.0
     assert picker._calendar.style.corner_radius == 8.0
@@ -1093,7 +1093,7 @@ def _find_widgets(widget, cls) -> list:
 
 def test_date_picker_renders_with_the_given_labels():
     """DatePicker threads its labels into the header and the grid."""
-    picker = DatePicker(Observable(date(2026, 8, 17)), labels=_JA_LABELS)
+    picker = DatePicker(State(date(2026, 8, 17)), labels=_JA_LABELS)
     built = picker.build()
     (header,) = _find_widgets(built, _MonthYearHeader)
     assert _text_labels(header.build()) == ["8月", "2026"]
@@ -1103,7 +1103,7 @@ def test_date_picker_renders_with_the_given_labels():
 
 def test_docked_date_picker_passes_labels_to_the_calendar():
     """The docked picker's dropdown calendar renders with the same labels."""
-    picker = DockedDatePicker(value=Observable("08/17/2026"), labels=_DE_LABELS)
+    picker = DockedDatePicker(value=State("08/17/2026"), labels=_DE_LABELS)
     built = picker._calendar.build()
     (header,) = _find_widgets(built, _MonthYearHeader)
     assert _text_labels(header.build()) == ["August", "2026"]

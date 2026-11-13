@@ -18,8 +18,8 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.deck import Deck
 from nuiitivet.layout.for_each import ForEach
 from nuiitivet.navigation import Navigator
-from nuiitivet.observable import Observable
-from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.observable import State
+from nuiitivet.observable.value import _StateValue
 from nuiitivet.testing import AppHarness
 from nuiitivet.widgets.clickable import Clickable
 from nuiitivet.widgets.interaction import FocusNode, FocusSource
@@ -53,7 +53,7 @@ def _owners(app: AppHarness) -> list:
 def test_deck_tab_visits_only_the_selected_page(mounted_app) -> None:
     before, after = Clickable(), Clickable()
     page0, page1a, page1b = Clickable(), Clickable(), Clickable()
-    index = _ObservableValue(0)
+    index = _StateValue(0)
     root = Column([before, Deck(children=[page0, Column([page1a, page1b])], index=index), after])
     app = mounted_app(root)
 
@@ -80,7 +80,7 @@ def test_deck_shift_tab_walks_back_through_the_selected_page_only(mounted_app) -
 
 def test_switching_deck_page_releases_the_focus_it_held(mounted_app) -> None:
     page0, page1 = Clickable(), Clickable()
-    index = _ObservableValue(0)
+    index = _StateValue(0)
     root = Column([Deck(children=[page0, page1], index=index)])
     app = mounted_app(root)
 
@@ -95,7 +95,7 @@ def test_switching_deck_page_releases_the_focus_it_held(mounted_app) -> None:
 def test_deck_over_a_for_each_follows_the_live_expanded_list(mounted_app) -> None:
     # The index addresses the post-expansion list, so traversal has to resolve it
     # on every call rather than caching the children it saw once.
-    items = Observable(["a", "b", "c"])
+    items = State(["a", "b", "c"])
     built: dict[str, Clickable] = {}
 
     def builder(item: str, _index: int) -> Clickable:
@@ -120,7 +120,7 @@ def test_deck_over_a_for_each_keeps_its_sizing_and_painting(mounted_app) -> None
     from nuiitivet.rendering.sizing import Sizing
     from nuiitivet.widgets.box import Box
 
-    items = Observable([1, 2, 3])
+    items = State([1, 2, 3])
     deck = Deck(children=[ForEach(items, lambda _i, _n: Box(width=Sizing.fixed(20), height=Sizing.fixed(10)))], index=1)
     mounted_app(Column([deck]))
 

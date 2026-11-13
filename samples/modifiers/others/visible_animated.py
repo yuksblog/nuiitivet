@@ -17,7 +17,7 @@ def _panel(label: str) -> nv.Widget:
 
 
 class _VisibleToggleDemo(nv.ComposableWidget):
-    is_visible: nv.Observable[bool] = nv.Observable(True)
+    is_visible: nv.State[bool] = nv.State(True)
 
     def build(self) -> nv.Widget:
         def toggle() -> None:

@@ -16,7 +16,7 @@ Two concerns live here:
 
 All user modules are reloaded on every change (not just the saved file): reloading
 only the saved leaf would leave dependents holding stale bindings. Restoring
-in-tree ``Observable`` state is handled separately by the snapshot module;
+in-tree ``State`` values are handled separately by the snapshot module;
 module-level state is intentionally out of scope.
 """
 

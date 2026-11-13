@@ -35,8 +35,8 @@ def _label(text: str, align: str, color) -> nv.Container:
 class PassthroughPointerDemo(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.active = nv.Observable(True)
-        self.log = nv.Observable("Click the stack…")
+        self.active = nv.State(True)
+        self.log = nv.State("Click the stack…")
 
     def _hit(self, who: str) -> None:
         self.log.value = who

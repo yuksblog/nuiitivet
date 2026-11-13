@@ -35,13 +35,13 @@ import logging
 from typing import Optional, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.observable import ObservableBase
+from nuiitivet.observable import StateBase
 from nuiitivet.widgeting.widget import Widget
 
 logger = logging.getLogger(__name__)
 
 
-HitConditionLike = Union[bool, ObservableBase[bool]]
+HitConditionLike = Union[bool, StateBase[bool]]
 
 
 class HitParticipationBox(Widget):
@@ -77,21 +77,21 @@ class HitParticipationBox(Widget):
 
     @staticmethod
     def _read_initial(condition: HitConditionLike) -> bool:
-        if isinstance(condition, ObservableBase):
+        if isinstance(condition, StateBase):
             try:
                 return bool(condition.value)
             except Exception:
                 exception_once(
                     logger,
                     "hit_participation_initial_condition_exc",
-                    "Failed to read hit-participation initial condition observable",
+                    "Failed to read hit-participation initial condition State",
                 )
                 return True
         return bool(condition)
 
     def on_mount(self) -> None:
         super().on_mount()
-        if isinstance(self._condition, ObservableBase):
+        if isinstance(self._condition, StateBase):
             self.observe(self._condition, self._set_active)
 
     @property

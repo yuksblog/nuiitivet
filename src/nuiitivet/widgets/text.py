@@ -11,7 +11,7 @@ from typing import Any, Callable, List, Literal, NamedTuple, Optional, Tuple, Un
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgeting.widget_binding import notify_binding_probe
-from nuiitivet.observable import Disposable, ReadOnlyObservableProtocol
+from nuiitivet.observable import Disposable, ReadOnlyStateProtocol
 from nuiitivet.rendering.skia import (
     get_typeface,
     get_default_font_fallbacks,
@@ -65,10 +65,10 @@ class _Look(NamedTuple):
 
 
 class TextBase(Widget):
-    """Display text with optional Observable binding.
+    """Display text with optional State binding.
 
     Parameters:
-    - label: Text string or Observable
+    - label: Text string or State
     - style: Visual style (color, font_family) — not typography or alignment
     - type_scale: MD3 type-scale token supplying typography (font size, line
       height, weight, tracking). Defaults to Body Medium.
@@ -93,14 +93,14 @@ class TextBase(Widget):
         """``type_scale`` is picked from :class:`TypeScale`'s roles."""
         return {"type_scale": TypeScale}
 
-    # instance Disposable returned from subscribing to a label Observable
+    # instance Disposable returned from subscribing to a label State
     _label_unsub: Optional["Disposable"] = None
 
     _paint_cache: Optional[_PaintCache] = None
 
     def __init__(
         self,
-        label: Union[str, ReadOnlyObservableProtocol[Any]],
+        label: Union[str, ReadOnlyStateProtocol[Any]],
         style: Optional[TextStyleProtocol] = None,
         width: SizingLike = None,
         height: SizingLike = None,

@@ -2,7 +2,7 @@ import nuiitivet.material as nv
 
 
 class DeckDemo(nv.ComposableWidget):
-    current_index: nv.Observable[int] = nv.Observable(0)
+    current_index: nv.State[int] = nv.State(0)
 
     def build(self) -> nv.Widget:
 
@@ -12,7 +12,7 @@ class DeckDemo(nv.ComposableWidget):
             children=[
                 nv.Button(
                     "Tab1",
-                    # ``set`` writes the Observable from inside a lambda, where
+                    # ``set`` writes the State from inside a lambda, where
                     # ``current_index.value = 0`` would not be allowed.
                     on_click=lambda: self.current_index.set(0),
                     style=nv.ButtonStyle.filled(),

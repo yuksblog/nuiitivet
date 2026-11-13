@@ -6,7 +6,7 @@ from nuiitivet.widgeting.paint_replay import replay_safe
 from typing import Optional, Tuple, Type, TypeVar
 
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.rendering.size import Size
 from nuiitivet.rendering.sizing import SizingLike
@@ -22,7 +22,7 @@ class Geometry(Widget):
     """Publishes this widget's own measured geometry to its subtree.
 
     Transparent to layout: the single child receives this widget's own size.
-    Each layout pass publishes that size as an ``Observable[Size]``, read by
+    Each layout pass publishes that size as a ``State[Size]``, read by
     descendants via :meth:`Geometry.of` — bind it (mapped); a ``.value`` read at
     build time is a one-time snapshot. Map it into a value widget, or drive a
     ``Deck`` index for a structural switch::
@@ -68,11 +68,11 @@ class Geometry(Widget):
         super().__init__(
             width=width, height=height, padding=padding, max_children=1, overflow_policy="replace_last", key=key
         )
-        # A single atomic Observable[Size]: width and height update together so
+        # A single atomic State[Size]: width and height update together so
         # consumers never read a torn (new width, old height) pair. The
-        # Observable de-dupes equal values, so an unchanged size performs no
+        # State de-dupes equal values, so an unchanged size performs no
         # write and triggers no dependent recomposition (the oscillation guard).
-        self._size: Observable[Size] = Observable(Size(0, 0))
+        self._size: State[Size] = State(Size(0, 0))
         self.add_size_callback(self._publish_size)
         self.add_child(child)
 
@@ -84,7 +84,7 @@ class Geometry(Widget):
         ChildContainerMixin.add_child(self, w)
 
     @property
-    def size(self) -> Observable[Size]:
+    def size(self) -> State[Size]:
         """This widget's resolved ``(width, height)``, published between frames."""
         return self._size
 
@@ -132,7 +132,7 @@ class Geometry(Widget):
             cx, cy, cw, ch = self.content_rect(0, 0, width, height)
             child.layout(cw, ch)
             child.set_layout_rect(cx, cy, cw, ch)
-        # Queue, don't write: an Observable write here would propagate to
+        # Queue, don't write: a State write here would propagate to
         # consumers mid-pass. The queue delivers the final measurement to
         # _publish_size between frames, de-duped against the last report.
         queue_size_change(self, Size(int(width), int(height)))

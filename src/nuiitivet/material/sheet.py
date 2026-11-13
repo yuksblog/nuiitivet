@@ -17,7 +17,7 @@ from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.observable.protocols import MutableObservableBase, ObservableBase
+from nuiitivet.observable.protocols import MutableStateBase, StateBase
 from nuiitivet.overlay import OverlayAware
 from nuiitivet.rendering.sizing import Sizing, SizingLike
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
@@ -65,9 +65,9 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
         self,
         content: Widget,
         *,
-        headline: Union[str, ObservableBase[str]],
+        headline: Union[str, StateBase[str]],
         on_back: Optional[Callable[[], None]] = None,
-        show_back_button: Union[bool, ObservableBase[bool]] = False,
+        show_back_button: Union[bool, StateBase[bool]] = False,
         style: Optional[SideSheetStyle] = None,
         padding: PaddingLike = 0,
         key: Optional[str] = None,
@@ -76,10 +76,10 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
 
         Args:
             content: Widget to display below the header.
-            headline: Header title text (str or Observable[str]).
+            headline: Header title text (str or State[str]).
             on_back: Callback invoked when the Back icon button is pressed.
-            show_back_button: Whether to show the Back icon button; an
-                ``Observable[bool]`` toggles it, e.g. from in-sheet navigation
+            show_back_button: Whether to show the Back icon button; a
+                ``State[bool]`` toggles it, e.g. from in-sheet navigation
                 state. Rendered only when truthy **and** *on_back* is not
                 ``None``.
             style: Container style. Defaults to :class:`SideSheetStyle`.
@@ -106,7 +106,7 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
         return self._user_style if self._user_style is not None else SideSheetStyle()
 
     def _resolve_show_back(self) -> bool:
-        if isinstance(self._show_back_button, ObservableBase):
+        if isinstance(self._show_back_button, StateBase):
             return bool(self._show_back_button.value)
         return bool(self._show_back_button)
 
@@ -117,9 +117,9 @@ class SideSheet(ComposableWidget, OverlayAware[None]):
         self.overlay_handle.request_close(None)
 
     def on_mount(self) -> None:
-        """Mount and subscribe to show_back_button observable if provided."""
+        """Mount and subscribe to show_back_button State if provided."""
         super().on_mount()
-        if isinstance(self._show_back_button, ObservableBase):
+        if isinstance(self._show_back_button, StateBase):
             sub = self._show_back_button.subscribe(lambda _: self.rebuild())
             self.bind(sub)
 
@@ -192,7 +192,7 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
         self,
         content: Widget,
         *,
-        headline: Union[str, ObservableBase[str]],
+        headline: Union[str, StateBase[str]],
         style: Optional[BottomSheetStyle] = None,
         padding: PaddingLike = 0,
         key: Optional[str] = None,
@@ -201,7 +201,7 @@ class BottomSheet(ComposableWidget, OverlayAware[None]):
 
         Args:
             content: Widget to display below the header.
-            headline: Header title text (str or Observable[str]).
+            headline: Header title text (str or State[str]).
             style: Container size, background and shape. Defaults to
                 :class:`BottomSheetStyle`.
             padding: Insets from the allocated rect to the sheet.
@@ -277,7 +277,7 @@ class StandardSideSheet(ComposableWidget):
     mounted while its allocated width animates between the style width and
     zero::
 
-        opened: Observable[bool] = Observable(True)
+        opened: State[bool] = State(True)
 
         Row([
             main_content,
@@ -289,7 +289,7 @@ class StandardSideSheet(ComposableWidget):
     instead would unmount it and skip the animation.
 
     The close icon button is rendered when the sheet can act on a press, i.e.
-    when *opened* is a writable observable, when *on_close_click* is given, or
+    when *opened* is a writable State, when *on_close_click* is given, or
     both.  With a literal ``bool`` *opened* and no callback there is nothing a
     press could do, so no button is shown.
     """
@@ -298,9 +298,9 @@ class StandardSideSheet(ComposableWidget):
         self,
         content: Widget,
         *,
-        opened: Union[bool, MutableObservableBase[bool]] = True,
+        opened: Union[bool, MutableStateBase[bool]] = True,
         on_close_click: Optional[Callable[[], None]] = None,
-        headline: Optional[Union[str, ObservableBase[str]]] = None,
+        headline: Optional[Union[str, StateBase[str]]] = None,
         side: Literal["right", "left"] = "right",
         style: Optional[StandardSideSheetStyle] = None,
         padding: PaddingLike = 0,
@@ -310,14 +310,14 @@ class StandardSideSheet(ComposableWidget):
 
         Args:
             content: Widget to display inside the sheet.
-            opened: ``bool`` or writable ``Observable[bool]`` driving the
+            opened: ``bool`` or writable ``State[bool]`` driving the
                 expand/collapse animation.
             on_close_click: Callback invoked when the close icon button is
                 pressed.  **Supplying it disables the default auto-close**:
                 the sheet does not write ``opened.value = False``, and
                 updating *opened* is the caller's job.  This is the
                 interception point for confirm-before-close flows.
-            headline: Header title (str or Observable[str]).  When given, an
+            headline: Header title (str or State[str]).  When given, an
                 M3 header row is rendered above *content*.
             side: Edge the sheet is attached to (``"right"`` or ``"left"``);
                 the sheet collapses toward it.
@@ -347,7 +347,7 @@ class StandardSideSheet(ComposableWidget):
 
     def _can_auto_close(self) -> bool:
         """Return whether *opened* is writable, i.e. the sheet can close itself."""
-        return isinstance(self._opened, MutableObservableBase)
+        return isinstance(self._opened, MutableStateBase)
 
     def _show_close_button(self) -> bool:
         return self._on_close_click is not None or self._can_auto_close()
@@ -357,13 +357,13 @@ class StandardSideSheet(ComposableWidget):
         if self._on_close_click is not None:
             self._on_close_click()
             return
-        if isinstance(self._opened, MutableObservableBase):
+        if isinstance(self._opened, MutableStateBase):
             self._opened.value = False
 
     def on_mount(self) -> None:
-        """Mount and subscribe to headline observable if provided."""
+        """Mount and subscribe to headline State if provided."""
         super().on_mount()
-        if isinstance(self._headline, ObservableBase):
+        if isinstance(self._headline, StateBase):
             sub = self._headline.subscribe(lambda _: self.rebuild())
             self.bind(sub)
 

@@ -14,7 +14,7 @@ from typing import Any, Optional
 
 import pytest
 
-from nuiitivet.observable import Observable, runtime
+from nuiitivet.observable import State, runtime
 from nuiitivet.remote.codec import codec_for
 from nuiitivet.remote.pool import Pool, Slot
 from nuiitivet.remote.writer import CallWriter
@@ -126,7 +126,7 @@ async def test_an_error_message_raises_in_the_caller(setup: Setup) -> None:
 
 
 async def test_progress_reaches_the_writer_while_the_call_runs(setup: Setup, clock: ManualClock) -> None:
-    progress = Observable(0.0)
+    progress = State(0.0)
     task = setup.call(progress=CallWriter(progress, codec_for(float)))
     await settle()
     setup.workers[0].ready()

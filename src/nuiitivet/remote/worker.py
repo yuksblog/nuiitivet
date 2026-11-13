@@ -232,7 +232,7 @@ def worker(
 
     On the desktop it runs on a worker thread. Either way it shares nothing
     with its caller: arguments and the result are copied, and may only be of
-    the types a :func:`server` function accepts. ``WriteOnlyObservable[T]``
+    the types a :func:`server` function accepts. ``WriteOnlyState[T]``
     and ``CancelToken`` parameters work as they do there.
 
     The function's module ships to the browser with the rest of the app, and

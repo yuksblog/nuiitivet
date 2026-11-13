@@ -16,7 +16,7 @@ from nuiitivet.widgeting.widget import Widget
 
 if TYPE_CHECKING:
     from nuiitivet.menubar.model import MenuBar
-    from nuiitivet.observable.protocols import ObservableBase
+    from nuiitivet.observable.protocols import StateBase
     from nuiitivet.overlay.overlay import Overlay
     from nuiitivet.runtime.chrome import CustomChrome, OSChrome
 
@@ -48,7 +48,7 @@ class MaterialWindow(Window):
         height: WindowSizingLike = "auto",
         *,
         background: ColorSpec = ColorRole.SURFACE,
-        title: "str | None | ObservableBase[str | None]" = None,
+        title: "str | None | StateBase[str | None]" = None,
         chrome: "OSChrome | CustomChrome | None" = _UNSET,  # type: ignore[assignment]
         overlay: "Overlay | Callable[[], Overlay] | None" = None,
         window_position: WindowPositionLike | None = None,
@@ -57,7 +57,7 @@ class MaterialWindow(Window):
         menu: "MenuBar | None" = None,
         parent: "Window | None" = None,
         modal: bool = False,
-        close_action: "str | ObservableBase[str]" = "close",
+        close_action: "str | StateBase[str]" = "close",
     ) -> None:
         """Initialize a MaterialWindow.
 

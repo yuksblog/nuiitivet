@@ -4,7 +4,7 @@ The ``Desktop`` class is a namespace, not something to instantiate — the same
 convention as :class:`~nuiitivet.platform.file_dialog.FileDialog`. It scopes
 APIs that talk to the operating system's desktop shell, keeping them visually
 distinct from in-app concepts (an OS notification is not a ``Toast``, and
-``Desktop.notify`` is not an ``Observable`` notification).
+``Desktop.notify`` is not a ``State`` notification).
 """
 
 from __future__ import annotations

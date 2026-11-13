@@ -8,7 +8,7 @@ import nuiitivet.material as nv
 
 
 class BasicDialogDemo(nv.ComposableWidget):
-    result_text: nv.Observable[str] = nv.Observable("Ready")
+    result_text: nv.State[str] = nv.State("Ready")
 
     async def _show_dialog(self):
         # No Overlay is nested above this screen, so this resolves to the App's.

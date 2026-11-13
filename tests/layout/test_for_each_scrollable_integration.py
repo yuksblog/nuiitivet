@@ -1,4 +1,4 @@
-from nuiitivet.observable import Observable, _ObservableValue
+from nuiitivet.observable import State, _StateValue
 from nuiitivet.runtime.pointer import PointerCaptureManager
 from nuiitivet.scrolling import ScrollDirection
 from nuiitivet.widgeting.widget import Widget
@@ -45,7 +45,7 @@ class MockApp:
 def _make_model(count: int):
 
     class _Model:
-        items: Observable[list[str]] = Observable([])
+        items: State[list[str]] = State([])
 
     model = _Model()
     model.items.value = [f"Item {idx}" for idx in range(count)]
@@ -54,7 +54,7 @@ def _make_model(count: int):
 
 def test_scroller_reports_extent_with_transient_foreach_items():
     model = _make_model(40)
-    transient = _ObservableValue([], owner=model, name="items")
+    transient = _StateValue([], owner=model, name="items")
 
     def builder(item, idx):
         return DummyCell(tag=item)
@@ -66,7 +66,7 @@ def test_scroller_reports_extent_with_transient_foreach_items():
     try:
         canvas = DummyCanvas()
         scroller.paint(canvas, 0, 0, 200, 80)
-        # The Observable publish is deferred to the between-frames flush.
+        # The State publish is deferred to the between-frames flush.
         flush_size_change_callbacks()
         axis_state = scroller._controller.axis_state(ScrollDirection.VERTICAL)
         assert axis_state.content_size.value > axis_state.viewport_size.value

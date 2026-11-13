@@ -1,6 +1,6 @@
-"""Dynamic list generation: reactive builder() with an observable.
+"""Dynamic list generation: reactive builder() with a State.
 
-Passing an observable as ``items`` makes the layout regenerate its children
+Passing a State as ``items`` makes the layout regenerate its children
 automatically whenever the collection changes. Only the affected regions are
 invalidated, not the whole layout.
 
@@ -11,11 +11,11 @@ import nuiitivet.material as nv
 
 
 class TagListApp(nv.ComposableWidget):
-    """A Flow whose cards are driven by an observable list of tags."""
+    """A Flow whose cards are driven by a State list of tags."""
 
     def __init__(self) -> None:
         super().__init__()
-        self.tags = nv.Observable(["Python", "UI"])
+        self.tags = nv.State(["Python", "UI"])
         self._counter = 0
 
     def add(self) -> None:

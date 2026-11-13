@@ -1,11 +1,11 @@
-"""Observable: Background Work
+"""State: Background Work
 
 Demonstrates:
-- A long job on a worker thread, reported through observables
+- A long job on a worker thread, reported through States
 - An indeterminate progress bar until the total is known, determinate after
 - A live step display fed by the worker
 - Cancellation from the UI thread with a per-run threading.Event
-- A worker exception surfaced through an observable instead of vanishing
+- A worker exception surfaced through a State instead of vanishing
 """
 
 import threading
@@ -31,11 +31,11 @@ def validate(row: str) -> str:
 class CsvImportScreen(nv.ComposableWidget):
     """Imports one CSV file on a worker thread."""
 
-    running: nv.Observable[bool] = nv.Observable(False)
-    step: nv.Observable[str] = nv.Observable("")
-    total_rows: nv.Observable[int] = nv.Observable(0)
-    imported_rows: nv.Observable[int] = nv.Observable(0)
-    error: nv.Observable[str | None] = nv.Observable(None)
+    running: nv.State[bool] = nv.State(False)
+    step: nv.State[str] = nv.State("")
+    total_rows: nv.State[int] = nv.State(0)
+    imported_rows: nv.State[int] = nv.State(0)
+    error: nv.State[str | None] = nv.State(None)
 
     def __init__(self) -> None:
         super().__init__()
@@ -53,7 +53,7 @@ class CsvImportScreen(nv.ComposableWidget):
     def start(self, path: str, *, should_fail: bool = False) -> None:
         """Kick off the import and return immediately."""
         # Supersede whatever is still running: a second Import must not leave
-        # the previous worker alive writing into the same observables.
+        # the previous worker alive writing into the same States.
         self._cancel.set()
         cancel = self._cancel = threading.Event()
 
@@ -108,7 +108,7 @@ class CsvImportScreen(nv.ComposableWidget):
             child=nv.Column(
                 gap=16,
                 children=[
-                    nv.Text("Observable: Background Work"),
+                    nv.Text("State: Background Work"),
                     nv.Text("A worker imports a CSV file; the screen stays responsive."),
                     nv.Text(self.step),
                     nv.Text(self.count_text),

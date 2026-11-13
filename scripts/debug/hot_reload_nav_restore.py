@@ -8,7 +8,7 @@ Navigate a few screens deep (click "Open next"), then edit ``build()`` below —
 tweak a label, a color, the padding — and save. The UI updates in place and you
 **stay on the deep screen**: the intent stack is snapshotted and replayed onto
 the rebuilt navigator across the reload, instead of collapsing back to Home. The
-per-screen ``Observable`` counter is restored too, so the whole screen state
+per-screen ``State`` counter is restored too, so the whole screen state
 survives.
 
 Everything is driven by *intents* against a route table, which is the restorable
@@ -39,12 +39,12 @@ class ScreenIntent:
 
 
 class Screen(nv.ComposableWidget):
-    """One navigation screen with a local, observable counter."""
+    """One navigation screen with a local State counter."""
 
     def __init__(self, depth: int) -> None:
         super().__init__()
         self.depth = depth
-        self.count = nv.Observable(0)
+        self.count = nv.State(0)
 
     def _open_next(self) -> None:
         nv.Navigator.root().push(ScreenIntent(depth=self.depth + 1))

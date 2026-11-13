@@ -13,7 +13,7 @@ The wrapped widget continues to occupy its normal layout space while hidden;
 ``visible()`` no longer collapses layout to zero size. Use a layout-aware
 Widget for animated layout-size changes.
 
-When *condition* is a static ``bool`` or an ``Observable[bool]`` and no
+When *condition* is a static ``bool`` or a ``State[bool]`` and no
 *transition* is provided, ``visible()`` collapses to ``opacity(...) |
 block_focus_traversal(...) | passthrough_pointer(...)`` exactly. With a *transition*
 provided, an internal
@@ -45,8 +45,8 @@ from nuiitivet.animation.animatable import Animatable
 from nuiitivet.animation.transition_definition import TransitionDefinition
 from nuiitivet.animation.transition_pattern import TransitionVisuals
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.observable import ObservableBase
-from nuiitivet.observable.computed import ComputedObservable
+from nuiitivet.observable import StateBase
+from nuiitivet.observable.computed import ComputedState
 from nuiitivet.rendering.visual_bounds import transformed_outsets
 from nuiitivet.widgeting.modifier import Modifier, ModifierElement
 from nuiitivet.widgeting.widget import Widget
@@ -63,18 +63,18 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-VisibleConditionLike = Union[bool, ObservableBase[bool]]
+VisibleConditionLike = Union[bool, StateBase[bool]]
 
 
 def _read_initial_condition(condition: VisibleConditionLike) -> bool:
-    if isinstance(condition, ObservableBase):
+    if isinstance(condition, StateBase):
         try:
             return bool(condition.value)
         except Exception:
             exception_once(
                 logger,
                 "visible_initial_condition_exc",
-                "Failed to read visible() initial condition observable",
+                "Failed to read visible() initial condition State",
             )
             return False
     return bool(condition)
@@ -117,7 +117,7 @@ class _AnimatedVisibleBox(Widget):
 
     def on_mount(self) -> None:
         super().on_mount()
-        if isinstance(self._condition, ObservableBase):
+        if isinstance(self._condition, StateBase):
             self.observe(self._condition, self._on_condition_changed)
 
     def on_unmount(self) -> None:
@@ -339,21 +339,21 @@ def _has_visual_effect(visuals: TransitionVisuals) -> bool:
     )
 
 
-def _hidden_observable(
+def _hidden_state(
     condition: VisibleConditionLike,
-) -> Union[bool, ObservableBase[bool]]:
-    if isinstance(condition, ObservableBase):
+) -> Union[bool, StateBase[bool]]:
+    if isinstance(condition, StateBase):
         source = condition
-        return ComputedObservable(lambda: not bool(source.value))
+        return ComputedState(lambda: not bool(source.value))
     return not bool(condition)
 
 
-def _opacity_observable(
+def _opacity_state(
     condition: VisibleConditionLike,
-) -> Union[float, ObservableBase[float]]:
-    if isinstance(condition, ObservableBase):
+) -> Union[float, StateBase[float]]:
+    if isinstance(condition, StateBase):
         source = condition
-        return ComputedObservable(lambda: 1.0 if bool(source.value) else 0.0)
+        return ComputedState(lambda: 1.0 if bool(source.value) else 0.0)
     return 1.0 if bool(condition) else 0.0
 
 
@@ -367,7 +367,7 @@ class _AnimatedVisibleModifier(ModifierElement):
 
     def apply(self, widget: Widget) -> Widget:
         paint_box = _AnimatedVisibleBox(widget, self.condition, self.transition, self.transition_out)
-        hidden = _hidden_observable(self.condition)
+        hidden = _hidden_state(self.condition)
         return PassthroughPointerBox(BlockFocusTraversalBox(paint_box, hidden), hidden)
 
 
@@ -386,7 +386,7 @@ def visible(
     the layout to collapse).
 
     Args:
-        condition: Static ``bool`` or an ``Observable[bool]`` driving visibility.
+        condition: Static ``bool`` or a ``State[bool]`` driving visibility.
         transition: Optional :class:`TransitionDefinition` whose pattern drives
             the ``opacity`` (and optional ``scale`` / ``translate``) animation
             on enter / exit. When omitted, visibility flips instantly.
@@ -407,9 +407,9 @@ def visible(
     """
     if transition is None:
         composed: Modifier = Modifier()
-        composed = composed.then(opacity(_opacity_observable(condition)))
-        composed = composed.then(block_focus_traversal(_hidden_observable(condition)))
-        composed = composed.then(passthrough_pointer(_hidden_observable(condition)))
+        composed = composed.then(opacity(_opacity_state(condition)))
+        composed = composed.then(block_focus_traversal(_hidden_state(condition)))
+        composed = composed.then(passthrough_pointer(_hidden_state(condition)))
         return composed
     return _AnimatedVisibleModifier(
         condition=condition,

@@ -13,9 +13,9 @@ import weakref
 
 import pytest
 
-from nuiitivet.observable import Observable
-from nuiitivet.observable.computed import ComputedObservable
-from nuiitivet.observable.scanned import ScannedObservable
+from nuiitivet.observable import State
+from nuiitivet.observable.computed import ComputedState
+from nuiitivet.observable.scanned import ScannedState
 from nuiitivet.testing import HarnessClock
 
 
@@ -30,7 +30,7 @@ class TestTheSeed:
     """``.value`` is defined from construction, and is exactly ``initial``."""
 
     def test_reports_initial_before_the_source_emits(self):
-        source = Observable(5)
+        source = State(5)
 
         total = source.scan(lambda acc, value: acc + value, initial=0)
 
@@ -38,7 +38,7 @@ class TestTheSeed:
 
     def test_the_construction_time_value_is_not_folded_in(self):
         """It never emitted, so counting it would count an emission that never happened."""
-        source = Observable(5)
+        source = State(5)
 
         counted = source.scan(_count, initial=0)
 
@@ -48,13 +48,13 @@ class TestTheSeed:
         assert counted.value == 1
 
     def test_initial_is_required(self):
-        source = Observable(1)
+        source = State(1)
 
         with pytest.raises(TypeError):
             source.scan(_count)  # type: ignore[call-arg]
 
     def test_initial_is_keyword_only(self):
-        source = Observable(1)
+        source = State(1)
 
         with pytest.raises(TypeError):
             source.scan(_count, 0)  # type: ignore[misc]
@@ -62,7 +62,7 @@ class TestTheSeed:
 
 class TestAccumulation:
     def test_the_accumulator_comes_first_and_the_value_second(self):
-        source = Observable("a")
+        source = State("a")
         joined = source.scan(lambda acc, value: f"{acc}{value}", initial="")
 
         source.value = "b"
@@ -71,7 +71,7 @@ class TestAccumulation:
         assert joined.value == "bc"
 
     def test_every_emission_is_folded_and_published(self):
-        source = Observable(0)
+        source = State(0)
         total = source.scan(lambda acc, value: acc + value, initial=0)
         seen = []
         total.subscribe(seen.append)
@@ -84,7 +84,7 @@ class TestAccumulation:
 
     def test_a_repeated_source_value_folds_once(self):
         """The source de-dupes before it notifies, and no wrapper second-guesses that."""
-        source = Observable(0)
+        source = State(0)
         counted = source.scan(_count, initial=0)
 
         source.value = 5
@@ -94,7 +94,7 @@ class TestAccumulation:
 
     def test_a_fold_landing_on_the_same_accumulator_still_emits(self):
         """The fold ran, so the emission is real even where the value repeats."""
-        source = Observable(0)
+        source = State(0)
         capped = source.scan(lambda acc, value: max(acc, value), initial=0)
         seen = []
         capped.subscribe(seen.append)
@@ -105,7 +105,7 @@ class TestAccumulation:
         assert seen == [3, 3]
 
     def test_the_accumulator_may_be_a_different_type_from_the_source(self):
-        source = Observable(0)
+        source = State(0)
         history = source.scan(lambda acc, value: [*acc, value], initial=[])
 
         source.value = 1
@@ -119,7 +119,7 @@ class TestChaining:
         self, nuiitivet_clock: HarnessClock
     ):
         """The case with no handler to hold an imperative counter."""
-        source = Observable(0)
+        source = State(0)
         debounced = source.debounce(_WINDOW)
         executed = debounced.scan(_count, initial=0)
 
@@ -133,7 +133,7 @@ class TestChaining:
         assert executed.value == 1, "the thinned-out writes were counted"
 
     def test_scan_after_map(self):
-        source = Observable(0)
+        source = State(0)
         total = source.map(lambda value: value * 2).scan(lambda acc, value: acc + value, initial=0)
 
         source.value = 1
@@ -142,7 +142,7 @@ class TestChaining:
         assert total.value == 6
 
     def test_map_after_scan(self):
-        source = Observable(0)
+        source = State(0)
         label = source.scan(_count, initial=0).map(lambda n: f"{n}x")
 
         assert label.value == "0x"
@@ -151,8 +151,8 @@ class TestChaining:
         assert label.value == "1x"
 
     def test_scan_after_combine(self):
-        price = Observable(100)
-        qty = Observable(1)
+        price = State(100)
+        qty = State(1)
         total = price.combine(qty).compute(lambda p, q: p * q)
         recomputes = total.scan(_count, initial=0)
 
@@ -162,7 +162,7 @@ class TestChaining:
         assert recomputes.value == 2
 
     def test_scan_after_filter(self):
-        source = Observable(0)
+        source = State(0)
         passes = source.filter(lambda n: n % 2 == 0, initial=0).scan(_count, initial=0)
 
         source.value = 1
@@ -176,9 +176,9 @@ class TestChaining:
 class TestTheFoldIsNotADependency:
     """``fn`` is a pure function of the two values handed to it — nothing more."""
 
-    def test_reading_an_observable_inside_fn_creates_no_edge(self):
-        step = Observable(10)
-        source = Observable(0)
+    def test_reading_an_state_inside_fn_creates_no_edge(self):
+        step = State(10)
+        source = State(0)
 
         total = source.scan(lambda acc, _value: acc + step.value, initial=0)
         source.value = 1
@@ -188,8 +188,8 @@ class TestTheFoldIsNotADependency:
 
     def test_fn_does_not_register_with_an_enclosing_derivation(self):
         """Construction inside a ``compute`` must not leak the fold's reads to it."""
-        step = Observable(10)
-        source = Observable(0)
+        step = State(10)
+        source = State(0)
         held = []
 
         def compute_fn() -> int:
@@ -197,7 +197,7 @@ class TestTheFoldIsNotADependency:
             held.append(total)
             return total.value
 
-        computed = ComputedObservable(compute_fn)
+        computed = ComputedState(compute_fn)
 
         assert step not in computed._deps
         assert source not in computed._deps, "the source was registered instead of the wrapper"
@@ -205,11 +205,11 @@ class TestTheFoldIsNotADependency:
 
 
 class TestLifetime:
-    """Inherited from SourceSubscribingObservable — asserted, not reimplemented."""
+    """Inherited from SourceSubscribingState — asserted, not reimplemented."""
 
     def test_the_source_does_not_hold_the_wrapper(self, collectable):
-        source = Observable(0)
-        wrapper = ScannedObservable(source, _count, initial=0)
+        source = State(0)
+        wrapper = ScannedState(source, _count, initial=0)
         ref = weakref.ref(wrapper)
         assert len(source._subs) == 1
 
@@ -220,8 +220,8 @@ class TestLifetime:
         assert source._subs == []
 
     def test_dispose_releases_the_source_and_stops_emission(self):
-        source = Observable(0)
-        wrapper = ScannedObservable(source, _count, initial=0)
+        source = State(0)
+        wrapper = ScannedState(source, _count, initial=0)
         seen = []
         wrapper.subscribe(seen.append)
 
@@ -232,8 +232,8 @@ class TestLifetime:
         assert seen == []
 
     def test_dispose_is_idempotent(self):
-        source = Observable(0)
-        wrapper = ScannedObservable(source, _count, initial=0)
+        source = State(0)
+        wrapper = ScannedState(source, _count, initial=0)
 
         wrapper.dispose()
         wrapper.dispose()
@@ -241,8 +241,8 @@ class TestLifetime:
         assert source._subs == []
 
     def test_a_rebuilt_chain_starts_from_initial_again(self):
-        """There is no re-seeding: the accumulator belongs to the observable."""
-        source = Observable(0)
+        """There is no re-seeding: the accumulator belongs to the State."""
+        source = State(0)
         counted = source.scan(_count, initial=0)
 
         source.value = 1
@@ -252,7 +252,7 @@ class TestLifetime:
         assert counted.value == 0
 
     def test_the_disposable_carries_the_chain(self, collectable):
-        source = Observable(0)
+        source = State(0)
         seen = []
 
         # The wrapper is never bound to a name, exactly as `self.bind(...)` leaves it.
@@ -266,7 +266,7 @@ class TestLifetime:
 
 
 class TestBindingDirectlyIntoAWidget:
-    """The headline rule — pass the observable in — must hold before the first fold."""
+    """The headline rule — pass the State in — must hold before the first fold."""
 
     @staticmethod
     def _screen(bound):
@@ -276,7 +276,7 @@ class TestBindingDirectlyIntoAWidget:
         return lambda: Column(children=[Text(bound, key="readout")])
 
     def test_shows_the_seed_before_the_source_emits(self, nuiitivet_app):
-        source = Observable(0)
+        source = State(0)
         label = source.scan(_count, initial=0).map(lambda n: f"Executed: {n}")
 
         app = nuiitivet_app(self._screen(label), size=(800, 600))
@@ -284,7 +284,7 @@ class TestBindingDirectlyIntoAWidget:
         assert app.get(key="readout").text == "Executed: 0"
 
     def test_follows_the_accumulator(self, nuiitivet_app):
-        source = Observable(0)
+        source = State(0)
         label = source.scan(_count, initial=0).map(lambda n: f"Executed: {n}")
 
         app = nuiitivet_app(self._screen(label), size=(800, 600))

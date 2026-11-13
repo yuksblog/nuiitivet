@@ -287,10 +287,10 @@ class TestPopupBox:
         box = PopupBox(child, content, is_open=None)
         assert box._is_open.value is False
 
-    def test_external_observable_reflects_state(self) -> None:
-        from nuiitivet.observable.value import Observable
+    def test_external_state_reflects_is_open(self) -> None:
+        from nuiitivet.observable.value import State
 
-        is_open: "Observable[bool]" = Observable(False)
+        is_open: "State[bool]" = State(False)
         child = _FixedWidget(80, 40)
         content = _FixedWidget(120, 80)
         box = PopupBox(child, content, is_open=is_open)
@@ -300,9 +300,9 @@ class TestPopupBox:
         assert box._is_open.value is True
 
     def test_open_without_layout_rect_keeps_popup_closed(self) -> None:
-        from nuiitivet.observable.value import Observable
+        from nuiitivet.observable.value import State
 
-        is_open: "Observable[bool]" = Observable(False)
+        is_open: "State[bool]" = State(False)
         child = _FixedWidget(80, 40)
         content = _FixedWidget(120, 80)
         box = PopupBox(child, content, is_open=is_open)
@@ -314,9 +314,9 @@ class TestPopupBox:
 
     def test_do_open_requires_overlay_in_tree(self) -> None:
         """_do_open should silently return when no root Overlay is initialized."""
-        from nuiitivet.observable.value import Observable
+        from nuiitivet.observable.value import State
 
-        is_open: "Observable[bool]" = Observable(False)
+        is_open: "State[bool]" = State(False)
         child = _FixedWidget(80, 40)
         content = _FixedWidget(120, 80)
         box = PopupBox(child, content, is_open=is_open)
@@ -344,7 +344,7 @@ class TestPopupBox:
         # Should not raise when already closed
         box._do_close()
 
-    def test_is_open_observable_can_be_toggled(self) -> None:
+    def test_is_open_state_can_be_toggled(self) -> None:
         child = _FixedWidget(80, 40)
         content = _FixedWidget(120, 80)
         box = PopupBox(child, content, is_open=None)
@@ -355,15 +355,15 @@ class TestPopupBox:
         box._is_open.value = False
         assert box._is_open.value is False
 
-    def test_external_observable_is_shared_with_box(self) -> None:
-        from nuiitivet.observable.value import Observable
+    def test_external_state_is_shared_with_box(self) -> None:
+        from nuiitivet.observable.value import State
 
-        is_open: "Observable[bool]" = Observable(False)
+        is_open: "State[bool]" = State(False)
         child = _FixedWidget(80, 40)
         content = _FixedWidget(120, 80)
         box = PopupBox(child, content, is_open=is_open)
 
-        # _is_open IS the provided observable – same object
+        # _is_open IS the provided State – same object
         assert box._is_open is is_open
 
         box._is_open.value = True
@@ -405,9 +405,9 @@ class TestPopupModifier:
         assert result._offset == (3.0, -5.0)
 
     def test_apply_with_external_is_open(self) -> None:
-        from nuiitivet.observable.value import Observable
+        from nuiitivet.observable.value import State
 
-        is_open: "Observable[bool]" = Observable(False)
+        is_open: "State[bool]" = State(False)
         child = _FixedWidget(80, 40)
         content = _FixedWidget(120, 80)
         modifier = popup(content, is_open=is_open)

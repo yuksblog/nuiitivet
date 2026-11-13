@@ -25,7 +25,7 @@ class MenuBar:
 
     Registered on the App (``App(menu=nv.MenuBar([...]))``) and replaced
     wholesale via ``app.menu = ...``. Structure is not observable — entry
-    *properties* (label / enabled / checked) may be Observables, but adding
+    *properties* (label / enabled / checked) may be States, but adding
     or removing entries means assigning a new model.
     """
 

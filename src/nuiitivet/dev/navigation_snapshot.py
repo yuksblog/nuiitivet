@@ -2,7 +2,7 @@
 
 A reload rebuilds the whole widget tree from the factory, so the freshly built
 ``Navigator`` starts at its initial route and every pushed route is lost. This is
-the navigation analogue of the ``Observable`` restore in :mod:`.snapshot`:
+the navigation analogue of the ``State`` restore in :mod:`.snapshot`:
 capture the *descriptors* of routes the author pushed declaratively (intents /
 route-table keys) before the swap, then replay them onto the rebuilt navigator.
 

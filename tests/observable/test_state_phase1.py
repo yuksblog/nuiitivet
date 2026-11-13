@@ -1,14 +1,14 @@
-"""Phase 1 Observable enhancements tests."""
+"""Phase 1 State enhancements tests."""
 
-from nuiitivet.observable import ComputedObservable, Observable
+from nuiitivet.observable import ComputedState, State
 
 
 def test_dispatch_is_on_by_default():
-    """An observable marshals cross-thread writes unless told not to."""
+    """A State marshals cross-thread writes unless told not to."""
 
     class Model:
-        value = Observable(0)
-        internal = Observable(0, dispatch=False)
+        value = State(0)
+        internal = State(0, dispatch=False)
 
     model = Model()
 
@@ -20,7 +20,7 @@ def test_map_basic():
     """Test map transformation."""
 
     class Model:
-        age = Observable(20)
+        age = State(20)
 
     model = Model()
     is_adult = model.age.map(lambda x: x >= 18)
@@ -36,17 +36,17 @@ def test_map_basic():
     assert is_adult.value is True
 
 
-def test_computed_observable_basic():
-    """Test ComputedObservable with automatic dependency tracking."""
+def test_computed_state_basic():
+    """Test ComputedState with automatic dependency tracking."""
 
     class Model:
-        price = Observable(100)
-        quantity = Observable(2)
+        price = State(100)
+        quantity = State(2)
 
     model = Model()
 
     # Create computed with automatic tracking
-    total = ComputedObservable(lambda: model.price.value * model.quantity.value)
+    total = ComputedState(lambda: model.price.value * model.quantity.value)
 
     # Check initial value
     assert total.value == 200
@@ -61,14 +61,14 @@ def test_computed_observable_basic():
 
 
 def test_computed_with_subscription():
-    """Test ComputedObservable notifications."""
+    """Test ComputedState notifications."""
 
     class Model:
-        x = Observable(10)
+        x = State(10)
 
     model = Model()
 
-    computed = ComputedObservable(lambda: model.x.value * 2)
+    computed = ComputedState(lambda: model.x.value * 2)
 
     values = []
     computed.subscribe(lambda v: values.append(v))
@@ -82,7 +82,7 @@ def test_computed_with_subscription():
 
 
 def test_map_inherits_the_dispatch_opt_out():
-    """A derivation of a logic-layer observable stays logic-layer.
+    """A derivation of a logic-layer State stays logic-layer.
 
     The opt-out is what has to propagate: re-enabling dispatch on the mapped
     value would start coalescing values the source was declared to deliver in
@@ -90,8 +90,8 @@ def test_map_inherits_the_dispatch_opt_out():
     """
 
     class Model:
-        bound = Observable(10)
-        internal = Observable(10, dispatch=False)
+        bound = State(10)
+        internal = State(10, dispatch=False)
 
     model = Model()
 
@@ -103,14 +103,14 @@ def test_computed_dynamic_dependencies():
     """Test dynamic dependency tracking with conditional logic."""
 
     class Model:
-        flag = Observable(True)
-        a = Observable(10)
-        b = Observable(20)
+        flag = State(True)
+        a = State(10)
+        b = State(20)
 
     model = Model()
 
     # Conditional computed
-    result = ComputedObservable(lambda: model.a.value if model.flag.value else model.b.value)
+    result = ComputedState(lambda: model.a.value if model.flag.value else model.b.value)
 
     # Initially depends on flag and a
     assert result.value == 10

@@ -19,7 +19,7 @@ from nuiitivet.rendering.skia import (
 )
 from nuiitivet.rendering.sizing import SizingLike, parse_sizing
 from nuiitivet.material.symbols import Symbol, Symbols
-from nuiitivet.observable import ReadOnlyObservableProtocol
+from nuiitivet.observable import ReadOnlyStateProtocol
 from nuiitivet.widgeting.paint_replay import replay_safe
 
 if TYPE_CHECKING:
@@ -29,14 +29,14 @@ DEFAULT_ICON_PX = 24
 
 
 # Canonical union of everything an icon-accepting widget can take: a static
-# ``Symbol`` or ligature ``str``, or an observable of either. Shared by all
+# ``Symbol`` or ligature ``str``, or a State of either. Shared by all
 # Material widgets that delegate to :class:`Icon` (buttons, menus, FAB menu,
 # navigation rail) so the accepted icon surface stays consistent.
 IconLike = Union[
     Symbol,
     str,
-    ReadOnlyObservableProtocol[Symbol],
-    ReadOnlyObservableProtocol[str],
+    ReadOnlyStateProtocol[Symbol],
+    ReadOnlyStateProtocol[str],
 ]
 
 
@@ -92,7 +92,7 @@ class Icon(IconBase):
 
     def __init__(
         self,
-        name: Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str],
+        name: Symbol | str | ReadOnlyStateProtocol[Symbol] | ReadOnlyStateProtocol[str],
         *,
         size: SizingLike = 24,
         padding: Optional[Tuple[int, int, int, int] | Tuple[int, int] | int] = None,
@@ -103,7 +103,7 @@ class Icon(IconBase):
 
         Args:
             name: Ligature name such as "home", "menu", "search", a Symbol,
-                or an Observable that yields either.
+                or a State that yields either.
             size: Logical pixel size of the icon (font size used for the glyph).
             padding: Insets from the allocated rect to the glyph.
             style: IconStyle for customization (defaults to theme style).
@@ -176,13 +176,13 @@ class Icon(IconBase):
     def on_mount(self) -> None:
         super().on_mount()
 
-        # Subscribe to Observable name sources.
+        # Subscribe to State name sources.
         src = self._name_source
         if hasattr(src, "subscribe"):
             try:
                 self.bind_to(src, self._apply_name, dependency="name")
             except Exception:
-                exception_once(logger, "icon_name_bind_exc", "Failed to bind icon name observable")
+                exception_once(logger, "icon_name_bind_exc", "Failed to bind icon name State")
 
     @property
     def style(self):

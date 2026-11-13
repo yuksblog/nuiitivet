@@ -15,7 +15,7 @@ from typing import Callable, Iterator
 
 import pytest
 
-from nuiitivet.observable import Observable, runtime
+from nuiitivet.observable import State, runtime
 from nuiitivet.remote import RemoteError
 from nuiitivet.remote.function import lookup
 from nuiitivet.remote.worker import WorkerFunction, process_pool, retire_pool, warm_pool, worker
@@ -83,7 +83,7 @@ async def test_any_other_exception_reaches_the_caller_as_remote_error() -> None:
 
 
 async def test_progress_arrives_while_the_call_runs(clock: ManualClock, tmp_path: Path) -> None:
-    progress = Observable(0.0)
+    progress = State(0.0)
     task = asyncio.ensure_future(jobs.report(str(tmp_path / "go"), progress))
 
     await until(lambda: progress.value == 0.5, clock)
@@ -99,7 +99,7 @@ async def test_progress_arrives_while_the_call_runs(clock: ManualClock, tmp_path
 
 
 async def test_two_calls_run_at_once_in_two_processes_and_the_third_waits(clock: ManualClock, tmp_path: Path) -> None:
-    progress = [Observable(0.0) for _ in range(3)]
+    progress = [State(0.0) for _ in range(3)]
     gates = [tmp_path / f"go{index}" for index in range(3)]
     tasks = [asyncio.ensure_future(jobs.report(str(gate), each)) for gate, each in zip(gates, progress)]
 
@@ -136,7 +136,7 @@ async def test_warm_starts_the_processes_with_the_app(monkeypatch: pytest.Monkey
 
 
 async def test_cancelling_ends_the_process_of_a_function_that_never_polls_its_token(clock: ManualClock) -> None:
-    started = Observable(0)
+    started = State(0)
     task = asyncio.ensure_future(jobs.forever(started))
     await until(lambda: started.value != 0, clock)
     victim = started.value

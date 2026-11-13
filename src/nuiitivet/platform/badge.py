@@ -14,7 +14,7 @@ import sys
 from typing import Callable, Optional, Protocol, Union
 
 from nuiitivet.common.logging_once import exception_once, warning_once
-from nuiitivet.observable import Disposable, ObservableBase
+from nuiitivet.observable import Disposable, StateBase
 
 logger = logging.getLogger(__name__)
 
@@ -59,9 +59,9 @@ class BadgeBridge(Protocol):
 
 
 class BadgeBinding:
-    """Shows a badge observable on the platform while the loop runs. Framework-internal."""
+    """Shows a badge State on the platform while the loop runs. Framework-internal."""
 
-    def __init__(self, badge: ObservableBase[BadgeValue], window_handle: WindowHandle) -> None:
+    def __init__(self, badge: StateBase[BadgeValue], window_handle: WindowHandle) -> None:
         """Initialize BadgeBinding.
 
         Args:

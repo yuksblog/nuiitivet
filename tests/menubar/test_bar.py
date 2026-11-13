@@ -12,7 +12,7 @@ from nuiitivet.menubar.model import MenuBar
 from nuiitivet.menus import MenuEntry
 from nuiitivet.menubar.slots import MenuBarArea
 from nuiitivet.menubar.style import MenuBarStyle
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 
 
 def _find_bar(root) -> MenuBarWidget:
@@ -121,7 +121,7 @@ def test_shortcut_fires_without_opening_menu(nuiitivet_app) -> None:
 
 def test_shortcut_respects_enabled(nuiitivet_app) -> None:
     record: List[str] = []
-    enabled = Observable(False)
+    enabled = State(False)
     app = nuiitivet_app(
         Text("content"),
         size=(800, 600),
@@ -135,7 +135,7 @@ def test_shortcut_respects_enabled(nuiitivet_app) -> None:
 
 
 def test_checked_item_toggles_before_on_select(nuiitivet_app) -> None:
-    checked = Observable(False)
+    checked = State(False)
     seen: List[bool] = []
     model = MenuBar(
         [
@@ -252,7 +252,7 @@ def test_standard_item_calls_role_method(nuiitivet_app) -> None:
 
 
 def test_top_level_label_updates_live(nuiitivet_app) -> None:
-    label = Observable("File")
+    label = State("File")
     model = MenuBar(
         [MenuEntry(label, submenu=[MenuEntry("Open", on_select=lambda: None)])]
     )

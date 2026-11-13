@@ -20,7 +20,7 @@ _MUTED = nv.TextStyle(color=nv.ColorRole.ON_SURFACE_VARIANT)
 class Screen(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.unread = nv.Observable(0)
+        self.unread = nv.State(0)
 
     def _new_message(self) -> None:
         self.unread.value += 1

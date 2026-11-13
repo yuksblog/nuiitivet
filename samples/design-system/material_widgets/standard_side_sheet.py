@@ -8,7 +8,7 @@ import nuiitivet.material as nv
 class StandardSideSheetDemo(nv.ComposableWidget):
     """Demo: main content area beside an openable StandardSideSheet."""
 
-    opened: nv.Observable[bool] = nv.Observable(True)
+    opened: nv.State[bool] = nv.State(True)
 
     def toggle(self) -> None:
         self.opened.value = not self.opened.value

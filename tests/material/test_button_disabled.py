@@ -3,7 +3,7 @@
 from unittest.mock import MagicMock
 
 from nuiitivet.input.pointer import PointerEventType
-from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.observable.value import _StateValue
 from nuiitivet.material.buttons import (Fab, Button)
 from nuiitivet.widgets.interaction import FocusNode
 from tests.helpers.pointer import send_pointer_event_for_test
@@ -114,10 +114,10 @@ def test_button_disabled_opacity_default():
     assert getattr(style, "disabled_opacity", 0.38) == 0.38
 
 
-def test_filled_button_disabled_observable_toggles_events():
-    """Disabled state should react to Observable changes."""
+def test_filled_button_disabled_state_toggles_events():
+    """Disabled state should react to State changes."""
     clicked: list[int] = []
-    disabled = _ObservableValue(True)
+    disabled = _StateValue(True)
 
     button = Button("Test", disabled=disabled, on_click=lambda: clicked.append(1), style=ButtonStyle.filled())
     button.mount(MagicMock())
@@ -146,9 +146,9 @@ def test_filled_button_disabled_observable_toggles_events():
         button.unmount()
 
 
-def test_filled_button_disabled_observable_adds_focus_node_on_enable():
-    """FocusNode should be added when a disabled Observable becomes enabled."""
-    disabled = _ObservableValue(True)
+def test_filled_button_disabled_state_adds_focus_node_on_enable():
+    """FocusNode should be added when a disabled State becomes enabled."""
+    disabled = _StateValue(True)
     button = Button("Test", disabled=disabled, style=ButtonStyle.filled())
     button.mount(MagicMock())
 

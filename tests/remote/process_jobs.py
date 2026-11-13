@@ -6,7 +6,7 @@ import os
 import time
 
 from nuiitivet.observable.switched import CancelToken
-from nuiitivet.remote import WriteOnlyObservable, worker
+from nuiitivet.remote import WriteOnlyState, worker
 from tests.remote.models import Order
 
 _TIMEOUT = 15.0
@@ -56,7 +56,7 @@ def fail_custom(order_id: int) -> None:
 
 
 @worker(parallel=2, process=True)
-def report(gate: str, progress: WriteOnlyObservable[float]) -> int:
+def report(gate: str, progress: WriteOnlyState[float]) -> int:
     progress.value = 0.5
     _wait_for(gate)
     progress.value = 1.0
@@ -64,7 +64,7 @@ def report(gate: str, progress: WriteOnlyObservable[float]) -> int:
 
 
 @worker(parallel=2, process=True)
-def forever(started: WriteOnlyObservable[int], cancel: CancelToken = CancelToken()) -> None:
+def forever(started: WriteOnlyState[int], cancel: CancelToken = CancelToken()) -> None:
     started.value = os.getpid()
     while not cancel.cancelled:  # never set in a process: the call ends when the process does
         time.sleep(0.05)

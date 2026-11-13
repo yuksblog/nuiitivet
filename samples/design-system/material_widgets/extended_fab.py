@@ -12,7 +12,7 @@ import nuiitivet.material as nv
 
 def _toggling_fab(label: str, icon: str, style: nv.FabStyle) -> nv.ExtendedFab:
     """Return an ExtendedFab that toggles its own expanded state on click."""
-    expanded = nv.Observable(True)
+    expanded = nv.State(True)
     return nv.ExtendedFab(
         label,
         icon=icon,

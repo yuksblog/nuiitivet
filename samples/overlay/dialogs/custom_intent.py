@@ -15,7 +15,7 @@ class CustomDialogContent(nv.ComposableWidget):
 
     def __init__(self, initial: int = 0):
         super().__init__()
-        self.counter = nv.Observable(initial)
+        self.counter = nv.State(initial)
 
     def _increment(self):
         self.counter.value += 1
@@ -63,7 +63,7 @@ def create_counter_dialog(intent: CounterIntent) -> nv.Widget:
 
 class CustomIntentViewModel:
     def __init__(self):
-        self.message = nv.Observable("No result yet")
+        self.message = nv.State("No result yet")
 
     async def open_counter(self, overlay: nv.OverlayProtocol):
         # The ViewModel just emits an intent and waits for a result

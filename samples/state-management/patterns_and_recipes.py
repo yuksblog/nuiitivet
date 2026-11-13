@@ -1,4 +1,4 @@
-"""Observable: Patterns and Recipes
+"""State: Patterns and Recipes
 
 Demonstrates:
 - ViewModel pattern (state/logic separation from rendering)
@@ -23,8 +23,8 @@ import nuiitivet.material as nv
 class TodoViewModel:
     """Owns all state and business logic. The View only reads and forwards."""
 
-    items: nv.Observable[list[str]] = nv.Observable([])
-    selected_index: nv.Observable[int | None] = nv.Observable(None)
+    items: nv.State[list[str]] = nv.State([])
+    selected_index: nv.State[int | None] = nv.State(None)
 
     def __init__(self) -> None:
         self.item_count = self.items.map(lambda lst: len(lst))
@@ -56,8 +56,8 @@ class TodoViewModel:
 class ShoppingCart:
     """Subtotal and total derived from items + tax_rate."""
 
-    items: nv.Observable[list[dict]] = nv.Observable([])
-    tax_rate: nv.Observable[float] = nv.Observable(0.1)
+    items: nv.State[list[dict]] = nv.State([])
+    tax_rate: nv.State[float] = nv.State(0.1)
 
     def __init__(self) -> None:
         self.subtotal = self.items.map(lambda lst: sum(item["price"] * item["qty"] for item in lst))
@@ -76,12 +76,12 @@ class ShoppingCart:
 
 
 class ManagedViewModel:
-    """Holds derived observables and releases them on dispose()."""
+    """Holds derived States and releases them on dispose()."""
 
     def __init__(self) -> None:
-        self.count = nv.Observable(0)
+        self.count = nv.State(0)
         self.doubled = self.count.map(lambda x: x * 2)
-        # Keep explicit reference so GC does not collect the derived observable
+        # Keep explicit reference so GC does not collect the derived State
         self._disposables = [self.doubled]
 
     def increment(self) -> None:
@@ -135,17 +135,17 @@ class OrderForm:
     """
 
     def __init__(self) -> None:
-        self.qty_text = nv.Observable("1")
+        self.qty_text = nv.State("1")
         self.qty = self.qty_text.map(to_int)
         self.qty_held = self.qty_text.filter(str.isdigit, initial="1").map(int)
 
-        self.arrival_text = nv.Observable("")
+        self.arrival_text = nv.State("")
         self.arrival = self.arrival_text.map(nv.parse_date)
         # One decision, two presentations of it: deriving is_error and
         # supporting_text from the text separately would write it twice.
         self.error = self.arrival_text.map(arrival_error)
 
-        self.rate_text = nv.Observable("")
+        self.rate_text = nv.State("")
 
     def finish_rate(self, focused: bool, source: nv.FocusSource) -> None:
         """Pad a half-typed rate once the user has left the field.
@@ -167,8 +167,8 @@ class SaveViewModel:
     """``busy`` is True exactly while ``save()`` runs, however it exits."""
 
     def __init__(self) -> None:
-        self.busy = nv.Observable(False)
-        self.saved_count = nv.Observable(0)
+        self.busy = nv.State(False)
+        self.saved_count = nv.State(0)
 
     async def save(self) -> None:
         async with self.busy.while_value(True):
@@ -293,7 +293,7 @@ class PatternsApp(nv.ComposableWidget):
 
 def main() -> None:
     # The class, not an instance: hot reload rebuilds the root by calling it.
-    nv.App(nv.Window(content=PatternsApp, title="Observable: Patterns and Recipes", width=560, height=980)).run()
+    nv.App(nv.Window(content=PatternsApp, title="State: Patterns and Recipes", width=560, height=980)).run()
 
 
 if __name__ == "__main__":

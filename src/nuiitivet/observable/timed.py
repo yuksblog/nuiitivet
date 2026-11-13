@@ -3,15 +3,15 @@ from __future__ import annotations
 from typing import Callable, Sequence, TypeVar
 
 from ._sentinel import UNSET, _Unset
-from .protocols import ReadOnlyObservableProtocol
-from .wrapper import ShapingObservable
+from .protocols import ReadOnlyStateProtocol
+from .wrapper import ShapingState
 from . import runtime
 
 T = TypeVar("T")
 
 
-class DebouncedObservable(ShapingObservable[T]):
-    """Debounced observable that emits value only after delay with no new changes.
+class DebouncedState(ShapingState[T]):
+    """Debounced State that emits value only after delay with no new changes.
 
     ``value`` is the last debounced emission — the construction-time value of the
     source until the input first settles — so binding this straight into a widget
@@ -20,7 +20,7 @@ class DebouncedObservable(ShapingObservable[T]):
     from :meth:`subscribe`, for as long as the emissions are wanted.
     """
 
-    def __init__(self, source: ReadOnlyObservableProtocol[T], seconds: float):
+    def __init__(self, source: ReadOnlyStateProtocol[T], seconds: float):
         self._seconds = seconds
         self._pending_value: T | _Unset = UNSET
         self._scheduled = False
@@ -48,8 +48,8 @@ class DebouncedObservable(ShapingObservable[T]):
         self._emit_to_subscribers(pending)
 
 
-class ThrottledObservable(ShapingObservable[T]):
-    """Throttled observable that emits first value then ignores changes for duration.
+class ThrottledState(ShapingState[T]):
+    """Throttled State that emits first value then ignores changes for duration.
 
     ``value`` is the last throttled emission — the construction-time value of the
     source until the first change, which is emitted on the leading edge — so
@@ -58,7 +58,7 @@ class ThrottledObservable(ShapingObservable[T]):
     ``Disposable`` from :meth:`subscribe`, for as long as the emissions are wanted.
     """
 
-    def __init__(self, source: ReadOnlyObservableProtocol[T], seconds: float):
+    def __init__(self, source: ReadOnlyStateProtocol[T], seconds: float):
         self._seconds = seconds
         self._throttling = False
         self._pending_value: T | _Unset = UNSET

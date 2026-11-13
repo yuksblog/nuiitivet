@@ -3,7 +3,7 @@
 The ``Clocks`` class is a namespace, not something to instantiate — the same
 convention as :class:`~nuiitivet.platform.desktop.Desktop`. It scopes the
 runtime's clock indirection point: everything nuiitivet schedules (animations,
-debounced observables, cross-thread notification delivery) goes through the
+debounced States, cross-thread notification delivery) goes through the
 installed :class:`~nuiitivet.observable.runtime.Clock`, and swapping it is how
 a test takes control of time.
 """

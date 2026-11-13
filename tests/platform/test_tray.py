@@ -1,7 +1,7 @@
 """Tests for the TrayIcon model: validation, install wiring, activation.
 
 Platform bridges (Cocoa, Win32, StatusNotifierItem) are substituted; what is under test is the
-model contract every platform shares — the ``installed`` observable, the
+model contract every platform shares — the ``installed`` State, the
 never-crash install policy, and the activation path.
 """
 
@@ -13,7 +13,7 @@ from typing import Any, List
 import pytest
 
 from nuiitivet.menus import MenuEntry
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.platform.tray import TrayIcon
 from nuiitivet.runtime.app import App
 from nuiitivet.runtime.window import Window
@@ -125,7 +125,7 @@ def _installed_tray(
 
 def test_activate_toggles_checked(monkeypatch: pytest.MonkeyPatch) -> None:
     tray = _installed_tray(monkeypatch, _app())
-    checked = Observable(False)
+    checked = State(False)
     item = MenuEntry("Wrap", on_select=lambda: None, checked=checked)
     tray._activate_item(item)
     assert checked.value is True

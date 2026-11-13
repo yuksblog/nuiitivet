@@ -17,7 +17,7 @@ from nuiitivet.layout.row import Row
 from nuiitivet.layout.scrollable import HorizontalScrollable, VerticalScrollable
 from nuiitivet.layout.uniform_flow import UniformFlow
 from nuiitivet.modifiers import on_unmount
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.runtime.pointer import PointerCaptureManager
 from nuiitivet.widgets.box import Box
@@ -109,7 +109,7 @@ def test_column_lazy_given_item_height_overrides_the_measured_one() -> None:
 
 def test_column_lazy_keyed_insert_builds_only_the_newcomer() -> None:
     log = _Log()
-    items: Observable[list[str]] = Observable([f"item {i}" for i in range(10)])
+    items: State[list[str]] = State([f"item {i}" for i in range(10)])
     column = Column.lazy(items, log.builder, key_fn=lambda item, index: item)
     scroller = VerticalScrollable(column, width=200, height=100)
     scroller.mount(_App())

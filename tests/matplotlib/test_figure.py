@@ -1,4 +1,4 @@
-"""The MatplotlibFigure draws its figure at the device size, in the theme's colors, from an observable.
+"""The MatplotlibFigure draws its figure at the device size, in the theme's colors, from a State.
 
 It hands the pointer and the keyboard to the figure as matplotlib events and answers ``draw_idle``.
 """
@@ -25,7 +25,7 @@ from nuiitivet.matplotlib.figure import MatplotlibFigure  # noqa: E402
 from nuiitivet.matplotlib.figure import _mpl_key  # noqa: E402
 from nuiitivet.material.theme.color_role import ColorRole  # noqa: E402
 from nuiitivet.material.theme.material_theme import MaterialThemeFactory  # noqa: E402
-from nuiitivet.observable import Observable  # noqa: E402
+from nuiitivet.observable import State  # noqa: E402
 from nuiitivet.theme.theme import Theme  # noqa: E402
 from nuiitivet.widgeting.widget_size_change import flush_size_change_callbacks  # noqa: E402
 from nuiitivet.widgets.interaction import FocusNode  # noqa: E402
@@ -128,7 +128,7 @@ def test_plot_runs_on_each_value_before_the_draw_and_not_on_a_resize(theme: list
     figure = Figure()
     ax = figure.subplots()
     (line,) = ax.plot([0, 1], [0, 0])
-    data: Observable[float] = Observable(1.0)
+    data: State[float] = State(1.0)
     plotted: list[float] = []
 
     def plot(fig: Figure, value: float) -> None:

@@ -16,7 +16,7 @@ from nuiitivet.input.codes import (
     TEXT_MOTION_HOME,
     TEXT_MOTION_UP,
 )
-from nuiitivet.observable import Disposable, Observable, ObservableProtocol, ReadOnlyObservableProtocol
+from nuiitivet.observable import Disposable, ReadOnlyStateProtocol, State, StateProtocol
 from nuiitivet.platform import get_system_clipboard
 from nuiitivet.widgeting.context_lookup import find_window
 from nuiitivet.widgeting.paint_replay import replay_safe
@@ -80,11 +80,11 @@ class EditableText(InteractionHostMixin, Widget):
     the caret's line into view.
     """
 
-    _state_internal = Observable(TextEditingValue())
+    _state_internal = State(TextEditingValue())
 
     def __init__(
         self,
-        value: Union[str, ReadOnlyObservableProtocol[str]] = "",
+        value: Union[str, ReadOnlyStateProtocol[str]] = "",
         on_change: Optional[StrCallback] = None,
         on_user_edit: Optional[StrCallback] = None,
         on_focus_change: Optional[FocusChangeCallback] = None,
@@ -106,8 +106,8 @@ class EditableText(InteractionHostMixin, Widget):
         """Initialize EditableText.
 
         Args:
-            value: Initial text, or the observable holding the field's value.
-                Edits are written back to a writable observable; a read-only
+            value: Initial text, or the State holding the field's value.
+                Edits are written back to a writable State; a read-only
                 one displays only.
             on_change: Callback invoked with the text as it changes, by typing
                 or by code. Not during an IME composition.
@@ -156,7 +156,7 @@ class EditableText(InteractionHostMixin, Widget):
         # Fires for text the *user* produced -- typing, IME, paste, delete --
         # and never for an assignment made by code. ``on_change`` cannot answer
         # "did the user do this?": it is deliberately fired for every text
-        # change, including ``value = ...`` and a push from a bound observable,
+        # change, including ``value = ...`` and a push from a bound State,
         # so decorators stay in sync. A caller that must react to the user
         # specifically (reopening an autocomplete panel the application just
         # closed, say) would otherwise mistake its own write-back for input.
@@ -174,11 +174,11 @@ class EditableText(InteractionHostMixin, Widget):
         # flag mirrors the browser's ``KeyboardEvent.isComposing`` signal: it
         # is set when a composition commits and consumed by the next key press.
         self._ime_just_committed = False
-        self._external_str_obs: ReadOnlyObservableProtocol[str] | None = None
+        self._external_str_obs: ReadOnlyStateProtocol[str] | None = None
         # The same object as ``_external_str_obs`` when that source is writable.
         # Kept separately so the write-back path needs no repeated type check,
         # and so a read-only source is display-only rather than half-bound.
-        self._external_writable: ObservableProtocol[str] | None = None
+        self._external_writable: StateProtocol[str] | None = None
         self._external_sub: Optional[Disposable] = None
         self._input_filter: Optional[InputFilter] = (
             to_input_filter(input_filter) if input_filter is not None else None
@@ -207,16 +207,16 @@ class EditableText(InteractionHostMixin, Widget):
         # ring per MD3 spec.
         self._focus_from_pointer: bool = False
 
-        # Initialize state. An observable passed here is the field's value
+        # Initialize state. A State passed here is the field's value
         # cell: edits are written back to it (see ``_update_value``), matching
         # every other input widget. A read-only source has nowhere to write, so
         # it displays only -- pair it with ``disabled=True``.
         initial_text = ""
         if hasattr(value, "subscribe") and hasattr(value, "value"):
-            self._external_str_obs = cast("ReadOnlyObservableProtocol[str]", value)
+            self._external_str_obs = cast("ReadOnlyStateProtocol[str]", value)
             initial_text = self._external_str_obs.value
-            if isinstance(value, ObservableProtocol):
-                self._external_writable = cast("ObservableProtocol[str]", value)
+            if isinstance(value, StateProtocol):
+                self._external_writable = cast("StateProtocol[str]", value)
         elif isinstance(value, str):
             initial_text = value
 
@@ -393,7 +393,7 @@ class EditableText(InteractionHostMixin, Widget):
                 # state in TextField) can synchronize with externally-driven
                 # value changes. The ``current.text == new_text`` early-return
                 # above guards against write-back loops in two-way bound
-                # scenarios: an Observable -> on_change -> observable.value
+                # scenarios: a State -> on_change -> observable.value
                 # cycle terminates because the second delivery is a no-op.
                 if self._on_change:
                     invoke_event_handler(
@@ -472,7 +472,7 @@ class EditableText(InteractionHostMixin, Widget):
     def _announce(self, new_value: TextEditingValue) -> None:
         """Publish the text the application is meant to see.
 
-        The bound observable and ``on_change`` are the same signal in two
+        The bound State and ``on_change`` are the same signal in two
         shapes, so both are driven from here under one condition and can never
         disagree about what the application saw.
 
@@ -504,7 +504,7 @@ class EditableText(InteractionHostMixin, Widget):
             )
 
     def _write_back(self, text: str) -> None:
-        """Push the edited text into the bound observable, if there is one.
+        """Push the edited text into the bound State, if there is one.
 
         The loop that the write starts terminates in ``_on_external_change``,
         which returns early once the text it is handed already matches.
@@ -520,7 +520,7 @@ class EditableText(InteractionHostMixin, Widget):
             exception_once(
                 _logger,
                 "editable_text_write_back_failed",
-                "EditableText failed to write the edited value back to its observable",
+                "EditableText failed to write the edited value back to its State",
             )
 
     # --- lines -----------------------------------------------------------------

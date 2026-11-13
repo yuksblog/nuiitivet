@@ -43,9 +43,9 @@ class AdaptiveToolbarPanel(nv.ComposableWidget):
         super().__init__(width="wt", height="wt")
         # True matches this app's initial 760x460 window, so the first report
         # writes the same value and nothing animates on the first frame.
-        self._landscape = nv.Observable(True)
+        self._landscape = nv.State(True)
         self._portrait = self._landscape.map(lambda landscape: not landscape)
-        self._caption = nv.Observable("")
+        self._caption = nv.State("")
 
     def _on_size(self, size: nv.Size) -> None:
         """Receive this widget's own size whenever it changes."""

@@ -42,12 +42,12 @@ class PointerInspector(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
         self._log: Deque[str] = deque(maxlen=_LOG_LINES)
-        self.event = nv.Observable("—")
-        self.local = nv.Observable("—")
-        self.screen = nv.Observable("—")
-        self.buttons = nv.Observable("—")
-        self.modifiers = nv.Observable("—")
-        self.log = nv.Observable("Waiting for the pointer…")
+        self.event = nv.State("—")
+        self.local = nv.State("—")
+        self.screen = nv.State("—")
+        self.buttons = nv.State("—")
+        self.modifiers = nv.State("—")
+        self.log = nv.State("Waiting for the pointer…")
 
     def _record(self, kind: str, e: nv.PointerEvent, detail: str = "") -> None:
         self.event.value = f"{kind}{f'  ({detail})' if detail else ''}"
@@ -78,7 +78,7 @@ class PointerInspector(nv.ComposableWidget):
     def _on_scroll(self, e: nv.PointerEvent) -> None:
         self._record("scroll", e, f"{e.scroll_x:+.0f}, {e.scroll_y:+.0f}")
 
-    def _field(self, label: str, value: nv.Observable) -> nv.Row:
+    def _field(self, label: str, value: nv.State) -> nv.Row:
         return nv.Row(
             children=[
                 nv.Text(label, style=_LABEL, type_scale=nv.TypeScale.LABEL_MEDIUM, width=76),

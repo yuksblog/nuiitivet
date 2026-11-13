@@ -1,6 +1,6 @@
 import nuiitivet.material as nv
 
-is_open: nv.Observable[bool] = nv.Observable(False)
+is_open: nv.State[bool] = nv.State(False)
 
 
 def toggle() -> None:

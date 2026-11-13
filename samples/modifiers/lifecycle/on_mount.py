@@ -8,7 +8,7 @@ class EventLog:
     """Screen-level log, so unmount events stay visible after the widget is gone."""
 
     def __init__(self) -> None:
-        self.text = nv.Observable("(no events yet)")
+        self.text = nv.State("(no events yet)")
         self._lines: list[str] = []
 
     def add(self, line: str) -> None:
@@ -24,7 +24,7 @@ class LiveScreen(nv.ComposableWidget):
 
     def __init__(self) -> None:
         super().__init__()
-        self.reading = nv.Observable("--")
+        self.reading = nv.State("--")
 
     async def _poll(self) -> None:
         # Started as a task on mount, cancelled automatically on unmount.

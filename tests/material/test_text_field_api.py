@@ -7,7 +7,7 @@ from nuiitivet.material.styles.text_field_style import TextFieldStyle
 from nuiitivet.material.buttons import IconButton
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.text_editing import TextRange
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.widgets.input_filter import digits_only, max_length
 from nuiitivet.input.codes import MOD_META, TEXT_MOTION_BACKSPACE
 from nuiitivet.input.pointer import PointerEventType
@@ -27,7 +27,7 @@ def test_text_field_value_property():
 
 
 def test_text_field_controlled_mode():
-    obs = Observable("Initial")
+    obs = State("Initial")
 
     class VM:
         text = obs
@@ -43,8 +43,8 @@ def test_text_field_controlled_mode():
     tf.mount(MagicMock())
 
     # Trigger subscription callback manually or wait if async (it's sync here)
-    # But Observable subscription is immediate?
-    # Wait, Observable.subscribe calls callback immediately? No.
+    # But State subscription is immediate?
+    # Wait, State.subscribe calls callback immediately? No.
     # But when value changes, it calls callback.
 
     vm.text.value = "Updated"

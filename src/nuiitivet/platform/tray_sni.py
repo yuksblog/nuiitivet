@@ -26,7 +26,7 @@ from jeepney import message_bus, new_error, new_method_call, new_method_return, 
 from jeepney.io.blocking import Proxy, open_dbus_connection
 
 from nuiitivet.menus import MenuEntry, read_value
-from nuiitivet.observable import ObservableBase, runtime
+from nuiitivet.observable import StateBase, runtime
 
 from .tray_sni_plan import (
     LAYOUT_SIGNATURE,
@@ -137,7 +137,7 @@ class TraySniBridge:
 
     def _subscribe(self) -> None:
         tooltip = self._tray.tooltip
-        if isinstance(tooltip, ObservableBase):
+        if isinstance(tooltip, StateBase):
 
             def on_tooltip(_value: Any) -> None:
                 self._send(new_signal(_ITEM, "NewTitle"))
@@ -152,7 +152,7 @@ class TraySniBridge:
         def walk(entries: Sequence[MenuEntry]) -> None:
             for entry in entries:
                 for prop in (entry.label, entry.enabled, entry.checked):
-                    if isinstance(prop, ObservableBase):
+                    if isinstance(prop, StateBase):
                         self._subscriptions.append(prop.subscribe(on_menu))
                 if entry.submenu is not None:
                     walk(entry.submenu)

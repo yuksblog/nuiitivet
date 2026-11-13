@@ -14,7 +14,7 @@ Typical use cases:
 Usage::
 
     widget.modifier(block_focus_traversal())              # always block
-    widget.modifier(block_focus_traversal(self.vm.busy))  # observable-driven
+    widget.modifier(block_focus_traversal(self.vm.busy))  # State-driven
 """
 
 from __future__ import annotations
@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from typing import Optional, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.observable import ObservableBase
+from nuiitivet.observable import StateBase
 from nuiitivet.widgets.interaction import FocusTraversalBlocker
 from nuiitivet.widgeting.modifier import ModifierElement
 from nuiitivet.widgeting.widget import Widget
@@ -32,7 +32,7 @@ from nuiitivet.widgeting.widget import Widget
 logger = logging.getLogger(__name__)
 
 
-BlockFocusTraversalConditionLike = Union[bool, ObservableBase[bool]]
+BlockFocusTraversalConditionLike = Union[bool, StateBase[bool]]
 
 
 class BlockFocusTraversalBox(FocusTraversalBlocker, Widget):
@@ -51,21 +51,21 @@ class BlockFocusTraversalBox(FocusTraversalBlocker, Widget):
 
     @staticmethod
     def _read_initial(condition: BlockFocusTraversalConditionLike) -> bool:
-        if isinstance(condition, ObservableBase):
+        if isinstance(condition, StateBase):
             try:
                 return bool(condition.value)
             except Exception:
                 exception_once(
                     logger,
                     "block_focus_traversal_initial_condition_exc",
-                    "Failed to read block_focus_traversal initial condition observable",
+                    "Failed to read block_focus_traversal initial condition State",
                 )
                 return True
         return bool(condition)
 
     def on_mount(self) -> None:
         super().on_mount()
-        if isinstance(self._condition, ObservableBase):
+        if isinstance(self._condition, StateBase):
             self.observe(self._condition, self._set_active)
 
     def _set_active(self, value: bool) -> None:
@@ -137,7 +137,7 @@ def block_focus_traversal(
     """Return a modifier that removes the child subtree from focus traversal.
 
     Args:
-        condition: Static ``bool`` or an ``Observable[bool]``. When truthy the
+        condition: Static ``bool`` or a ``State[bool]``. When truthy the
             child subtree is skipped by Tab / Shift+Tab, and focus held inside
             it is released. Defaults to ``True`` (always block).
 

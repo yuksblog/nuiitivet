@@ -19,7 +19,7 @@ opens the children.
 Usage::
 
     widget.modifier(defer_pointer())               # always defer
-    widget.modifier(defer_pointer(self.vm.overlay)) # observable-driven
+    widget.modifier(defer_pointer(self.vm.overlay)) # State-driven
 """
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ def defer_pointer(condition: DeferPointerConditionLike = True) -> DeferPointerMo
     """Return a modifier that yields the widget's own surface so children catch.
 
     Args:
-        condition: Static ``bool`` or an ``Observable[bool]``. When truthy the
+        condition: Static ``bool`` or a ``State[bool]``. When truthy the
             widget's own rectangle never catches; children are still hit-tested
             normally. Defaults to ``True``. Read and validated at construction /
             mount, not at first click.

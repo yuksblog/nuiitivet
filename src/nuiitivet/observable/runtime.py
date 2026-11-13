@@ -18,8 +18,8 @@ class Clock(Protocol):
     """Clock API compatible with ``pyglet.clock``.
 
     Install an implementation with :func:`set_clock` to control when scheduled
-    callbacks run — a test that drives a cross-thread observable write or a
-    debounced observable needs this, since the default fallback clock fires on
+    callbacks run — a test that drives a cross-thread State write or a
+    debounced State needs this, since the default fallback clock fires on
     a background thread at wall-clock time.
 
     Implementations must identify scheduled callbacks by **equality**, the rule
@@ -74,7 +74,7 @@ class _ThreadClock:
     **One** daemon thread services every armed callback, waking on a condition
     variable when the earliest deadline arrives or when a nearer one is armed.
     The earlier implementation spent a ``threading.Timer`` -- a thread -- per
-    ``schedule_once`` and another per interval, which an ``Observable`` write
+    ``schedule_once`` and another per interval, which a ``State`` write
     from a worker reaches on every tick now that dispatch is the default.
 
     Callbacks still fire on that servicing thread, not on any UI thread: with
@@ -111,7 +111,7 @@ class _ThreadClock:
         """Replace anything armed for ``fn`` with a fresh entry, and wake the worker.
 
         Replacing rather than appending is what the previous implementation did
-        for one-shots, and what callers depend on: ``DebouncedObservable``
+        for one-shots, and what callers depend on: ``DebouncedState``
         re-arms on every keystroke and expects one pending emit, not five.
         """
         with self._cond:

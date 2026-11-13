@@ -2,13 +2,13 @@
 
 One definition of "the UI thread" lives here. Everything that has to decide
 whether it is running on it -- the widget tree's assertions, and every
-``Observable`` write, which now marshals by default -- asks :func:`is_ui_thread`
+``State`` write, which now marshals by default -- asks :func:`is_ui_thread`
 rather than comparing threads itself.
 
 The test is an integer comparison against a cached ident, not
 ``threading.current_thread() is threading.main_thread()``. The two agree, but
 ``current_thread()`` costs a dict lookup on every call and this one runs on the
-hot path of every observable write.
+hot path of every State write.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ import threading
 from typing import Optional
 
 
-# Bound once: ``is_ui_thread`` runs on the hot path of every observable write,
+# Bound once: ``is_ui_thread`` runs on the hot path of every State write,
 # and a module-global lookup is cheaper than an attribute lookup on ``threading``.
 _get_ident = threading.get_ident
 

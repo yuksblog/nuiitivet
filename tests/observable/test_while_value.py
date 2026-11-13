@@ -4,7 +4,7 @@ from enum import Enum, auto
 
 import pytest
 
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 
 
 class Mode(Enum):
@@ -13,7 +13,7 @@ class Mode(Enum):
 
 
 def test_sync_sets_on_entry_and_restores_on_exit():
-    busy = Observable(False)
+    busy = State(False)
 
     with busy.while_value(True):
         assert busy.value is True
@@ -21,7 +21,7 @@ def test_sync_sets_on_entry_and_restores_on_exit():
 
 
 def test_async_sets_on_entry_and_restores_on_exit():
-    busy = Observable(False)
+    busy = State(False)
 
     async def run() -> None:
         async with busy.while_value(True):
@@ -32,7 +32,7 @@ def test_async_sets_on_entry_and_restores_on_exit():
 
 
 def test_raising_block_still_restores():
-    busy = Observable(False)
+    busy = State(False)
 
     with pytest.raises(RuntimeError):
         with busy.while_value(True):
@@ -41,7 +41,7 @@ def test_raising_block_still_restores():
 
 
 def test_async_raising_block_still_restores():
-    busy = Observable(False)
+    busy = State(False)
 
     async def run() -> None:
         async with busy.while_value(True):
@@ -53,7 +53,7 @@ def test_async_raising_block_still_restores():
 
 
 def test_non_bool_value_type():
-    mode = Observable(Mode.EDIT)
+    mode = State(Mode.EDIT)
 
     with mode.while_value(Mode.PREVIEW):
         assert mode.value is Mode.PREVIEW
@@ -61,7 +61,7 @@ def test_non_bool_value_type():
 
 
 def test_subscribers_notified_once_per_transition():
-    mode = Observable(Mode.EDIT)
+    mode = State(Mode.EDIT)
     events: list[Mode] = []
     mode.subscribe(events.append)
 
@@ -72,7 +72,7 @@ def test_subscribers_notified_once_per_transition():
 
 
 def test_no_notification_when_value_already_equal():
-    busy = Observable(True)
+    busy = State(True)
     events: list[bool] = []
     busy.subscribe(events.append)
 
@@ -84,7 +84,7 @@ def test_no_notification_when_value_already_equal():
 
 
 def test_dedup_uses_custom_compare():
-    metric = Observable(0.0, compare=lambda old, new: abs(old - new) < 0.5)
+    metric = State(0.0, compare=lambda old, new: abs(old - new) < 0.5)
     events: list[float] = []
     metric.subscribe(events.append)
 
@@ -95,7 +95,7 @@ def test_dedup_uses_custom_compare():
 
 
 def test_warns_and_restores_when_written_during_block(caplog):
-    count = Observable(0)
+    count = State(0)
 
     with caplog.at_level(logging.WARNING, logger="nuiitivet.observable.value"):
         with count.while_value(1):
@@ -106,7 +106,7 @@ def test_warns_and_restores_when_written_during_block(caplog):
 
 
 def test_no_warning_on_undisturbed_block(caplog):
-    count = Observable(0)
+    count = State(0)
 
     with caplog.at_level(logging.WARNING, logger="nuiitivet.observable.value"):
         with count.while_value(1):
@@ -117,7 +117,7 @@ def test_no_warning_on_undisturbed_block(caplog):
 
 def test_works_through_the_descriptor():
     class ViewModel:
-        busy = Observable(False)
+        busy = State(False)
 
     vm = ViewModel()
     with vm.busy.while_value(True):

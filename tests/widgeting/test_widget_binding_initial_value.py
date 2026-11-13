@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, List
 
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.widgeting.widget import ComposableWidget, Widget, layout_depends_on, paint_depends_on
 from nuiitivet.widgeting.widget_binding import flush_binding_invalidations
 
@@ -58,7 +58,7 @@ class _ValuelessEmitter:
 def test_bind_to_applies_current_value_immediately() -> None:
     widget = _TestWidget()
     widget._app = _AppStub()
-    source = Observable("hello")
+    source = State("hello")
     seen: List[Any] = []
 
     widget.bind_to(source, seen.append, dependency="size")
@@ -70,7 +70,7 @@ def test_bind_to_initial_apply_does_not_invalidate() -> None:
     """The seed runs before anything is cached, so it must not queue a frame."""
     widget = _TestWidget()
     widget._app = _AppStub()
-    source = Observable("hello")
+    source = State("hello")
 
     widget.bind_to(source, lambda _v: None, dependency="size")
 
@@ -83,7 +83,7 @@ def test_bind_to_initial_apply_does_not_invalidate() -> None:
 def test_bind_to_still_invalidates_on_change() -> None:
     widget = _TestWidget()
     widget._app = _AppStub()
-    source = Observable("hello")
+    source = State("hello")
     seen: List[Any] = []
 
     widget.bind_to(source, seen.append, dependency="size")
@@ -115,7 +115,7 @@ def test_bind_to_tolerates_source_without_value() -> None:
 
 def test_observe_applies_current_value_and_disposes_on_unmount() -> None:
     widget = _TestWidget()
-    source = Observable(1)
+    source = State(1)
     seen: List[int] = []
 
     widget.observe(source, seen.append)

@@ -1,4 +1,4 @@
-from nuiitivet.observable import Observable, _ObservableValue
+from nuiitivet.observable import State, _StateValue
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.layout.for_each import ForEach
 
@@ -37,15 +37,15 @@ def _child_tags(widget: ForEach):
 def _make_model():
 
     class _Model:
-        items = Observable([])
+        items = State([])
 
     return _Model()
 
 
-def test_foreach_mount_subscribes_to_canonical_observable():
+def test_foreach_mount_subscribes_to_canonical_state():
     model = _make_model()
     model.items.value = ["alpha", "beta"]
-    transient = _ObservableValue([], owner=model, name="items")
+    transient = _StateValue([], owner=model, name="items")
 
     def builder(item, idx):
         return DummyWidget(tag=item)

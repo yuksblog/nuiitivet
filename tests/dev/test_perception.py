@@ -13,11 +13,11 @@ from nuiitivet.dev.perception import (
     find_target,
     match_condition,
 )
-from nuiitivet.observable.value import Observable
+from nuiitivet.observable.value import State
 
 
 class _Obs:
-    """Minimal observable-like value (has ``.value``)."""
+    """Minimal State-like value (has ``.value``)."""
 
     def __init__(self, value: Any) -> None:
         self.value = value
@@ -52,7 +52,7 @@ def test_describe_tree_none_root_is_empty() -> None:
     assert describe_tree(None) == {}
 
 
-def test_describe_tree_unwraps_observable_label() -> None:
+def test_describe_tree_unwraps_state_label() -> None:
     root = _Node(label=_Obs("increment"))
     tree = describe_tree(root)
     assert tree["label"] == "increment"
@@ -194,7 +194,7 @@ def test_find_target_by_label_matches_text_and_title() -> None:
     assert find_target(root, label="Settings") is by_title
 
 
-def test_find_target_unwraps_observable_identity() -> None:
+def test_find_target_unwraps_state_identity() -> None:
     target = _Node(label=_Obs("increment"))
     root = _Node(children=[target])
     assert find_target(root, label="increment") is target
@@ -255,7 +255,7 @@ def test_match_condition_combines_fields() -> None:
     assert match_condition(root, key="row", text="Carol") is False
 
 
-def test_match_condition_unwraps_observable_identity() -> None:
+def test_match_condition_unwraps_state_identity() -> None:
     root = _Node(children=[_Node(label=_Obs("Ready"))])
     assert match_condition(root, label="Ready") is True
 
@@ -272,23 +272,23 @@ def test_describe_state_none_root_is_empty() -> None:
     assert describe_state(None) == {}
 
 
-def test_describe_state_reports_observable_values() -> None:
+def test_describe_state_reports_state_values() -> None:
     root = _Node()
     # Descriptor storage (``_obs_<name>``) reports under the bare name; a
-    # directly-assigned observable drops its leading underscore.
-    root._obs_count = Observable(3)  # type: ignore[attr-defined]
-    root._enabled = Observable(True)  # type: ignore[attr-defined]
+    # directly-assigned State drops its leading underscore.
+    root._obs_count = State(3)  # type: ignore[attr-defined]
+    root._enabled = State(True)  # type: ignore[attr-defined]
 
     state = describe_state(root)
     assert state["type"] == "_Node"
     assert state["state"] == {"count": 3, "enabled": True}
 
 
-def test_describe_state_marks_computed_observables() -> None:
+def test_describe_state_marks_computed_states() -> None:
     root = _Node()
-    count = Observable(2)
+    count = State(2)
     root._obs_count = count  # type: ignore[attr-defined]
-    root._obs_doubled = Observable.compute(lambda: count.value * 2)  # type: ignore[attr-defined]
+    root._obs_doubled = State.compute(lambda: count.value * 2)  # type: ignore[attr-defined]
 
     state = describe_state(root)
     assert state["state"]["count"] == 2
@@ -297,7 +297,7 @@ def test_describe_state_marks_computed_observables() -> None:
 
 def test_describe_state_prunes_stateless_nodes_but_keeps_ancestors() -> None:
     leaf = _Node(key="deep")
-    leaf._obs_value = Observable("x")  # type: ignore[attr-defined]
+    leaf._obs_value = State("x")  # type: ignore[attr-defined]
     middle = _Node(children=[_Node(), leaf])  # a stateless sibling is dropped
     root = _Node(children=[middle])
 
@@ -319,7 +319,7 @@ def test_describe_state_empty_when_no_state_anywhere() -> None:
 
 def test_describe_state_carries_identity() -> None:
     root = _Node(key="toggle", label="Agree")
-    root._obs_checked = Observable(False)  # type: ignore[attr-defined]
+    root._obs_checked = State(False)  # type: ignore[attr-defined]
     state = describe_state(root)
     assert state["key"] == "toggle"
     assert state["label"] == "Agree"
@@ -328,7 +328,7 @@ def test_describe_state_carries_identity() -> None:
 
 def test_describe_state_truncates_long_string_value() -> None:
     root = _Node()
-    root._obs_text = Observable("x" * 500)  # type: ignore[attr-defined]
+    root._obs_text = State("x" * 500)  # type: ignore[attr-defined]
     value = describe_state(root)["state"]["text"]
     assert len(value) <= 200
     assert value.endswith("…")
@@ -336,7 +336,7 @@ def test_describe_state_truncates_long_string_value() -> None:
 
 def test_describe_state_caps_container_breadth() -> None:
     root = _Node()
-    root._obs_items = Observable(list(range(100)))  # type: ignore[attr-defined]
+    root._obs_items = State(list(range(100)))  # type: ignore[attr-defined]
     items = describe_state(root)["state"]["items"]
     assert len(items) == 21  # 20 items + one "… (+80 more)" marker
     assert items[-1] == "… (+80 more)"
@@ -348,15 +348,15 @@ def test_describe_state_renders_opaque_value_as_type_repr() -> None:
             return "<opaque>"
 
     root = _Node()
-    root._obs_thing = Observable(_Opaque())  # type: ignore[attr-defined]
+    root._obs_thing = State(_Opaque())  # type: ignore[attr-defined]
     value = describe_state(root)["state"]["thing"]
     assert value == "_Opaque: <opaque>"
 
 
-def test_describe_state_skips_unreadable_observable() -> None:
-    from nuiitivet.observable.protocols import ObservableBase
+def test_describe_state_skips_unreadable_state() -> None:
+    from nuiitivet.observable.protocols import StateBase
 
-    class _RaisingObs(ObservableBase):  # type: ignore[type-arg]
+    class _RaisingObs(StateBase):  # type: ignore[type-arg]
         @property
         def value(self) -> Any:
             raise RuntimeError("nope")
@@ -365,29 +365,29 @@ def test_describe_state_skips_unreadable_observable() -> None:
             return None
 
     root = _Node()
-    root._obs_ok = Observable(1)  # type: ignore[attr-defined]
-    # A real observable whose getter raises is dropped, not fatal.
+    root._obs_ok = State(1)  # type: ignore[attr-defined]
+    # A real State whose getter raises is dropped, not fatal.
     root._obs_boom = _RaisingObs()  # type: ignore[attr-defined]
     state = describe_state(root)
     assert state["state"] == {"ok": 1}
 
 
-def test_describe_state_ignores_non_observable_duck_type() -> None:
+def test_describe_state_ignores_non_state_duck_type() -> None:
     class _Duck:
-        """Has ``.value`` but is not an ``ObservableBase`` -- must be ignored."""
+        """Has ``.value`` but is not a ``StateBase`` -- must be ignored."""
 
         value = 7
 
     root = _Node()
     root._duck = _Duck()  # type: ignore[attr-defined]
-    root._obs_real = Observable(1)  # type: ignore[attr-defined]
+    root._obs_real = State(1)  # type: ignore[attr-defined]
     state = describe_state(root)
     assert state["state"] == {"real": 1}
 
 
 def test_describe_state_omits_animations_by_default() -> None:
     root = _Node()
-    root._obs_checked = Observable(True)  # type: ignore[attr-defined]
+    root._obs_checked = State(True)  # type: ignore[attr-defined]
     root._state_layer_anim = Animatable(0.25)  # type: ignore[attr-defined]
 
     state = describe_state(root)
@@ -396,11 +396,11 @@ def test_describe_state_omits_animations_by_default() -> None:
 
 def test_describe_state_includes_animations_on_request() -> None:
     root = _Node()
-    root._obs_checked = Observable(True)  # type: ignore[attr-defined]
+    root._obs_checked = State(True)  # type: ignore[attr-defined]
     root._state_layer_anim = Animatable(0.25)  # type: ignore[attr-defined]
 
     state = describe_state(root, include_animations=True)
-    # An ``Animatable`` is not mutable-observable, so it reports as computed.
+    # An ``Animatable`` is not a mutable State, so it reports as computed.
     assert state["state"] == {
         "checked": True,
         "state_layer_anim": {"value": 0.25, "kind": "computed"},
@@ -422,7 +422,7 @@ def test_describe_state_prunes_nodes_left_with_only_animations() -> None:
 
 
 def test_describe_state_keeps_values_derived_from_animations() -> None:
-    # A ``.map()`` over an ``Animatable`` is a plain computed observable and is
+    # A ``.map()`` over an ``Animatable`` is a plain computed State and is
     # deliberately still reported -- the filter is on type, not on provenance.
     anim = Animatable(0.0)
     root = _Node()
@@ -434,7 +434,7 @@ def test_describe_state_keeps_values_derived_from_animations() -> None:
 
 def test_describe_state_is_cycle_safe() -> None:
     a = _Node()
-    a._obs_v = Observable(1)  # type: ignore[attr-defined]
+    a._obs_v = State(1)  # type: ignore[attr-defined]
     b = _Node(children=[a])
     a.children.append(b)  # cycle a -> b -> a
     state = describe_state(a)

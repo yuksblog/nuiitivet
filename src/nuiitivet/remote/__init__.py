@@ -3,6 +3,6 @@
 from .function import RemoteError, server
 from .scope import server_only
 from .worker import worker
-from .writer import WriteOnlyObservable
+from .writer import WriteOnlyState
 
-__all__ = ["RemoteError", "WriteOnlyObservable", "server", "server_only", "worker"]
+__all__ = ["RemoteError", "WriteOnlyState", "server", "server_only", "worker"]

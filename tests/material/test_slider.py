@@ -7,7 +7,7 @@ from nuiitivet.material.slider import (
     HorizontalSlider,
     VerticalSlider,
 )
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.widgets.interaction import FocusScope
 from tests.helpers.pointer import send_pointer_event_for_test
 
@@ -15,7 +15,7 @@ from tests.helpers.pointer import send_pointer_event_for_test
 def _make_obs(initial: float):
 
     class _Tmp:
-        x = Observable(initial)
+        x = State(initial)
 
     return _Tmp().x
 
@@ -40,7 +40,7 @@ def test_slider_discrete_stops_snaps_value() -> None:
     assert s.value in (0.0, 25.0, 50.0, 75.0, 100.0)
 
 
-def test_slider_observable_binding_updates_source() -> None:
+def test_slider_state_binding_updates_source() -> None:
     state = _make_obs(0.0)
     s = HorizontalSlider(value=state, min_value=0.0, max_value=10.0, width=200)
     s.set_layout_rect(0, 0, 200, 48)
@@ -135,10 +135,10 @@ def test_slider_disabled_rejects_key_event() -> None:
     assert s.value == 0.5
 
 
-# --- D2: Observable external change syncs to internal state ---
+# --- D2: State external change syncs to internal state ---
 
 
-def test_slider_observable_external_change_syncs() -> None:
+def test_slider_state_external_change_syncs() -> None:
     obs = _make_obs(0.0)
     s = HorizontalSlider(value=obs, min_value=0.0, max_value=1.0, width=200)
     s.set_layout_rect(0, 0, 200, 48)
@@ -148,7 +148,7 @@ def test_slider_observable_external_change_syncs() -> None:
     assert abs(s.value - 0.75) <= 1e-6
 
 
-def test_range_slider_observable_external_change_syncs() -> None:
+def test_range_slider_state_external_change_syncs() -> None:
     start_obs = _make_obs(0.2)
     end_obs = _make_obs(0.8)
     r = HorizontalRangeSlider(value_start=start_obs, value_end=end_obs, min_value=0.0, max_value=1.0, width=200)
@@ -219,7 +219,7 @@ def test_range_slider_value_assignment_normalizes_and_clamps() -> None:
     assert r.value == (0.0, 1.0)
 
 
-def test_range_slider_value_assignment_writes_back_to_bound_observables() -> None:
+def test_range_slider_value_assignment_writes_back_to_bound_states() -> None:
     start, end = _make_obs(0.2), _make_obs(0.8)
     r = HorizontalRangeSlider(value_start=start, value_end=end, min_value=0.0, max_value=1.0)
 

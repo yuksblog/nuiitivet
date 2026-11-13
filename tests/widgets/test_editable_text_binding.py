@@ -1,8 +1,8 @@
-"""Observable binding on EditableText.
+"""State binding on EditableText.
 
-An observable passed as ``value`` is the field's value cell, not a source it
+A State passed as ``value`` is the field's value cell, not a source it
 mirrors: edits are written back to it, the same as for every other input
-widget. A read-only observable has nowhere to write, so it displays only.
+widget. A read-only State has nowhere to write, so it displays only.
 
 ``on_change`` is the same signal in callback shape: both are announced from one
 place, so they can never disagree about what the application saw -- including
@@ -11,7 +11,7 @@ across an IME composition, which neither reports until it commits.
 
 from unittest.mock import MagicMock
 
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.widgets.editable_text import EditableText
 from nuiitivet.widgets.input_filter import digits_only
 from nuiitivet.input.codes import TEXT_MOTION_LEFT
@@ -24,8 +24,8 @@ def _mounted(**kwargs) -> EditableText:
     return w
 
 
-def test_typing_is_written_back_to_the_observable():
-    obs = Observable("ab")
+def test_typing_is_written_back_to_the_state():
+    obs = State("ab")
     w = _mounted(value=obs)
 
     w._handle_text("c")
@@ -34,7 +34,7 @@ def test_typing_is_written_back_to_the_observable():
 
 
 def test_a_programmatic_assignment_is_written_back_too():
-    obs = Observable("ab")
+    obs = State("ab")
     w = _mounted(value=obs)
 
     w.value = "xyz"
@@ -43,7 +43,7 @@ def test_a_programmatic_assignment_is_written_back_too():
 
 
 def test_a_read_only_source_is_never_written_to():
-    source = Observable("ab")
+    source = State("ab")
     w = _mounted(value=source.map(lambda s: s.upper()))
 
     w._handle_text("!")
@@ -53,7 +53,7 @@ def test_a_read_only_source_is_never_written_to():
 
 
 def test_an_external_write_still_reaches_the_widget():
-    obs = Observable("ab")
+    obs = State("ab")
     w = _mounted(value=obs)
 
     obs.value = "xy"
@@ -62,7 +62,7 @@ def test_an_external_write_still_reaches_the_widget():
 
 
 def test_the_write_back_loop_terminates():
-    obs = Observable("")
+    obs = State("")
     seen: list[str] = []
     obs.subscribe(seen.append)
     w = _mounted(value=obs)
@@ -77,7 +77,7 @@ def test_the_write_back_loop_terminates():
 
 def test_an_external_write_keeps_the_caret_instead_of_moving_it_to_the_end():
     """Normalizing on write-back must not send the caret to the end."""
-    obs = Observable("")
+    obs = State("")
     # Upper-case whatever the field writes, as an app-side normalization would.
     obs.subscribe(lambda text: setattr(obs, "value", text.upper()))
     w = _mounted(value=obs)
@@ -94,7 +94,7 @@ def test_an_external_write_keeps_the_caret_instead_of_moving_it_to_the_end():
 
 
 def test_a_caret_past_the_end_of_a_shorter_text_is_clamped():
-    obs = Observable("abcdef")
+    obs = State("abcdef")
     w = _mounted(value=obs)
     w._state_internal.value = w._state_internal.value.copy_with(selection=TextRange(6, 6))
 
@@ -105,7 +105,7 @@ def test_a_caret_past_the_end_of_a_shorter_text_is_clamped():
 
 def test_nothing_is_written_back_while_an_ime_composition_is_active():
     """A half-converted composition is not a value the application should see."""
-    obs = Observable("")
+    obs = State("")
     w = _mounted(value=obs)
 
     w._handle_ime_composition("にほんご", 4, 0)
@@ -115,7 +115,7 @@ def test_nothing_is_written_back_while_an_ime_composition_is_active():
 
 
 def test_the_committed_composition_is_written_back():
-    obs = Observable("")
+    obs = State("")
     w = _mounted(value=obs)
 
     w._handle_ime_composition("にほんご", 4, 0)
@@ -126,20 +126,20 @@ def test_the_committed_composition_is_written_back():
 
 
 def test_an_input_filter_runs_before_the_write_back():
-    obs = Observable("")
+    obs = State("")
     w = _mounted(value=obs, input_filter=digits_only())
 
     w._handle_text("1")
     w._handle_text("a")
     w._handle_text("2")
 
-    # The observable never sees the rejected character, not even transiently.
+    # The State never sees the rejected character, not even transiently.
     assert obs.value == "12"
     assert w.value == "12"
 
 
 def test_a_failing_write_back_does_not_break_the_field():
-    class _Hostile(Observable[str]):
+    class _Hostile(State[str]):
         @property  # type: ignore[misc]
         def value(self) -> str:
             return ""
@@ -164,19 +164,19 @@ def test_an_unbound_field_still_edits():
 
 
 # ---------------------------------------------------------------------------
-# on_change and the observable are one signal
+# on_change and the State are one signal
 # ---------------------------------------------------------------------------
 
 
 def _announced(**kwargs):
-    """Return (observable, on_change log) for a field bound to both."""
-    obs = Observable("")
+    """Return (State, on_change log) for a field bound to both."""
+    obs = State("")
     seen: list[str] = []
     w = _mounted(value=obs, on_change=seen.append, **kwargs)
     return w, obs, seen
 
 
-def test_on_change_and_the_observable_agree_while_typing():
+def test_on_change_and_the_state_agree_while_typing():
     w, obs, seen = _announced()
 
     for ch in "ab":
@@ -187,7 +187,7 @@ def test_on_change_and_the_observable_agree_while_typing():
 
 
 def test_on_change_is_silent_during_an_ime_composition():
-    """The provisional text reaches neither the observable nor the callback."""
+    """The provisional text reaches neither the State nor the callback."""
     w, obs, seen = _announced()
 
     w._handle_ime_composition("にほんご", 4, 0)
@@ -245,7 +245,7 @@ def test_a_programmatic_assignment_is_announced_to_both():
 
 
 def test_an_unbound_field_still_announces_to_on_change():
-    """With no observable to bind, the callback is the only way to observe."""
+    """With no State to bind, the callback is the only way to observe."""
     seen: list[str] = []
     w = _mounted(value="", on_change=seen.append)
 

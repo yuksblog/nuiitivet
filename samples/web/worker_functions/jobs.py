@@ -22,7 +22,7 @@ def _distance(a: str, b: str) -> int:
 @nv.worker
 def search(
     query: str,
-    progress: nv.WriteOnlyObservable[float],  # the caller passes an Observable
+    progress: nv.WriteOnlyState[float],  # the caller passes a State
     cancel: nv.CancelToken = nv.CancelToken(),  # set when the caller gives up
 ) -> list[str]:
     if not query:

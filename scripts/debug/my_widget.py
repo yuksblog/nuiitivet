@@ -35,16 +35,16 @@ def _toggle_theme_mode(context) -> None:
 class MyWidgetModel:
     """ViewModel for MyWidget — matches the demo in my_app.py.
 
-    Provides separate observable lists for Column, Row and Grid demos with
+    Provides separate State lists for Column, Row and Grid demos with
     add/remove operations for each.
     """
 
-    column_items: nv.Observable[List[str]] = nv.Observable([])
-    row_items: nv.Observable[List[str]] = nv.Observable([])
-    grid_items: nv.Observable[List[str]] = nv.Observable([])
-    click_log: nv.Observable[str] = nv.Observable("")
-    checkbox_state: nv.Observable[Optional[bool]] = nv.Observable(None)
-    checkbox_state2: nv.Observable[Optional[bool]] = nv.Observable(None)
+    column_items: nv.State[List[str]] = nv.State([])
+    row_items: nv.State[List[str]] = nv.State([])
+    grid_items: nv.State[List[str]] = nv.State([])
+    click_log: nv.State[str] = nv.State("")
+    checkbox_state: nv.State[Optional[bool]] = nv.State(None)
+    checkbox_state2: nv.State[Optional[bool]] = nv.State(None)
 
     def __init__(self) -> None:
         self._column_count: int = 0

@@ -23,7 +23,7 @@ ICON = Path(__file__).parent / "assets" / "app_icon.png"
 class Screen(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.opened = nv.Observable(0)
+        self.opened = nv.State(0)
 
     def _open_window(self) -> None:
         self.opened.value += 1

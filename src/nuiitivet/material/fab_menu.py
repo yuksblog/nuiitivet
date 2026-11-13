@@ -4,7 +4,7 @@ A :class:`FabMenu` is a Floating Action Button that expands into a vertical
 list of labelled actions and morphs its icon between the closed and open
 states.  It is delivered as a single high-level widget so the FAB morph, the
 staggered reveal of items, and the dismissal scrim are all driven by one
-``is_open`` observable.
+``is_open`` State.
 
 The widget reuses existing infrastructure:
 
@@ -38,7 +38,7 @@ from nuiitivet.material.text import LabelLike
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.modifiers.popup import popup
 from nuiitivet.modifiers.transform import opacity, translate
-from nuiitivet.observable import Observable, ObservableProtocol
+from nuiitivet.observable import State, StateProtocol
 from nuiitivet.observable import runtime
 from nuiitivet.widgeting.callbacks import VoidCallback, invoke_event_handler
 from nuiitivet.widgeting.widget import Widget
@@ -82,7 +82,7 @@ class FabMenuItem:
     icon: IconLike
     label: LabelLike
     on_click: Optional[VoidCallback] = None
-    disabled: Union[bool, ObservableProtocol[bool]] = False
+    disabled: Union[bool, StateProtocol[bool]] = False
 
 
 # MD3 only defines FAB-menu colour sets for the primary / secondary / tertiary
@@ -268,7 +268,7 @@ def _build_morph_fab_class() -> type:
             *,
             on_click: Optional[VoidCallback],
             style: FabStyle,
-            is_open: Observable[bool],
+            is_open: State[bool],
             closed_size: float,
             open_size: float,
             closed_corner: float,
@@ -430,12 +430,12 @@ class FabMenu(Widget):
     """Material Design 3 Expressive FAB Menu.
 
     A Floating Action Button that expands into a vertical list of labelled
-    actions.  A single ``is_open`` observable is the source of truth.  On open
+    actions.  A single ``is_open`` State is the source of truth.  On open
     the FAB morphs into the MD3 *close button*: its icon changes (``icon`` ->
     ``close_icon``) and it shrinks from its closed size to a fixed 56dp (size
     "s") fully-rounded circle, regardless of the configured size.  The overlay
     -- scrim, outside-tap dismissal, and anchored positioning -- is driven
-    through the same observable via
+    through the same State via
     :func:`~nuiitivet.modifiers.popup.popup`.
 
     The closed-size footprint is reserved for layout stability; the shrinking
@@ -456,7 +456,7 @@ class FabMenu(Widget):
         icon: IconLike,
         items: List[FabMenuItem],
         *,
-        is_open: Optional[Observable[bool]] = None,
+        is_open: Optional[State[bool]] = None,
         auto_close: bool = True,
         close_icon: Union["Symbol", str] = Symbols.close,
         style: Optional[FabStyle] = None,
@@ -468,7 +468,7 @@ class FabMenu(Widget):
         Args:
             icon: FAB icon shown while the menu is closed.
             items: The actions to display when the menu is open.
-            is_open: Optional external ``Observable[bool]`` controlling the
+            is_open: Optional external ``State[bool]`` controlling the
                 open/close state.  When ``None`` an internal one is created and
                 exposed via :attr:`is_open`.
             auto_close: When ``True`` (default), selecting an item closes the
@@ -484,7 +484,7 @@ class FabMenu(Widget):
         super().__init__(padding=padding, key=key)
 
         base_style = style if style is not None else FabStyle.primary()
-        self._is_open: Observable[bool] = is_open if is_open is not None else Observable(False)
+        self._is_open: State[bool] = is_open if is_open is not None else State(False)
         self._auto_close = bool(auto_close)
 
         # FAB icon is bound to is_open: there is no separate toggle state.
@@ -533,8 +533,8 @@ class FabMenu(Widget):
         self.add_child(self._inner)
 
     @property
-    def is_open(self) -> Observable[bool]:
-        """Observable that controls (and reflects) the menu's open state."""
+    def is_open(self) -> State[bool]:
+        """State that controls (and reflects) the menu's open state."""
         return self._is_open
 
     def _toggle(self) -> None:

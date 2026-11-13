@@ -1,10 +1,10 @@
-"""Observable: Operators
+"""State: Operators
 
 Demonstrates:
 - .map() for 1:1 transformations
-- .combine(other).compute(fn) for two Observables
-- combine(a, b, ...).compute(fn) for three or more Observables
-- Observable.compute(fn) for complex / conditional dependency graphs
+- .combine(other).compute(fn) for two States
+- combine(a, b, ...).compute(fn) for three or more States
+- State.compute(fn) for complex / conditional dependency graphs
 """
 
 import nuiitivet.material as nv
@@ -14,9 +14,9 @@ class PriceModel:
     """Reactive price model showcasing all operator forms."""
 
     def __init__(self) -> None:
-        self.price = nv.Observable(100)
-        self.quantity = nv.Observable(2)
-        self.discount = nv.Observable(0.1)
+        self.price = nv.State(100)
+        self.quantity = nv.State(2)
+        self.discount = nv.State(0.1)
 
         # .map() — 1:1 transformation
         self.is_bulk = self.quantity.map(lambda q: q >= 5)
@@ -27,8 +27,8 @@ class PriceModel:
         # combine(a, b, ...).compute(fn) — three sources
         self.total = nv.combine(self.price, self.quantity, self.discount).compute(lambda p, q, d: int(p * q * (1 - d)))
 
-        # Observable.compute(fn) — conditional / dynamic dependencies
-        self.display = nv.Observable.compute(
+        # State.compute(fn) — conditional / dynamic dependencies
+        self.display = nv.State.compute(
             lambda: (
                 f"¥{self.total.value:,} (bulk discount applied)" if self.is_bulk.value else f"¥{self.total.value:,}"
             )
@@ -49,7 +49,7 @@ class OperatorsApp(nv.ComposableWidget):
             child=nv.Column(
                 gap=16,
                 children=[
-                    nv.Text("Observable: Operators"),
+                    nv.Text("State: Operators"),
                     nv.Text(m.price.map(lambda p: f"Unit price : ¥{p:,}")),
                     nv.Text(m.quantity.map(lambda q: f"Quantity   : {q}")),
                     nv.Text(m.discount.map(lambda d: f"Discount   : {int(d * 100)}%")),

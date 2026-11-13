@@ -10,7 +10,7 @@ import logging
 from typing import Any, Dict, Iterable, Mapping, Tuple
 
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.widgeting.widget_size_change import queue_deferred_publish
 
 from .types import ScrollDirection, ScrollPhysics
@@ -22,18 +22,18 @@ _logger = logging.getLogger(__name__)
 class ScrollAxisState:
     """Holds scroll metrics for a single axis.
 
-    ``offset`` and the metrics are per-instance ``Observable`` fields (class-
+    ``offset`` and the metrics are per-instance ``State`` fields (class-
     level descriptors), so callers use ``.value`` and ``.subscribe(...)``.
-    Layout must not write an Observable, so :meth:`set_metrics` records metrics
+    Layout must not write a State, so :meth:`set_metrics` records metrics
     in plain fields — read same-frame by paint, hit-testing and clamping — and
-    :meth:`publish_metrics` writes the Observables between frames; subscribers
+    :meth:`publish_metrics` writes the States between frames; subscribers
     see metrics one frame after the layout that measured them.
     """
 
-    offset = Observable(0.0)
-    max_extent = Observable(0.0)
-    viewport_size = Observable(0)
-    content_size = Observable(0)
+    offset = State(0.0)
+    max_extent = State(0.0)
+    viewport_size = State(0)
+    content_size = State(0)
 
     def __init__(self, axis: ScrollDirection, initial: float = 0.0) -> None:
         self.axis = axis
@@ -60,7 +60,7 @@ class ScrollAxisState:
         return changed
 
     def publish_metrics(self) -> None:
-        """Publish the recorded metrics to the Observables (call between frames)."""
+        """Publish the recorded metrics to the States (call between frames)."""
         self.max_extent.value = self._max_extent
         self.viewport_size.value = self._viewport_size
         self.content_size.value = self._content_size
@@ -299,10 +299,10 @@ class ScrollController:
         axis: ScrollDirection | None = None,
         widget: Any = None,
     ) -> None:
-        """Record scroll metrics and queue their Observable publish.
+        """Record scroll metrics and queue their State publish.
 
-        For the scrollable widget only. Called from ``layout()``, where an
-        Observable write is forbidden; *widget* has a frame requested for the
+        For the scrollable widget only. Called from ``layout()``, where a
+        State write is forbidden; *widget* has a frame requested for the
         flush.
         """
         state = self._resolve_axis(axis)

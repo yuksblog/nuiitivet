@@ -32,7 +32,7 @@ from ..widgeting.widget_builder import flush_scope_recompositions
 from ..widgeting.widget_size_change import flush_size_change_callbacks
 
 from ..rendering.skia import make_raster_surface, require_skia, rgba_to_skia_color, save_png
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.theme.plain_theme import PlainColorRole
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.theme.types import ColorSpec
@@ -60,7 +60,7 @@ from .app_events import (
 )
 from .chrome import OSChrome, CustomChrome
 from .title_bar import WindowDragArea
-from nuiitivet.observable.protocols import Disposable, ObservableBase
+from nuiitivet.observable.protocols import Disposable, StateBase
 from .window_sizing import (
     WindowPositionLike,
     WindowSizingLike,
@@ -159,7 +159,7 @@ class Window:
     :class:`~nuiitivet.runtime.app.App`); :meth:`close` destroys it. One
     object is one window lifetime: a closed Window is finished, and showing
     the same content again means constructing a new one. State that must
-    survive a window lives in app-layer Observables passed into the content.
+    survive a window lives in app-layer States passed into the content.
     """
 
     # The wrapped, mounted root tree. Assigned by :meth:`open` (and swapped by
@@ -206,7 +206,7 @@ class Window:
         """The registered application menu bar model, or ``None``.
 
         Assigning replaces the model wholesale and rebuilds the rendered bar;
-        item *properties* (label / enabled / checked) may be Observables and
+        item *properties* (label / enabled / checked) may be States and
         propagate live without replacement.
         """
         return self._menubar_controller.model
@@ -441,7 +441,7 @@ class Window:
         width: WindowSizingLike = "auto",
         height: WindowSizingLike = "auto",
         *,
-        title: "str | None | ObservableBase[str | None]" = None,
+        title: "str | None | StateBase[str | None]" = None,
         chrome: "OSChrome | CustomChrome | None" = _UNSET,  # type: ignore[assignment]
         background: ColorSpec = PlainColorRole.SURFACE,
         overlay: "Overlay | Callable[[], Overlay] | None" = None,
@@ -451,7 +451,7 @@ class Window:
         menu: "MenuBar | None" = None,
         parent: "Window | None" = None,
         modal: bool = False,
-        close_action: "str | ObservableBase[str]" = "close",
+        close_action: "str | StateBase[str]" = "close",
     ):
         """Initialize the Window model. :meth:`open` realizes it.
 
@@ -466,8 +466,8 @@ class Window:
                 which case a default root ``Navigator`` is created implicitly.
             width: Window width specification.
             height: Window height specification.
-            title: OS window title. Accepts a plain string or an
-                :class:`~nuiitivet.observable.protocols.ObservableBase` for
+            title: OS window title. Accepts a plain string or a
+                :class:`~nuiitivet.observable.protocols.StateBase` for
                 dynamic updates. Pass ``None`` for no title.
             chrome: Window decoration. Pass an :class:`OSChrome` instance to
                 use OS-managed decorations with an optional style variant,
@@ -498,8 +498,8 @@ class Window:
                 while open (framework modal). Requires ``parent``.
             close_action: What the OS close button does: ``"close"`` (default)
                 destroys the window; ``"hide"`` parks it — :meth:`hide` —
-                so a tray-resident app can be summoned back. Accepts an
-                Observable so the choice can follow live state; the resident
+                so a tray-resident app can be summoned back. Accepts a
+                State so the choice can follow live state; the resident
                 recipe binds it to ``TrayIcon.installed`` (hide only while
                 the tray is actually showing). Programmatic :meth:`close`
                 is unaffected.
@@ -574,17 +574,17 @@ class Window:
                 overlay_name,
             )
 
-        if not isinstance(close_action, ObservableBase) and close_action not in ("close", "hide"):
-            raise ValueError('close_action must be "close", "hide", or an Observable of one.')
-        self._close_action: "str | ObservableBase[str]" = close_action
+        if not isinstance(close_action, StateBase) and close_action not in ("close", "hide"):
+            raise ValueError('close_action must be "close", "hide", or a State of one.')
+        self._close_action: "str | StateBase[str]" = close_action
 
         # Lifecycle: created -> open -> closed, one way. Visibility is
         # orthogonal: a hidden window is still open (and still counts for the
         # App's exit policy).
         self._app_ref: Any = None
         self._lifecycle_state: str = "created"
-        self._is_open_obs: Observable[bool] = Observable(False)
-        self._visible_obs: Observable[bool] = Observable(True)
+        self._is_open_obs: State[bool] = State(False)
+        self._visible_obs: State[bool] = State(True)
         self._closed_event: Any = None
         self._os_active = False
         # Per-window IME geometry (cursor rect, window location). Written by
@@ -618,7 +618,7 @@ class Window:
         self.resizable = resizable
         self.accepts_first_mouse = bool(accepts_first_mouse)
 
-        self._title_value: str | None | ObservableBase[str | None] = title
+        self._title_value: str | None | StateBase[str | None] = title
         self._title_disposable: Optional[Disposable] = None
 
         self._scale = 1.0
@@ -872,8 +872,8 @@ class Window:
         return self._modal
 
     @property
-    def is_open(self) -> "ObservableBase[bool]":
-        """Observable open state: ``True`` between :meth:`open` and :meth:`close`."""
+    def is_open(self) -> "StateBase[bool]":
+        """State open state: ``True`` between :meth:`open` and :meth:`close`."""
         return self._is_open_obs
 
     @property
@@ -1044,7 +1044,7 @@ class Window:
     # --- Visibility ------------------------------------------------------
 
     @property
-    def is_visible(self) -> "ObservableBase[bool]":
+    def is_visible(self) -> "StateBase[bool]":
         """Whether the window is visible (or will be, once realized).
 
         Hidden is not closed: the object, its widget tree, and its geometry
@@ -1115,7 +1115,7 @@ class Window:
         written (bind ``close_action`` to ``TrayIcon.installed`` instead).
         """
         action = self._close_action
-        if isinstance(action, ObservableBase):
+        if isinstance(action, StateBase):
             action = action.value
         if action != "hide":
             self.close()
@@ -1268,7 +1268,7 @@ class Window:
         return self._background_color
 
     def _subscribe_title_updates(self) -> None:
-        if not isinstance(self._title_value, ObservableBase):
+        if not isinstance(self._title_value, StateBase):
             return
         app_ref = weakref.ref(self)
 
@@ -1280,21 +1280,21 @@ class Window:
         try:
             self._title_disposable = self._title_value.subscribe(_on_title)
         except Exception:
-            exception_once(logger, "app_title_subscribe_exc", "Observable title subscribe raised")
+            exception_once(logger, "app_title_subscribe_exc", "State title subscribe raised")
 
     @property
     def title(self) -> "str | None":
         """The window title's current value, or ``None`` if unset.
 
         Resolves the title given at construction: a plain string is returned as
-        is; an :class:`~nuiitivet.observable.protocols.ObservableBase` is
+        is; a :class:`~nuiitivet.observable.protocols.StateBase` is
         unwrapped to its current value. Exposed for dev tooling -- the dev
         bridge's ``status`` reports it so an agent can confirm *which* app is
-        running -- and never raises: an observable whose read fails reports
+        running -- and never raises: a State whose read fails reports
         ``None`` rather than propagating.
         """
         value = self._title_value
-        if isinstance(value, ObservableBase):
+        if isinstance(value, StateBase):
             try:
                 value = value.value
             except Exception:
@@ -2368,7 +2368,7 @@ class Window:
     def _flush_frame_queues(self) -> None:
         """Run what is queued for the start of a frame: size callbacks, then builds."""
         # Size callbacks queued by the previous frame's layout run first, so the
-        # Observables they write are picked up by the build flush below and land
+        # States they write are picked up by the build flush below and land
         # in this frame. Between frames is the only safe point for them: they are
         # arbitrary user code, and layout must never be re-entered from within.
         try:

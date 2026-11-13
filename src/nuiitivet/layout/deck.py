@@ -5,7 +5,7 @@ from typing import List, Optional, Sequence, Tuple, Union
 
 from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
-from ..observable.protocols import ObservableBase
+from ..observable.protocols import StateBase
 from .measure import preferred_size as measure_preferred_size
 from .layout_utils import expand_layout_children, layout_child_if_needed
 
@@ -29,7 +29,7 @@ class Deck(Widget):
     def __init__(
         self,
         children: Optional[Sequence[Widget]] = None,
-        index: Union[int, ObservableBase[int]] = 0,
+        index: Union[int, StateBase[int]] = 0,
         *,
         width: SizingLike = None,
         height: SizingLike = None,
@@ -41,8 +41,8 @@ class Deck(Widget):
         Args:
             children: A list of child widgets. All are mounted, but only one is visible.
             index: The index of the child to display. Can be an integer or any
-                read-observable of int — a plain ``Observable[int]`` or a derived
-                one (e.g. ``some_observable.map(...)``). Defaults to 0.
+                readable State of int — a plain ``State[int]`` or a derived
+                one (e.g. ``some_state.map(...)``). Defaults to 0.
             width: The preferred width of the container. Defaults to None.
             height: The preferred height of the container. Defaults to None.
             padding: Padding to apply around the visible child. Defaults to 0.
@@ -55,11 +55,11 @@ class Deck(Widget):
             for child in children:
                 self.add_child(child)
 
-        # Handle index (Observable or plain int). The subscription itself is
+        # Handle index (State or plain int). The subscription itself is
         # taken on mount, not here -- see on_mount.
-        self._index_observable: Optional[ObservableBase[int]] = None
-        if isinstance(index, ObservableBase):
-            self._index_observable = index
+        self._index_state: Optional[StateBase[int]] = None
+        if isinstance(index, StateBase):
+            self._index_state = index
             self._current_index = index.value
         else:
             self._current_index = int(index)
@@ -68,9 +68,9 @@ class Deck(Widget):
         self._validate_index()
 
     def on_mount(self) -> None:
-        """Follow the index observable for as long as this Deck is in the tree.
+        """Follow the index State for as long as this Deck is in the tree.
 
-        The observable belongs to the app and outlives this widget, so a bare
+        The State belongs to the app and outlives this widget, so a bare
         ``subscribe`` in the constructor left it holding ``_on_index_changed``
         forever -- the leak this framework's ``bind()`` convention exists to
         prevent. A ``dispose()`` method used to sit here doing the cleanup, and
@@ -78,14 +78,14 @@ class Deck(Widget):
         from.
         """
         super().on_mount()
-        if self._index_observable is None:
+        if self._index_state is None:
             return
-        self.bind(self._index_observable.subscribe(self._on_index_changed))
+        self.bind(self._index_state.subscribe(self._on_index_changed))
         # The index may have moved while this Deck was out of the tree.
-        self._on_index_changed(self._index_observable.value)
+        self._on_index_changed(self._index_state.value)
 
     def _on_index_changed(self, new_index: int) -> None:
-        """Handle Observable index changes."""
+        """Handle State index changes."""
         old_index = self._current_index
         self._current_index = new_index
         self._validate_index()
@@ -107,21 +107,21 @@ class Deck(Widget):
     def current_index(self) -> int:
         """The selected child index, clamped to the children that exist.
 
-        Resolved from the observable on every read rather than served from the
+        Resolved from the State on every read rather than served from the
         cache the subscription maintains. The subscription is mount-scoped -- it
         exists to call ``mark_needs_layout``, which only means anything in a
         tree -- so without this a Deck that had not been mounted yet, or had been
         taken out, would report a stale index to code that is entitled to ask.
         """
-        if self._index_observable is not None:
-            self._current_index = self._index_observable.value
+        if self._index_state is not None:
+            self._current_index = self._index_state.value
             self._validate_index()
         return self._current_index
 
     def set_index(self, index: int) -> None:
-        """Set the selected child index (for non-Observable usage)."""
-        if self._index_observable is not None:
-            raise ValueError("Cannot set_index when using Observable index")
+        """Set the selected child index (for non-State usage)."""
+        if self._index_state is not None:
+            raise ValueError("Cannot set_index when using State index")
         old_index = self._current_index
         self._current_index = index
         self._validate_index()

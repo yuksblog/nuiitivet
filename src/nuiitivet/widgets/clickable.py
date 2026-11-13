@@ -16,7 +16,7 @@ from nuiitivet.widgets.interaction import (
 )
 from nuiitivet.widgets.semantics import Semantics, SemanticsNode, SemanticsRole, attach_semantics
 from nuiitivet.rendering.sizing import SizingLike
-from nuiitivet.observable import ReadOnlyObservableProtocol
+from nuiitivet.observable import ReadOnlyStateProtocol
 from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgeting.widget import Widget
 
@@ -36,7 +36,7 @@ class Clickable(InteractionHostMixin, FocusTraversalBlocker, Box):
         on_hover: Optional[BoolCallback] = None,
         on_press: Optional[PointerEventCallback] = None,
         on_release: Optional[PointerEventCallback] = None,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         focusable: bool = True,
         traversable: bool = True,
         width: SizingLike = None,
@@ -48,9 +48,9 @@ class Clickable(InteractionHostMixin, FocusTraversalBlocker, Box):
         corner_radius: Union[float, Tuple[float, float, float, float]] = 0.0,
         **kwargs,
     ):
-        self._disabled_external: ReadOnlyObservableProtocol[bool] | None = None
+        self._disabled_external: ReadOnlyStateProtocol[bool] | None = None
         if hasattr(disabled, "subscribe") and hasattr(disabled, "value"):
-            self._disabled_external = cast("ReadOnlyObservableProtocol[bool]", disabled)
+            self._disabled_external = cast("ReadOnlyStateProtocol[bool]", disabled)
             initial_disabled = bool(self._disabled_external.value)
         else:
             initial_disabled = bool(disabled)

@@ -32,7 +32,7 @@ from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.motion import EXPRESSIVE_FAST_SPATIAL
 from nuiitivet.material.styles.button_group_style import STANDARD_BUTTON_GROUP_WIDTH
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.observable import MutableObservableBase, ObservableBase
+from nuiitivet.observable import MutableStateBase, StateBase
 from nuiitivet.rendering.sizing import Sizing, SizingLike
 from nuiitivet.theme.theme import Theme
 from nuiitivet.theme.types import ColorSpec
@@ -101,12 +101,12 @@ class GroupButton(InteractiveWidget):
 
     def __init__(
         self,
-        label: "str | ObservableBase[str] | None" = None,
-        icon: "Symbol | str | ObservableBase | None" = None,
+        label: "str | StateBase[str] | None" = None,
+        icon: "Symbol | str | StateBase | None" = None,
         *,
-        selected: "bool | MutableObservableBase[bool]" = False,
+        selected: "bool | MutableStateBase[bool]" = False,
         on_change: Optional[BoolCallback] = None,
-        disabled: "bool | MutableObservableBase[bool]" = False,
+        disabled: "bool | MutableStateBase[bool]" = False,
         width: SizingLike = None,
         style: "Optional[ButtonGroupStyle]" = None,
         key: Optional[str] = None,
@@ -114,9 +114,9 @@ class GroupButton(InteractiveWidget):
         """Initialize GroupButton.
 
         Args:
-            label: Text label, or an observable string.
-            icon: Icon symbol, string name, or an observable of either.
-            selected: Initial selected state, or a writable observable bool
+            label: Text label, or a State of it.
+            icon: Icon symbol, string name, or a State of either.
+            selected: Initial selected state, or a writable ``State[bool]``
                 bound to external state.
             on_change: Callback invoked with the new selected state after
                 each toggle. In a ``ConnectedButtonGroup`` it runs together
@@ -154,9 +154,9 @@ class GroupButton(InteractiveWidget):
         self._on_change: Optional[BoolCallback] = on_change
 
         # Selected state
-        self._selected_external: "Optional[MutableObservableBase[bool]]" = None
+        self._selected_external: "Optional[MutableStateBase[bool]]" = None
         if hasattr(selected, "subscribe") and hasattr(selected, "value"):
-            self._selected_external = cast("MutableObservableBase[bool]", selected)
+            self._selected_external = cast("MutableStateBase[bool]", selected)
             self._selected: bool = bool(self._selected_external.value)
         else:
             self._selected = bool(selected)
@@ -345,7 +345,7 @@ class GroupButton(InteractiveWidget):
 
         # Snap the animation to idle (no motion for position init)
         self._corner_anim.stop()
-        # Directly set internal observable to avoid a spurious animation tick
+        # Directly set internal State to avoid a spurious animation tick
         self._corner_anim._value.value = idle  # type: ignore[attr-defined]
         self._corner_anim._target = idle  # type: ignore[attr-defined]
         if self._corner_anim._state is not None:  # type: ignore[attr-defined]
@@ -368,7 +368,7 @@ class GroupButton(InteractiveWidget):
     # ------------------------------------------------------------------
 
     def on_mount(self) -> None:
-        """Subscribe to corner animation and external selected observable."""
+        """Subscribe to corner animation and external selected State."""
         super().on_mount()
 
         # Subscribe to corner animation ticks
@@ -378,7 +378,7 @@ class GroupButton(InteractiveWidget):
         # group recomputes all widths in a single coordinated pass.
         self.bind(self._press_progress.subscribe(self._on_progress_changed))
 
-        # Subscribe to external selected observable if provided
+        # Subscribe to external selected State if provided
         if self._selected_external is not None:
             sub = self._selected_external.subscribe(lambda v: self._set_selected(bool(v)))
             self.bind(sub)
@@ -432,10 +432,10 @@ class GroupButton(InteractiveWidget):
         """
         self._selected = bool(value)
 
-        # Write back to external observable if mutable
+        # Write back to external State if mutable
         if self._selected_external is not None:
             ext = self._selected_external
-            if hasattr(ext, "value") and not isinstance(ext, ObservableBase):
+            if hasattr(ext, "value") and not isinstance(ext, StateBase):
                 try:
                     ext.value = bool(value)  # type: ignore[assignment]
                 except AttributeError:

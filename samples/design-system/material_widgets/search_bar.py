@@ -17,8 +17,8 @@ _FRUIT = ["apple", "apricot", "avocado", "banana", "blackberry", "blueberry"]
 
 
 def build_root() -> nv.Widget:
-    query: nv.Observable[str] = nv.Observable("")
-    submitted: nv.Observable[str] = nv.Observable("")
+    query: nv.State[str] = nv.State("")
+    submitted: nv.State[str] = nv.State("")
     matches = query.map(lambda q: [f for f in _FRUIT if q in f] if q else _FRUIT)
     results = submitted.map(lambda q: f"Results for '{q}'" if q else "Nothing searched yet")
 
@@ -41,7 +41,7 @@ def build_root() -> nv.Widget:
                     trailing_icon="close",
                     on_tap_trailing_icon=lambda: setattr(query, "value", ""),
                     # One slot: put whatever the query calls for in it. Here it
-                    # is suggestions, driven by the app's own observable.
+                    # is suggestions, driven by the app's own State.
                     content=nv.Container(
                         padding=8,
                         child=nv.Column(

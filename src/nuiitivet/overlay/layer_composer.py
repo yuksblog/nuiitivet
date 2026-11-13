@@ -20,7 +20,7 @@ class OverlayLayerCompositionContext:
 
     Attributes:
         content: Content widget of the current overlay entry.
-        transition_state: Transition lifecycle observables and transition spec token for this entry.
+        transition_state: Transition lifecycle States and transition spec token for this entry.
         backdrop: Whether a backdrop should be painted behind the content.
         position_content: Function to place content according to overlay position.
     """

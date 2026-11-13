@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.rendering.skia.font import set_default_font_family
 from nuiitivet.rendering.skia.skia_module import get_skia
 from nuiitivet.testing import mount
@@ -93,7 +93,7 @@ def test_moved_text_reuses_its_blob(nuiitivet_mount, builders) -> None:
 
 def test_label_change_rebuilds(nuiitivet_mount, builders) -> None:
     class _Model:
-        label = Observable("Hello")
+        label = State("Hello")
 
     model = _Model()
     widget = Text(model.label)

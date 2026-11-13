@@ -17,7 +17,7 @@ from nuiitivet.material.search import (
     _SearchPane,
 )
 from nuiitivet.material.styles.search_bar_style import DockedSearchBarStyle, SearchBarStyle
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.widgets.interaction import FocusSource
 from nuiitivet.widgets.box import Box
 import pytest
@@ -259,15 +259,15 @@ class TestDockedContainer:
 
 
 class TestSearchBar:
-    def test_value_observable_is_written_back(self):
-        query: Observable[str] = Observable("")
+    def test_value_state_is_written_back(self):
+        query: State[str] = State("")
         bar = SearchBar(query)
         _mount(bar)
         bar._core._editable.value = "kiwi"
         assert query.value == "kiwi"
 
-    def test_observable_value_is_displayed(self):
-        query: Observable[str] = Observable("apricot")
+    def test_state_value_is_displayed(self):
+        query: State[str] = State("apricot")
         bar = SearchBar(query)
         _mount(bar)
         assert bar.value == "apricot"
@@ -310,7 +310,7 @@ class TestDockedSearchBar:
             docked.unmount()
 
     def test_an_app_supplied_is_open_is_the_one_that_is_driven(self):
-        panel: Observable[bool] = Observable(False)
+        panel: State[bool] = State(False)
         docked = _mount(DockedSearchBar(content=Box(width=200, height=100), is_open=panel))
         try:
             assert docked.is_open is panel
@@ -348,8 +348,8 @@ class TestDockedSearchBar:
         finally:
             docked.unmount()
 
-    def test_a_write_through_the_bound_observable_does_not_reopen_it(self):
-        query: Observable[str] = Observable("")
+    def test_a_write_through_the_bound_state_does_not_reopen_it(self):
+        query: State[str] = State("")
         docked = _mount(DockedSearchBar(query, content=Box(width=200, height=100)))
         try:
             _announce_focus(docked, True)

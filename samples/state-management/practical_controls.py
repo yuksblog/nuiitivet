@@ -1,4 +1,4 @@
-"""Observable: Practical Controls
+"""State: Practical Controls
 
 Demonstrates:
 - batch() to group updates and suppress intermediate notifications
@@ -13,21 +13,21 @@ import nuiitivet.material as nv
 
 
 class BatchModel:
-    """Two source observables with a computed total.
+    """Two source States with a computed total.
 
     With batch(), the subscriber fires only once per group of updates
     instead of twice.
     """
 
     def __init__(self) -> None:
-        self.price = nv.Observable(100)
-        self.quantity = nv.Observable(2)
+        self.price = nv.State(100)
+        self.quantity = nv.State(2)
 
         self.total = self.price.combine(self.quantity).compute(lambda p, q: p * q)
         self.notify_count = self.total.scan(lambda n, _: n + 1, initial=0)
 
     def update_batched(self) -> None:
-        """Update both observables atomically → one notification."""
+        """Update both States atomically → one notification."""
         with nv.batch():
             self.price.value += 10
             self.quantity.value += 1
@@ -42,9 +42,9 @@ class DebounceModel:
     """Debounce: fire only after input settles for 0.5 s."""
 
     def __init__(self) -> None:
-        self.raw_count = nv.Observable(0)
+        self.raw_count = nv.State(0)
 
-        # Named -> held. One window, two consumers below. A derived Observable
+        # Named -> held. One window, two consumers below. A derived State
         # nobody holds is collected and never fires.
         self.debounced = self.raw_count.debounce(0.5)
 
@@ -64,7 +64,7 @@ class ThrottleModel:
     """Throttle: fire at most once every 0.5 s."""
 
     def __init__(self) -> None:
-        self.raw_count = nv.Observable(0)
+        self.raw_count = nv.State(0)
 
         # Same shape as DebounceModel: name the window, then derive from it.
         self.throttled = self.raw_count.throttle(0.5)
@@ -79,10 +79,10 @@ class FilterModel:
     """Filter: only values passing the predicate get through."""
 
     def __init__(self) -> None:
-        self.raw_count = nv.Observable(0)
+        self.raw_count = nv.State(0)
 
         # initial= is required: it is what .value reports until something passes.
-        # Same shape again - name the filtered observable, then derive from it.
+        # Same shape again - name the filtered State, then derive from it.
         self.multiples_of_5 = self.raw_count.filter(lambda n: n % 5 == 0, initial=0)
         self.last_pass = self.multiples_of_5.map(lambda n: f"Last multiple of 5: {n}")
 

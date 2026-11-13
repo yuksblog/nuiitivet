@@ -27,7 +27,7 @@ from nuiitivet.modifiers.clip import clip
 from nuiitivet.modifiers.corner_radius import corner_radius
 from nuiitivet.modifiers.defer_pointer import defer_pointer
 from nuiitivet.modifiers.popup import popup
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 import pytest
@@ -101,7 +101,7 @@ def test_global_visual_rect_is_none_before_layout() -> None:
 class _ClickList(ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.clicked: Observable[str] = Observable("")
+        self.clicked: State[str] = State("")
 
     def build(self) -> Widget:
         rows = [
@@ -126,7 +126,7 @@ def test_click_lands_inside_a_scrolled_region(nuiitivet_app) -> None:
 class _ClippedButtons(ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.count = Observable(0)
+        self.count = State(0)
 
     def build(self) -> Widget:
         bump = lambda: self.count.set(self.count.value + 1)  # noqa: E731
@@ -156,7 +156,7 @@ def test_clipping_boxes_are_clickable_without_a_paint(nuiitivet_app, key: str) -
 class _SliderList(ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.value = Observable(0.0)
+        self.value = State(0.0)
 
     def build(self) -> Widget:
         rows = _rows(
@@ -183,7 +183,7 @@ def test_slider_reacts_inside_a_scrolled_region(nuiitivet_app) -> None:
 class _PopupList(ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.is_open: Observable[bool] = Observable(False)
+        self.is_open: State[bool] = State(False)
 
     def build(self) -> Widget:
         anchor = Container(Text("anchor"), width=280, height=ROW, key="anchor").modifier(
@@ -226,7 +226,7 @@ class _ParticipationScreen(ComposableWidget):
     def __init__(self, participation) -> None:
         super().__init__()
         self._participation = participation
-        self.clicks = Observable(0)
+        self.clicks = State(0)
 
     def build(self) -> Widget:
         return _Wrapped(lambda: self.clicks.set(self.clicks.value + 1)).modifier(self._participation())

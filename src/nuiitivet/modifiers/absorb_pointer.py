@@ -19,7 +19,7 @@ rather than absorbing them.
 Usage::
 
     widget.modifier(absorb_pointer())                # always absorb
-    widget.modifier(absorb_pointer(self.vm.disabled)) # observable-driven
+    widget.modifier(absorb_pointer(self.vm.disabled)) # State-driven
 """
 
 from __future__ import annotations
@@ -57,7 +57,7 @@ def absorb_pointer(
     """Return a modifier that makes the subtree a single opaque, click-absorbing piece.
 
     Args:
-        condition: Static ``bool`` or an ``Observable[bool]``. When truthy the
+        condition: Static ``bool`` or a ``State[bool]``. When truthy the
             widget's whole rectangle catches and hit-testing does not descend
             into children, so the subtree acts as one opaque slab. Defaults to
             ``True``. Read and validated at construction / mount, not at first

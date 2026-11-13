@@ -4,7 +4,7 @@ Talks to AppKit through pyglet's bundled cocoapy, exactly like the global
 menu bar bridge — no extra dependency, no extra thread, and the pumped event
 loop hosts it as-is (verified by ``scripts/investigation/spike_tray_nsstatusitem.py``).
 The menu is built by :class:`~nuiitivet.menus.nsmenu.NSMenuBuilder`, so the
-tray renders the same ``MenuEntry`` model, with the same live Observable
+tray renders the same ``MenuEntry`` model, with the same live State
 sync, as every other native menu surface. Cocoa delivers both menu actions
 and the status-button click on the main thread, so no marshalling is needed.
 """
@@ -20,7 +20,7 @@ if sys.platform != "darwin":  # pragma: no cover - guards Darwin-only ObjC use
 
 from nuiitivet.menus import read_value
 from nuiitivet.menus.nsmenu import NSMenuBuilder
-from nuiitivet.observable import ObservableBase, runtime
+from nuiitivet.observable import StateBase, runtime
 
 if TYPE_CHECKING:
     from .tray import TrayIcon
@@ -170,7 +170,7 @@ class TrayCocoaBridge:
 
         apply()
         tooltip = tray.tooltip
-        if isinstance(tooltip, ObservableBase):
+        if isinstance(tooltip, StateBase):
 
             def on_change(_value: Any) -> None:
                 runtime.clock.schedule_once(apply, 0.0)

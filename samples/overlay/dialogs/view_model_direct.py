@@ -12,7 +12,7 @@ class CoupledViewModel:
     """A ViewModel that knows about UI widgets (Simple but coupled)."""
 
     def __init__(self):
-        self.status = nv.Observable("Ready")
+        self.status = nv.State("Ready")
 
     async def process_action(self, overlay: nv.Overlay):
         self.status.value = "Processing..."

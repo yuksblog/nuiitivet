@@ -1,7 +1,7 @@
-"""Observable: Basic API
+"""State: Basic API
 
 Demonstrates:
-- Creating Observables with various value types
+- Creating States with various value types
 - Getting and setting values
 - Subscribing and unsubscribing
 - Custom comparison functions
@@ -29,19 +29,19 @@ class BasicApiApp(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
 
-        # --- Creating Observables ---
-        self.name = nv.Observable("Alice")
-        self.age = nv.Observable(20)
-        self.items: nv.Observable[list[str]] = nv.Observable([])
+        # --- Creating States ---
+        self.name = nv.State("Alice")
+        self.age = nv.State(20)
+        self.items: nv.State[list[str]] = nv.State([])
 
         # Custom comparison 1: always notify even when the value is unchanged
-        self.noise = nv.Observable(0, compare=lambda a, b: False)
-        self._noise_write_count = nv.Observable(0)
+        self.noise = nv.State(0, compare=lambda a, b: False)
+        self._noise_write_count = nv.State(0)
         self._noise_notify_count = self.noise.scan(lambda n, _: n + 1, initial=0)
 
         # Custom comparison 2: user identity determined by uid only
-        self.user: nv.Observable[UserRecord] = nv.Observable(UserRecord(1, "Alice"), compare=compare_users)
-        self._rename_write_count = nv.Observable(0)
+        self.user: nv.State[UserRecord] = nv.State(UserRecord(1, "Alice"), compare=compare_users)
+        self._rename_write_count = nv.State(0)
         self._user_notify_count = self.user.scan(lambda n, _: n + 1, initial=0)
 
         # --- Derived display labels ---
@@ -95,7 +95,7 @@ class BasicApiApp(nv.ComposableWidget):
             child=nv.Column(
                 gap=16,
                 children=[
-                    nv.Text("Observable: Basic API"),
+                    nv.Text("State: Basic API"),
                     # Getting / setting
                     nv.Text(self.age_label),
                     nv.Text(self.items_label),

@@ -45,10 +45,10 @@ from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.theme.elevation import elevation_shadows
 from nuiitivet.observable import (
-    Observable,
-    ObservableProtocol,
-    ObservableBase,
-    ReadOnlyObservableProtocol,
+    State,
+    StateProtocol,
+    StateBase,
+    ReadOnlyStateProtocol,
 )
 from nuiitivet.overlay import OverlayAware
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
@@ -885,8 +885,8 @@ class _MonthYearHeader(ComposableWidget):
         active_view: (inline) Which list menu is open (``"month"``/``"year"``),
             or ``None`` for the calendar. The open group's dropdown arrow points
             up; the opposite group's controls hide and its label greys out.
-        month_rotation: (inline) Observable degrees for the month dropdown arrow.
-        year_rotation: (inline) Observable degrees for the year dropdown arrow.
+        month_rotation: (inline) State degrees for the month dropdown arrow.
+        year_rotation: (inline) State degrees for the year dropdown arrow.
         variant: ``"inline"`` or ``"modal"``.
         nav_padding: (modal) Outer padding (left, top, right, bottom) of the
             nav row. MD3 modal measurement: ``(12, 6, 12, 2)`` in the calendar
@@ -909,8 +909,8 @@ class _MonthYearHeader(ComposableWidget):
         on_toggle_year_picker: Optional[VoidCallback] = None,
         year_picker_active: bool = False,
         active_view: Optional[Literal["month", "year"]] = None,
-        month_rotation: Optional[ObservableBase[float]] = None,
-        year_rotation: Optional[ObservableBase[float]] = None,
+        month_rotation: Optional[StateBase[float]] = None,
+        year_rotation: Optional[StateBase[float]] = None,
         variant: Literal["inline", "modal"] = "inline",
         nav_padding: Tuple[int, int, int, int] = (12, 6, 12, 2),
         labels: CalendarLabels = DEFAULT_CALENDAR_LABELS,
@@ -974,7 +974,7 @@ class _MonthYearHeader(ComposableWidget):
 
             def _dropdown(
                 on_tap: Optional[VoidCallback],
-                rotation: Optional[ObservableBase[float]],
+                rotation: Optional[StateBase[float]],
             ) -> Widget:
                 btn: Widget = IconButton("arrow_drop_down", on_click=on_tap, style=dropdown_style)
                 if rotation is not None:
@@ -988,7 +988,7 @@ class _MonthYearHeader(ComposableWidget):
                 on_prev: Optional[VoidCallback],
                 on_next: Optional[VoidCallback],
                 on_tap: Optional[VoidCallback],
-                rotation: Optional[ObservableBase[float]],
+                rotation: Optional[StateBase[float]],
             ) -> Widget:
                 # The full chevron/dropdown structure is always built so the label
                 # keeps its position; hidden parts are merely made invisible via
@@ -1258,7 +1258,7 @@ class _CalendarGrid(ComposableWidget):
 class DatePicker(ComposableWidget):
     """Material Design 3 inline calendar date picker.
 
-    An inline calendar widget that updates a shared observable value when the
+    An inline calendar widget that updates a shared State value when the
     user selects a date.  The picker always stays visible (not a dialog), which
     makes it composable with other widgets — :class:`DockedDatePicker` embeds
     one as its dropdown content.
@@ -1274,7 +1274,7 @@ class DatePicker(ComposableWidget):
 
     def __init__(
         self,
-        value: ObservableProtocol[Optional[_Date]],
+        value: StateProtocol[Optional[_Date]],
         *,
         on_change: Optional[Callable[[Optional[_Date]], None]] = None,
         on_confirm: Optional[Callable[[Optional[_Date]], None]] = None,
@@ -1289,7 +1289,7 @@ class DatePicker(ComposableWidget):
         """Initialize DatePicker.
 
         Args:
-            value: Observable holding the selected date (or None); the
+            value: State holding the selected date (or None); the
                 picker reads it and writes each selection into it.
             on_change: Callback invoked after the user selects a date.
             on_confirm: Callback invoked with the selected date when OK is
@@ -1582,7 +1582,7 @@ class DockedDatePicker(ComposableWidget):
     ``value`` is the field's **text**, not a date.  The typed date is derived
     from it by the application::
 
-        self.date_text = nv.Observable("")
+        self.date_text = nv.State("")
         self.date = self.date_text.filter(nv.is_date, initial="").map(nv.parse_date)
 
         nv.DockedDatePicker(value=self.date_text, label="Arrival")
@@ -1597,7 +1597,7 @@ class DockedDatePicker(ComposableWidget):
     tapping outside the dropdown -- drops the draft, so an abandoned selection is
     never observable from ``value``.
 
-    A read-only observable makes the field display-only, as it does for
+    A read-only State makes the field display-only, as it does for
     :class:`TextField`; the calendar's OK then has nowhere to write and does
     nothing.
 
@@ -1607,7 +1607,7 @@ class DockedDatePicker(ComposableWidget):
     def __init__(
         self,
         *,
-        value: ReadOnlyObservableProtocol[str],
+        value: ReadOnlyStateProtocol[str],
         on_change: Optional[Callable[[str], None]] = None,
         on_submit: Optional[Callable[[str], None]] = None,
         on_focus_change: Optional[FocusChangeCallback] = None,
@@ -1616,8 +1616,8 @@ class DockedDatePicker(ComposableWidget):
         max_date: Optional[_Date] = None,
         labels: CalendarLabels = DEFAULT_CALENDAR_LABELS,
         label: str = "Date",
-        supporting_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
-        is_error: bool | ReadOnlyObservableProtocol[bool] = False,
+        supporting_text: str | ReadOnlyStateProtocol[str | None] | None = None,
+        is_error: bool | ReadOnlyStateProtocol[bool] = False,
         style: Optional["DockedDatePickerStyle"] = None,
         padding: PaddingLike = 0,
         key: Optional[str] = None,
@@ -1625,11 +1625,11 @@ class DockedDatePicker(ComposableWidget):
         """Initialize DockedDatePicker.
 
         Args:
-            value: Observable holding the field's text. Typing writes into
+            value: State holding the field's text. Typing writes into
                 it, and the calendar's OK writes the picked date into it,
                 formatted by *date_format*.
             on_change: Callback invoked with the text as it changes, by typing
-                or by the calendar alike. The observable bound to *value*
+                or by the calendar alike. The State bound to *value*
                 carries the same signal.
             on_submit: Callback invoked with the text when the user presses
                 Enter -- a request to act, not a value settling.
@@ -1664,17 +1664,17 @@ class DockedDatePicker(ComposableWidget):
         # The one writable cell this widget touches, and only when the calendar
         # commits. A read-only source displays only -- the same rule TextField
         # applies to typing, extended to the calendar.
-        self._writable: Optional[ObservableProtocol[str]] = (
-            cast("ObservableProtocol[str]", value) if isinstance(value, ObservableProtocol) else None
+        self._writable: Optional[StateProtocol[str]] = (
+            cast("StateProtocol[str]", value) if isinstance(value, StateProtocol) else None
         )
         self._date_format = date_format
         self._user_style = style
-        self._is_open: Observable[bool] = Observable(False)
+        self._is_open: State[bool] = State(False)
 
         # The dropdown calendar writes here, not to ``value``. Opening seeds it
         # from the text; OK copies it back. Cancelling just drops it, so an
         # abandoned selection never reaches ``value``.
-        self._draft_obs: Observable[Optional[_Date]] = Observable(date_format.parse(self._text()))
+        self._draft_obs: State[Optional[_Date]] = State(date_format.parse(self._text()))
 
         style_ = self.style
 
@@ -2345,9 +2345,9 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
         self._max_date = max_date
         self._user_style = style
 
-        # Internal observables for the text field
-        self._text_obs: Observable[str] = Observable(date_format.format(init_value))
-        self._supporting_text_obs: Observable[Optional[str]] = Observable(date_format.pattern)
+        # Internal States for the text field
+        self._text_obs: State[str] = State(date_format.format(init_value))
+        self._supporting_text_obs: State[Optional[str]] = State(date_format.pattern)
 
         # Build the TextField once and reuse across rebuild cycles to preserve
         # focus state and cursor position.

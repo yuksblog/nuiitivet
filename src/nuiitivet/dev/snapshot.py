@@ -1,9 +1,9 @@
-"""Snapshot & restore ``Observable`` state across a reload.
+"""Snapshot & restore ``State`` values across a reload.
 
 A reload rebuilds the whole widget tree from the factory, so no live object is
 carried over. "Preserving state" therefore means: read the *values* of every
-mutable ``Observable`` in the old tree, keyed by a structural path, then write
-them back into the matching observables of the freshly built tree.
+mutable ``State`` in the old tree, keyed by a structural path, then write
+them back into the matching States of the freshly built tree.
 
 Paths prefer a widget's stable ``key`` and otherwise fall back to position + type.
 When the tree structure is unchanged (the common "tweak a padding" case) every
@@ -12,8 +12,8 @@ across a reorder or a sibling insertion, so its state survives such edits too;
 keyless widgets that move lose their state — unmatched paths keep the new tree's
 initial values, the documented, acceptable degradation (§9.5).
 
-Only in-tree observables (held as widget instance attributes) are handled;
-module-level observables are out of scope (§9.5).
+Only in-tree States (held as widget instance attributes) are handled;
+module-level States are out of scope (§9.5).
 """
 
 from __future__ import annotations
@@ -21,12 +21,12 @@ from __future__ import annotations
 import logging
 from typing import Any, Iterator, Optional
 
-from nuiitivet.observable.protocols import MutableObservableBase
+from nuiitivet.observable.protocols import MutableStateBase
 
 logger = logging.getLogger(__name__)
 
 # A structural path: a tuple of segments from the root, plus a trailing attribute
-# name for the observable itself.
+# name for the State itself.
 Path = tuple[str, ...]
 
 
@@ -78,7 +78,7 @@ def _walk(widget: Any) -> Iterator[tuple[Path, Any]]:
 def path_of(root: Any, node: Any) -> Optional[Path]:
     """Return ``node``'s structural path within ``root``'s tree, or ``None``.
 
-    The same key-preferring path :func:`snapshot_observables` builds, exposed for
+    The same key-preferring path :func:`snapshot_states` builds, exposed for
     anything that has to survive a reload by naming *where* a widget was rather
     than holding the object -- the comment buffer re-resolves its
     members this way, for the same reason and with the same degradation: a
@@ -99,17 +99,17 @@ def widgets_by_path(root: Any) -> dict[Path, Any]:
     return {path: widget for path, widget in _walk(root)}
 
 
-def snapshot_observables(root: Any) -> dict[Path, Any]:
-    """Capture the value of every mutable observable in ``root``'s tree."""
+def snapshot_states(root: Any) -> dict[Path, Any]:
+    """Capture the value of every mutable State in ``root``'s tree."""
     snapshot: dict[Path, Any] = {}
     for path, widget in _walk(root):
         state = getattr(widget, "__dict__", None)
         if not state:
             continue
         # A copy, not a view: reading a value can run a getter that lazily
-        # installs an attribute on the same widget. See restore_observables.
+        # installs an attribute on the same widget. See restore_states.
         for attr, value in list(state.items()):
-            if isinstance(value, MutableObservableBase):
+            if isinstance(value, MutableStateBase):
                 try:
                     snapshot[path + (attr,)] = value.value
                 except Exception:
@@ -118,15 +118,15 @@ def snapshot_observables(root: Any) -> dict[Path, Any]:
     return snapshot
 
 
-def restore_observables(root: Any, snapshot: dict[Path, Any]) -> int:
-    """Write snapshot values back into matching observables of ``root``'s tree.
+def restore_states(root: Any, snapshot: dict[Path, Any]) -> int:
+    """Write snapshot values back into matching States of ``root``'s tree.
 
     Args:
         root: The freshly built (and mounted) root.
-        snapshot: The mapping from :func:`snapshot_observables`.
+        snapshot: The mapping from :func:`snapshot_states`.
 
     Returns:
-        The number of observables restored (matched paths).
+        The number of States restored (matched paths).
     """
     if not snapshot:
         return 0
@@ -135,13 +135,13 @@ def restore_observables(root: Any, snapshot: dict[Path, Any]) -> int:
         state = getattr(widget, "__dict__", None)
         if not state:
             continue
-        # A copy, not a view. Writing an observable notifies its subscribers
+        # A copy, not a view. Writing a State notifies its subscribers
         # synchronously, and a subscriber that installs an attribute on this
         # same widget would otherwise mutate the dict mid-iteration and abort
         # the whole restore -- which is every reload of a screen whose derived
         # state is built lazily.
         for attr, value in list(state.items()):
-            if not isinstance(value, MutableObservableBase):
+            if not isinstance(value, MutableStateBase):
                 continue
             key = path + (attr,)
             if key not in snapshot:

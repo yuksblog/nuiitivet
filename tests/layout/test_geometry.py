@@ -27,7 +27,7 @@ def test_layout_publishes_measured_size():
     geom.layout(300, 200)
 
     # The publish is deferred: layout only queues, the between-frames flush
-    # performs the Observable write.
+    # performs the State write.
     assert geom.size.value == Size(0, 0)
     flush_size_change_callbacks()
     assert geom.size.value == Size(300, 200)
@@ -70,7 +70,7 @@ def test_equal_size_is_deduped():
 
 
 class _LazySizeReader(Widget):
-    """Reads the source Observable at measure time, like a bound Text label."""
+    """Reads the source State at measure time, like a bound Text label."""
 
     def __init__(self, source) -> None:
         super().__init__()

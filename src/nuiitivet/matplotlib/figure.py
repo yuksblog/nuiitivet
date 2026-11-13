@@ -10,7 +10,7 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.input.codes import BUTTON_LEFT, BUTTON_MIDDLE, BUTTON_RIGHT, MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.matplotlib.theme_data import MatplotlibFigureThemeData
-from nuiitivet.observable.protocols import ObservableBase
+from nuiitivet.observable.protocols import StateBase
 from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia import make_paint, make_rect
@@ -174,7 +174,7 @@ class MatplotlibFigure(InteractionHostMixin, RasterSurface):
     def plot(
         cls: type[_FigureWidget],
         figure: "Figure",
-        data: ObservableBase[T],
+        data: StateBase[T],
         plot: Callable[["Figure", T], None],
         *,
         themed: bool = True,
@@ -189,7 +189,7 @@ class MatplotlibFigure(InteractionHostMixin, RasterSurface):
             figure: The figure *plot* draws into.
             plot: Called as ``plot(figure, value)`` with the current value
                 before the figure is drawn, whenever the value changes.
-            data: The observable the plot is made from.
+            data: The State the plot is made from.
             themed: Whether the figure takes the app theme's colors.
             width: Width sizing.
             height: Height sizing.

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, Optional, cast
 
 from matplotlib.backend_bases import MouseEvent, NavigationToolbar2, _Mode
 
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 
 if TYPE_CHECKING:
     from matplotlib.figure import Figure
@@ -36,7 +36,7 @@ class MatplotlibController(NavigationToolbar2):
     under the pointer, around it. A ``picker`` is quiet while pan or zoom is
     on, as in matplotlib.
 
-    The controller has no widgets; it talks through observables instead.
+    The controller has no widgets; it talks through States instead.
     ``panning`` and ``zooming`` are the two tools' switches: a toggle button
     bound to one turns the tool on and off, and deselects when the other
     tool is turned on. ``can_back`` and ``can_forward`` enable the history
@@ -73,15 +73,15 @@ class MatplotlibController(NavigationToolbar2):
             raise ValueError("the figure has a MatplotlibController already")
         self._widget: Optional["MatplotlibFigure"] = None
         #: Whether the pan tool is on; writable.
-        self.panning: Observable[bool] = Observable(False)
+        self.panning: State[bool] = State(False)
         #: Whether the zoom-rectangle tool is on; writable.
-        self.zooming: Observable[bool] = Observable(False)
+        self.zooming: State[bool] = State(False)
         #: Whether ``back()`` has a view to go to.
-        self.can_back: Observable[bool] = Observable(False)
+        self.can_back: State[bool] = State(False)
         #: Whether ``forward()`` has a view to go to.
-        self.can_forward: Observable[bool] = Observable(False)
+        self.can_forward: State[bool] = State(False)
         #: The pointer's data coordinates as matplotlib formats them, ``""`` outside the axes.
-        self.message: Observable[str] = Observable("")
+        self.message: State[str] = State("")
         _CONTROLLERS[figure] = self
         super().__init__(figure.canvas)
         self.canvas.mpl_connect("scroll_event", self._wheel_zoom)
@@ -115,7 +115,7 @@ class MatplotlibController(NavigationToolbar2):
         self.zooming.value = self.mode == _Mode.ZOOM
 
     def _switch(self, mode: _Mode, on: bool) -> None:
-        """Turn the tool of *mode* on or off to match its observable, written from outside."""
+        """Turn the tool of *mode* on or off to match its State, written from outside."""
         if bool(on) != (self.mode == mode):
             if mode == _Mode.PAN:
                 self.pan()

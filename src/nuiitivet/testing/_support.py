@@ -80,7 +80,7 @@ def _set_wait_timeout(value: Optional[float]) -> None:
 # Strong references, deliberately. A weak registry would drop `AppHarness(...)`
 # called for its side effect the moment the statement ends, and the sweep would
 # find nothing to close -- while the tree stays mounted and subscribed, because
-# an observable holds *its* subscribers, not the other way round. The harness is
+# a State holds *its* subscribers, not the other way round. The harness is
 # meant to live exactly as long as the test, so holding it for that long is the
 # correct lifetime rather than a leak of its own.
 _open_harnesses: List[Any] = []
@@ -200,7 +200,7 @@ def _has_immediate_work(clock: HarnessClock) -> bool:
     callback that arms another -- and that is a UI-thread loop by construction.
 
     A worker thread arming work is a different thing entirely, and now the
-    ordinary thing: every cross-thread ``Observable`` write marshals through a
+    ordinary thing: every cross-thread ``State`` write marshals through a
     zero-delay callback. A worker that keeps writing would keep this true
     forever and turn a live background thread into ``LayoutNotConvergedError``.
     Its writes are still pumped -- ``before_pass`` fires everything due,
@@ -430,7 +430,7 @@ class _HarnessBase:
         half-laid-out frame the last pass produced.
 
         Pumps the clock's zero-delay queue at the top of every pass, so a
-        worker thread's observable write, a deferred batch flush or a
+        worker thread's State write, a deferred batch flush or a
         ``Computed``'s UI notify is applied and then turned into an updated
         tree by the flush in the same pass. Delayed callbacks and intervals stay
         armed: no time has passed in this call that the test asked for.
@@ -561,8 +561,8 @@ class _HarnessBase:
 
         Args:
             condition: A zero-argument callable, truthy when the wait is over.
-                The tree vocabulary cannot say "this ``Observable`` changed",
-                and the epic sends every state assertion to the ``Observable``
+                The tree vocabulary cannot say "this ``State`` changed",
+                and the epic sends every state assertion to the ``State``
                 that drove it, so a predicate is the other half of the surface.
                 Mutually exclusive with the identity keywords.
             key: Wait for a node with this ``key``.

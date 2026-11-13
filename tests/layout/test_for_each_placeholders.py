@@ -69,7 +69,7 @@ def test_the_same_window_builds_the_placeholders_the_build_range_covers():
 
 def test_a_change_of_the_items_builds_the_placeholders_too():
     from nuiitivet.layout.column import Column
-    from nuiitivet.observable import Observable
+    from nuiitivet.observable import State
     from nuiitivet.runtime.pointer import PointerCaptureManager
 
     class _App:
@@ -80,7 +80,7 @@ def test_a_change_of_the_items_builds_the_placeholders_too():
             del immediate
 
     log = _Log()
-    items = Observable(list(range(10)))
+    items = State(list(range(10)))
     provider = ForEach(items, log.builder)
     provider.set_window(0, 6, build=(0, 3))
     column = Column([provider])

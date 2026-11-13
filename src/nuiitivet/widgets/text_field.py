@@ -12,7 +12,7 @@ from typing import Optional, Tuple, Union
 from nuiitivet.input.cursor import MouseCursor
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
-from nuiitivet.observable import ReadOnlyObservableProtocol
+from nuiitivet.observable import ReadOnlyStateProtocol
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgeting.callbacks import invoke_event_handler, StrCallback
 from nuiitivet.widgets.input_filter import InputFilterLike
@@ -32,8 +32,8 @@ class TextFieldBase(InteractionHostMixin, ComposableWidget):
     (floating labels, M3 styling) should be implemented in subclasses.
 
     Parameters:
-    - value: Initial text (str), or the observable that holds the field's value.
-      Edits are written back to that observable. A read-only one has nowhere to
+    - value: Initial text (str), or the State that holds the field's value.
+      Edits are written back to that State. A read-only one has nowhere to
       write, so it displays only.
     - on_change: Callback when value changes
     - input_filter: Rule applied to text as it is typed (see
@@ -50,7 +50,7 @@ class TextFieldBase(InteractionHostMixin, ComposableWidget):
 
     def __init__(
         self,
-        value: Union[str, ReadOnlyObservableProtocol[str]] = "",
+        value: Union[str, ReadOnlyStateProtocol[str]] = "",
         on_change: Optional[StrCallback] = None,
         input_filter: Optional[InputFilterLike] = None,
         text_color: str = "#000000",

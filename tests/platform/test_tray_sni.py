@@ -18,7 +18,7 @@ import pytest
 import skia as _skia
 
 from nuiitivet.menus import MenuEntry
-from nuiitivet.observable import Observable, runtime
+from nuiitivet.observable import State, runtime
 from nuiitivet.platform.tray import TrayIcon
 from nuiitivet.platform.tray_sni_plan import (
     LAYOUT_SIGNATURE,
@@ -54,10 +54,10 @@ def test_plan_gives_every_item_an_id_and_maps_actions() -> None:
     assert commands == {open_item.id: open_entry, more.children[0].id: child, quit_item.id: quit_entry}
 
 
-def test_plan_reads_observables_at_plan_time_and_keeps_ids() -> None:
-    label = Observable("Ping (0)")
-    enabled = Observable(True)
-    checked = Observable(False)
+def test_plan_reads_states_at_plan_time_and_keeps_ids() -> None:
+    label = State("Ping (0)")
+    enabled = State(True)
+    checked = State(False)
     menu = [MenuEntry(label, on_select=lambda: None, enabled=enabled, checked=checked)]
 
     before, _ = plan_menu(menu)
@@ -296,7 +296,7 @@ def test_without_watcher_install_fails_and_installed_stays_false(session_bus: st
 
 
 def test_registers_and_serves_item_properties(session_bus: str, watcher: _FakeWatcher) -> None:
-    tooltip = Observable("My Sync App")
+    tooltip = State("My Sync App")
     bridge = _install(TrayIcon(tooltip=tooltip, menu=[MenuEntry.quit()]))
     try:
         item, path = watcher.registrations.get(timeout=_TIMEOUT)
@@ -323,8 +323,8 @@ def test_registers_and_serves_item_properties(session_bus: str, watcher: _FakeWa
 
 def test_menu_layout_and_click(session_bus: str, watcher: _FakeWatcher, clock: _RecordingClock) -> None:
     selected: List[str] = []
-    muted = Observable(False)
-    label = Observable("Ping (0)")
+    muted = State(False)
+    label = State("Ping (0)")
     tray = TrayIcon(
         menu=[
             MenuEntry(label, on_select=lambda: selected.append("ping")),

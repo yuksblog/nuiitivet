@@ -19,7 +19,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from nuiitivet.animation.animatable import Animatable
-from nuiitivet.observable.protocols import MutableObservableBase, ObservableBase
+from nuiitivet.observable.protocols import MutableStateBase, StateBase
 
 from .tree import iter_child_widgets
 
@@ -46,7 +46,7 @@ _MAX_VALUE_DEPTH = 4
 # state). ``focused`` lives solely in the state -- the input backend drives it.
 _STATE_FLAGS = ("disabled", "focused", "selected")
 
-# Sentinel: an observable whose value could not be read is dropped rather than
+# Sentinel: a State whose value could not be read is dropped rather than
 # reported, so one misbehaving getter never aborts the whole state dump.
 _UNREADABLE = object()
 
@@ -58,7 +58,7 @@ _MISSING = object()
 def _coerce_display(value: Any) -> Optional[str]:
     """Return a short display string for ``value``, or ``None`` if unusable.
 
-    Observables are unwrapped via ``.value``. Widgets and other non-scalar
+    States are unwrapped via ``.value``. Widgets and other non-scalar
     objects are ignored (a button's ``label`` may itself be a child widget), so
     only genuine text-like identities are surfaced.
     """
@@ -144,8 +144,8 @@ def _node_semantics(node: Any) -> dict[str, Any]:
 
     The half of a widget's state that :func:`describe_state` structurally cannot
     reach. ``disabled`` and ``focused`` are plain fields of an
-    ``InteractionState``, never observables; ``selected`` and ``value`` are
-    observable-backed but only under whatever private attribute the widget bound
+    ``InteractionState``, never States; ``selected`` and ``value`` are
+    State-backed but only under whatever private attribute the widget bound
     them to (``_state_internal``, ``checked_external_tri``), so the raw state
     dump names them differently for every widget. Here they are one vocabulary.
 
@@ -836,7 +836,7 @@ def describe_tree(root: Any) -> dict[str, Any]:
     ``state`` is the interactive state the widget publishes (see
     :func:`_node_semantics`), in the widget's own vocabulary: ``disabled`` /
     ``focused`` / ``selected`` / ``value``. It is not :func:`describe_state`'s
-    ``state``, which is the raw ``Observable`` attributes underneath, named as
+    ``state``, which is the raw ``State`` attributes underneath, named as
     the widget bound them.
 
     Args:
@@ -853,9 +853,9 @@ def describe_tree(root: Any) -> dict[str, Any]:
 def _state_name(attr: str) -> str:
     """Map an instance-attribute name to the reported state key.
 
-    Descriptor-backed observables live under ``_obs_<name>`` (see
-    :class:`nuiitivet.observable.value.Observable`), so ``_obs_checked`` reports
-    as ``checked``. Directly-assigned observable attributes drop a leading
+    Descriptor-backed States live under ``_obs_<name>`` (see
+    :class:`nuiitivet.observable.value.State`), so ``_obs_checked`` reports
+    as ``checked``. Directly-assigned State attributes drop a leading
     underscore (``_value`` -> ``value``) so the private-storage convention does
     not leak into the surfaced name.
     """
@@ -864,11 +864,11 @@ def _state_name(attr: str) -> str:
     return attr.lstrip("_") or attr
 
 
-def _read_observable(obs: ObservableBase[Any]) -> Any:
-    """Return the reported entry for one observable, or :data:`_UNREADABLE`.
+def _read_state(obs: StateBase[Any]) -> Any:
+    """Return the reported entry for one State, or :data:`_UNREADABLE`.
 
-    A mutable source observable reports its coerced value directly; a derived
-    (non-mutable) one -- ``Observable.compute`` / ``map`` / ``combine`` -- is
+    A mutable source State reports its coerced value directly; a derived
+    (non-mutable) one -- ``State.compute`` / ``map`` / ``combine`` -- is
     wrapped as ``{"value", "kind": "computed"}`` so the agent can tell a
     value it can trace to an edit from one that is recomputed from others.
     """
@@ -877,17 +877,17 @@ def _read_observable(obs: ObservableBase[Any]) -> Any:
     except Exception:
         return _UNREADABLE
     coerced = _coerce_value(raw)
-    if isinstance(obs, MutableObservableBase):
+    if isinstance(obs, MutableStateBase):
         return coerced
     return {"value": coerced, "kind": "computed"}
 
 
 def _node_state(node: Any, *, include_animations: bool) -> dict[str, Any]:
-    """Return the ``Observable`` state a single widget holds, keyed by name.
+    """Return the ``State`` values a single widget holds, keyed by name.
 
-    Scans the widget's ``__dict__`` for observable-valued attributes -- both the
-    descriptor storage of declared ``Observable`` fields and observables passed
-    in and stored directly (the ``bool | ObservableProtocol`` binding pattern).
+    Scans the widget's ``__dict__`` for State-valued attributes -- both the
+    descriptor storage of declared ``State`` fields and States passed
+    in and stored directly (the ``bool | StateProtocol`` binding pattern).
     Stateless widgets return ``{}``.
 
     ``Animatable`` attributes are skipped unless ``include_animations`` is set:
@@ -900,11 +900,11 @@ def _node_state(node: Any, *, include_animations: bool) -> dict[str, Any]:
         return {}
     state: dict[str, Any] = {}
     for attr, value in namespace.items():
-        if not isinstance(value, ObservableBase):
+        if not isinstance(value, StateBase):
             continue
         if isinstance(value, Animatable) and not include_animations:
             continue
-        entry = _read_observable(value)
+        entry = _read_state(value)
         if entry is _UNREADABLE:
             continue
         name = _state_name(attr)
@@ -921,7 +921,7 @@ def _describe_state_node(
 
     Mirrors :func:`describe_tree`'s shape (``type`` + identity + ``children``) so
     the two views join structurally, but prunes every node that neither holds
-    observable state nor has a descendant that does -- keeping the dump focused
+    a State nor has a descendant that does -- keeping the dump focused
     on the reactive state while retaining the ancestor path to each stateful node.
 
     Pruning runs on the *filtered* state, so a node whose only state was
@@ -956,21 +956,21 @@ def _describe_state_node(
 
 
 def describe_state(root: Any, *, include_animations: bool = False) -> dict[str, Any]:
-    """Return the reactive ``Observable`` state of ``root``'s mounted tree.
+    """Return the ``State`` values of ``root``'s mounted tree.
 
     The complement to :func:`describe_tree`: where that reports the *output*
     (types, identities, rects), this reports the *state that produced it* -- the
-    live ``Observable`` values reachable from the mounted tree. The result mirrors
+    live ``State`` values reachable from the mounted tree. The result mirrors
     ``describe_tree``'s nested shape (each node ``{"type", optional identity,
     optional "state", optional "children"}``) but is pruned to nodes that hold
     state or contain one that does, so the two can be joined structurally.
 
     Each ``state`` entry maps a name to a coerced current value; a derived
-    (computed) observable is instead ``{"value", "kind": "computed"}``. Values are
+    (computed) State is instead ``{"value", "kind": "computed"}``. Values are
     length- and depth-capped and opaque objects render as ``type: repr``, so no
     single value can bloat or break the dump.
 
-    These are the *raw* observables, named as the widget bound them
+    These are the *raw* States, named as the widget bound them
     (``_state_internal``, ``checked_external_tri``); :func:`describe_tree`'s own
     ``state`` reports the same widget in its published vocabulary instead. Reach
     for this one when that vocabulary is not the level the bug is at.
@@ -981,7 +981,7 @@ def describe_state(root: Any, *, include_animations: bool = False) -> dict[str, 
     payload. Pass ``include_animations=True`` when the animation itself is what
     is under investigation ("the button never returns to its rest state").
 
-    Must be called on the UI thread (it reads live observable state).
+    Must be called on the UI thread (it reads live State values).
 
     Args:
         root: The mounted root widget (``App.root``).
@@ -990,7 +990,7 @@ def describe_state(root: Any, *, include_animations: bool = False) -> dict[str, 
 
     Returns:
         The pruned state tree, or ``{}`` if ``root`` is ``None`` or holds no
-        reachable (reported) observable state.
+        reachable (reported) State values.
     """
     if root is None:
         return {}

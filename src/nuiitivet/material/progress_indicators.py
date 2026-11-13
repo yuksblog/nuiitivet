@@ -6,7 +6,7 @@ import math
 from typing import Any, Callable, Tuple, TypeGuard, cast
 
 from nuiitivet.animation import Animatable, LinearMotion
-from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol, runtime
+from nuiitivet.observable import ReadOnlyStateProtocol, StateProtocol, runtime
 from nuiitivet.rendering.padding import parse_padding
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia import draw_round_rect, make_paint, make_rect
@@ -47,7 +47,7 @@ _EASING_EMPHASIZED_DECELERATE = (0.05, 0.7, 0.1, 1.0)
 _EASING_STANDARD = (0.2, 0.0, 0.0, 1.0)
 
 
-def _is_observable(value: object) -> TypeGuard[ObservableProtocol[Any]]:
+def _is_state(value: object) -> TypeGuard[StateProtocol[Any]]:
     return hasattr(value, "subscribe") and hasattr(value, "value")
 
 
@@ -261,7 +261,7 @@ class _ProgressIndicatorBase(Widget):
     def __init__(
         self,
         *,
-        disabled: bool | ReadOnlyObservableProtocol[bool],
+        disabled: bool | ReadOnlyStateProtocol[bool],
         width: SizingLike = None,
         height: SizingLike = None,
         padding: PaddingArg = 0,
@@ -270,15 +270,15 @@ class _ProgressIndicatorBase(Widget):
         """Initialize shared progress indicator base state.
 
         Args:
-            disabled: Disabled state or observable disabled state.
+            disabled: Disabled state, or a State of it.
             width: Width sizing.
             height: Height sizing.
             padding: Insets from the allocated rect to the indicator.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        self._disabled_external: ReadOnlyObservableProtocol[bool] | None = None
-        if _is_observable(disabled):
-            self._disabled_external = cast("ReadOnlyObservableProtocol[bool]", disabled)
+        self._disabled_external: ReadOnlyStateProtocol[bool] | None = None
+        if _is_state(disabled):
+            self._disabled_external = cast("ReadOnlyStateProtocol[bool]", disabled)
             self._disabled = bool(self._disabled_external.value)
         else:
             self._disabled = bool(disabled)
@@ -311,9 +311,9 @@ class _DeterminateProgressBase(_ProgressIndicatorBase):
 
     def __init__(
         self,
-        value: float | ObservableProtocol[float],
+        value: float | StateProtocol[float],
         *,
-        disabled: bool | ReadOnlyObservableProtocol[bool],
+        disabled: bool | ReadOnlyStateProtocol[bool],
         width: SizingLike = None,
         height: SizingLike = None,
         padding: PaddingArg = 0,
@@ -322,16 +322,16 @@ class _DeterminateProgressBase(_ProgressIndicatorBase):
         """Initialize shared determinate progress indicator state.
 
         Args:
-            value: Progress value or observable progress value.
-            disabled: Disabled state or observable disabled state.
+            value: Progress value, or a State of it.
+            disabled: Disabled state, or a State of it.
             width: Width sizing.
             height: Height sizing.
             padding: Insets from the allocated rect to the indicator.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        self._value_external: ObservableProtocol[float] | None = None
-        if _is_observable(value):
-            self._value_external = cast(ObservableProtocol[float], value)
+        self._value_external: StateProtocol[float] | None = None
+        if _is_state(value):
+            self._value_external = cast(StateProtocol[float], value)
             self._value = _clamp01(float(self._value_external.value))
         else:
             self._value = _clamp01(float(cast(float, value)))
@@ -384,7 +384,7 @@ class _IndeterminateProgressBase(_ProgressIndicatorBase):
     def __init__(
         self,
         *,
-        disabled: bool | ReadOnlyObservableProtocol[bool],
+        disabled: bool | ReadOnlyStateProtocol[bool],
         width: SizingLike = None,
         height: SizingLike = None,
         padding: PaddingArg = 0,
@@ -393,7 +393,7 @@ class _IndeterminateProgressBase(_ProgressIndicatorBase):
         """Initialize shared indeterminate progress indicator state.
 
         Args:
-            disabled: Disabled state or observable disabled state.
+            disabled: Disabled state, or a State of it.
             width: Width sizing.
             height: Height sizing.
             padding: Insets from the allocated rect to the indicator.
@@ -468,9 +468,9 @@ class LinearProgressIndicator(_DeterminateProgressBase):
 
     def __init__(
         self,
-        value: float | ObservableProtocol[float] = 0.0,
+        value: float | StateProtocol[float] = 0.0,
         *,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = "wt",
         padding: PaddingArg = 0,
         style: LinearProgressIndicatorStyle | None = None,
@@ -630,7 +630,7 @@ class IndeterminateLinearProgressIndicator(_IndeterminateProgressBase):
     def __init__(
         self,
         *,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = "wt",
         padding: PaddingArg = 0,
         style: LinearProgressIndicatorStyle | None = None,
@@ -759,9 +759,9 @@ class CircularProgressIndicator(_DeterminateProgressBase):
 
     def __init__(
         self,
-        value: float | ObservableProtocol[float] = 0.0,
+        value: float | StateProtocol[float] = 0.0,
         *,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         size: int | None = None,
         padding: PaddingArg = 0,
         style: CircularProgressIndicatorStyle | None = None,
@@ -900,7 +900,7 @@ class IndeterminateCircularProgressIndicator(_IndeterminateProgressBase):
     def __init__(
         self,
         *,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         size: int | None = None,
         padding: PaddingArg = 0,
         style: CircularProgressIndicatorStyle | None = None,

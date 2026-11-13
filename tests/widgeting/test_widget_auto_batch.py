@@ -1,11 +1,11 @@
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.input.pointer import PointerEvent, PointerEventType
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.material import ButtonStyle
 
 
 class DummyWidget(Widget):
-    vm_val = Observable(0)
+    vm_val = State(0)
 
     def __init__(self):
         super().__init__()
@@ -15,7 +15,7 @@ class DummyWidget(Widget):
             self.computations += 1
             return self.vm_val.value * 2
 
-        self.computed = Observable.compute(compute)
+        self.computed = State.compute(compute)
 
     def on_pointer_event(self, event):
         self.vm_val.value = 1
@@ -83,7 +83,7 @@ def test_button_click_auto_batch():
     from nuiitivet.material.buttons import Button
 
     class ViewModel:
-        count = Observable(0)
+        count = State(0)
         double_count = None
 
         def __init__(self):
@@ -93,7 +93,7 @@ def test_button_click_auto_batch():
                 self.computations += 1
                 return self.count.value * 2
 
-            self.double_count = Observable.compute(compute)
+            self.double_count = State.compute(compute)
 
     vm = ViewModel()
     assert vm.computations == 1

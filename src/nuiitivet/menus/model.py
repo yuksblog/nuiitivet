@@ -16,17 +16,17 @@ from enum import Enum
 from typing import Optional, Sequence, Tuple, Union
 
 from nuiitivet.input.shortcut import Shortcut, ShortcutLike, to_shortcut
-from nuiitivet.observable import MutableObservableBase, ObservableBase
+from nuiitivet.observable import MutableStateBase, StateBase
 from nuiitivet.widgeting.callbacks import VoidCallback
 
-#: A property that is either a plain value or an observable one.
-ObservableStr = Union[str, ObservableBase[str]]
-ObservableBool = Union[bool, ObservableBase[bool]]
+#: A property that is either a plain value or a State of it.
+StrOrState = Union[str, StateBase[str]]
+BoolOrState = Union[bool, StateBase[bool]]
 
 
 def read_value(value):
-    """Return ``value.value`` for an observable property, ``value`` otherwise."""
-    if isinstance(value, ObservableBase):
+    """Return ``value.value`` for a State property, ``value`` otherwise."""
+    if isinstance(value, StateBase):
         return value.value
     return value
 
@@ -62,29 +62,29 @@ class MenuEntry:
       ``minimize()``, ``maximize()``, ``restore()``, ``full_screen()`` —
       prebuilt entries whose activation calls a built-in App/Window method.
 
-    ``label`` and ``enabled`` may be Observables and propagate live to
+    ``label`` and ``enabled`` may be States and propagate live to
     whichever surface renders the model. ``checked`` (presence makes the entry
-    checkable) must be a *writable* Observable: activation toggles it before
+    checkable) must be a *writable* State: activation toggles it before
     ``on_select`` runs.
     """
 
-    label: ObservableStr
+    label: StrOrState
     on_select: Optional[VoidCallback]
     shortcut: Optional[Shortcut]
-    enabled: ObservableBool
-    checked: Optional[MutableObservableBase[bool]]
+    enabled: BoolOrState
+    checked: Optional[MutableStateBase[bool]]
     submenu: Optional[Tuple["MenuEntry", ...]]
     role: MenuRole
     is_separator: bool
 
     def __init__(
         self,
-        label: ObservableStr = "",
+        label: StrOrState = "",
         *,
         on_select: Optional[VoidCallback] = None,
         shortcut: Optional[ShortcutLike] = None,
-        enabled: ObservableBool = True,
-        checked: Optional[MutableObservableBase[bool]] = None,
+        enabled: BoolOrState = True,
+        checked: Optional[MutableStateBase[bool]] = None,
         submenu: Optional[Sequence["MenuEntry"]] = None,
         _role: MenuRole = MenuRole.NONE,
         _separator: bool = False,
@@ -92,7 +92,7 @@ class MenuEntry:
         """Initialize MenuEntry.
 
         Args:
-            label: Entry label; a plain string or an Observable.
+            label: Entry label; a plain string or a State.
             on_select: Called with no arguments when the entry is activated. May be
                 sync or async. Exactly one of ``on_select`` / ``submenu`` / a
                 standard-item role is required for a non-separator entry.
@@ -100,8 +100,8 @@ class MenuEntry:
                 :class:`~nuiitivet.input.shortcut.Shortcut`. The menu system both
                 displays it and registers it; do not register the same gesture
                 separately via ``key_shortcut()``.
-            enabled: Whether the entry can be activated; a bool or an Observable.
-            checked: Writable Observable holding the check state. Presence makes
+            enabled: Whether the entry can be activated; a bool or a State.
+            checked: Writable State holding the check state. Presence makes
                 the entry checkable; activation toggles the value, then calls
                 ``on_select``.
             submenu: Child entries. Mutually exclusive with ``on_select`` /
@@ -155,11 +155,11 @@ class MenuEntry:
     # ---- Resolved reads ------------------------------------------------
 
     def resolved_label(self) -> str:
-        """The current label text (reads the Observable if there is one)."""
+        """The current label text (reads the State if there is one)."""
         return str(read_value(self.label))
 
     def resolved_enabled(self) -> bool:
-        """The current enabled state (reads the Observable if there is one)."""
+        """The current enabled state (reads the State if there is one)."""
         return bool(read_value(self.enabled))
 
     # ---- Separator ------------------------------------------------------
@@ -178,16 +178,16 @@ class MenuEntry:
     def quit(
         cls,
         *,
-        label: Optional[ObservableStr] = None,
+        label: Optional[StrOrState] = None,
         shortcut: Optional[ShortcutLike] = None,
-        enabled: ObservableBool = True,
+        enabled: BoolOrState = True,
     ) -> "MenuEntry":
         """Exit the application (calls ``app.exit()``).
 
         Args:
             label: Entry label. Defaults to "Quit" on macOS, "Exit" elsewhere.
             shortcut: Accelerator gesture. Defaults to ``"Accel+Q"`` on macOS, none elsewhere.
-            enabled: Whether the entry can be activated; a bool or an Observable.
+            enabled: Whether the entry can be activated; a bool or a State.
         """
         if label is None:
             label = "Quit" if sys.platform == "darwin" else "Exit"
@@ -199,16 +199,16 @@ class MenuEntry:
     def close_window(
         cls,
         *,
-        label: ObservableStr = "Close Window",
+        label: StrOrState = "Close Window",
         shortcut: Optional[ShortcutLike] = "Accel+W",
-        enabled: ObservableBool = True,
+        enabled: BoolOrState = True,
     ) -> "MenuEntry":
         """Close the window (calls ``window.close()``).
 
         Args:
             label: Entry label. Defaults to "Close Window".
             shortcut: Accelerator gesture. Defaults to ``"Accel+W"``; ``None`` for none.
-            enabled: Whether the entry can be activated; a bool or an Observable.
+            enabled: Whether the entry can be activated; a bool or a State.
         """
         return cls(label, shortcut=shortcut, enabled=enabled, _role=MenuRole.CLOSE_WINDOW)
 
@@ -216,16 +216,16 @@ class MenuEntry:
     def minimize(
         cls,
         *,
-        label: ObservableStr = "Minimize",
+        label: StrOrState = "Minimize",
         shortcut: Optional[ShortcutLike] = None,
-        enabled: ObservableBool = True,
+        enabled: BoolOrState = True,
     ) -> "MenuEntry":
         """Minimize the window (calls ``window.minimize()``).
 
         Args:
             label: Entry label. Defaults to "Minimize".
             shortcut: Accelerator gesture. Defaults to ``"Accel+M"`` on macOS, none elsewhere.
-            enabled: Whether the entry can be activated; a bool or an Observable.
+            enabled: Whether the entry can be activated; a bool or a State.
         """
         if shortcut is None and sys.platform == "darwin":
             shortcut = "Accel+M"
@@ -235,16 +235,16 @@ class MenuEntry:
     def maximize(
         cls,
         *,
-        label: Optional[ObservableStr] = None,
+        label: Optional[StrOrState] = None,
         shortcut: Optional[ShortcutLike] = None,
-        enabled: ObservableBool = True,
+        enabled: BoolOrState = True,
     ) -> "MenuEntry":
         """Maximize / zoom the window (calls ``window.maximize()``).
 
         Args:
             label: Entry label. Defaults to "Zoom" on macOS, "Maximize" elsewhere.
             shortcut: Accelerator gesture. None by default.
-            enabled: Whether the entry can be activated; a bool or an Observable.
+            enabled: Whether the entry can be activated; a bool or a State.
         """
         if label is None:
             label = "Zoom" if sys.platform == "darwin" else "Maximize"
@@ -254,9 +254,9 @@ class MenuEntry:
     def restore(
         cls,
         *,
-        label: ObservableStr = "Restore",
+        label: StrOrState = "Restore",
         shortcut: Optional[ShortcutLike] = None,
-        enabled: ObservableBool = True,
+        enabled: BoolOrState = True,
     ) -> "MenuEntry":
         """Restore the window (calls ``window.restore()``).
 
@@ -267,7 +267,7 @@ class MenuEntry:
         Args:
             label: Entry label. Defaults to "Restore".
             shortcut: Accelerator gesture. None by default.
-            enabled: Whether the entry can be activated; a bool or an Observable.
+            enabled: Whether the entry can be activated; a bool or a State.
         """
         return cls(label, shortcut=shortcut, enabled=enabled, _role=MenuRole.RESTORE)
 
@@ -275,15 +275,15 @@ class MenuEntry:
     def full_screen(
         cls,
         *,
-        label: ObservableStr = "Full Screen",
+        label: StrOrState = "Full Screen",
         shortcut: Optional[ShortcutLike] = None,
-        enabled: ObservableBool = True,
+        enabled: BoolOrState = True,
     ) -> "MenuEntry":
         """Toggle full screen (calls ``window.full_screen()``).
 
         Args:
             label: Entry label. Defaults to "Full Screen".
             shortcut: Accelerator gesture. None by default.
-            enabled: Whether the entry can be activated; a bool or an Observable.
+            enabled: Whether the entry can be activated; a bool or a State.
         """
         return cls(label, shortcut=shortcut, enabled=enabled, _role=MenuRole.FULL_SCREEN)

@@ -9,7 +9,7 @@ from nuiitivet.material.badge import LargeBadge, SmallBadge
 from nuiitivet.material.navigation_rail import NavigationRail, RailItem
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.widgets.interaction import FocusNode
-from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.observable.value import _StateValue
 
 
 def test_navigation_rail_basic_creation():
@@ -49,9 +49,9 @@ def test_navigation_rail_expanded_mode():
     assert rail.is_expanded
 
 
-def test_navigation_rail_with_observable_index():
-    """NavigationRail should work with Observable index."""
-    index_obs = _ObservableValue(0)
+def test_navigation_rail_with_state_index():
+    """NavigationRail should work with State index."""
+    index_obs = _StateValue(0)
     items = [
         RailItem(icon="home", label="Home"),
         RailItem(icon="search", label="Search"),
@@ -61,14 +61,14 @@ def test_navigation_rail_with_observable_index():
 
     assert rail.current_index == 0
 
-    # Change index via observable
+    # Change index via State
     index_obs.value = 2
     assert rail.current_index == 2
 
 
-def test_navigation_rail_with_observable_expanded():
-    """NavigationRail should work with Observable expanded."""
-    expanded_obs = _ObservableValue(False)
+def test_navigation_rail_with_state_expanded():
+    """NavigationRail should work with State expanded."""
+    expanded_obs = _StateValue(False)
     items = [
         RailItem(icon="home", label="Home"),
         RailItem(icon="search", label="Search"),
@@ -77,24 +77,24 @@ def test_navigation_rail_with_observable_expanded():
 
     assert not rail.is_expanded
 
-    # Toggle expanded via observable
+    # Toggle expanded via State
     expanded_obs.value = True
     assert rail.is_expanded
 
 
-def test_navigation_rail_rejects_readonly_observable():
-    """index/expanded are two-way, so a read-only (computed) observable is rejected."""
+def test_navigation_rail_rejects_readonly_state():
+    """index/expanded are two-way, so a read-only (computed) State is rejected."""
     items = [
         RailItem(icon="home", label="Home"),
         RailItem(icon="search", label="Search"),
     ]
-    # ``.map(...)`` yields a read-only ComputedObservable — the rail cannot write
+    # ``.map(...)`` yields a read-only ComputedState — the rail cannot write
     # its selection / expanded state back into it, so construction must fail.
-    readonly_expanded = _ObservableValue(0).map(lambda w: w >= 600)
+    readonly_expanded = _StateValue(0).map(lambda w: w >= 600)
     with pytest.raises(TypeError):
         NavigationRail(children=items, expanded=readonly_expanded)
 
-    readonly_index = _ObservableValue(0).map(lambda w: 1 if w else 0)
+    readonly_index = _StateValue(0).map(lambda w: 1 if w else 0)
     with pytest.raises(TypeError):
         NavigationRail(children=items, index=readonly_index)
 
@@ -142,12 +142,12 @@ def test_navigation_rail_item_accepts_symbol_icon():
     assert item.icon_spec is Symbols.home
 
 
-def test_navigation_rail_item_accepts_observable_icon():
-    """RailItem should accept an Observable icon (Symbol or str)."""
+def test_navigation_rail_item_accepts_state_icon():
+    """RailItem should accept a State icon (Symbol or str)."""
     from nuiitivet.material.symbols import Symbols
 
-    symbol_source = _ObservableValue(Symbols.home)
-    str_source = _ObservableValue("search")
+    symbol_source = _StateValue(Symbols.home)
+    str_source = _StateValue("search")
 
     symbol_item = RailItem(icon=symbol_source, label="Home")
     str_item = RailItem(icon=str_source, label="Search")
@@ -156,9 +156,9 @@ def test_navigation_rail_item_accepts_observable_icon():
     assert str_item.icon_spec is str_source
 
 
-def test_navigation_rail_item_accepts_observable_label():
-    """RailItem should accept an Observable[str] label."""
-    label_source = _ObservableValue("Home")
+def test_navigation_rail_item_accepts_state_label():
+    """RailItem should accept a State[str] label."""
+    label_source = _StateValue("Home")
 
     item = RailItem(icon="home", label=label_source)
 
@@ -214,7 +214,7 @@ def test_navigation_rail_with_int_enum():
         SEARCH = 1
         PROFILE = 2
 
-    index_obs = _ObservableValue(Section.HOME)
+    index_obs = _StateValue(Section.HOME)
     items = [
         RailItem(icon="home", label="Home"),
         RailItem(icon="search", label="Search"),
@@ -238,8 +238,8 @@ def test_navigation_rail_empty_children():
 
 def test_navigation_rail_dispose_cleanup():
     """NavigationRail should clean up subscriptions on dispose."""
-    index_obs = _ObservableValue(0)
-    expanded_obs = _ObservableValue(False)
+    index_obs = _StateValue(0)
+    expanded_obs = _StateValue(False)
     items = [
         RailItem(icon="home", label="Home"),
         RailItem(icon="search", label="Search"),
@@ -355,29 +355,29 @@ def test_rail_item_selection_state():
 # ---------------------------------------------------------------------------
 
 
-def test_rail_item_badge_observables_are_none_by_default():
-    """RailItem should have no badge observables by default."""
+def test_rail_item_badge_states_are_none_by_default():
+    """RailItem should have no badge States by default."""
     item = RailItem(icon="home", label="Home")
-    assert item.small_badge_observable is None
-    assert item.large_badge_observable is None
+    assert item.small_badge_state is None
+    assert item.large_badge_state is None
 
 
-def test_rail_item_small_badge_observable_stored():
-    """RailItem should store the provided small_badge observable."""
-    small_obs: _ObservableValue[bool] = _ObservableValue(True)
+def test_rail_item_small_badge_state_stored():
+    """RailItem should store the provided small_badge State."""
+    small_obs: _StateValue[bool] = _StateValue(True)
     item = RailItem(icon="home", label="Home", small_badge=small_obs)
-    assert item.small_badge_observable is small_obs
+    assert item.small_badge_state is small_obs
 
 
-def test_rail_item_large_badge_observable_stored():
-    """RailItem should store the provided large_badge observable."""
-    large_obs: _ObservableValue[Optional[str]] = _ObservableValue("5")
+def test_rail_item_large_badge_state_stored():
+    """RailItem should store the provided large_badge State."""
+    large_obs: _StateValue[Optional[str]] = _StateValue("5")
     item = RailItem(icon="home", label="Home", large_badge=large_obs)
-    assert item.large_badge_observable is large_obs
+    assert item.large_badge_state is large_obs
 
 
 def test_rail_item_button_no_badge_when_not_provided():
-    """_RailItemButton should have no badge widget when no observable given."""
+    """_RailItemButton should have no badge widget when no State given."""
     items = [RailItem(icon="home", label="Home")]
     rail = NavigationRail(children=items)
 
@@ -387,7 +387,7 @@ def test_rail_item_button_no_badge_when_not_provided():
 
 def test_rail_item_button_small_badge_created():
     """_RailItemButton should create SmallBadge when small_badge is True."""
-    small_obs: _ObservableValue[bool] = _ObservableValue(True)
+    small_obs: _StateValue[bool] = _StateValue(True)
     items = [RailItem(icon="home", label="Home", small_badge=small_obs)]
     rail = NavigationRail(children=items)
 
@@ -397,7 +397,7 @@ def test_rail_item_button_small_badge_created():
 
 def test_rail_item_button_large_badge_created():
     """_RailItemButton should create LargeBadge when large_badge has text."""
-    large_obs: _ObservableValue[Optional[str]] = _ObservableValue("5")
+    large_obs: _StateValue[Optional[str]] = _StateValue("5")
     items = [RailItem(icon="home", label="Home", large_badge=large_obs)]
     rail = NavigationRail(children=items)
 
@@ -408,7 +408,7 @@ def test_rail_item_button_large_badge_created():
 
 def test_rail_item_button_small_badge_false_hides_widget():
     """_RailItemButton should clear badge widget when small_badge becomes False."""
-    small_obs: _ObservableValue[bool] = _ObservableValue(True)
+    small_obs: _StateValue[bool] = _StateValue(True)
     items = [RailItem(icon="home", label="Home", small_badge=small_obs)]
     rail = NavigationRail(children=items)
 
@@ -421,7 +421,7 @@ def test_rail_item_button_small_badge_false_hides_widget():
 
 def test_rail_item_button_large_badge_none_hides_widget():
     """_RailItemButton should clear badge widget when large_badge becomes None."""
-    large_obs: _ObservableValue[Optional[str]] = _ObservableValue("3")
+    large_obs: _StateValue[Optional[str]] = _StateValue("3")
     items = [RailItem(icon="home", label="Home", large_badge=large_obs)]
     rail = NavigationRail(children=items)
 
@@ -434,8 +434,8 @@ def test_rail_item_button_large_badge_none_hides_widget():
 
 def test_rail_item_large_badge_takes_precedence():
     """large_badge takes precedence over small_badge when both are provided."""
-    small_obs: _ObservableValue[bool] = _ObservableValue(True)
-    large_obs: _ObservableValue[Optional[str]] = _ObservableValue("42")
+    small_obs: _StateValue[bool] = _StateValue(True)
+    large_obs: _StateValue[Optional[str]] = _StateValue("42")
     items = [RailItem(icon="home", label="Home", small_badge=small_obs, large_badge=large_obs)]
     rail = NavigationRail(children=items)
 
@@ -446,7 +446,7 @@ def test_rail_item_large_badge_takes_precedence():
 
 def test_rail_item_badge_layout_small():
     """Badge rect is computed using MD3 small badge stick offsets (top-right of icon)."""
-    small_obs: _ObservableValue[bool] = _ObservableValue(True)
+    small_obs: _StateValue[bool] = _StateValue(True)
     items = [RailItem(icon="home", label="Home", small_badge=small_obs)]
     rail = NavigationRail(children=items)
 
@@ -461,7 +461,7 @@ def test_rail_item_badge_layout_small():
 
 def test_rail_item_badge_layout_large():
     """Badge rect is computed using MD3 large badge stick offsets (top-right of icon)."""
-    large_obs: _ObservableValue[Optional[str]] = _ObservableValue("3")
+    large_obs: _StateValue[Optional[str]] = _StateValue("3")
     items = [RailItem(icon="home", label="Home", large_badge=large_obs)]
     rail = NavigationRail(children=items)
 
@@ -475,8 +475,8 @@ def test_rail_item_badge_layout_large():
 
 def test_rail_item_badge_subscription_disposed():
     """Badge subscriptions should be cleaned up on button dispose."""
-    small_obs: _ObservableValue[bool] = _ObservableValue(True)
-    large_obs: _ObservableValue[Optional[str]] = _ObservableValue("1")
+    small_obs: _StateValue[bool] = _StateValue(True)
+    large_obs: _StateValue[Optional[str]] = _StateValue("1")
     items = [RailItem(icon="home", label="Home", small_badge=small_obs, large_badge=large_obs)]
     rail = NavigationRail(children=items)
 

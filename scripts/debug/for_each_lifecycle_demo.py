@@ -39,8 +39,8 @@ Item = Tuple[int, str]
 class LifecycleDemoModel:
     """Holds the item list plus a running lifecycle log."""
 
-    items: nv.Observable[List[Item]] = nv.Observable([])
-    log: nv.Observable[str] = nv.Observable("")
+    items: nv.State[List[Item]] = nv.State([])
+    log: nv.State[str] = nv.State("")
 
     def __init__(self) -> None:
         self._next_id = 0

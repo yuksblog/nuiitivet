@@ -20,7 +20,7 @@ _POLL = 0.05
 
 
 class _Outbox:
-    """The newest write of each Observable, waiting to be sent."""
+    """The newest write of each State, waiting to be sent."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -58,7 +58,7 @@ def handle_call(handler: BaseHTTPRequestHandler) -> bool:
     """Answer a POST to the call route, if ``handler.path`` is one.
 
     The response is newline-delimited JSON: a line ``{"w": name, "v": data}``
-    for each write to a ``WriteOnlyObservable`` parameter, then one line
+    for each write to a ``WriteOnlyState`` parameter, then one line
     ``{"r": data}`` with the result or ``{"e": {...}}`` with the exception.
     A caller that hangs up sets the function's ``CancelToken``.
 

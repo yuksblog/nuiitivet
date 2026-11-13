@@ -15,7 +15,7 @@ from nuiitivet.layout.for_each import ForEach
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.uniform_flow import UniformFlow
 from nuiitivet.material.text import Text
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 
@@ -36,7 +36,7 @@ def _tile(item: str, index: int) -> Widget:
 
 
 def test_uniform_flow_builder_with_no_items_measures_padding_only() -> None:
-    flow = UniformFlow.builder(Observable([]), _tile, columns=3, main_gap=8, cross_gap=8)
+    flow = UniformFlow.builder(State([]), _tile, columns=3, main_gap=8, cross_gap=8)
 
     assert flow.preferred_size() == (0, 0)
     assert flow.preferred_size(max_width=400) == (0, 0)
@@ -44,13 +44,13 @@ def test_uniform_flow_builder_with_no_items_measures_padding_only() -> None:
 
 
 def test_uniform_flow_builder_with_no_items_and_padding_measures_the_padding() -> None:
-    flow = UniformFlow.builder(Observable([]), _tile, columns=3, padding=(4, 2, 4, 2))
+    flow = UniformFlow.builder(State([]), _tile, columns=3, padding=(4, 2, 4, 2))
 
     assert flow.preferred_size(max_width=400) == (8, 4)
 
 
 def test_bare_empty_provider_charges_no_gap_in_row_or_column() -> None:
-    items: Observable = Observable([])
+    items: State = State([])
 
     column = Column([_Box(50, 10), ForEach(items, _tile), _Box(50, 10)], gap=6)
     row = Row([_Box(10, 50), ForEach(items, _tile), _Box(10, 50)], gap=6)
@@ -62,7 +62,7 @@ def test_bare_empty_provider_charges_no_gap_in_row_or_column() -> None:
 class _CardLikeScreen(ComposableWidget):
     """An auto-width column beside nothing, so its width is its content's."""
 
-    def __init__(self, items: Observable) -> None:
+    def __init__(self, items: State) -> None:
         super().__init__()
         self.items = items
 
@@ -85,7 +85,7 @@ class _CardLikeScreen(ComposableWidget):
 def test_auto_width_parent_keeps_its_content_width_across_an_empty_refill(nuiitivet_app) -> None:
     """The regression as seen: the parent stays at content width on every layout pass."""
 
-    screen = _CardLikeScreen(Observable([]))
+    screen = _CardLikeScreen(State([]))
     app = nuiitivet_app(screen, size=(600, 400))
 
     def widths() -> Tuple[int, int]:

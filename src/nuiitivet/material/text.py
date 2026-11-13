@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any, Literal, Optional, Tuple, Union, TYPE_CHECKING
 
 from nuiitivet.rendering.sizing import SizingLike
-from nuiitivet.observable import ReadOnlyObservableProtocol
+from nuiitivet.observable import ReadOnlyStateProtocol
 from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.widgets.text import TextBase
 from nuiitivet.widgets.text_style import TextStyleProtocol
@@ -18,10 +18,10 @@ if TYPE_CHECKING:
 
 
 # Canonical union for anything a text/label-accepting widget can take: a static
-# ``str`` or an observable string. Shared by Material widgets that surface a
+# ``str`` or a State of one. Shared by Material widgets that surface a
 # label (FAB menu, navigation rail) so the accepted label surface stays
 # consistent with :class:`Text`.
-LabelLike = Union[str, ReadOnlyObservableProtocol[str]]
+LabelLike = Union[str, ReadOnlyStateProtocol[str]]
 
 
 class Text(TextBase):
@@ -32,7 +32,7 @@ class Text(TextBase):
 
     def __init__(
         self,
-        label: Union[str, ReadOnlyObservableProtocol[Any]],
+        label: Union[str, ReadOnlyStateProtocol[Any]],
         *,
         width: SizingLike = None,
         height: SizingLike = None,
@@ -49,7 +49,7 @@ class Text(TextBase):
         """Initialize Material Text widget.
 
         Args:
-            label: The text content to display. Can be a string or an Observable.
+            label: The text content to display. Can be a string or a State.
             width: Width specification.
             height: Height specification.
             padding: Insets from the allocated rect to the text.

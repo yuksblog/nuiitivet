@@ -13,7 +13,7 @@ from nuiitivet.material.styles.icon_style import IconStyle
 from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.form_factor import min_extent
-from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
+from nuiitivet.observable import ReadOnlyStateProtocol, StateProtocol
 from nuiitivet.rendering.padding import parse_padding
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.theme.theme import Theme
@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 
 def _chip_text(
-    label: str | ReadOnlyObservableProtocol[str],
+    label: str | ReadOnlyStateProtocol[str],
     color: ColorSpec,
 ) -> Text:
     return Text(
@@ -39,7 +39,7 @@ def _chip_text(
 
 
 def _chip_icon(
-    name: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str],
+    name: "Symbol" | str | ReadOnlyStateProtocol["Symbol"] | ReadOnlyStateProtocol[str],
     *,
     color: ColorSpec,
 ) -> Icon:
@@ -92,7 +92,7 @@ class MaterialChipBase(InteractiveWidget):
         self,
         *,
         on_click: Optional[Callable[[], None]] = None,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["ChipStyle"] = None,
@@ -248,13 +248,13 @@ class AssistChip(MaterialChipBase):
 
     def __init__(
         self,
-        label: str | ReadOnlyObservableProtocol[str],
+        label: str | ReadOnlyStateProtocol[str],
         *,
         leading_icon: (
-            "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None
+            "Symbol" | str | ReadOnlyStateProtocol["Symbol"] | ReadOnlyStateProtocol[str] | None
         ) = None,
         on_click: Optional[Callable[[], None]] = None,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["ChipStyle"] = None,
@@ -305,15 +305,15 @@ class FilterChip(MaterialChipBase):
 
     def __init__(
         self,
-        label: str | ReadOnlyObservableProtocol[str],
+        label: str | ReadOnlyStateProtocol[str],
         *,
-        selected: bool | ObservableProtocol[bool] = False,
+        selected: bool | StateProtocol[bool] = False,
         on_selected_change: Optional[Callable[[bool], None]] = None,
         leading_icon: (
-            "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None
+            "Symbol" | str | ReadOnlyStateProtocol["Symbol"] | ReadOnlyStateProtocol[str] | None
         ) = None,
         on_click: Optional[Callable[[], None]] = None,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["ChipStyle"] = None,
@@ -333,11 +333,11 @@ class FilterChip(MaterialChipBase):
             style: Optional chip style.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        self._selected_external: ObservableProtocol[bool] | None = None
+        self._selected_external: StateProtocol[bool] | None = None
         self._selected = bool(selected)
         self._label = label
         if hasattr(selected, "subscribe") and hasattr(selected, "value"):
-            self._selected_external = cast("ObservableProtocol[bool]", selected)
+            self._selected_external = cast("StateProtocol[bool]", selected)
             self._selected = bool(self._selected_external.value)
 
         self._base_on_click = on_click
@@ -427,15 +427,15 @@ class InputChip(MaterialChipBase):
 
     def __init__(
         self,
-        label: str | ReadOnlyObservableProtocol[str],
+        label: str | ReadOnlyStateProtocol[str],
         *,
-        trailing_icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str],
+        trailing_icon: "Symbol" | str | ReadOnlyStateProtocol["Symbol"] | ReadOnlyStateProtocol[str],
         leading_icon: (
-            "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None
+            "Symbol" | str | ReadOnlyStateProtocol["Symbol"] | ReadOnlyStateProtocol[str] | None
         ) = None,
         on_trailing_icon_click: Optional[Callable[[], None]] = None,
         on_click: Optional[Callable[[], None]] = None,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["ChipStyle"] = None,
@@ -504,13 +504,13 @@ class SuggestionChip(MaterialChipBase):
 
     def __init__(
         self,
-        label: str | ReadOnlyObservableProtocol[str],
+        label: str | ReadOnlyStateProtocol[str],
         *,
         leading_icon: (
-            "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None
+            "Symbol" | str | ReadOnlyStateProtocol["Symbol"] | ReadOnlyStateProtocol[str] | None
         ) = None,
         on_click: Optional[Callable[[], None]] = None,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["ChipStyle"] = None,

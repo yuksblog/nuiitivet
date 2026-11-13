@@ -17,7 +17,7 @@ from ..layout.layout_engine import LayoutEngine
 from ..layout.alignment import normalize_alignment
 from ..layout.measure import preferred_size as measure_preferred_size
 from ..widgeting.modifier import Modifier
-from nuiitivet.observable.protocols import ObservableBase
+from nuiitivet.observable.protocols import StateBase
 
 _logger = logging.getLogger(__name__)
 
@@ -76,8 +76,8 @@ class Box(CachedPaintMixin, Widget):
         return self._bgcolor
 
     @bgcolor.setter
-    def bgcolor(self, value: Union[Optional[ColorSpec], ObservableBase]) -> None:
-        if isinstance(value, ObservableBase):
+    def bgcolor(self, value: Union[Optional[ColorSpec], StateBase]) -> None:
+        if isinstance(value, StateBase):
             self.observe(value, lambda v: setattr(self, "bgcolor", v))
             return
         self._bgcolor = value
@@ -88,8 +88,8 @@ class Box(CachedPaintMixin, Widget):
         return self._border_color
 
     @border_color.setter
-    def border_color(self, value: Union[Optional[ColorSpec], ObservableBase]) -> None:
-        if isinstance(value, ObservableBase):
+    def border_color(self, value: Union[Optional[ColorSpec], StateBase]) -> None:
+        if isinstance(value, StateBase):
             self.observe(value, lambda v: setattr(self, "border_color", v))
             return
         self._border_color = value
@@ -101,8 +101,8 @@ class Box(CachedPaintMixin, Widget):
         return self._shadows
 
     @shadows.setter
-    def shadows(self, value: Union[ShadowLike, ObservableBase]) -> None:
-        if isinstance(value, ObservableBase):
+    def shadows(self, value: Union[ShadowLike, StateBase]) -> None:
+        if isinstance(value, StateBase):
             self.observe(value, lambda v: setattr(self, "shadows", v))
             return
         self._shadows = normalize_shadows(value)
@@ -113,8 +113,8 @@ class Box(CachedPaintMixin, Widget):
         return getattr(self, "_corner_radius", 0)
 
     @corner_radius.setter
-    def corner_radius(self, value: Union[float, Tuple[float, float, float, float], ObservableBase]) -> None:
-        if isinstance(value, ObservableBase):
+    def corner_radius(self, value: Union[float, Tuple[float, float, float, float], StateBase]) -> None:
+        if isinstance(value, StateBase):
             self.observe(value, lambda v: setattr(self, "corner_radius", v))
             return
         self._corner_radius = value
@@ -125,8 +125,8 @@ class Box(CachedPaintMixin, Widget):
         return getattr(self, "_border_width", 0.0)
 
     @border_width.setter
-    def border_width(self, value: Union[float, ObservableBase]) -> None:
-        if isinstance(value, ObservableBase):
+    def border_width(self, value: Union[float, StateBase]) -> None:
+        if isinstance(value, StateBase):
             self.observe(value, lambda v: setattr(self, "border_width", v))
             return
         self._border_width = float(value) if value is not None else 0.0

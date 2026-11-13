@@ -11,7 +11,7 @@ from . import runtime
 class BatchContext:
     def __init__(self):
         self._depth = 0
-        self._pending_observables: Set[Any] = set()
+        self._pending_states: Set[Any] = set()
         self._pending_computeds: Set[Any] = set()
 
     def __enter__(self):
@@ -27,21 +27,21 @@ class BatchContext:
                     self._flush()
             finally:
                 _batch_context.set(None)
-                self._pending_observables.clear()
+                self._pending_states.clear()
                 self._pending_computeds.clear()
 
     def nested(self):
         """Return a context manager that increments/decrements depth without creating a new context."""
         return self
 
-    def record_change(self, observable: Any) -> None:
-        self._pending_observables.add(observable)
+    def record_change(self, state: Any) -> None:
+        self._pending_states.add(state)
 
     def record_computed(self, computed: Any) -> None:
         if len(self._pending_computeds) > 1000:
             raise RuntimeError(
                 "Batch computed queue size limit exceeded (>1000). "
-                "Possible infinite loop in ComputedObservable dependencies."
+                "Possible infinite loop in ComputedState dependencies."
             )
         self._pending_computeds.add(computed)
 
@@ -51,7 +51,7 @@ class BatchContext:
 
         processed = set()
 
-        needs_ui_dispatch = any(getattr(obs, "_dispatch_to_ui", True) for obs in self._pending_observables)
+        needs_ui_dispatch = any(getattr(obs, "_dispatch_to_ui", True) for obs in self._pending_states)
 
         def do_flush() -> None:
             while queue:
@@ -76,7 +76,7 @@ class BatchContext:
 
 
 def batch() -> BatchContext:
-    """Context manager for batching Observable updates."""
+    """Context manager for batching State updates."""
     current: Optional[Any] = _batch_context.get()
     if current is not None:
         return current

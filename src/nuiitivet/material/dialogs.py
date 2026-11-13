@@ -17,7 +17,7 @@ from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.theme.type_scale import TypeScale
-from nuiitivet.observable import ReadOnlyObservableProtocol
+from nuiitivet.observable import ReadOnlyStateProtocol
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgets.box import Box
 
@@ -41,15 +41,15 @@ class BasicDialog(ComposableWidget):
 
     def __init__(
         self,
-        title: Optional[Union[str, ReadOnlyObservableProtocol[str]]] = None,
-        message: Optional[Union[str, ReadOnlyObservableProtocol[str]]] = None,
+        title: Optional[Union[str, ReadOnlyStateProtocol[str]]] = None,
+        message: Optional[Union[str, ReadOnlyStateProtocol[str]]] = None,
         *,
         icon: Optional[
             Union[
                 str,
                 "Symbol",
-                ReadOnlyObservableProtocol[str],
-                ReadOnlyObservableProtocol["Symbol"],
+                ReadOnlyStateProtocol[str],
+                ReadOnlyStateProtocol["Symbol"],
             ]
         ] = None,
         actions: Optional[List[Widget]] = None,
@@ -61,10 +61,10 @@ class BasicDialog(ComposableWidget):
         """Initialize BasicDialog.
 
         Args:
-            title: Title text, or an observable of it.
-            message: Message text, or an observable of it.
+            title: Title text, or a State of it.
+            message: Message text, or a State of it.
             icon: Icon shown above the title: a ``Symbol``, an icon name, or
-                an observable of either.
+                a State of either.
             actions: Action widgets, typically ``Button`` with
                 ``ButtonStyle.text()``.
             style: Dialog style override; the theme's default when omitted.

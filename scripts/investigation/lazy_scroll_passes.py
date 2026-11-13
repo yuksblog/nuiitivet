@@ -85,7 +85,7 @@ class _Collections:
         return ", ".join(parts) if parts else "none"
 
 
-def _mounted_table(records: nv.Observable, builder: Callable, lazy: bool) -> nv.Widget:
+def _mounted_table(records: nv.State, builder: Callable, lazy: bool) -> nv.Widget:
     if lazy:
         column = nv.Column.lazy(records, builder, key_fn=compare._key, item_height=compare.ROW_HEIGHT)
     else:

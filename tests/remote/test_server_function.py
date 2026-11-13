@@ -14,9 +14,9 @@ import pytest
 
 from dataclasses import dataclass
 
-from nuiitivet.observable import Observable, runtime
+from nuiitivet.observable import State, runtime
 from nuiitivet.observable.switched import CancelToken
-from nuiitivet.remote import RemoteError, WriteOnlyObservable, server, server_only
+from nuiitivet.remote import RemoteError, WriteOnlyState, server, server_only
 from nuiitivet.remote.scope import is_server_only
 from tests.remote.models import Order
 
@@ -121,7 +121,7 @@ def wrong_result() -> int:
 
 
 @server
-def report(progress: WriteOnlyObservable[float], status: WriteOnlyObservable[str]) -> int:
+def report(progress: WriteOnlyState[float], status: WriteOnlyState[str]) -> int:
     progress.value = 0.25
     status.value = "reading"
     progress.value = 0.5
@@ -132,23 +132,23 @@ def report(progress: WriteOnlyObservable[float], status: WriteOnlyObservable[str
 
 
 @server
-def read_back(progress: WriteOnlyObservable[float]) -> None:
+def read_back(progress: WriteOnlyState[float]) -> None:
     _ = progress.value
 
 
 @server
-def write_wrong(progress: WriteOnlyObservable[float]) -> None:
+def write_wrong(progress: WriteOnlyState[float]) -> None:
     progress.value = "half"  # type: ignore[assignment]
 
 
 @server
-def fail_after_progress(progress: WriteOnlyObservable[float]) -> None:
+def fail_after_progress(progress: WriteOnlyState[float]) -> None:
     progress.value = 0.9
     raise ValueError("late")
 
 
 @server
-def cancellable(progress: WriteOnlyObservable[float], cancel: CancelToken = CancelToken()) -> None:
+def cancellable(progress: WriteOnlyState[float], cancel: CancelToken = CancelToken()) -> None:
     _seen["token"] = cancel
     progress.value = 0.1
     _gate.wait_here()
@@ -213,14 +213,14 @@ async def test_any_other_exception_reaches_the_caller_as_server_error() -> None:
 
 
 async def test_progress_arrives_while_the_call_is_running(clock: ManualClock) -> None:
-    progress, status = Observable(0.0), Observable("")
+    progress, status = State(0.0), State("")
     task = asyncio.ensure_future(report(progress, status))
 
     await _gate.until_reached()
     assert progress.value == 0.0
     clock.tick()
 
-    # Two writes happened before the frame; the Observable takes the newest.
+    # Two writes happened before the frame; the State takes the newest.
     assert progress.value == 0.5
     assert status.value == "reading"
     assert not task.done()
@@ -229,7 +229,7 @@ async def test_progress_arrives_while_the_call_is_running(clock: ManualClock) ->
 
 
 async def test_the_last_write_has_landed_when_the_call_returns(clock: ManualClock) -> None:
-    progress, status = Observable(0.0), Observable("")
+    progress, status = State(0.0), State("")
     _gate.release.set()
 
     await report(progress, status)
@@ -239,7 +239,7 @@ async def test_the_last_write_has_landed_when_the_call_returns(clock: ManualCloc
 
 
 async def test_a_write_before_an_exception_has_landed_when_it_is_raised(clock: ManualClock) -> None:
-    progress = Observable(0.0)
+    progress = State(0.0)
 
     with pytest.raises(ValueError):
         await fail_after_progress(progress)
@@ -247,18 +247,18 @@ async def test_a_write_before_an_exception_has_landed_when_it_is_raised(clock: M
     assert progress.value == 0.9
 
 
-async def test_the_function_cannot_read_the_observable() -> None:
+async def test_the_function_cannot_read_the_state() -> None:
     with pytest.raises(AttributeError, match="cannot be read"):
-        await read_back(Observable(0.0))
+        await read_back(State(0.0))
 
 
 async def test_a_write_of_another_type_fails_in_the_function() -> None:
     with pytest.raises(TypeError, match="expected float, got str"):
-        await write_wrong(Observable(0.0))
+        await write_wrong(State(0.0))
 
 
-async def test_a_progress_argument_must_be_an_observable() -> None:
-    with pytest.raises(TypeError, match="progress takes an Observable"):
+async def test_a_progress_argument_must_be_an_state() -> None:
+    with pytest.raises(TypeError, match="progress takes a State"):
         await read_back(0.5)  # type: ignore[arg-type]
 
 
@@ -266,7 +266,7 @@ async def test_a_progress_argument_must_be_an_observable() -> None:
 
 
 async def test_cancelling_the_caller_sets_the_token_and_drops_later_writes(clock: ManualClock) -> None:
-    progress = Observable(0.0)
+    progress = State(0.0)
     task = asyncio.ensure_future(cancellable(progress))
     await _gate.until_reached()
     clock.tick()
@@ -289,14 +289,14 @@ async def test_cancelling_the_caller_sets_the_token_and_drops_later_writes(clock
 async def test_the_token_is_not_set_by_a_call_that_completes() -> None:
     _gate.release.set()
 
-    await cancellable(Observable(0.0))
+    await cancellable(State(0.0))
 
     assert _seen["cancelled"] is False
 
 
 async def test_the_caller_cannot_pass_the_token() -> None:
     with pytest.raises(TypeError):
-        await cancellable(Observable(0.0), CancelToken())
+        await cancellable(State(0.0), CancelToken())
 
 
 # -- definition ---------------------------------------------------------------
@@ -326,7 +326,7 @@ def _token_without_default(cancel: CancelToken) -> None:
     return None
 
 
-def _bare_writer(progress: WriteOnlyObservable) -> None:  # type: ignore[type-arg]
+def _bare_writer(progress: WriteOnlyState) -> None:  # type: ignore[type-arg]
     return None
 
 

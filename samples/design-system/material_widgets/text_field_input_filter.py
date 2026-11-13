@@ -1,6 +1,6 @@
 """Material Widgets - TextField input filters and commit-time normalization.
 
-An Observable passed as ``value`` is the field's value: it is displayed, and
+A State passed as ``value`` is the field's value: it is displayed, and
 what the user types is written back into it. ``input_filter`` decides what may
 be typed in the first place, and ``on_focus_change`` finishes the value once
 the user leaves the field.
@@ -14,11 +14,11 @@ import nuiitivet.material as nv
 class Form(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.pin = nv.Observable("")
-        self.rate = nv.Observable("")
-        self.code = nv.Observable("")
+        self.pin = nv.State("")
+        self.rate = nv.State("")
+        self.code = nv.State("")
         # Derived, so nothing has to be kept in sync by hand: the fields write
-        # into the Observables and this recomputes.
+        # into the States and this recomputes.
         self.summary = nv.combine(self.pin, self.rate, self.code).compute(
             lambda pin, rate, code: f"pin={pin!r} rate={rate!r} code={code!r}"
         )

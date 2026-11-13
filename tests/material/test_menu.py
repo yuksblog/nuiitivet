@@ -19,7 +19,7 @@ from nuiitivet.material.text import Text
 from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.material.theme.elevation import elevation_shadows
 from nuiitivet.modifiers.popup import popup
-from nuiitivet.observable import Observable, runtime
+from nuiitivet.observable import State, runtime
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgets.interaction import FocusNode
 
@@ -120,7 +120,7 @@ def test_menu_escape_calls_on_dismiss() -> None:
 
 
 def test_popup_menu_keeps_keyboard_focus_when_a_submenu_opens(nuiitivet_app) -> None:
-    is_open: Observable[bool] = Observable(False)
+    is_open: State[bool] = State(False)
     export = SubMenuItem("Export", items=[MenuItem("PNG"), MenuItem("SVG")])
     exit_item = MenuItem("Exit")
     menu = Menu(items=[MenuItem("New"), export, exit_item])

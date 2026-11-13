@@ -11,13 +11,13 @@ from .layout_utils import expand_layout_children, layout_child_if_needed, paint_
 from .for_each import ForEach, ItemsLike, BuilderFn, KeyFn
 from .lazy import LazyItems
 from .measure import preferred_size as measure_preferred_size
-from nuiitivet.observable.protocols import ObservableBase
+from nuiitivet.observable.protocols import StateBase
 
 
 class Column(Widget):
     """Layout children vertically.
 
-    From a data collection, or an observable of one: :meth:`builder`. The
+    From a data collection, or a State of one: :meth:`builder`. The
     items in view only, for a long list: :meth:`lazy`.
     """
 
@@ -31,7 +31,7 @@ class Column(Widget):
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
-        gap: Union[int, ObservableBase] = 0,
+        gap: Union[int, StateBase] = 0,
         main_alignment: str = "start",
         cross_alignment: str = "start",
         key: Optional[str] = None,
@@ -67,8 +67,8 @@ class Column(Widget):
         return getattr(self, "_gap", 0)
 
     @gap.setter
-    def gap(self, value: Union[int, ObservableBase]) -> None:
-        if isinstance(value, ObservableBase):
+    def gap(self, value: Union[int, StateBase]) -> None:
+        if isinstance(value, StateBase):
             if hasattr(self, "observe"):
                 self.observe(value, lambda v: setattr(self, "gap", v))
             return
@@ -93,7 +93,7 @@ class Column(Widget):
         """Create a Column whose children are built from *items*.
 
         Args:
-            items: Source data: a collection, or an observable of one -- the
+            items: Source data: a collection, or a State of one -- the
                 children then follow its changes.
             builder: Called as ``builder(item, index)`` for each item; returns
                 the item's widget.
@@ -149,7 +149,7 @@ class Column(Widget):
         width it is offered.
 
         Args:
-            items: Source data: a collection, or an observable of one -- the
+            items: Source data: a collection, or a State of one -- the
                 children then follow its changes.
             builder: Called as ``builder(item, index)`` for an item entering
                 the view; returns the item's widget.

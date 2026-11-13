@@ -107,7 +107,7 @@ class ContextMenuBox(PopupBox):
 
     def _on_secondary_press(self, event: PointerEvent) -> None:
         # The rect provider is consulted on every layout pass, so recording the
-        # point is all that placement needs. Setting an already-True observable
+        # point is all that placement needs. Setting an already-True State
         # is a no-op, which is the right behaviour: while the menu is open its
         # light-dismiss hit layer covers the widget, so this handler is not
         # reached again until the menu closes.

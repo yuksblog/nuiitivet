@@ -13,7 +13,7 @@ from nuiitivet.material.selection_controls import RadioButton, RadioGroup
 from nuiitivet.material.slider import HorizontalRangeSlider, HorizontalSlider
 from nuiitivet.modifiers.semantics import semantics
 from nuiitivet.modifiers.visible import visible
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.runtime.app import App
 from nuiitivet.runtime.semantics_tree import ROOT_ID, SemanticsEntry, SemanticsTree
 from nuiitivet.runtime.window import Window
@@ -115,8 +115,8 @@ def test_semantics_on_a_layout_makes_it_one_group_that_hides_its_text() -> None:
     assert entry.children == ()
 
 
-def test_semantics_follows_an_observable_label() -> None:
-    label = Observable("Unread: 1")
+def test_semantics_follows_an_state_label() -> None:
+    label = State("Unread: 1")
     window = _mounted(Column([Column([]).modifier(semantics(label=label, role=SemanticsRole.IMAGE))]))
 
     label.value = "Unread: 2"

@@ -8,7 +8,7 @@ import pytest
 
 from nuiitivet.layout.container import Container
 from nuiitivet.modifiers.background import background
-from nuiitivet.observable.value import Observable
+from nuiitivet.observable.value import State
 from nuiitivet.runtime.app import App
 from nuiitivet.runtime.window import Window
 from nuiitivet.widgeting.widget import Widget
@@ -19,8 +19,8 @@ def test_title_returns_plain_string() -> None:
     assert app.title == "Counter"
 
 
-def test_title_unwraps_observable() -> None:
-    title: Observable[str | None] = Observable("Untitled")
+def test_title_unwraps_state() -> None:
+    title: State[str | None] = State("Untitled")
     app = App(Window(content=Container(width=10, height=10), title=title)).main_window
     assert app.title == "Untitled"
     title.value = "Renamed"

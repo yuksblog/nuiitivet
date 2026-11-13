@@ -10,7 +10,7 @@ from typing import Any, Iterator
 import pytest
 
 from nuiitivet.observable.switched import CancelToken
-from nuiitivet.remote import WriteOnlyObservable, server, server_only
+from nuiitivet.remote import WriteOnlyState, server, server_only
 from nuiitivet.web.server import make_server
 from tests.remote.models import Order
 
@@ -39,7 +39,7 @@ def keep(order: Order) -> Order:
 
 
 @server
-def report(progress: WriteOnlyObservable[float]) -> str:
+def report(progress: WriteOnlyState[float]) -> str:
     progress.value = 0.5
     assert _gate.wait(_TIMEOUT)
     progress.value = 1.0

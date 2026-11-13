@@ -164,7 +164,7 @@ _AXIS_EPSILON = 1e-6
 def _coerce_display(value: Any) -> Optional[str]:
     """Return a short display string for ``value``, or ``None`` if unusable.
 
-    Mirrors ``perception._coerce_display``: observables are unwrapped via
+    Mirrors ``perception._coerce_display``: States are unwrapped via
     ``.value``; only genuine text-like scalars survive (a widget-valued ``label``
     is ignored); the result is stripped and length-capped.
     """
@@ -246,7 +246,7 @@ def window_identity(window: Any) -> dict[str, Any]:
     ``focused``), so an agent can join a lifecycle event to that listing --
     in particular, a ``window_closed`` id marks any remembered ``window=`` id
     as stale before acting on it. The title goes through the same display
-    coercion as widget identities, so an observable title is unwrapped and an
+    coercion as widget identities, so a State title is unwrapped and an
     unset one is omitted rather than recorded as ``null``.
     """
     info: dict[str, Any] = {"id": getattr(window, "id", None)}

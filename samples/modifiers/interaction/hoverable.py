@@ -4,7 +4,7 @@ import nuiitivet.material as nv
 class HoverDemo(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
-        self.is_hovered = nv.Observable(False)
+        self.is_hovered = nv.State(False)
 
     def _set_hovered(self, hovered: bool) -> None:
         self.is_hovered.value = hovered

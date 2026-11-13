@@ -7,8 +7,8 @@ CompareFunc = Callable[[T, T], bool]
 
 # The read-only protocol only ever hands a value *out* -- from ``value``, and
 # into the callback ``subscribe`` is given -- so it is covariant, and a
-# ``ReadOnlyObservableProtocol[Dog]`` is usable where one of ``Animal`` is
-# wanted. ``ObservableProtocol`` re-declares the parameter as invariant,
+# ``ReadOnlyStateProtocol[Dog]`` is usable where one of ``Animal`` is
+# wanted. ``StateProtocol`` re-declares the parameter as invariant,
 # because writing ``value`` puts a T back in.
 T_co = TypeVar("T_co", covariant=True)
 
@@ -45,11 +45,11 @@ def mark_internal_subscription(callback: _C) -> _C:
     """Tag ``callback`` as the observable graph subscribing to itself.
 
     The leak check reports subscriptions that outlive the widget that made them;
-    these belong to no widget and are released with the observable that owns
+    these belong to no widget and are released with the State that owns
     them, so they must be exempt. Marking is explicit rather than inferred
     because the shape these callbacks happen to have -- a closure over a
     ``weakref`` and nothing else -- is an implementation detail that has already
-    drifted once: it left ``ComputedObservable``'s dependency edges classified as
+    drifted once: it left ``ComputedState``'s dependency edges classified as
     app subscriptions while ``debounce``'s were exempt, though the leak check
     documented both as exempt.
     """
@@ -86,7 +86,7 @@ class Disposable:
         if not self._disposed:
             self._dispose_fn()
             self._disposed = True
-            # Drop the closure, which holds the observable and the subscriber --
+            # Drop the closure, which holds the State and the subscriber --
             # and, for an operator chain, every wrapper between them. Keeping it
             # would pin all of that for as long as this object lives, which for a
             # widget's ``bind()`` list is until the widget itself is collected.
@@ -95,17 +95,17 @@ class Disposable:
             self._dispose_fn = _already_disposed
 
 
-class ObservableBase(Generic[T]):
-    """Concrete base for all observables (read-capable).
+class StateBase(Generic[T]):
+    """Concrete base for all States (read-capable).
 
-    Every built-in observable subclasses this so hot paths can use a pure-C
-    ``isinstance(value, ObservableBase)`` check instead of the much slower
+    Every built-in State subclasses this so hot paths can use a pure-C
+    ``isinstance(value, StateBase)`` check instead of the much slower
     ``@runtime_checkable`` Protocol instance check (which, on CPython < 3.12,
     runs the metaclass ``__instancecheck__`` in Python and ``hasattr``-probes
     every member on every call).
 
-    The read interface is declared here so an ``ObservableBase`` value is also a
-    structural :class:`ReadOnlyObservableProtocol`, letting callers keep the
+    The read interface is declared here so a ``StateBase`` value is also a
+    structural :class:`ReadOnlyStateProtocol`, letting callers keep the
     Protocol as the wider static type where duck typing is still wanted.
     Subclasses provide the real implementations; the stubs never run.
     """
@@ -120,11 +120,11 @@ class ObservableBase(Generic[T]):
         raise NotImplementedError
 
 
-class MutableObservableBase(ObservableBase[T]):
-    """Concrete base for observables whose ``value`` is writable.
+class MutableStateBase(StateBase[T]):
+    """Concrete base for States whose ``value`` is writable.
 
-    Runtime counterpart of :class:`ObservableProtocol` (mirrors what
-    :class:`ObservableBase` is to :class:`ReadOnlyObservableProtocol`).
+    Runtime counterpart of :class:`StateProtocol` (mirrors what
+    :class:`StateBase` is to :class:`ReadOnlyStateProtocol`).
     """
 
     __slots__ = ()
@@ -154,7 +154,7 @@ class MutableObservableBase(ObservableBase[T]):
 
 
 @runtime_checkable
-class ReadOnlyObservableProtocol(Protocol, Generic[T_co]):
+class ReadOnlyStateProtocol(Protocol, Generic[T_co]):
     def subscribe(self, cb: Callable[[T_co], None]) -> Disposable: ...
 
     @property
@@ -162,16 +162,16 @@ class ReadOnlyObservableProtocol(Protocol, Generic[T_co]):
 
 
 @runtime_checkable
-class ObservableProtocol(ReadOnlyObservableProtocol[T], Protocol, Generic[T]):
-    """Mutable observable protocol: supports reading and writing .value.
+class StateProtocol(ReadOnlyStateProtocol[T], Protocol, Generic[T]):
+    """Mutable State protocol: supports reading and writing .value.
 
     Note:
         ``isinstance`` against a runtime-checkable protocol only inspects
         attribute *presence*, and a property's setter is invisible to it - so
         this check separates mutable from read-only only because ``set`` exists
-        on one and not the other. A duck-typed observable that has a writable
+        on one and not the other. A duck-typed State that has a writable
         ``value`` but no ``set`` therefore does not match; subclass
-        :class:`MutableObservableBase` to get both.
+        :class:`MutableStateBase` to get both.
     """
 
     @property

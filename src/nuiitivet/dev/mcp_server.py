@@ -179,7 +179,7 @@ def build_server() -> "FastMCP":
     def describe_state(
         include_animations: bool = False, window: Optional[int] = None
     ) -> dict[str, Any]:
-        """Return the live `Observable` values behind the tree.
+        """Return the live `State` values behind the tree.
 
         Call it when the tree looks wrong and you need to know whether the state is
         wrong too: the value updated but the UI did not, or the reverse. Same nested

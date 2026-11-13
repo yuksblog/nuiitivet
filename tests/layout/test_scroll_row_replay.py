@@ -22,7 +22,7 @@ from nuiitivet.material.slider import HorizontalSlider
 from nuiitivet.material.text import Text
 from nuiitivet.material.text_fields import TextField
 from nuiitivet.material.theme.material_theme import MaterialThemeFactory
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.runtime import app_events
 from nuiitivet.scrolling import ScrollController, ScrollDirection
@@ -218,8 +218,8 @@ def test_a_handled_pointer_event_dirties_the_handler_and_its_ancestors() -> None
 
 def _hashes(replay: bool, scale: int) -> list[str]:
     class _Model:
-        label = Observable("first")
-        checked = Observable(False)
+        label = State("first")
+        checked = State(False)
 
     model = _Model()
     rows: List[Widget] = [Row(gap=8, padding=4, children=[Checkbox(i % 2 == 0), Text(f"row {i}")]) for i in range(30)]

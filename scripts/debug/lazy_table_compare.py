@@ -108,8 +108,8 @@ class Model:
     def __init__(self, count: int) -> None:
         self._rng = random.Random(254)
         self._next_id = 1
-        self.records: nv.Observable[List[Record]] = nv.Observable(self._fresh(count))
-        self.last_action: nv.Observable[str] = nv.Observable("")
+        self.records: nv.State[List[Record]] = nv.State(self._fresh(count))
+        self.last_action: nv.State[str] = nv.State("")
 
     def _fresh(self, count: int) -> List[Record]:
         records = generate(count, self._next_id, self._rng)
@@ -148,7 +148,7 @@ class SideStats:
         self.paint_ms = 0.0
         self._built_at_action = 0
         self._seconds_at_action = 0.0
-        self.text: nv.Observable[str] = nv.Observable("")
+        self.text: nv.State[str] = nv.State("")
         SideStats.all.append(self)
 
     def mark_action(self) -> None:
