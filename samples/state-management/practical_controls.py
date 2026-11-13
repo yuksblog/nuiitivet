@@ -1,4 +1,4 @@
-"""State: Practical Controls
+"""Practical Controls
 
 Demonstrates:
 - batch() to group updates and suppress intermediate notifications

@@ -87,14 +87,14 @@ modifier chain is everything else. [Modifiers](../modifiers/index.md) lists them
 ## Show state by binding it
 
 ```python
-count = nv.Observable(0)
+count = nv.State(0)
 
 nv.Text(count.map(lambda n: f"{n} times"))  # follows count on its own
 ```
 
-`Observable` is modelled on ReactiveProperty, from WPF's MVVM. Hand the
-`Observable` to the widget and the widget follows it; there is no `setState`
-and nothing to refresh by hand. [Observable](../state-management/index.md) covers
+`State` is modelled on ReactiveProperty, from WPF's MVVM. Hand the
+`State` to the widget and the widget follows it; there is no `setState`
+and nothing to refresh by hand. [`State`](../state-management/index.md) covers
 deriving values and the Rx-style operators.
 
 ## Handle events with ordinary code
@@ -125,7 +125,7 @@ import nuiitivet.material as nv
 class CounterCard(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.count = nv.Observable(0)
+        self.count = nv.State(0)
 
     def handle_add(self) -> None:
         self.count.value += 1

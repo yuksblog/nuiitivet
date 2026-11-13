@@ -1,13 +1,13 @@
-# Observable: Operators
+# Operators
 
 ## `.map(fn)`
 
-Use `.map(fn)` to transform the value of a single Observable into another derived value.
+Use `.map(fn)` to transform the value of a single `State` into another derived value.
 
 ```python
 import nuiitivet.material as nv
 
-age = nv.Observable(20)
+age = nv.State(20)
 is_adult = age.map(lambda x: x >= 18)
 
 is_adult.subscribe(lambda v: print(f"Adult: {v}"))
@@ -17,42 +17,42 @@ age.value = 20  # Adult: True
 
 ## `.combine(other).compute(fn)`
 
-Use this pattern when you need to compute a derived value from exactly two Observables.
+Use this pattern when you need to compute a derived value from exactly two `State`s.
 
 ```python
-price = nv.Observable(100)
-quantity = nv.Observable(2)
+price = nv.State(100)
+quantity = nv.State(2)
 total = price.combine(quantity).compute(lambda p, q: p * q)
 ```
 
 ## `combine(a, b, ...).compute(fn)`
 
-Use this form to combine three or more Observables in a single derived computation.
+Use this form to combine three or more `State`s in a single derived computation.
 
 ```python
 import nuiitivet.material as nv
 
-price = nv.Observable(100)
-quantity = nv.Observable(2)
-discount = nv.Observable(0.1)
+price = nv.State(100)
+quantity = nv.State(2)
+discount = nv.State(0.1)
 
 total = nv.combine(price, quantity, discount).compute(
     lambda p, q, d: p * q * (1 - d)
 )
 ```
 
-## `Observable.compute(fn)`
+## `State.compute(fn)`
 
-`Observable.compute(fn)` is useful for complex logic and conditional branches where dependencies may change dynamically.
+`State.compute(fn)` is useful for complex logic and conditional branches where dependencies may change dynamically.
 
 ```python
 class Cart:
     def __init__(self):
-        self.show_detail = nv.Observable(True)
-        self.price = nv.Observable(100)
-        self.quantity = nv.Observable(2)
+        self.show_detail = nv.State(True)
+        self.price = nv.State(100)
+        self.quantity = nv.State(2)
 
-        self.display = nv.Observable.compute(lambda: (
+        self.display = nv.State.compute(lambda: (
             f"¥{self.price.value * self.quantity.value:,}"
             if self.show_detail.value
             else "---"
@@ -65,16 +65,16 @@ class Cart:
 # 1:1 transformation
 is_adult = age.map(lambda x: x >= 18)
 
-# 2 observables
+# 2 States
 subtotal = price.combine(quantity).compute(lambda p, q: p * q)
 
-# 3+ observables
+# 3+ States
 total = nv.combine(price, quantity, discount).compute(
     lambda p, q, d: p * q * (1 - d)
 )
 
 # complex branching
-display = nv.Observable.compute(lambda: (
+display = nv.State.compute(lambda: (
     self.tax_included.value if self.show_tax.value
     else self.tax_excluded.value
 ))
@@ -95,13 +95,13 @@ Assign it, as above.
 ## Keep Transformations Pure
 
 The function you pass to `.map()` / `.compute()` should be a pure transformation:
-derive a value from the observable inputs and return it, with no side effects.
+derive a value from the `State` inputs and return it, with no side effects.
 These functions re-run whenever a dependency changes (and may be deferred to a
-later frame), so side effects performed inside them — mutating other observables,
+later frame), so side effects performed inside them — mutating other `State`s,
 driving widgets — fire unpredictably.
 
 Return the derived value and bind it where you need it (for example, pass the
-resulting observable straight to a widget) instead of updating state from inside
+resulting `State` straight to a widget) instead of updating state from inside
 the transform.
 
 The function runs on the thread that wrote the source, a worker thread included.
@@ -109,8 +109,8 @@ A function that keeps raising puts one line in the log. The derived value
 keeps its previous value.
 
 ```python
-# ❌ bad: the transform mutates a separate observable as a side effect
-label = nv.Observable("")
+# ❌ bad: the transform mutates a separate State as a side effect
+label = nv.State("")
 nv.Text(label)
 
 def update_label(c):
@@ -127,7 +127,7 @@ nv.Text(count_label)
 
 - `.map()` and `.combine()` internally leverage compute-like mechanisms.
 - Prefer explicit dependencies (`map`, `combine`) for readability.
-- Use `Observable.compute()` for branching and complex dependency paths.
+- Use `State.compute()` for branching and complex dependency paths.
 
 ---
 

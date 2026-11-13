@@ -33,7 +33,7 @@ flowchart LR
 
 ### Promises
 
-- No `Observable` is written during layout. No size callback runs during
+- No `State` is written during layout. No size callback runs during
   layout.
 
 ## The Queue
@@ -100,8 +100,8 @@ sequenceDiagram
 
 ## The Providers
 
-`Geometry` publishes its own measured size to its subtree as an
-`Observable[Size]`. `on_size_changed` reports a widget's size to the widget
+`Geometry` publishes its own measured size to its subtree as a
+`State[Size]`. `on_size_changed` reports a widget's size to the widget
 that carries it.
 
 ### Structure
@@ -136,7 +136,7 @@ flowchart LR
 ### Promises
 
 - Constraints are not published.
-- `size` is one `Observable`, never a width and a height apart.
+- `size` is one `State`, never a width and a height apart.
 - The nearest `Geometry` wins.
 - `on_size_changed` adds no node to the tree. It creates no scope.
 

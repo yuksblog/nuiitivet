@@ -87,4 +87,4 @@ Restore the previous clock afterwards, or later tests inherit yours.
 ## Next Steps
 
 - [Testing Overview](index.md)
-- [Observable: Thread Safety](../state-management/thread_safety.md)
+- [Thread Safety](../state-management/thread_safety.md)

@@ -1,4 +1,4 @@
-"""State: Getting Started
+"""Getting Started
 
 Demonstrates:
 - Basic State usage (instance attribute style)
@@ -62,7 +62,7 @@ class CounterApp(nv.ComposableWidget):
             child=nv.Column(
                 gap=16,
                 children=[
-                    nv.Text("State: Getting Started"),
+                    nv.Text("Getting Started"),
                     nv.Text(self.label),
                     nv.Text(self.double_label),
                     nv.Row(

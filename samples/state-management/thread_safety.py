@@ -1,4 +1,4 @@
-"""State: Thread Safety
+"""Thread Safety
 
 Demonstrates:
 - Cross-thread writes marshalled onto the UI thread automatically
@@ -86,7 +86,7 @@ class ThreadSafetyApp(nv.ComposableWidget):
             child=nv.Column(
                 gap=16,
                 children=[
-                    nv.Text("State: Thread Safety"),
+                    nv.Text("Thread Safety"),
                     nv.Text("Workers update States from a background thread."),
                     nv.Text("State marshals those writes onto the UI thread."),
                     nv.Text(self.status_text),

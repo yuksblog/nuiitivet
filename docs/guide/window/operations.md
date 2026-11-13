@@ -26,7 +26,7 @@ window.close()
 
 `hide()` is not a close: the window stays open (and keeps counting for the
 App's exit policy), renders no frames while parked, and `show()` restores it
-instantly. `window.is_visible` is the matching `Observable[bool]`. This pair
+instantly. `window.is_visible` is the matching `State[bool]`. This pair
 is what a tray-resident app is built on — see [Tray Icon](tray_icon.md).
 
 ## App methods

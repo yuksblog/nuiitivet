@@ -76,7 +76,7 @@ flowchart LR
 | `animation/motion.py` | advances a state (The Motions) |
 | `animation/converter.py` | maps a domain value to a vector of floats and back |
 | `observable/runtime.py` | the clock ([OBSERVABLE.md](OBSERVABLE.md)) |
-| `observable/value.py` | the observable the value is published through ([OBSERVABLE.md](OBSERVABLE.md)) |
+| `observable/value.py` | the `State` the value is published through ([OBSERVABLE.md](OBSERVABLE.md)) |
 | the widgets | assign a target, bind the value |
 
 ### Sequence
@@ -174,7 +174,7 @@ flowchart LR
 | --- | --- |
 | `transition/engine.py` | `TransitionEngine`: one animatable from 0 to 1 per transition, a token per start, the exact completion |
 | `transition/spec.py` | `TransitionSpec`, an opaque lifecycle token, and `Transitions.empty()`, the token with no motion; the lookup of a phase's motion |
-| `transition/state.py` | `TransitionState`: the phase and the progress as observables |
+| `transition/state.py` | `TransitionState`: the phase and the progress as `State`s |
 | `transition/stack.py` | `StackRuntime`: the entries by identity, each entering, active, exiting or disposed |
 | `animation/animatable.py` | the value the engine drives (The Animatable) |
 | `animation/transition_definition.py` | where a spec's motion comes from (The Definitions) |

@@ -12,8 +12,8 @@ class EditorState:
     """The menu binds to this, so it lives outside the widget tree."""
 
     def __init__(self) -> None:
-        self.can_save = nv.Observable(False)
-        self.word_wrap = nv.Observable(False)
+        self.can_save = nv.State(False)
+        self.word_wrap = nv.State(False)
 
     ...
 
@@ -99,10 +99,10 @@ Do not also register the same gesture with `key_shortcut()` — the menu item
 
 ## Reactive properties
 
-`label` and `enabled` accept an `Observable` and update the rendered menu
+`label` and `enabled` accept a `State` and update the rendered menu
 live. `checked` makes the item checkable and must be a **writable**
-`Observable[bool]`: activating the item toggles the value first, then calls
-`on_select`, and the check mark follows the observable from anywhere.
+`State[bool]`: activating the item toggles the value first, then calls
+`on_select`, and the check mark follows the `State` from anywhere.
 
 Structure is not observable. To add or remove items, assign a whole new
 model — item properties keep updating live in between:
@@ -114,15 +114,15 @@ app.menu = nv.MenuBar([...])   # wholesale replacement
 ## Acting on the focused pane
 
 A shared entry — one File > Save over several open documents — must act on
-whichever pane the user is working in. Hold that in app state: an observable
+whichever pane the user is working in. Hold that in app state: a `State`
 each pane writes when it gains focus, read by the entry's `on_select`:
 
 ```python
-class State:
+class AppState:
     def __init__(self) -> None:
         self.notes = Document("notes.txt")
         self.draft = Document("draft.txt")
-        self.active = nv.Observable(self.notes)
+        self.active = nv.State(self.notes)
 
     def save(self) -> None:
         document = self.active.value
@@ -130,7 +130,7 @@ class State:
 
 
 class Pane(nv.ComposableWidget):
-    def __init__(self, state: State, document: Document) -> None:
+    def __init__(self, state: AppState, document: Document) -> None:
         super().__init__()
         self.state = state
         self.document = document

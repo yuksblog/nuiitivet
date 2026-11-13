@@ -144,7 +144,7 @@ sequenceDiagram
 
 ## The Bindings
 
-A widget subscribes to an `Observable` for its mounted life. The
+A widget subscribes to a `State` for its mounted life. The
 subscription names what a change invalidates.
 
 ### Structure
@@ -158,7 +158,7 @@ flowchart LR
     window[runtime/window.py]
     app[the app]
 
-    app -- "observe(observable, callback) · bind(disposable) · bind_to(observable, setter, dependency, scope_id)" --> binding
+    app -- "observe(state, callback) · bind(disposable) · bind_to(state, setter, dependency, scope_id)" --> binding
     binding -- "subscribe(on_value) · dispose()" --> observable
     binding -- "invalidate(), on the first entry" --> widget
     window -- "flush_binding_invalidations()" --> binding
@@ -173,11 +173,11 @@ flowchart LR
 | `widgeting/widget_builder.py` | routes a dependency to the scopes that read it (The Builder) |
 | `observable/` | the source and its subscription ([OBSERVABLE.md](OBSERVABLE.md)) |
 | `runtime/window.py` | flushes the queue at the start of a frame ([GEOMETRY.md](GEOMETRY.md)) |
-| the app | a widget passing an `Observable` into its own state |
+| the app | a widget passing a `State` into its own state |
 
 ### Sequence
 
-#### An observable fires into a widget
+#### A State fires into a widget
 
 ```mermaid
 sequenceDiagram

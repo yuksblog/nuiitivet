@@ -1,4 +1,4 @@
-"""State: Operators
+"""Operators
 
 Demonstrates:
 - .map() for 1:1 transformations
@@ -49,7 +49,7 @@ class OperatorsApp(nv.ComposableWidget):
             child=nv.Column(
                 gap=16,
                 children=[
-                    nv.Text("State: Operators"),
+                    nv.Text("Operators"),
                     nv.Text(m.price.map(lambda p: f"Unit price : ¥{p:,}")),
                     nv.Text(m.quantity.map(lambda q: f"Quantity   : {q}")),
                     nv.Text(m.discount.map(lambda d: f"Discount   : {int(d * 100)}%")),

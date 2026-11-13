@@ -31,7 +31,7 @@ Runnable demos:
 
 `menu=` takes the same `MenuEntry` entries as
 [the menu bar](menu_bar.md): actions, separators, nested submenus, checkable
-items, and Observable `label` / `enabled` / `checked` that update the native
+items, and `State` `label` / `enabled` / `checked` that update the native
 menu live. Two differences:
 
 - **Include `MenuEntry.quit()`.** For a resident app the tray menu is the
@@ -47,7 +47,7 @@ accelerator convention).
 
 ## `installed`: whether the icon is actually showing
 
-`tray.installed` is an `Observable[bool]`: `False` until the backend installs
+`tray.installed` is a `State[bool]`: `False` until the backend installs
 the icon, `True` while it shows, `False` again after removal — or forever, on
 a platform that cannot host one. **A failed install never takes the app
 down**; it is logged once and the app runs without a tray. If your app treats
@@ -82,7 +82,7 @@ app = nv.App(window, tray=tray, exit_policy=nv.ExitPolicy.EXPLICIT)
   [Multiple Windows](multi_window.md) for the exit policies; the tray never
   overrides them.
 - **`close_action=...`** — what the OS close button does: `"close"` (default)
-  destroys the window, `"hide"` parks it. It accepts an Observable, and the
+  destroys the window, `"hide"` parks it. It accepts a `State`, and the
   binding above is the important part: hide **only while the tray icon is
   actually showing**. If the tray failed to install (see
   [If no icon appears on Linux](#if-no-icon-appears-on-linux)),
@@ -104,7 +104,7 @@ with or without a tray:
   returns with it — nothing to configure.
 - A hidden window renders no frames, so a parked app costs no idle CPU for
   drawing.
-- `window.is_visible` is an `Observable[bool]` if you need to react to it.
+- `window.is_visible` is a `State[bool]` if you need to react to it.
 - Calling `hide()` **before** `app.run()` makes the window start hidden —
   the start-in-tray launch shape for sync clients and monitors.
 

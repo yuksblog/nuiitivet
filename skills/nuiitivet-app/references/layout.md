@@ -96,14 +96,14 @@ To reflow on how much space a widget actually has, attach
 `nv.on_size_changed(cb)` — it reports that widget's own measured `nv.Size`
 (`.width` / `.height`) after every layout that changed it. There **is** a size
 API; do not override `set_layout_rect` or any other layout hook to bridge size
-into an Observable.
+into a `State`.
 
 ```python
 class Panel(nv.ComposableWidget):
     def __init__(self) -> None:
         # Filling sizing: measure the space offered, not the content's size.
         super().__init__(width="wt", height="wt")
-        self._index = nv.Observable(0)                          # plain __init__
+        self._index = nv.State(0)                          # plain __init__
 
     def _on_size(self, size: nv.Size) -> None:
         self._index.value = 1 if size.width >= size.height else 0
@@ -116,11 +116,11 @@ class Panel(nv.ComposableWidget):
 
 - **No lifecycle override, no `Geometry`, no subscription.** The callback is
   attached to the widget itself (like `on_mount`, it adds no node to the tree),
-  so the Observables it drives are created in a plain `__init__`.
+  so the `State`s it drives are created in a plain `__init__`.
 - **It fires once with the first measurement**, so the callback alone seeds the
   state it drives. After that it fires only on an actual size change; a widget
   that merely moves is silent.
-- **Give the Observable the value the initial size implies.** The first report
+- **Give the `State` the value the initial size implies.** The first report
   arrives one frame after the first paint, so a mismatched seed shows one frame
   of the other layout (and animates); a matching seed de-dupes and is silent.
 - **Measure something the parent sizes** (a weight — `"wt"`), otherwise the
@@ -129,7 +129,7 @@ class Panel(nv.ComposableWidget):
   oscillate. Change what is *inside* the measured box.
 - This is also how to feed a **two-way** input such as
   `NavigationRail.expanded`, which its own menu button writes and so needs a
-  plain mutable `Observable`.
+  plain mutable `State`.
 
 The callback is dispatched between frames, never inside layout, so it may safely
 mutate the tree; the effect lands on the next frame.
@@ -144,7 +144,7 @@ through.
 ```python
 class Badge(nv.ComposableWidget):
     def on_mount(self) -> None:
-        size = nv.Geometry.of(self).size                        # Observable[Size]
+        size = nv.Geometry.of(self).size                        # State[Size]
         self._label = size.map(lambda s: f"{s.width}px")
         super().on_mount()
 
@@ -169,12 +169,12 @@ nv.Geometry(Pane(), width="wt", height="wt")   # filling: defines the scope
 | A grid | `nv.UniformFlow.builder(items, fn, columns=3, main_gap=8, cross_gap=8)` |
 
 `Row`, `Column`, `Stack`, `Flow`, and `UniformFlow` expose a `builder()` class
-method. Pass an **Observable** as the source to get automatic, region-scoped
+method. Pass a **`State`** as the source to get automatic, region-scoped
 regeneration:
 
 ```python
 nv.Column.builder(
-    self.items,                                   # a list, or an Observable for reactivity
+    self.items,                                   # a list, or a State for reactivity
     lambda item, index: nv.Text(item),            # (item, index) -> Widget
     gap=8,
     cross_alignment="center",

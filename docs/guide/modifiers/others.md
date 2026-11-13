@@ -10,7 +10,7 @@ Other modifiers provide additional functionalities to Widgets, such as handling 
 class Panel(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__(width="wt", height="wt")
-        self._wide = nv.Observable(False)
+        self._wide = nv.State(False)
 
     def _on_size(self, size: nv.Size) -> None:
         self._wide.value = size.width >= 600
@@ -21,7 +21,7 @@ class Panel(nv.ComposableWidget):
 
 Like the lifecycle modifiers it registers on the widget itself and adds no node to the tree. It fires once with the first measurement, then only when the size actually changed — a widget that is merely moved, or re-laid-out at the same size, is silent.
 
-The callback is dispatched **between frames**, never inside the layout pass, so it may safely write Observables, push routes, or replace children; the effect lands on the next frame. Two consequences: do not resize the measured widget from its own callback, or the report can feed back; and the first call arrives after the first paint, so give the Observable the value the initial size implies to avoid a one-frame transition on startup.
+The callback is dispatched **between frames**, never inside the layout pass, so it may safely write `State`s, push routes, or replace children; the effect lands on the next frame. Two consequences: do not resize the measured widget from its own callback, or the report can feed back; and the first call arrives after the first paint, so give the `State` the value the initial size implies to avoid a one-frame transition on startup.
 
 See [Adaptive Layout](../layout/adaptive.md) for the full pattern, and [Geometry](../advanced/geometry.md) for the case where a *subtree* needs an ancestor's size.
 
@@ -53,7 +53,7 @@ class HomeScreen(nv.ComposableWidget):
 class EditScreen(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.text = nv.Observable("Hello")
+        self.text = nv.State("Hello")
         self._initial_text = str(self.text.value)
 
     def _is_dirty(self) -> bool:
@@ -158,7 +158,7 @@ layout is not affected.
 
 ### Basic usage
 
-Pass a `bool` or an `Observable[bool]` as the condition:
+Pass a `bool` or a `State[bool]` as the condition:
 
 ```python
 import nuiitivet.material as nv
@@ -189,12 +189,12 @@ content = nv.Column(
 
 ![Visible Static](../../assets/modifier_others_visible_static.png)
 
-To make visibility reactive, pass an `Observable[bool]`:
+To make visibility reactive, pass a `State[bool]`:
 
 ```python
 import nuiitivet.material as nv
 
-is_visible: nv.Observable[bool] = nv.Observable(True)
+is_visible: nv.State[bool] = nv.State(True)
 
 widget.modifier(nv.visible(is_visible))
 ```
@@ -217,7 +217,7 @@ _FADE_SCALE = nv.TransitionDefinition(
 
 
 class MyWidget(nv.ComposableWidget):
-    is_visible: nv.Observable[bool] = nv.Observable(True)
+    is_visible: nv.State[bool] = nv.State(True)
 
     def build(self) -> nv.Widget:
 

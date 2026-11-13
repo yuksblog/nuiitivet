@@ -24,7 +24,7 @@ The framework keeps process-global state: pending widget invalidations, the
 theme reader stack, the once-per-process log de-duplication, and — most
 importantly — `runtime.clock`, which schedules every delayed callback in the
 framework (`debounce`, tooltip delays, overlay auto-dismiss, and the marshal
-behind every cross-thread `Observable` write).
+behind every cross-thread `State` write).
 
 Without the plugin, two things go wrong, and both have the same expensive
 signature — **the test that fails is not the test that is wrong**:

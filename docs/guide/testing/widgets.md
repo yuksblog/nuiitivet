@@ -13,7 +13,7 @@ def test_card_collapses():
         host.layout(400, 200)
         assert card.preferred_size() == (400, 48)
 
-        card.expanded.value = True     # the Observable the test holds
+        card.expanded.value = True     # the State the test holds
         host.settle()
 
         assert host.get(key="body").is_reachable
@@ -41,7 +41,7 @@ Call `layout()` again to re-lay-out at a new size.
 
 ## `settle()` after changing state
 
-An action mutates observables; the visible effect lands on the *next* frame.
+An action mutates `State`s; the visible effect lands on the *next* frame.
 `settle()` is that frame: it flushes the pending reactive work and re-lays-out,
 so the tree you query is the tree the change produced.
 
@@ -114,7 +114,7 @@ during it is still open:
 
 ```text
 SubscriptionLeakError: 1 subscription(s) were created during this test and never
-disposed. The observable still holds a callback into a widget that has been
+disposed. The State still holds a callback into a widget that has been
 unmounted, so firing it now mutates a dead tree:
 
   MyCard  subscribed at myapp/cards.py:64
@@ -123,7 +123,7 @@ Wrap the call in self.bind(...), which disposes it on unmount, ...
 ```
 
 You get this without asking for it, because it is the framework's most common
-bug and it is silent where it is introduced. An observable that outlives your
+bug and it is silent where it is introduced. A `State` that outlives your
 widget — one the app passed in — keeps a reference to a callback into a tree that
 is gone; the symptom shows up somewhere unrelated, much later.
 

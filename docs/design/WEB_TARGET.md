@@ -296,11 +296,11 @@ flowchart LR
     scope[remote/scope.py]
     calls[web/calls.py]
     workersjs[workers.mjs]
-    observable[the caller's Observable]
+    observable[the caller's State]
 
     worker -- "WorkerFunction is a RemoteFunction" --> function
     function -- "a Codec per annotation, at definition" --> codec
-    function -- "CallWriter(observable, codec)" --> writer
+    function -- "CallWriter(State, codec)" --> writer
     writer -- "the latest value per tick" --> observable
     worker -- "web_pool · thread_pool · process_pool: Pool.call(name, ceiling, values, writers)" --> pool
     pool -- "Transport.start(slot) · Worker.post · Worker.end" --> threads & process & worker
@@ -316,7 +316,7 @@ flowchart LR
 | `remote/function.py` | `RemoteFunction`: the codecs from the annotations, the call that encodes and decodes, `run()` on the function's side; `ServerFunction`: the server mark's one request; `register`, the two marks |
 | `remote/worker.py` | `WorkerFunction`: `parallel`, `process`, `warm`; the three pools; `_WebTransport`, the page's Web Workers as a transport |
 | `remote/codec.py` | `Codec`: encode and decode by annotation; the scalars, `datetime`, an `Enum`, a dataclass, the containers |
-| `remote/writer.py` | `WriteOnlyObservable`, the progress parameter; `CallWriter`, which lands each write on the caller's observable |
+| `remote/writer.py` | `WriteOnlyState`, the progress parameter; `CallWriter`, which lands each write on the caller's `State` |
 | `remote/pool.py` | `Pool`: the workers of one kind and the calls waiting for them; the ceiling, the machine's limit, `warm`, `retire` |
 | `remote/threads.py` | a pooled thread as a transport |
 | `remote/process.py` | a child process started with `spawn` and fed through a pipe, as a transport |
@@ -324,7 +324,7 @@ flowchart LR
 | `remote/scope.py` | `server_only()`, which marks a module as one the browser never gets |
 | `web/calls.py` | the server's side of a `@server` call (The Server) |
 | `workers.mjs` | starts and relays the Web Workers (The Page) |
-| the caller's Observable | the app's observable a progress parameter writes to |
+| the caller's `State` | the app's `State` a progress parameter writes to |
 
 ### Sequence
 
@@ -338,7 +338,7 @@ sequenceDiagram
     participant P as remote/pool.py
     participant T as the transport (threads.py, process.py or workers.mjs)
     participant Wr as remote/writer.py
-    participant O as the caller's Observable
+    participant O as the caller's State
 
     App->>F: await fn(args, progress)
     F->>F: encode the arguments by their codecs
@@ -376,8 +376,8 @@ sequenceDiagram
   on both targets.
 - The codec comes from the type annotations, never from the data. A type the
   codec has no rule for is refused when the function is defined.
-- Progress flows through a `WriteOnlyObservable` parameter. The caller's
-  observable takes the latest value per clock tick.
+- Progress flows through a `WriteOnlyState` parameter. The caller's
+  `State` takes the latest value per clock tick.
 - The `CancelToken` is a parameter with a default. On a thread, cancelling
   sets it. In a worker or a child process, cancelling ends the Python running
   the call.

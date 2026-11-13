@@ -8,12 +8,12 @@ without every widget in between having to pass it through.
 
 `Geometry` wraps a single child and is transparent to layout: the child receives
 the same size `Geometry` receives. After each layout pass it publishes its own
-resolved size as an `Observable[Size]`, which descendants read with
+resolved size as a `State[Size]`, which descendants read with
 `Geometry.of(self).size`.
 
 Two rules come with it, and they are the reason this is the advanced tool:
 
-- **Bind the Observable; never read `.value` at build time.** `.value` is a
+- **Bind the `State`; never read `.value` at build time.** `.value` is a
   one-time snapshot that never updates. Map it into a value widget, or drive a
   `Deck` index for a structural switch.
 - **Resolve it in `on_mount`, not `__init__`.** `Geometry.of` walks the ancestor
@@ -79,7 +79,7 @@ pane it lands in.
   `.map(...)` index and shows one mounted child by it.
 - **Two-way** widget state (a `NavigationRail`'s `expanded`, which its own menu
   button can also toggle): a read-only `.map` cannot be written back, so mirror
-  the size-derived value into a plain `Observable` and keep it in sync — and at
+  the size-derived value into a plain `State` and keep it in sync — and at
   that point `on_size_changed` is usually the simpler tool.
 
 ## Notes

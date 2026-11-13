@@ -16,7 +16,7 @@ def test_counter_increments(nuiitivet_app):
     assert app.get(key="count").text == "Count: 1"   # what is on screen
 ```
 
-Two assertions, two different questions. The `Observable` is the front door for
+Two assertions, two different questions. The `State` is the front door for
 state; the tree query is how you check that the state actually reached the
 screen.
 
@@ -85,7 +85,7 @@ that is what the three query verbs are for.
 be in the tree and scrolled below the fold, clipped by an ancestor, or covered
 by an overlay, and presence still says yes. It **says nothing about opacity** —
 a `visible(False)` widget is still laid out at full size and merely faded, so it
-reports `True`. Assert on the `Observable` driving `visible()` for that.
+reports `True`. Assert on the `State` driving `visible()` for that.
 
 ### Re-query after an action
 

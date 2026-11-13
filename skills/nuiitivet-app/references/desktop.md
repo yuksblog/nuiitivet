@@ -10,11 +10,11 @@ nv.Window(content=lambda: Palette(state), title="Palette").open()
 ```
 
 - A `Window` is a model until `open()`. `close()` destroys it: construct a new
-  one to reopen, and keep state that must survive in app-layer Observables.
+  one to reopen, and keep state that must survive in app-layer `State`s.
 - Hiding is different: `window.hide()` parks an open window — tree, state and
   geometry survive, no frames are drawn, and it still counts for the exit
   policy — and `window.show()` summons it back focused. `window.is_visible` is
-  the matching Observable.
+  the matching `State`.
 - Modal child: `nv.Window(content=..., parent=nv.Window.of(self), modal=True).open()`.
   Content closes its own window via `nv.Window.of(self).close()`.
 - The first click into an inactive window acts, on every platform.
@@ -38,7 +38,7 @@ nv.Window(
 ```
 
 A window-level model, never built in `build()`. `label` / `enabled` / `checked`
-take Observables. `shortcut` also fires window-wide, so never duplicate it with
+take `State`s. `shortcut` also fires window-wide, so never duplicate it with
 `key_shortcut`. Replace the bar with `window.menu = ...`; `nv.MenuBarArea()`
 relocates it.
 
@@ -65,9 +65,9 @@ nv.App(win, tray=tray)
 ```
 
 - App-owned: it lives exactly as long as the app runs.
-- The menu reuses `MenuEntry`: Observable `label` / `enabled` / `checked` update
+- The menu reuses `MenuEntry`: `State` `label` / `enabled` / `checked` update
   live, and window-scoped roles are ignored. **Always include `quit()`.**
-- `tray.installed` (`Observable[bool]`) says whether the icon actually shows —
+- `tray.installed` (`State[bool]`) says whether the icon actually shows —
   install can fail on a Linux desktop without raising.
 - Resident (close-to-tray) app, three independent parts:
   `exit_policy=nv.ExitPolicy.EXPLICIT`, plus

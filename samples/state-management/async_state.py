@@ -1,4 +1,4 @@
-"""State: Async State
+"""Async State
 
 Demonstrates:
 - switch_map() to run a slow query off the UI thread and keep only the newest result
@@ -126,7 +126,7 @@ class SearchScreen(nv.ComposableWidget):
             child=nv.Column(
                 gap=16,
                 children=[
-                    nv.Text("State: Async State"),
+                    nv.Text("Async State"),
                     nv.Text("Type fast -- only the newest query's result is shown."),
                     # width names the box the bar is inset into, not the bar.
                     nv.SearchBar(self.model.query, placeholder="Search fruit", width=420),
@@ -145,7 +145,7 @@ class SearchScreen(nv.ComposableWidget):
 
 def main() -> None:
     random.seed(0)
-    app = nv.App(nv.Window(content=SearchScreen, title="State: Async State"))
+    app = nv.App(nv.Window(content=SearchScreen, title="Async State"))
     app.run()
 
 

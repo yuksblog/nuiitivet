@@ -14,7 +14,7 @@ class LiveScreen(nv.ComposableWidget):
 
     def __init__(self) -> None:
         super().__init__()
-        self.reading = nv.Observable("--")
+        self.reading = nv.State("--")
 
     async def _poll(self) -> None:
         # Started as a task on mount, cancelled automatically on unmount.
@@ -57,7 +57,7 @@ class LiveScreen(nv.ComposableWidget):
 
 Callbacks take no arguments and fire at exactly the same point as the corresponding override: `on_mount` right after the widget's `on_mount()` hook and before its children mount, `on_unmount` right after `on_unmount()` and before its children unmount. Multiple callbacks on one widget run in registration order, and an exception in any of them is logged and contained.
 
-> **Note:** These modifiers report tree lifetime and nothing else. A widget on a route that another route has covered stays mounted, so `on_unmount` does **not** fire when a screen merely stops being visible — and no other callback fires at that moment either. There is deliberately no "became foreground / background" hook: drive pause and resume from the side that *causes* the change — the code calling `Navigator.push()`, or the `Observable` behind a `Deck` index — which keeps it explicit what stops and what deliberately keeps running.
+> **Note:** These modifiers report tree lifetime and nothing else. A widget on a route that another route has covered stays mounted, so `on_unmount` does **not** fire when a screen merely stops being visible — and no other callback fires at that moment either. There is deliberately no "became foreground / background" hook: drive pause and resume from the side that *causes* the change — the code calling `Navigator.push()`, or the `State` behind a `Deck` index — which keeps it explicit what stops and what deliberately keeps running.
 
 ### Async callbacks
 

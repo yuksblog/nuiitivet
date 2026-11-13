@@ -268,7 +268,7 @@ The badge says why, and the file is left alone. That happens for:
   - a widget as big as its container on every axis it could align on:
     `"wt"`, or the same size;
 - Space
-  - a `padding` or `gap` bound to a name, an expression or an observable;
+  - a `padding` or `gap` bound to a name, an expression or a `State`;
 - Pick
   - a `style` or `type_scale` that may come through `**kwargs`;
   - a bare `Button(...)` in a module that does not import `ButtonStyle`

@@ -75,7 +75,7 @@ breaks nothing.
 Conditions come in two shapes. The tree vocabulary is the dev bridge's, one for
 one — `key`, `label`, `text`, `present` — so what you learned writing E2E works
 here. The **predicate** form is for everything the tree cannot express, which
-includes the assertion this guide otherwise pushes you towards: the `Observable`
+includes the assertion this guide otherwise pushes you towards: the `State`
 your screen is driven by.
 
 `timeout` defaults to one second. To change it for a whole suite:

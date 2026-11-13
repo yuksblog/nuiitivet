@@ -1,4 +1,4 @@
-# Observable: Async State
+# Async State
 
 A search box that searches as you type. The user types, results appear — and if
 they keep typing, only the newest search reaches the screen, even when an earlier
@@ -11,7 +11,7 @@ import nuiitivet.material as nv
 class SearchScreen(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.query = nv.Observable("")
+        self.query = nv.State("")
 
         # Search 0.3 s after typing stops. If the user types again before the
         # search answers, that answer is thrown away.
@@ -30,7 +30,7 @@ class SearchScreen(nv.ComposableWidget):
         )
 ```
 
-That is the whole feature. `self.results` is an ordinary Observable, so the list
+That is the whole feature. `self.results` is an ordinary `State`, so the list
 binds to it the same way anything else does; nothing in `build()` knows a thread
 was involved.
 

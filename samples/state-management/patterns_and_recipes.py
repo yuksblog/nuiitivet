@@ -1,4 +1,4 @@
-"""State: Patterns and Recipes
+"""Patterns and Recipes
 
 Demonstrates:
 - ViewModel pattern (state/logic separation from rendering)
@@ -293,7 +293,7 @@ class PatternsApp(nv.ComposableWidget):
 
 def main() -> None:
     # The class, not an instance: hot reload rebuilds the root by calling it.
-    nv.App(nv.Window(content=PatternsApp, title="State: Patterns and Recipes", width=560, height=980)).run()
+    nv.App(nv.Window(content=PatternsApp, title="Patterns and Recipes", width=560, height=980)).run()
 
 
 if __name__ == "__main__":

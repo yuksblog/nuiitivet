@@ -59,13 +59,13 @@ for boxes that must nest inside each other, as above.
 A component that displays **only one** child at a time from multiple children.
 Used for tab switching or content switching in side menus.
 
-The index is an `Observable[int]`, and the buttons write it. A lambda cannot
+The index is a `State[int]`, and the buttons write it. A lambda cannot
 assign, so the write uses [`set()`](../state-management/basic_api.md#writing-from-a-lambda):
 
 ```python
 import nuiitivet.material as nv
 
-current_index = nv.Observable(0)
+current_index = nv.State(0)
 
 menu = nv.Column(
     padding=8,

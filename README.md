@@ -36,8 +36,8 @@ and it does not aim at the large applications PyQt serves. The target is small
 to mid-sized apps, and there is correspondingly less to learn.
 
 The code looks like Flet's. The biggest difference is state management.
-`Observable` is modelled on ReactiveProperty, a library widely used with WPF's
-MVVM, and Rx operators work directly on it. `Observable` also moves a
+`State` is modelled on ReactiveProperty, a library widely used with WPF's
+MVVM, and Rx operators work directly on it. `State` also moves a
 worker-thread write back onto the UI thread for you, the step where things
 tend to go wrong.
 
@@ -54,11 +54,11 @@ tend to go wrong.
 - **Shipping an executable**: recipes for PyInstaller and Nuitka
   ([Packaging](docs/guide/packaging/index.md)). One executable, onto a machine
   with no Python on it
-- **Background work**: a write to an `Observable` from a worker thread is
+- **Background work**: a write to a `State` from a worker thread is
   marshalled onto the UI thread. Progress, cancellation, leaving the screen
   mid-run, a worker that raises: all of them have an answer   ([Background Work](docs/guide/state-management/background_work.md))
 - **Hot reload**: a save rebuilds the window in place, and the state your
-  `Observable`s hold survives
+  `State`s hold survives
 
 ### 1.4 Limits
 
@@ -161,7 +161,7 @@ There are two things the agent can do.
 
 #### The agent sees the app, and drives it
 
-- **See**: the widget tree, the live `Observable` values behind it, a
+- **See**: the widget tree, the live `State` values behind it, a
   screenshot
 - **Act**: click, type, scroll, send keys. Targets are named by `key` /
   `label` rather than coordinates, so they survive a layout change
@@ -214,7 +214,7 @@ straight back into the code, and why the source jump works.
 #### Hot reload
 
 Every save **hot reloads** the app: the window is rebuilt **in place**, no
-restart. And the state your `Observable`s hold **survives**: the screen you
+restart. And the state your `State`s hold **survives**: the screen you
 reached with twelve clicks is not thrown away because you saved a file.
 Reloads also go through with a VS Code **F5** debug session attached, and your
 breakpoints stay.
@@ -298,13 +298,13 @@ modifier chain is everything else.
 ### 3.3 Show state by binding it
 
 ```python
-count = nv.Observable(0)
+count = nv.State(0)
 
 nv.Text(count.map(lambda n: f"{n} times"))  # follows count on its own
 ```
 
-`Observable` is modelled on ReactiveProperty, from WPF's MVVM. Hand the
-`Observable` to the widget and the widget follows it; there is no `setState`
+`State` is modelled on ReactiveProperty, from WPF's MVVM. Hand the
+`State` to the widget and the widget follows it; there is no `setState`
 and nothing to refresh by hand.
 
 ### 3.4 Handle events with ordinary code
@@ -337,7 +337,7 @@ import nuiitivet.material as nv
 class CounterCard(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.count = nv.Observable(0)
+        self.count = nv.State(0)
 
     def handle_add(self) -> None:
         self.count.value += 1
@@ -403,7 +403,7 @@ and the card is [samples/intuitive_grammar/counter_card.py](samples/intuitive_gr
 | ----- | ------- |
 | [The intuitive grammar](docs/guide/intuitive_grammar/index.md) | What is borrowed from Flutter, SwiftUI / Compose, CSS and WPF, in one small card. |
 | [Layout](docs/guide/layout/index.md) | Build UIs with widgets and parameters. |
-| [State Management](docs/guide/state-management/index.md) | Reactive `Observable` state that auto-updates the UI. |
+| [State Management](docs/guide/state-management/index.md) | Reactive `State` that auto-updates the UI. |
 | [Modifiers](docs/guide/modifiers/index.md) | Attach decoration and behavior to widgets. |
 | [UI Design System](docs/guide/design-system/index.md) | Theming, design tokens, and the Material Design 3 widget catalog. |
 | [Overlay](docs/guide/overlay/index.md) | Dialogs, loading, and overlays. |

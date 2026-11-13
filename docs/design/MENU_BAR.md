@@ -80,7 +80,7 @@ flowchart LR
 
 | Module | Role |
 | --- | --- |
-| `menus/model.py` | `MenuEntry`, one entry: an action, a submenu, a separator or a standard item with a `MenuRole`; `label`, `enabled` and `checked` plain or `Observable` |
+| `menus/model.py` | `MenuEntry`, one entry: an action, a submenu, a separator or a standard item with a `MenuRole`; `label`, `enabled` and `checked` plain or `State` |
 | `menubar/model.py` | `MenuBar`, the root holding the top-level entries and a style |
 | `menubar/style.py` | `MenuBarStyle`, per-instance geometry and nullable colour overrides |
 | `menubar/theme_data.py` | `MenuBarThemeData`, the palette of the bar and of its popups, neutral literals by default |
@@ -154,7 +154,7 @@ sequenceDiagram
     participant A as runtime/app.py
 
     S->>C: activate(item)
-    opt item.checked is an Observable
+    opt item.checked is a State
         C->>E: checked.value = not checked.value
     end
     alt item.role is QUIT
@@ -353,7 +353,7 @@ sequenceDiagram
     participant K as observable/runtime.py
     participant A as AppKit
 
-    E->>B: a label, enabled or checked Observable fires, any thread
+    E->>B: a label, enabled or checked State fires, any thread
     B->>K: schedule_once(apply, 0)
     K->>B: apply, on the UI thread
     B->>A: setTitle_ · setEnabled_ · setState_

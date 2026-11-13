@@ -11,9 +11,9 @@ responsive, show what is happening, and let the user give up.
 
 ## The state
 
-The screen owns its state directly, as observables on the widget:
+The screen owns its state directly, as `State`s on the widget:
 
-| Observable | Drives |
+| `State` | Drives |
 | --- | --- |
 | `running` | Whether the progress bar is on screen at all |
 | `step` | The line of text naming what the job is doing |
@@ -30,11 +30,11 @@ import nuiitivet.material as nv
 class CsvImportScreen(nv.ComposableWidget):
     """Imports one CSV file on a worker thread."""
 
-    running = nv.Observable(False)
-    step = nv.Observable("")
-    total_rows = nv.Observable(0)
-    imported_rows = nv.Observable(0)
-    error = nv.Observable(None)
+    running = nv.State(False)
+    step = nv.State("")
+    total_rows = nv.State(0)
+    imported_rows = nv.State(0)
+    error = nv.State(None)
 
     def __init__(self) -> None:
         super().__init__()
@@ -85,7 +85,7 @@ Three bindings, three jobs:
   to report. An idle screen showing a progress bar is a screen lying about its
   state. `visible` leaves the space reserved, so nothing below it moves when
   the import starts.
-- Every widget binds straight to an observable the worker writes; none of them
+- Every widget binds straight to a `State` the worker writes; none of them
   knows a thread is involved.
 
 A progress bar is the right shape here because the import has a place on the
@@ -118,7 +118,7 @@ Safety](thread_safety.md#short-work-await-it-instead-of-managing-a-thread).
 ```
 
 `start()` returns immediately and the UI thread goes back to painting. Not one
-line of the worker touches a widget: it writes observables, and nuiitivet
+line of the worker touches a widget: it writes `State`s, and nuiitivet
 marshals each write onto the UI thread.
 
 This is the job that owns its thread outright, rather than awaiting one through
@@ -140,8 +140,8 @@ intermediate name never appears on screen. For a status line that is correct
 behaviour — it is a display of *now*, not a log.
 
 It stops being correct the moment something has to *count* the values rather
-than render the newest. A per-row audit trail cannot be built from an
-observable a widget binds to; give it its own `dispatch=False` observable, as
+than render the newest. A per-row audit trail cannot be built from a
+`State` a widget binds to; give it its own `dispatch=False` `State`, as
 [Thread Safety](thread_safety.md#opting-out-dispatchfalse) describes.
 
 ## Cancelling
@@ -171,7 +171,7 @@ What needs care is not the flag but its scope.
 Clearing one long-lived `Event` here instead is the obvious version, and it is
 wrong. Cancel then Import again — the ordinary use of a cancel button — and the
 first worker is still inside its loop when `clear()` runs: it finds the flag
-down, *resumes*, and two workers import into the same observables. An `Event`
+down, *resumes*, and two workers import into the same `State`s. An `Event`
 belonging to the screen can say "stop" but not *which run* to stop; one created
 per run and handed to the worker can.
 
@@ -264,7 +264,7 @@ other outcome:
                 self.running.value = False
 ```
 
-`error` is an ordinary observable, so the write from the `except` block is
+`error` is an ordinary `State`, so the write from the `except` block is
 marshalled like the rest and a widget can bind to it directly:
 
 ```python
@@ -284,11 +284,11 @@ Two rules worth keeping:
 class CsvImportScreen(nv.ComposableWidget):
     """Imports one CSV file on a worker thread."""
 
-    running = nv.Observable(False)
-    step = nv.Observable("")
-    total_rows = nv.Observable(0)
-    imported_rows = nv.Observable(0)
-    error = nv.Observable(None)
+    running = nv.State(False)
+    step = nv.State("")
+    total_rows = nv.State(0)
+    imported_rows = nv.State(0)
+    error = nv.State(None)
 
     def __init__(self) -> None:
         super().__init__()
@@ -365,7 +365,7 @@ class CsvImportScreen(nv.ComposableWidget):
         )
 ```
 
-Threads, an `Event`, and observables — the widget is otherwise an ordinary
+Threads, an `Event`, and `State`s — the widget is otherwise an ordinary
 widget, and nothing in `build()` betrays that any of it happened off the UI
 thread.
 

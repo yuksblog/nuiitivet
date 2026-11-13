@@ -11,7 +11,7 @@ in the repository so framework users can adopt them.
 
 | Skill | Purpose |
 | --- | --- |
-| [`nuiitivet-app/`](nuiitivet-app/) | **Build** Nuiitivet apps with the correct idioms (Observable state, modifiers, Navigator/Overlay), plus a linter that flags leaked Flutter/React/Rx patterns. |
+| [`nuiitivet-app/`](nuiitivet-app/) | **Build** Nuiitivet apps with the correct idioms (`State`, modifiers, Navigator/Overlay), plus a linter that flags leaked Flutter/React/Rx patterns. |
 | [`nuiitivet-debug/`](nuiitivet-debug/) | **Run, hot-reload, inspect, and drive** a running app — the dev runner and the dev-bridge / MCP tools (`status`, `describe_tree`, `screenshot`, `click`, `scroll_into_view`, `wait_for`) for the see → act → verify loop. |
 | [`nuiitivet-see-comments/`](nuiitivet-see-comments/) | **Read, act on and answer the comments** the user left in the running app (comment mode), and **wait for the next Send**: `/nuiitivet-see-comments watch`, or `see_comments` in chat; the answer lands on the mark. Falls back to the CLI when the MCP server is not registered. |
 

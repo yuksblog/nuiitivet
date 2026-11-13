@@ -33,7 +33,7 @@ flowchart LR
 | The Editor | the widget that holds the value, mirrors its text to the app and draws it |
 | The Dispatch | routes typed text, motions and compositions to the focused field |
 | The IME | the patch on each platform window and the caret the OS asks for |
-| the app | binds a `str` observable and the callbacks |
+| the app | binds a `State[str]` and the callbacks |
 | the OS input method | composes text inline and places its candidates at the caret |
 
 ### Promises
@@ -106,15 +106,15 @@ flowchart LR
 
 | Module | Role |
 | --- | --- |
-| `widgets/editable_text.py` | `EditableText`: the internal `Observable[TextEditingValue]`, the mirror to the bound `str` observable, the handlers for text, keys, motions and compositions, the caret |
+| `widgets/editable_text.py` | `EditableText`: the internal `State[TextEditingValue]`, the mirror to the bound `State[str]`, the handlers for text, keys, motions and compositions, the caret |
 | `widgets/text_field.py` | `TextFieldBase`, the decorated field around one editable |
 | `material/text_fields.py` | the MD3 `TextField` and its `multiline` constructor ([MATERIAL_INTERACTION.md](MATERIAL_INTERACTION.md)) |
 | `widgets/text_editing.py` | the edits (The Value) |
 | `widgets/text_lines.py` | breaks text into lines for a width; the caret's line and x |
 | `widgets/interaction.py` | the focus node the handlers hang on ([INTERACTION_ARCHITECTURE.md](INTERACTION_ARCHITECTURE.md)) |
-| `observable/` | the bound observable ([OBSERVABLE.md](OBSERVABLE.md)) |
+| `observable/` | the bound `State` ([OBSERVABLE.md](OBSERVABLE.md)) |
 | `platform/ime.py` | the window's caret source (The IME) |
-| the app | the bound observable and the callbacks |
+| the app | the bound `State` and the callbacks |
 
 ### Sequence
 

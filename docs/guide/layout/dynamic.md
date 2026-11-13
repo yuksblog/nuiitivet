@@ -37,7 +37,7 @@ class method that materializes children from a data collection:
 nv.Row.builder(items, fn, ...)
 ```
 
-- `items`: the source data collection — a plain list, or an **observable** for
+- `items`: the source data collection — a plain list, or a **`State`** for
   reactive updates.
 - `fn`: a builder function with the signature `(item, index) -> Widget`, called
   once per item.
@@ -63,9 +63,9 @@ own children. This is why it is the recommended approach for general use.
 > children by `index` rather than laying them all out, so it has no `builder()`
 > method. Use it with an explicit list of children instead.
 
-### Reactive Regeneration with an Observable
+### Reactive Regeneration with a State
 
-The essential value of `builder()` shows when you pass an **observable** as
+The essential value of `builder()` shows when you pass a **`State`** as
 `items`. The layout then subscribes to it and regenerates automatically whenever
 the collection changes — and only the affected regions are invalidated, not the
 whole layout:
@@ -75,7 +75,7 @@ import nuiitivet.material as nv
 
 class TagList:
     def __init__(self):
-        self.tags = nv.Observable(["Python", "UI"])
+        self.tags = nv.State(["Python", "UI"])
 
     def build(self):
         return nv.Flow.builder(
@@ -91,7 +91,7 @@ class TagList:
 ```
 
 With a static list you would have to rebuild and re-render the layout yourself.
-With an observable, `builder()` keeps the children in sync with the data for you.
+With a `State`, `builder()` keeps the children in sync with the data for you.
 
 The Flow matches cards to tags by position. Inserting a tag at the front then
 rebuilds every card. Pass `key_fn=lambda tag, index: tag` to match by tag. The
@@ -161,7 +161,7 @@ nv.Flow(
 )
 ```
 
-`ForEach` accepts the same `items` (including observables) and `(item, index) ->
+`ForEach` accepts the same `items` (including `State`s) and `(item, index) ->
 Widget` builder, so it behaves identically to `builder()` at runtime.
 
 > **Caveat:** written as `children=[ForEach(...)]`, it visually reads as a

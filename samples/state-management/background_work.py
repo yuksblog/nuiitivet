@@ -1,4 +1,4 @@
-"""State: Background Work
+"""Background Work
 
 Demonstrates:
 - A long job on a worker thread, reported through States
@@ -108,7 +108,7 @@ class CsvImportScreen(nv.ComposableWidget):
             child=nv.Column(
                 gap=16,
                 children=[
-                    nv.Text("State: Background Work"),
+                    nv.Text("Background Work"),
                     nv.Text("A worker imports a CSV file; the screen stays responsive."),
                     nv.Text(self.step),
                     nv.Text(self.count_text),

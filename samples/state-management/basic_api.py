@@ -1,4 +1,4 @@
-"""State: Basic API
+"""Basic API
 
 Demonstrates:
 - Creating States with various value types
@@ -95,7 +95,7 @@ class BasicApiApp(nv.ComposableWidget):
             child=nv.Column(
                 gap=16,
                 children=[
-                    nv.Text("State: Basic API"),
+                    nv.Text("Basic API"),
                     # Getting / setting
                     nv.Text(self.age_label),
                     nv.Text(self.items_label),

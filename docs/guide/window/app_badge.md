@@ -7,7 +7,7 @@ shows depends on the OS. [Where the badge shows](#where-the-badge-shows) lists t
 class Screen(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.unread = nv.Observable(0)
+        self.unread = nv.State(0)
 
     def _new_message(self) -> None:
         self.unread.value += 1

@@ -1,7 +1,7 @@
 # Concurrency Model
 
 The UI runs on one thread. A value produced on another thread reaches the UI
-through an `Observable`.
+through a `State`.
 
 ## Overview
 
@@ -30,7 +30,7 @@ flowchart LR
 | Module | Role |
 | --- | --- |
 | The UI Thread | one definition of which thread the UI runs on |
-| The Marshal | carries an `Observable` write from any thread onto the UI thread |
+| The Marshal | carries a `State` write from any thread onto the UI thread |
 | The Workers | the places work runs away from the UI thread |
 | The Harness | runs a test on the UI thread with its own clock |
 | the widget tree | the subscribers ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)) |
@@ -39,8 +39,8 @@ flowchart LR
 ### Promises
 
 - A worker thread never touches a widget.
-- Every value that crosses from a worker to the UI crosses through an
-  `Observable`.
+- Every value that crosses from a worker to the UI crosses through a
+  `State`.
 
 ## The UI Thread
 
@@ -80,7 +80,7 @@ flowchart LR
 
 ## The Marshal
 
-An `Observable` written off the UI thread notifies on the UI thread.
+A `State` written off the UI thread notifies on the UI thread.
 
 ### Structure
 
@@ -103,8 +103,8 @@ flowchart LR
 
 | Module | Role |
 | --- | --- |
-| `observable/value.py` | `Observable`: holds a pending value and the scheduled flag; applies and notifies |
-| `observable/computed.py` | `ComputedObservable`: the same for a derived value |
+| `observable/value.py` | `State`: holds a pending value and the scheduled flag; applies and notifies |
+| `observable/computed.py` | `ComputedState`: the same for a derived value |
 | `observable/batching.py` | `BatchContext`: flushes the queued recomputes |
 | `observable/runtime.py` | the installed clock ([OBSERVABLE.md](OBSERVABLE.md)) |
 | `runtime/threading.py` | the thread test (The UI Thread) |
@@ -113,7 +113,7 @@ flowchart LR
 
 ### Sequence
 
-#### An Observable is written
+#### A State is written
 
 ```mermaid
 sequenceDiagram
@@ -145,7 +145,7 @@ sequenceDiagram
 - A write off the UI thread is applied on the next tick. Writes before the
   tick coalesce to the latest value.
 - A write on the UI thread applies inline.
-- A batch whose observables want the UI thread flushes its recomputes there.
+- A batch whose `State`s want the UI thread flushes its recomputes there.
 
 ## The Workers
 
@@ -176,7 +176,7 @@ flowchart LR
     function -- "a child process, with process=True" --> process
     function -- "a Web Worker, or the server, in a browser" --> web
     switched & function -- "obs.value = result" --> value
-    app -- "Thread(target), writing observables" --> stdthread
+    app -- "Thread(target), writing States" --> stdthread
 ```
 
 | Module | Role |
