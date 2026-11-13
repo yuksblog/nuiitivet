@@ -8,7 +8,7 @@ from nuiitivet.material.icon import Icon
 from nuiitivet.material.buttons import IconButton
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.text_editing import TextRange
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.input.codes import (
     TEXT_MOTION_BACKSPACE,
     TEXT_MOTION_LEFT,
@@ -127,7 +127,7 @@ def test_text_field_insertion_at_cursor():
 
 def _make_obs(initial):
     class _Tmp:
-        x = Observable(initial)
+        x = State(initial)
 
     return _Tmp().x
 
@@ -135,7 +135,7 @@ def _make_obs(initial):
 def test_text_field_controlled():
     state = _make_obs("Start")
 
-    # The bound observable is the field's value cell: edits are written back
+    # The bound State is the field's value cell: edits are written back
     # to it directly, with no callback to wire up.
     tf = TextField(value=state)
 
@@ -158,8 +158,8 @@ def test_text_field_controlled():
     tf.on_unmount()
 
 
-def test_text_field_observable_value_is_two_way() -> None:
-    """A writable observable is the field's value cell, so edits land in it."""
+def test_text_field_state_value_is_two_way() -> None:
+    """A writable State is the field's value cell, so edits land in it."""
     state = _make_obs("Start")
     tf = TextField(value=state)
 
@@ -173,7 +173,7 @@ def test_text_field_observable_value_is_two_way() -> None:
     tf.on_unmount()
 
 
-def test_text_field_read_only_observable_value_is_display_only() -> None:
+def test_text_field_read_only_state_value_is_display_only() -> None:
     """A read-only source has nowhere to write, so it is not written to."""
     source = _make_obs("Start")
     derived = source.map(lambda s: s.upper())
@@ -189,7 +189,7 @@ def test_text_field_read_only_observable_value_is_display_only() -> None:
     tf.on_unmount()
 
 
-def test_text_field_bind_updates_observable() -> None:
+def test_text_field_bind_updates_state() -> None:
     state = _make_obs("Start")
     tf = TextField(state)
 
@@ -458,7 +458,7 @@ def test_text_field_supporting_text_uses_dedicated_color_tokens() -> None:
     assert style.error_supporting_text_color in recorded_specs
 
 
-def test_text_field_label_supports_observable() -> None:
+def test_text_field_label_supports_state() -> None:
     label = _make_obs("Name")
     tf = TextField(value="", label=label)
 
@@ -471,7 +471,7 @@ def test_text_field_label_supports_observable() -> None:
     tf.on_unmount()
 
 
-def test_text_field_supporting_text_and_is_error_support_observable() -> None:
+def test_text_field_supporting_text_and_is_error_support_state() -> None:
     supporting_text = _make_obs(None)
     is_error = _make_obs(False)
     style = TextFieldStyle.outlined()
@@ -525,7 +525,7 @@ def test_text_field_error_state_needs_no_message() -> None:
     tf.on_unmount()
 
 
-def test_text_field_disabled_supports_observable() -> None:
+def test_text_field_disabled_supports_state() -> None:
     disabled = _make_obs(False)
     tf = TextField(value="", disabled=disabled)
 

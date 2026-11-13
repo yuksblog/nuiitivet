@@ -17,7 +17,7 @@ from nuiitivet.material.styles.button_group_style import (
     StandardButtonGroupStyle,
     ConnectedButtonGroupStyle,
 )
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from tests.helpers.pointer import send_pointer_event_for_test
 
 # ---------------------------------------------------------------------------
@@ -27,7 +27,7 @@ from tests.helpers.pointer import send_pointer_event_for_test
 
 def _make_obs(initial: bool):
     class _Tmp:
-        x = Observable(initial)
+        x = State(initial)
 
     return _Tmp().x
 

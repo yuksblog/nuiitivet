@@ -22,7 +22,7 @@ the whole toolkit in one import. Only `nuiitivet.material` is available today.
 
 1. [The intuitive grammar](intuitive_grammar/index.md)
 2. [Layout](layout/index.md)
-3. [Observable](state-management/index.md)
+3. [`State`](state-management/index.md)
 4. [Concurrency](concurrency.md)
 5. [UI Design System](design-system/index.md)
 6. [Packaging](packaging/index.md)

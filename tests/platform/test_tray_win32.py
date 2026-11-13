@@ -16,7 +16,7 @@ import pytest
 import skia as _skia
 
 from nuiitivet.menus import MenuEntry
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.platform.tray import TrayIcon
 from nuiitivet.platform.tray_win32_plan import (
     MF_CHECKED,
@@ -64,10 +64,10 @@ def test_plan_maps_each_action_to_its_own_command_id() -> None:
     assert len(commands) == 3
 
 
-def test_plan_reads_observables_at_plan_time() -> None:
-    label = Observable("Ping (0)")
-    enabled = Observable(True)
-    checked = Observable(False)
+def test_plan_reads_states_at_plan_time() -> None:
+    label = State("Ping (0)")
+    enabled = State(True)
+    checked = State(False)
     menu = [MenuEntry(label, on_select=lambda: None, enabled=enabled, checked=checked)]
 
     (before,), _ = plan_menu(menu)
@@ -148,7 +148,7 @@ def test_selected_bridge_is_win32() -> None:
 def test_bridge_installs_and_uninstalls() -> None:
     from nuiitivet.platform.tray_win32 import TrayWin32Bridge, active_bridge
 
-    tooltip = Observable("nuiitivet test")
+    tooltip = State("nuiitivet test")
     bridge = TrayWin32Bridge(TrayIcon(tooltip=tooltip, menu=[MenuEntry.quit()]))
     bridge.install()
     try:

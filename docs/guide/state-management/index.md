@@ -1,6 +1,6 @@
-# Observable Guide
+# State Management
 
-The Observable guide has been split into focused documents to improve readability and maintenance.
+The `State` guide has been split into focused documents to improve readability and maintenance.
 
 ## Recommended Reading Order
 

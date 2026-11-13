@@ -19,10 +19,10 @@ class FocusDemo(nv.ComposableWidget):
     def __init__(self, label: str):
         super().__init__()
         self.label = label
-        self.is_focused = nv.Observable(False)
+        self.is_focused = nv.State(False)
         # Last observed key event, shown live in the widget so behavior is
         # visible without watching the console.
-        self.last_event = nv.Observable("(no key yet)")
+        self.last_event = nv.State("(no key yet)")
 
     def _set_focused(self, focused: bool, source) -> None:
         # ``on_focus_change`` is invoked as ``(focused, source)``; ``source`` is a

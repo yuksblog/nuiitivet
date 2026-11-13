@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from nuiitivet.observable import Observable, ReadOnlyObservableProtocol, combine
+from nuiitivet.observable import ReadOnlyStateProtocol, State, combine
 
 from .spec import TransitionPhase, TransitionSpec
 
@@ -25,13 +25,13 @@ class TransitionState:
     """Core transition state.
 
     This state tracks transition lifecycle (`phase`, `progress`) and exposes
-        a lifecycle-only observable.
+        a lifecycle-only State.
     """
 
     transition_spec: TransitionSpec
-    phase_obs: Observable[TransitionPhase]
-    progress_obs: Observable[float]
-    lifecycle_obs: ReadOnlyObservableProtocol[TransitionLifecycle]
+    phase_obs: State[TransitionPhase]
+    progress_obs: State[float]
+    lifecycle_obs: ReadOnlyStateProtocol[TransitionLifecycle]
 
     @classmethod
     def create(
@@ -41,8 +41,8 @@ class TransitionState:
         initial_phase: TransitionPhase = TransitionPhase.ACTIVE,
         initial_progress: float = 1.0,
     ) -> "TransitionState":
-        phase_obs: Observable[TransitionPhase] = Observable(initial_phase)
-        progress_obs: Observable[float] = Observable(float(initial_progress))
+        phase_obs: State[TransitionPhase] = State(initial_phase)
+        progress_obs: State[float] = State(float(initial_progress))
         lifecycle_obs = combine(phase_obs, progress_obs).compute(
             lambda phase, progress: TransitionLifecycle(phase=phase, progress=float(progress))
         )

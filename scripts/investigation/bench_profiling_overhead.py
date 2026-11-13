@@ -2,7 +2,7 @@
 
 A VerticalScrollable holds 1000 rows; the whole content repaints every frame
 while an auto-scroll runs, so every row's ``paint`` fires each painted frame —
-the worst case for the per-widget paint counter. An Observable ticking every
+the worst case for the per-widget paint counter. A State ticking every
 frame drives one Text so the recomposition probe fires too.
 
 The script times ``root.paint`` (the full tree walk) per painted frame and
@@ -34,7 +34,7 @@ SCROLL_STEP = 6.0
 _COLORS = ("#4CAF50", "#2196F3", "#FF9800", "#9C27B0", "#F44336")
 
 
-def build_root(counter: nv.Observable, controller: ScrollController) -> nv.Widget:
+def build_root(counter: nv.State, controller: ScrollController) -> nv.Widget:
     rows: List[nv.Widget] = [nv.Text(counter.map(lambda n: f"tick {n}"))]
     for i in range(N_ROWS):
         box = nv.Container(width=24, height=24).modifier(nv.background(_COLORS[i % len(_COLORS)]))
@@ -51,7 +51,7 @@ def main() -> None:
     parser.add_argument("--profile", action="store_true", help="install dev profiling hooks")
     args = parser.parse_args()
 
-    counter = nv.Observable(0)
+    counter = nv.State(0)
     controller = ScrollController(axes=(ScrollDirection.VERTICAL,), primary_axis=ScrollDirection.VERTICAL)
 
     app = nv.App(

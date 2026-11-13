@@ -12,7 +12,7 @@ Window chrome refers to the decoration around your application window — the ti
 
 When `chrome=` is omitted, `OSChrome()` is used automatically. The OS draws the standard title bar, including window controls (close / minimise / maximise).
 
-Use the `title=` parameter to set the text shown in the OS title bar. It accepts a plain string, an `Observable[str | None]` for reactive updates, or `None` for no title.
+Use the `title=` parameter to set the text shown in the OS title bar. It accepts a plain string, a `State[str | None]` for reactive updates, or `None` for no title.
 
 ```python
 import nuiitivet.material as nv
@@ -58,7 +58,7 @@ See [`OSChrome`](../../api/nuiitivet.md#nuiitivet.OSChrome) for the full API ref
 
 `CustomChrome` removes the OS title bar and lets you render any widget as the window header. Nuiitivet automatically wraps the `header` widget in `WindowDragArea` so the user can drag the window by clicking and dragging the header.
 
-The `title=` parameter still controls the OS taskbar / Alt-Tab label even with `CustomChrome`. It accepts a plain string or an `Observable[str | None]` for reactive updates. The visual title text inside the window is entirely up to your `header` widget.
+The `title=` parameter still controls the OS taskbar / Alt-Tab label even with `CustomChrome`. It accepts a plain string or a `State[str | None]` for reactive updates. The visual title text inside the window is entirely up to your `header` widget.
 
 ```python
 import nuiitivet.material as nv

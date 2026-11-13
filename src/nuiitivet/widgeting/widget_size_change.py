@@ -1,6 +1,6 @@
 """Post-layout dispatch of what the layout pass measured.
 
-An ``Observable`` write from inside ``layout()`` propagates synchronously and
+A ``State`` write from inside ``layout()`` propagates synchronously and
 tears the frame for consumers measured earlier in the same pass, so layout only
 *queues* here; the app flushes the queue between frames, before the next frame's
 build flush. Size-change callbacks (arbitrary user code) and deferred publishes
@@ -77,7 +77,7 @@ def queue_size_change(widget: Any, size: Size) -> None:
 
 
 def queue_deferred_publish(key: Any, publish: Callable[[], None], *, widget: Any = None) -> None:
-    """Queue *publish* (an Observable write) to run at the next flush.
+    """Queue *publish* (a State write) to run at the next flush.
 
     Keyed by *key*, latest entry wins — *publish* should read the owner's
     current state rather than close over values. *widget*, when given, has a

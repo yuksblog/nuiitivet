@@ -8,7 +8,7 @@ Subcommands::
     python -m nuiitivet.dev run app.py -- --png out.png  # arguments for the app
     python -m nuiitivet.dev status                  # is the app up & healthy?
     python -m nuiitivet.dev describe-tree           # dump the running app's tree
-    python -m nuiitivet.dev describe-state          # dump the running app's observable state
+    python -m nuiitivet.dev describe-state          # dump the running app's State values
     python -m nuiitivet.dev see-comments            # dump what the human pointed at and wrote
     python -m nuiitivet.dev answer-comments 2 done "widened to 240"  # answer on the mark
     python -m nuiitivet.dev wait-comments           # one line per Send the human presses
@@ -161,7 +161,7 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_window_arg(describe_tree)
 
     describe_state = subparsers.add_parser(
-        "describe-state", help="Print the running app's reactive observable state as JSON."
+        "describe-state", help="Print the running app's State values as JSON."
     )
     describe_state.add_argument(
         "--include-animations",

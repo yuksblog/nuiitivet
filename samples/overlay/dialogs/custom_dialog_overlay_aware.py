@@ -13,7 +13,7 @@ class CounterDialog(nv.ComposableWidget, nv.OverlayAware[int]):
 
     def __init__(self) -> None:
         super().__init__()
-        self.counter = nv.Observable(0)
+        self.counter = nv.State(0)
 
     def _increment(self) -> None:
         self.counter.value += 1
@@ -49,7 +49,7 @@ class CounterDialog(nv.ComposableWidget, nv.OverlayAware[int]):
 
 
 class OverlayAwareDialogDemo(nv.ComposableWidget):
-    last_count: nv.Observable[str] = nv.Observable("No count yet")
+    last_count: nv.State[str] = nv.State("No count yet")
 
     async def _show_custom_dialog(self):
         overlay = nv.Overlay.of(self)

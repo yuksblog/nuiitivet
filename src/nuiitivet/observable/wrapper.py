@@ -1,23 +1,23 @@
-"""Lifetime contract for observables that subscribe to an upstream source.
+"""Lifetime contract for States that subscribe to an upstream source.
 
 ``map`` and ``compute`` derive a value and hold nothing; ``debounce``,
 ``throttle``, ``filter`` and anything else that shapes *when* or *whether* a
 source's values are republished must stay subscribed to a source for as long as
 they live. That subscription is an edge the garbage
 collector can see, and pointing it the wrong way makes the whole chain
-uncollectable. :class:`SourceSubscribingObservable` owns that edge so each
+uncollectable. :class:`SourceSubscribingState` owns that edge so each
 operator does not re-decide it.
 
 **The source must not keep the wrapper alive.** ``source.subscribe(self._on_x)``
 stores a *bound method*, which strongly references the wrapper, so the source
-outliving the wrapper keeps it — and every observable it in turn holds —
+outliving the wrapper keeps it — and every State it in turn holds —
 reachable forever. The subscription therefore goes through a weak reference to
-``self``, the same shape :class:`~nuiitivet.observable.computed.ComputedObservable`
+``self``, the same shape :class:`~nuiitivet.observable.computed.ComputedState`
 already uses for its dependency edges.
 
 **So a wrapper lives exactly as long as something holds it.** Either the object
 itself (``self.results = query.debounce(0.3)``) or the ``Disposable`` that
-:meth:`~SourceSubscribingObservable.subscribe` returns, whose closure holds the
+:meth:`~SourceSubscribingState.subscribe` returns, whose closure holds the
 wrapper. That second half is what makes the framework's own convention correct
 without further thought::
 
@@ -26,11 +26,11 @@ without further thought::
 ``bind()`` retains the ``Disposable``, which retains the chain, and unmount
 disposes it — after which nothing holds the chain and all of it is collectable.
 Dropping the ``Disposable`` on the floor instead drops the chain with it, which
-is the same rule ``compute`` and ``map`` already follow: a derived observable
+is the same rule ``compute`` and ``map`` already follow: a derived State
 nobody holds does not exist.
 
 **A wrapper holds the value it last emitted.** Shaping is not a property of the
-notification path alone: ``.value`` reports what this observable last emitted,
+notification path alone: ``.value`` reports what this State last emitted,
 seeded from the source when the wrapper is constructed. That is what makes
 ``nv.Text(query.debounce(0.3))`` show debounced text — reading through to the
 source instead would silently ignore the operator the caller asked for. Between
@@ -44,7 +44,7 @@ scope with a timer armed does not fire into a dead chain.
 **Two type parameters, because one operator changes the type.** ``debounce``,
 ``throttle`` and ``filter`` reshape *when* or *whether* a value is republished
 and hand on what they were given, so their input and output types agree;
-:class:`ShapingObservable` names that case and seeds them from the source.
+:class:`ShapingState` names that case and seeds them from the source.
 ``switch_map`` and ``scan`` map ``TIn`` to a different ``TOut`` and cannot be
 seeded from the source at all, which is why the seed is a method rather than a
 line in ``__init__``.
@@ -62,19 +62,19 @@ from ._notify import notify_all
 from .contexts import _tracking_context
 from .protocols import (
     Disposable,
-    ObservableBase,
-    ReadOnlyObservableProtocol,
+    ReadOnlyStateProtocol,
+    StateBase,
     mark_internal_subscription,
 )
 from . import runtime
 
 if TYPE_CHECKING:
     from .combine import CombineBuilder
-    from .computed import ComputedObservable
-    from .filtered import FilteredObservable
-    from .scanned import ScannedObservable
-    from .switched import CancelToken, SwitchMappedObservable
-    from .timed import DebouncedObservable, ThrottledObservable
+    from .computed import ComputedState
+    from .filtered import FilteredState
+    from .scanned import ScannedState
+    from .switched import CancelToken, SwitchMappedState
+    from .timed import DebouncedState, ThrottledState
 
 T = TypeVar("T")
 TIn = TypeVar("TIn")
@@ -90,7 +90,7 @@ def _untracked(fn: Callable[[], _R]) -> _R:
     """Run ``fn`` with dependency tracking suppressed.
 
     Whatever a wrapper reads internally — its source, or a user callback that
-    happens to read an observable — is read on behalf of the wrapper itself,
+    happens to read a State — is read on behalf of the wrapper itself,
     never on behalf of whatever derivation is recording dependencies at the time.
     """
     token = _tracking_context.set(None)
@@ -100,13 +100,13 @@ def _untracked(fn: Callable[[], _R]) -> _R:
         _tracking_context.reset(token)
 
 
-def _read_untracked(source: ReadOnlyObservableProtocol[T]) -> T:
+def _read_untracked(source: ReadOnlyStateProtocol[T]) -> T:
     """Read ``source.value`` without registering it with the tracking context."""
     return _untracked(lambda: source.value)
 
 
-class SourceSubscribingObservable(ObservableBase[TOut], Generic[TIn, TOut]):
-    """Base for observables that hold a live subscription to an upstream source.
+class SourceSubscribingState(StateBase[TOut], Generic[TIn, TOut]):
+    """Base for States that hold a live subscription to an upstream source.
 
     Subclasses implement :meth:`_seed` (what :attr:`value` reports before the
     first emission) and :meth:`_on_source_changed` (what to do with an upstream
@@ -114,8 +114,8 @@ class SourceSubscribingObservable(ObservableBase[TOut], Generic[TIn, TOut]):
     what updates the value this wrapper reports. Any clock callbacks they arm go
     in :meth:`_clock_callbacks` so teardown can disarm them.
 
-    ``TIn`` is what the source publishes, ``TOut`` what this observable does.
-    Operators that hand values on unchanged subclass :class:`ShapingObservable`
+    ``TIn`` is what the source publishes, ``TOut`` what this State does.
+    Operators that hand values on unchanged subclass :class:`ShapingState`
     instead, which fixes the two together.
     """
 
@@ -125,15 +125,15 @@ class SourceSubscribingObservable(ObservableBase[TOut], Generic[TIn, TOut]):
     _disposed: bool = True
     _source_subscription: Optional[Disposable] = None
 
-    def __init__(self, source: ReadOnlyObservableProtocol[TIn]):
+    def __init__(self, source: ReadOnlyStateProtocol[TIn]):
         self._source = source
         self._subscribers: List[Callable[[TOut], None]] = []
         self._held_value: TOut = self._seed(source)
         self._disposed = False
         self._source_subscription = self._subscribe_weakly(source)
 
-    def _seed(self, source: ReadOnlyObservableProtocol[TIn]) -> TOut:
-        """What :attr:`value` reports before this observable has emitted anything.
+    def _seed(self, source: ReadOnlyStateProtocol[TIn]) -> TOut:
+        """What :attr:`value` reports before this State has emitted anything.
 
         Called from ``__init__`` before the source subscription exists, so an
         implementation that reads the source sees its construction-time value.
@@ -142,7 +142,7 @@ class SourceSubscribingObservable(ObservableBase[TOut], Generic[TIn, TOut]):
 
     # -- lifetime ----------------------------------------------------------
 
-    def _subscribe_weakly(self, source: ReadOnlyObservableProtocol[TIn]) -> Disposable:
+    def _subscribe_weakly(self, source: ReadOnlyStateProtocol[TIn]) -> Disposable:
         """Subscribe to ``source`` without letting it hold this object alive.
 
         The callback closes over a ``weakref`` and never over ``self``; once the
@@ -190,7 +190,7 @@ class SourceSubscribingObservable(ObservableBase[TOut], Generic[TIn, TOut]):
         return self._held_value
 
     def _clock_callbacks(self) -> Sequence[Callable[[float], None]]:
-        """Callbacks this observable may have armed, for :meth:`dispose` to disarm.
+        """Callbacks this State may have armed, for :meth:`dispose` to disarm.
 
         Returned rather than tracked at schedule time because the clock matches
         by equality (see :func:`~nuiitivet.observable.runtime._same_callback`), so
@@ -256,7 +256,7 @@ class SourceSubscribingObservable(ObservableBase[TOut], Generic[TIn, TOut]):
 
     # -- operators ---------------------------------------------------------
     #
-    # The same set ``_ObservableValue`` and ``ComputedObservable`` expose, so a
+    # The same set ``_StateValue`` and ``ComputedState`` expose, so a
     # chain does not run out of operators partway through. Deliberately not
     # factored into a shared mixin: those two propagate the ``dispatch=False``
     # opt-out into what they build and a wrapper has no opt-out to propagate
@@ -264,72 +264,72 @@ class SourceSubscribingObservable(ObservableBase[TOut], Generic[TIn, TOut]):
     # the bodies only look alike. ``tests/observable/test_operator_parity.py``
     # asserts the three surfaces stay equal instead.
 
-    def map(self, fn: Callable[[TOut], Any]) -> "ComputedObservable[Any]":
-        from .computed import ComputedObservable
+    def map(self, fn: Callable[[TOut], Any]) -> "ComputedState[Any]":
+        from .computed import ComputedState
 
         def compute_fn() -> Any:
             return fn(self.value)
 
-        return ComputedObservable(compute_fn)
+        return ComputedState(compute_fn)
 
-    def combine(self, *others: ReadOnlyObservableProtocol[Any]) -> "CombineBuilder":
+    def combine(self, *others: ReadOnlyStateProtocol[Any]) -> "CombineBuilder":
         from .combine import CombineBuilder
 
         return CombineBuilder(self, *others)
 
-    def filter(self, pred: Callable[[TOut], bool], *, initial: TOut) -> "FilteredObservable[TOut]":
-        """Observable of the values passing ``pred``, seeded with ``initial``.
+    def filter(self, pred: Callable[[TOut], bool], *, initial: TOut) -> "FilteredState[TOut]":
+        """State of the values passing ``pred``, seeded with ``initial``.
 
-        ``initial`` is required because a filtered observable has no value of
+        ``initial`` is required because a filtered State has no value of
         its own until something passes; see
-        :class:`~nuiitivet.observable.filtered.FilteredObservable`.
+        :class:`~nuiitivet.observable.filtered.FilteredState`.
         """
-        from .filtered import FilteredObservable
+        from .filtered import FilteredState
 
-        return FilteredObservable(self, pred, initial=initial)
+        return FilteredState(self, pred, initial=initial)
 
-    def debounce(self, seconds: float) -> "DebouncedObservable[TOut]":
-        from .timed import DebouncedObservable
+    def debounce(self, seconds: float) -> "DebouncedState[TOut]":
+        from .timed import DebouncedState
 
-        return DebouncedObservable(self, seconds)
+        return DebouncedState(self, seconds)
 
-    def throttle(self, seconds: float) -> "ThrottledObservable[TOut]":
-        from .timed import ThrottledObservable
+    def throttle(self, seconds: float) -> "ThrottledState[TOut]":
+        from .timed import ThrottledState
 
-        return ThrottledObservable(self, seconds)
+        return ThrottledState(self, seconds)
 
     def switch_map(
         self,
         fn: Callable[[TOut, "CancelToken"], _R],
         *,
         initial: _R,
-    ) -> "SwitchMappedObservable[TOut, _R]":
+    ) -> "SwitchMappedState[TOut, _R]":
         """Asynchronous :meth:`map`: the newest run's result, older runs discarded.
 
-        See :class:`~nuiitivet.observable.switched.SwitchMappedObservable`.
+        See :class:`~nuiitivet.observable.switched.SwitchMappedState`.
         """
-        from .switched import SwitchMappedObservable
+        from .switched import SwitchMappedState
 
-        return SwitchMappedObservable(self, fn, initial=initial)
+        return SwitchMappedState(self, fn, initial=initial)
 
     def scan(
         self,
         fn: Callable[[_A, TOut], _A],
         *,
         initial: _A,
-    ) -> "ScannedObservable[TOut, _A]":
-        """Observable of ``fn`` folded over every value this one emits.
+    ) -> "ScannedState[TOut, _A]":
+        """State of ``fn`` folded over every value this one emits.
 
         ``initial`` is required because the accumulator has no value until the
         source emits; see
-        :class:`~nuiitivet.observable.scanned.ScannedObservable`.
+        :class:`~nuiitivet.observable.scanned.ScannedState`.
         """
-        from .scanned import ScannedObservable
+        from .scanned import ScannedState
 
-        return ScannedObservable(self, fn, initial=initial)
+        return ScannedState(self, fn, initial=initial)
 
 
-class ShapingObservable(SourceSubscribingObservable[T, T]):
+class ShapingState(SourceSubscribingState[T, T]):
     """A wrapper that changes *when* or *whether* a value is republished, not what.
 
     ``debounce``, ``throttle`` and ``filter`` all hand the source's own values
@@ -339,5 +339,5 @@ class ShapingObservable(SourceSubscribingObservable[T, T]):
     which is exactly what ``switch_map`` and ``scan`` cannot claim.
     """
 
-    def _seed(self, source: ReadOnlyObservableProtocol[T]) -> T:
+    def _seed(self, source: ReadOnlyStateProtocol[T]) -> T:
         return _read_untracked(source)

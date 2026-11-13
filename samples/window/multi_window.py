@@ -2,7 +2,7 @@
 
 A ``Window`` is constructed as a model and shown with ``open()``; ``close()``
 destroys it — one object is one window lifetime. State that must survive a
-window lives in app-layer Observables passed into each window's content.
+window lives in app-layer States passed into each window's content.
 ``parent=`` makes a child window that closes with its opener; ``modal=True``
 additionally blocks input to the parent chain while the child is open.
 
@@ -26,8 +26,8 @@ class AppState:
     """App-layer state, shared by every window's content."""
 
     def __init__(self) -> None:
-        self.color = nv.Observable(_SWATCHES[0])
-        self.log = nv.Observable("Pick a color from the palette.")
+        self.color = nv.State(_SWATCHES[0])
+        self.log = nv.State("Pick a color from the palette.")
 
 
 class Palette(nv.ComposableWidget):

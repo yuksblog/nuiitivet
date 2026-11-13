@@ -10,7 +10,7 @@ from nuiitivet.input.shortcut import Shortcut
 from nuiitivet.menubar.model import MenuBar
 from nuiitivet.menus import MenuEntry, MenuRole
 from nuiitivet.menubar.style import MenuBarStyle
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 
 
 def test_action_item_normalizes_shortcut() -> None:
@@ -31,7 +31,7 @@ def test_submenu_excludes_action_properties() -> None:
     with pytest.raises(ValueError):
         MenuEntry("File", submenu=[child], shortcut="Accel+F")
     with pytest.raises(ValueError):
-        MenuEntry("File", submenu=[child], checked=Observable(False))
+        MenuEntry("File", submenu=[child], checked=State(False))
 
 
 def test_separator_carries_nothing_else() -> None:
@@ -72,9 +72,9 @@ def test_standard_factories_set_roles() -> None:
     assert MenuEntry.full_screen().role is MenuRole.FULL_SCREEN
 
 
-def test_resolved_reads_follow_observables() -> None:
-    label = Observable("Save")
-    enabled = Observable(False)
+def test_resolved_reads_follow_states() -> None:
+    label = State("Save")
+    enabled = State(False)
     item = MenuEntry(label, on_select=lambda: None, enabled=enabled)
     assert item.resolved_label() == "Save"
     assert item.resolved_enabled() is False

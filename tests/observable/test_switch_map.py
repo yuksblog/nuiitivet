@@ -15,15 +15,15 @@ import weakref
 
 import pytest
 
-from nuiitivet.observable import Observable
-from nuiitivet.observable.switched import CancelToken, SwitchMappedObservable
+from nuiitivet.observable import State
+from nuiitivet.observable.switched import CancelToken, SwitchMappedState
 
 
 _TIMEOUT = 5.0
 
 
 class MockClock:
-    """Mock clock, with the lock the observable-only clocks do not need.
+    """Mock clock, with the lock the debounce and throttle mock clocks do not need.
 
     ``switch_map`` schedules from its worker threads, so unlike ``debounce`` and
     ``throttle`` it can have two threads inside ``schedule_once`` at once.
@@ -129,7 +129,7 @@ def _join_ungated_workers():
 
 class TestTheSeed:
     def test_reports_initial_before_any_run_lands(self):
-        source = Observable("")
+        source = State("")
 
         results = source.switch_map(lambda value, cancel: value.upper(), initial="<none>")
 
@@ -137,7 +137,7 @@ class TestTheSeed:
 
     def test_no_run_starts_at_construction(self):
         """Unlike ``filter``, building this must not fire work off."""
-        source = Observable("already here")
+        source = State("already here")
         runs = GatedRuns()
 
         results = source.switch_map(runs, initial="")  # noqa: F841
@@ -145,13 +145,13 @@ class TestTheSeed:
         assert runs.calls == []
 
     def test_initial_is_required(self):
-        source = Observable("")
+        source = State("")
 
         with pytest.raises(TypeError):
             source.switch_map(lambda value, cancel: value)  # type: ignore[call-arg]
 
     def test_initial_is_keyword_only(self):
-        source = Observable("")
+        source = State("")
 
         with pytest.raises(TypeError):
             source.switch_map(lambda value, cancel: value, "")  # type: ignore[misc]
@@ -159,7 +159,7 @@ class TestTheSeed:
 
 class TestPublishing:
     def test_a_completed_run_becomes_the_value(self, mock_clock):
-        source = Observable("")
+        source = State("")
         runs = GatedRuns()
         results = source.switch_map(runs, initial="<none>")
 
@@ -171,7 +171,7 @@ class TestPublishing:
         assert results.value == "result:one"
 
     def test_subscribers_see_the_result(self, mock_clock):
-        source = Observable("")
+        source = State("")
         runs = GatedRuns()
         results = source.switch_map(runs, initial="<none>")
         seen = []
@@ -185,7 +185,7 @@ class TestPublishing:
         assert seen == ["result:one"]
 
     def test_nothing_is_published_before_the_run_completes(self, mock_clock):
-        source = Observable("")
+        source = State("")
         runs = GatedRuns()
         results = source.switch_map(runs, initial="<none>")
 
@@ -201,7 +201,7 @@ class TestPublishing:
 class TestSuperseding:
     def test_an_older_run_finishing_last_does_not_win(self, mock_clock):
         """The acceptance criterion: out-of-order completion, newest still wins."""
-        source = Observable("")
+        source = State("")
         runs = GatedRuns()
         results = source.switch_map(runs, initial="<none>")
 
@@ -220,7 +220,7 @@ class TestSuperseding:
         assert results.value == "result:two"
 
     def test_a_superseded_run_never_reaches_subscribers(self, mock_clock):
-        source = Observable("")
+        source = State("")
         runs = GatedRuns()
         results = source.switch_map(runs, initial="<none>")
         seen = []
@@ -252,7 +252,7 @@ class TestSuperseding:
             except RuntimeError:
                 return f"recovered:{value}"
 
-        source = Observable("")
+        source = State("")
         runs = GatedRuns(result=recovered)
         results = source.switch_map(runs, initial="<none>")
         seen = []
@@ -272,7 +272,7 @@ class TestSuperseding:
         assert seen == ["recovered:two"]
 
     def test_the_token_reports_supersession(self, mock_clock):
-        source = Observable("")
+        source = State("")
         runs = GatedRuns()
         # Held: an operator nobody holds is collected, §5.
         results = source.switch_map(runs, initial="")  # noqa: F841
@@ -294,7 +294,7 @@ class TestSuperseding:
 
 class TestThreading:
     def test_fn_does_not_run_on_the_ui_thread(self, mock_clock):
-        source = Observable("")
+        source = State("")
         runs = GatedRuns()
         # Held: an operator nobody holds is collected, §5.
         results = source.switch_map(runs, initial="")  # noqa: F841
@@ -308,7 +308,7 @@ class TestThreading:
         assert runs.thread_idents[0] != threading.get_ident()
 
     def test_subscribers_run_on_the_ui_thread(self, mock_clock):
-        source = Observable("")
+        source = State("")
         runs = GatedRuns()
         results = source.switch_map(runs, initial="")
         notified_on = []
@@ -327,7 +327,7 @@ class TestARaisingFunction:
         def raises_on_purpose(value, cancel):
             raise RuntimeError("fn is broken")
 
-        source = Observable("")
+        source = State("")
         results = source.switch_map(raises_on_purpose, initial="<none>")
         seen = []
         results.subscribe(seen.append)
@@ -348,7 +348,7 @@ class TestARaisingFunction:
         def raises_on_purpose(value, cancel):
             raise RuntimeError("fn is broken")
 
-        source = Observable("")
+        source = State("")
         source.switch_map(raises_on_purpose, initial="")
 
         source.value = "one"
@@ -358,7 +358,7 @@ class TestARaisingFunction:
 
 class TestLifetime:
     def test_dispose_supersedes_the_run_in_flight(self, mock_clock):
-        source = Observable("")
+        source = State("")
         runs = GatedRuns()
         results = source.switch_map(runs, initial="<none>")
         seen = []
@@ -376,14 +376,14 @@ class TestLifetime:
         assert results.value == "<none>"
 
     def test_dispose_is_idempotent(self):
-        source = Observable("")
+        source = State("")
         results = source.switch_map(lambda value, cancel: value, initial="")
 
         results.dispose()
         results.dispose()
 
     def test_dispose_releases_the_source_subscription(self):
-        source = Observable("")
+        source = State("")
         results = source.switch_map(lambda value, cancel: value, initial="")
 
         assert len(source._subs) == 1
@@ -391,7 +391,7 @@ class TestLifetime:
         assert source._subs == []
 
     def test_a_dropped_wrapper_is_collectable(self, collectable):
-        source = Observable("")
+        source = State("")
         results = source.switch_map(lambda value, cancel: value, initial="")
         ref = weakref.ref(results)
 
@@ -403,9 +403,9 @@ class TestLifetime:
 
 
 class TestChaining:
-    def test_the_result_is_a_plain_observable(self, mock_clock):
+    def test_the_result_is_a_plain_state(self, mock_clock):
         """No wrapper type in the value position: ``map`` chains straight off it."""
-        source = Observable("")
+        source = State("")
         runs = GatedRuns()
         results = source.switch_map(runs, initial="<none>")
         shouted = results.map(str.upper)
@@ -419,18 +419,18 @@ class TestChaining:
 
     def test_it_reads_only_value(self):
         """The surface stays ``.value`` — failure is a value, not a channel."""
-        source = Observable("")
+        source = State("")
         results = source.switch_map(lambda value, cancel: value, initial="")
 
         assert not hasattr(results, "error")
 
     def test_it_chains_off_another_wrapper(self, mock_clock):
         """``debounce(...).switch_map(...)`` — the idiom the docs teach."""
-        source = Observable("")
+        source = State("")
         runs = GatedRuns()
         results = source.debounce(0.3).switch_map(runs, initial="<none>")
 
-        assert isinstance(results, SwitchMappedObservable)
+        assert isinstance(results, SwitchMappedState)
 
         source.value = "one"
         mock_clock.tick(0.3)  # the debounce settles, only now does a run start
@@ -442,7 +442,7 @@ class TestChaining:
 
     def test_it_chains_into_a_filter(self, mock_clock):
         """The operators the wrapper base gained: a chain does not dead-end."""
-        source = Observable("")
+        source = State("")
         runs = GatedRuns()
         results = source.switch_map(runs, initial="<none>")
         succeeded = results.filter(lambda text: text.startswith("result:"), initial="")

@@ -16,7 +16,7 @@ from typing import Any, List, Optional
 import pytest
 
 from nuiitivet.common.logging_once import _clear_log_once_keys_for_tests
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.platform.badge import BadgeBinding, BadgeValue, badge_label
 from nuiitivet.platform.badge_launcher_plan import desktop_entry_uri, launcher_properties
 from nuiitivet.platform.badge_win32_plan import overlay_label, render_overlay_bgra
@@ -69,7 +69,7 @@ class _Bridge:
 class _Binding(BadgeBinding):
     """A binding whose bridge is the test's, and which counts how often one was asked for."""
 
-    def __init__(self, badge: Observable[BadgeValue], bridge: Optional[_Bridge], raises: bool = False) -> None:
+    def __init__(self, badge: State[BadgeValue], bridge: Optional[_Bridge], raises: bool = False) -> None:
         super().__init__(badge, lambda: None)
         self.created = 0
         self._fake = bridge
@@ -83,7 +83,7 @@ class _Binding(BadgeBinding):
 
 
 def test_no_bridge_is_made_until_a_badge_shows() -> None:
-    badge: Observable[BadgeValue] = Observable(None)
+    badge: State[BadgeValue] = State(None)
     binding = _Binding(badge, _Bridge())
 
     binding.install()
@@ -95,7 +95,7 @@ def test_no_bridge_is_made_until_a_badge_shows() -> None:
 
 
 def test_a_platform_without_a_badge_is_logged_once(caplog: pytest.LogCaptureFixture) -> None:
-    badge: Observable[BadgeValue] = Observable(1)
+    badge: State[BadgeValue] = State(1)
     binding = _Binding(badge, None)
 
     with caplog.at_level(logging.WARNING, logger="nuiitivet.platform.badge"):
@@ -110,7 +110,7 @@ def test_a_platform_without_a_badge_is_logged_once(caplog: pytest.LogCaptureFixt
 
 
 def test_a_bridge_that_cannot_be_made_is_logged_once_and_the_writes_go_on(caplog: pytest.LogCaptureFixture) -> None:
-    badge: Observable[BadgeValue] = Observable(1)
+    badge: State[BadgeValue] = State(1)
     binding = _Binding(badge, None, raises=True)
 
     with caplog.at_level(logging.ERROR, logger="nuiitivet.platform.badge"):
@@ -124,7 +124,7 @@ def test_a_bridge_that_cannot_be_made_is_logged_once_and_the_writes_go_on(caplog
 
 
 def test_a_bridge_that_fails_to_show_never_raises_into_the_writer(caplog: pytest.LogCaptureFixture) -> None:
-    badge: Observable[BadgeValue] = Observable(None)
+    badge: State[BadgeValue] = State(None)
     binding = _Binding(badge, _Bridge(fails=True))
     binding.install()
 
@@ -140,7 +140,7 @@ def test_a_bridge_that_fails_to_show_never_raises_into_the_writer(caplog: pytest
 
 def test_a_value_that_is_not_a_badge_is_logged_and_leaves_the_badge(caplog: pytest.LogCaptureFixture) -> None:
     bridge = _Bridge()
-    badge: Observable[Any] = Observable(1)
+    badge: State[Any] = State(1)
     binding = _Binding(badge, bridge)
     binding.install()
 

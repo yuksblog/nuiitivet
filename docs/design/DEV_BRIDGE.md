@@ -141,12 +141,12 @@ flowchart LR
     action -- "flush bindings and recompositions · root.layout(w, h)" --> tree
     bridge -- "_render_snapshot(scale)" --> window
     devaction -- "on_click · on_scroll · on_key" --> observer
-    perception -- "key · label · text · title · global rect · published state · Observable values" --> tree
+    perception -- "key · label · text · title · global rect · published state · State values" --> tree
 ```
 
 | Module | Role |
 | --- | --- |
-| `_interaction/perception.py` | `describe_tree`, each mounted node's type, identity, root rect and published state; `describe_state`, the `Observable` values reachable from the tree in the same shape; the target lookup and the obstruction test. Re-exported by `dev/perception.py` |
+| `_interaction/perception.py` | `describe_tree`, each mounted node's type, identity, root rect and published state; `describe_state`, the `State` values reachable from the tree in the same shape; the target lookup and the obstruction test. Re-exported by `dev/perception.py` |
 | `_interaction/action.py` | the verbs |
 | `dev/action.py` | the verbs with the on-screen marker bound |
 | `dev/action_observer.py` | draws the marker of a bridge-driven action ([DEV_MODES.md](DEV_MODES.md)) |

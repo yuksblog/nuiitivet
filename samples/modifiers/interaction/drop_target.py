@@ -25,7 +25,7 @@ class DropZone(nv.ComposableWidget):
         super().__init__()
         self._title = title
         self._tint = tint
-        self.listing = nv.Observable("Drop files here")
+        self.listing = nv.State("Drop files here")
 
     def _on_drop(self, e: nv.FileDropEvent) -> None:
         names = "\n".join(p.name for p in e.paths)

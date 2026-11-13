@@ -12,7 +12,7 @@ import nuiitivet.material as nv
 class Editor(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.status = nv.Observable("no file")
+        self.status = nv.State("no file")
 
     def build(self) -> nv.Widget:
         return nv.Column(

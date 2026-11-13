@@ -20,7 +20,7 @@ idioms in `nuiitivet-app`; running, inspecting and driving the live app in
 ## When to Use
 
 - A public `nv.*` symbol is added, renamed or removed (widget, modifier,
-  Observable operator, Navigator/Overlay method, style).
+  `State` operator, Navigator/Overlay method, style).
 - You hit a mistake or a foreign-framework anti-pattern the skill does not
   warn about yet.
 - An idiom changes (a construction pattern, a recommended approach).

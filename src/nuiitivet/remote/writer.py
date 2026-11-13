@@ -1,4 +1,4 @@
-"""The write-only side of an Observable that a server function is handed."""
+"""The write-only side of a State that a server function is handed."""
 
 from __future__ import annotations
 
@@ -7,26 +7,26 @@ from typing import Any, Protocol, TypeVar
 
 from nuiitivet.observable import runtime
 from nuiitivet.observable._sentinel import UNSET, _Unset
-from nuiitivet.observable.protocols import MutableObservableBase
+from nuiitivet.observable.protocols import MutableStateBase
 
 from .codec import Codec, Json
 
 T_contra = TypeVar("T_contra", contravariant=True)
 
 
-class WriteOnlyObservable(Protocol[T_contra]):
-    """What a server function receives for an Observable its caller passed.
+class WriteOnlyState(Protocol[T_contra]):
+    """What a server function receives for a State its caller passed.
 
-    Annotate the parameter with it; the caller passes a plain ``Observable``::
+    Annotate the parameter with it; the caller passes a plain ``State``::
 
         @nv.server
-        def import_file(path: str, progress: nv.WriteOnlyObservable[float]) -> int:
+        def import_file(path: str, progress: nv.WriteOnlyState[float]) -> int:
             ...
             progress.value = 0.5
 
     Only assignment works. Reading ``value`` raises, and there is nothing to
-    subscribe to: the function runs where the caller's Observable is not.
-    The caller's Observable takes the newest value written, on the UI thread;
+    subscribe to: the function runs where the caller's State is not.
+    The caller's State takes the newest value written, on the UI thread;
     values written in between may be skipped. A write after the call has
     ended or was cancelled is dropped.
     """
@@ -39,15 +39,15 @@ class WriteOnlyObservable(Protocol[T_contra]):
 
 
 class CallWriter:
-    """Carries one call's writes, in their wire form, to the caller's Observable."""
+    """Carries one call's writes, in their wire form, to the caller's State."""
 
     __slots__ = ("_target", "_codec", "_lock", "_pending", "_scheduled", "_closed")
 
-    def __init__(self, target: MutableObservableBase[Any], codec: Codec) -> None:
+    def __init__(self, target: MutableStateBase[Any], codec: Codec) -> None:
         """Initialize CallWriter.
 
         Args:
-            target: The Observable the caller passed.
+            target: The State the caller passed.
             codec: The codec of the declared value type.
         """
         self._target = target
@@ -58,7 +58,7 @@ class CallWriter:
         self._closed = False
 
     def receive(self, data: Json) -> None:
-        """Take one write. Any thread; the Observable is written on the UI thread.
+        """Take one write. Any thread; the State is written on the UI thread.
 
         Args:
             data: The value, encoded.
@@ -85,7 +85,7 @@ class CallWriter:
             self._target.value = pending
 
     def close(self, *, deliver: bool) -> None:
-        """End the call's access to the Observable. Runs on the UI thread.
+        """End the call's access to the State. Runs on the UI thread.
 
         Args:
             deliver: Whether a value still waiting for the UI thread is
@@ -101,4 +101,4 @@ class CallWriter:
             self._target.value = pending
 
 
-__all__ = ["CallWriter", "WriteOnlyObservable"]
+__all__ = ["CallWriter", "WriteOnlyState"]

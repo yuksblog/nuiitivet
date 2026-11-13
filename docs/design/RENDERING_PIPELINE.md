@@ -40,8 +40,8 @@ flowchart LR
 
 - A frame is drawn only when something invalidated.
 - A flip follows a full repaint of the back buffer.
-- `layout()` issues no draw command. `layout()` writes no `Observable`. A
-  measured result reaches an `Observable` through the size-change queue.
+- `layout()` issues no draw command. `layout()` writes no `State`. A
+  measured result reaches a `State` through the size-change queue.
 - `preferred_size()` has no side effect. On a mounted composable it never
   calls `build()`.
 

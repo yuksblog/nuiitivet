@@ -15,7 +15,7 @@ import nuiitivet.material as nv
 # samples/overlay/dialogs/basic_usage.py (Excerpt)
 
 class BasicDialogDemo(nv.ComposableWidget):
-    result_text: nv.Observable[str] = nv.Observable("Ready")
+    result_text: nv.State[str] = nv.State("Ready")
 
     async def _show_dialog(self):
         # No Overlay is nested above this screen, so this resolves to the window's.
@@ -83,7 +83,7 @@ class CustomDialogContent(nv.ComposableWidget):
     def __init__(self, overlay: nv.Overlay):
         super().__init__()
         self.overlay = overlay
-        self.counter = nv.Observable(0)
+        self.counter = nv.State(0)
 
     def _increment(self):
         self.counter.value += 1
@@ -140,7 +140,7 @@ class CounterDialog(nv.ComposableWidget, nv.OverlayAware[int]):
 
     def __init__(self) -> None:
         super().__init__()
-        self.counter = nv.Observable(0)
+        self.counter = nv.State(0)
 
     def _close(self) -> None:
         # No Overlay reference needed — the framework injected the handle.
@@ -199,7 +199,7 @@ class CoupledViewModel:
     """
     
     def __init__(self):
-        self.status = nv.Observable("Ready")
+        self.status = nv.State("Ready")
 
     async def process_action(self, overlay: nv.Overlay):
         self.status.value = "Processing..."
@@ -241,7 +241,7 @@ class DecoupledViewModel:
     """
     
     def __init__(self):
-        self.status = nv.Observable("Ready")
+        self.status = nv.State("Ready")
 
     async def process_action(self, overlay: nv.OverlayProtocol):
         self.status.value = "Processing..."

@@ -16,7 +16,7 @@ import pytest
 from nuiitivet.layout.column import Column
 from nuiitivet.material.buttons import Button
 from nuiitivet.material.text import Text
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.observable import runtime
 from nuiitivet.testing import (
     AppHarness,
@@ -40,7 +40,7 @@ class _Loader(ComposableWidget):
 
     def __init__(self, work: object) -> None:
         super().__init__()
-        self.status = Observable("idle")
+        self.status = State("idle")
         self._work = work
 
     def build(self) -> Widget:
@@ -212,7 +212,7 @@ async def test_wait_for_absence(nuiitivet_app) -> None:
     """Waiting a spinner *out* is at least as common as waiting a result in."""
     from nuiitivet.layout.for_each import ForEach
 
-    rows = Observable(["spinner"])
+    rows = State(["spinner"])
     app = nuiitivet_app(
         lambda: Column(children=[ForEach(rows, lambda item, _i: _text(item, item))]),
         size=SIZE,
@@ -226,7 +226,7 @@ async def test_wait_for_absence(nuiitivet_app) -> None:
 
 
 async def test_wait_for_a_predicate(nuiitivet_app) -> None:
-    """The tree vocabulary cannot say "this Observable changed"; a callable can."""
+    """The tree vocabulary cannot say "this State changed"; a callable can."""
 
     async def _work() -> None:
         await asyncio.sleep(0.02)
@@ -240,7 +240,7 @@ async def test_wait_for_a_predicate(nuiitivet_app) -> None:
 
 async def test_wait_for_fires_a_debounce(nuiitivet_app) -> None:
     """The poll pumps the clock, so a delayed callback actually comes due."""
-    fired = Observable(False)
+    fired = State(False)
     runtime.get_clock().schedule_once(lambda _dt: fired.set(True), 0.02)
 
     app = nuiitivet_app(_text("x", "x"), size=SIZE)

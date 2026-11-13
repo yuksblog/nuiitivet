@@ -4,7 +4,7 @@ from nuiitivet.transition.state import TransitionState
 from nuiitivet.transition.spec import TransitionPhase, Transitions
 
 
-def test_transition_state_create_builds_lifecycle_observable() -> None:
+def test_transition_state_create_builds_lifecycle_state() -> None:
     spec = Transitions.empty()
     state = TransitionState.create(spec, initial_phase=TransitionPhase.ENTER, initial_progress=0.25)
 

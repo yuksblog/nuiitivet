@@ -1,8 +1,8 @@
-# State & reactivity (Observable)
+# State & reactivity (`nv.State`)
 
-`Observable` is Nuiitivet's state primitive. It binds directly to the UI (like
+`State` is Nuiitivet's state primitive. It binds directly to the UI (like
 Signals) and carries Rx-style operators (like ReactiveProperty, its inspiration).
-The rule that prevents 90% of leaks: **assign `.value`, bind the Observable into
+The rule that prevents 90% of leaks: **assign `.value`, bind the `State` into
 the widget, never manually push into the UI.**
 
 ## Create, read and write
@@ -10,9 +10,9 @@ the widget, never manually push into the UI.**
 ```python
 import nuiitivet.material as nv
 
-name  = nv.Observable("Alice")
-count = nv.Observable(0)
-items = nv.Observable([])
+name  = nv.State("Alice")
+count = nv.State(0)
+items = nv.State([])
 
 current = count.value        # get
 count.value = current + 1    # set  -> bound UI updates automatically
@@ -31,16 +31,16 @@ use `.value =` wherever a statement fits.
 Custom equality when needed (keyword-only `compare`):
 
 ```python
-always = nv.Observable(0, compare=lambda a, b: False)
-user   = nv.Observable(None, compare=lambda a, b: (a is b) if (a is None or b is None) else a.uid == b.uid)
+always = nv.State(0, compare=lambda a, b: False)
+user   = nv.State(None, compare=lambda a, b: (a is b) if (a is None or b is None) else a.uid == b.uid)
 ```
 
 ## Bind into the UI
 
-Pass the Observable itself where a value is expected — do not read `.value` at
+Pass the `State` itself where a value is expected — do not read `.value` at
 build time if you want it to stay live, and do not `subscribe()` to update a
-widget by hand. Widgets that take a string (e.g. `Text`) accept an
-`Observable[str]`; map non-string state through `.map(...)` first:
+widget by hand. Widgets that take a string (e.g. `Text`) accept a
+`State[str]`; map non-string state through `.map(...)` first:
 
 ```python
 def build(self):
@@ -53,32 +53,32 @@ def inc(self):
     self.count.value += 1                            # the Text follows on its own
 ```
 
-An Observable handed to an input widget (`nv.TextField(value=self.query)`) is
+A `State` handed to an input widget (`nv.TextField(value=self.query)`) is
 that widget's value, displayed *and* written to — see [inputs.md](inputs.md).
 
 Drawing is on-demand: a frame repaints when state changes, not on a fixed loop.
-Bind to an `Observable`; never drive an animation with a per-frame `while` loop
+Bind to a `State`; never drive an animation with a per-frame `while` loop
 or busy polling.
 
 ## Derive a value (declare a formula, not an update)
 
 ```python
-self.a = nv.Observable(0)
-self.b = nv.Observable(0)
+self.a = nv.State(0)
+self.b = nv.State(0)
 # total recomputes whenever a or b changes; bind `self.total` straight into the UI
 self.total = self.a.combine(self.b).compute(lambda a, b: a + b)
 ```
 
 `map` is the single-source shorthand; `combine(...).compute(...)` derives from
-several. A standalone `nv.Observable.compute(fn)` builds a computed value from any
-Observables read inside `fn`.
+several. A standalone `nv.State.compute(fn)` builds a computed value from any
+`State`s read inside `fn`.
 
 ## Derive over time or off the UI thread (Rx operators, then bind)
 
 ```python
-self.query   = nv.Observable("")
+self.query   = nv.State("")
 self.results = self.query.debounce(0.3).map(format_query)   # thin the keystrokes, then map
-# bind self.results into the UI like any other Observable
+# bind self.results into the UI like any other State
 ```
 
 `throttle(seconds)` is the rate-limited sibling of `debounce`.
@@ -88,7 +88,7 @@ change, the UI thread in a `debounce` chain, so `.map(search_api)` freezes the
 window. Use `switch_map`.
 
 `filter(pred, initial=...)` updates only on values passing `pred`. **`initial` is
-required and keyword-only** — a filtered Observable has no value of its own until
+required and keyword-only** — a filtered `State` has no value of its own until
 something passes, so the caller states what the UI shows meanwhile:
 
 ```python
@@ -98,7 +98,7 @@ self.valid_amount = self.amount.filter(lambda n: n > 0, initial=0)
 Rejected values change nothing: no notification, and `.value` keeps reporting the
 last one that passed. The source's current value is tested at construction too, so
 `initial` shows only while nothing has passed. `pred` must be a pure function of
-the value it is handed — reading another Observable inside it creates no
+the value it is handed — reading another `State` inside it creates no
 dependency and will not re-run the filter; use `combine` for that.
 
 ### `switch_map(fn, initial=...)` — async `map`
@@ -119,7 +119,7 @@ def _search(self, query: str, cancel: nv.CancelToken) -> SearchOutcome:
         return SearchOutcome(items=[], error=str(exc))   # failure is a *value*
 
 self.outcome = self.query.debounce(0.3).switch_map(self._search, initial=SearchOutcome())
-self.items   = self.outcome.map(lambda o: o.items)       # chains like any Observable
+self.items   = self.outcome.map(lambda o: o.items)       # chains like any State
 ```
 
 - **`initial` is required and keyword-only.** No run starts at construction, so
@@ -128,7 +128,7 @@ self.items   = self.outcome.map(lambda o: o.items)       # chains like any Obser
 - **`fn` must not raise.** Return failure as a value in your own result type;
   there is no `.error` channel. An escaping exception is a bug: logged, nothing
   published.
-- **No widgets in `fn`** — it is off the UI thread; read and return Observable
+- **No widgets in `fn`** — it is off the UI thread; read and return `State`
   values only. Results are marshalled back before subscribers run.
 - **`cancel.superseded` is optional.** The result is discarded either way;
   checking only saves wasted work, and a blocking call never gets to check.
@@ -138,7 +138,7 @@ self.items   = self.outcome.map(lambda o: o.items)       # chains like any Obser
   function — and in an app that also runs in a browser, where a plain `fn`
   has no thread to run on.
 
-Only for work that is a **function of an Observable's value**. Hand-write it
+Only for work that is a **function of a `State`'s value**. Hand-write it
 instead (see Cancellation) when it is started by a button — a Retry button
 changes no value, so nothing fires — reports progress, is cancelled explicitly,
 or appends to the previous result. Neither the amount of data returned nor the
@@ -147,7 +147,7 @@ weight of the work matters.
 ### `scan(fn, initial=...)` — accumulate over emissions
 
 `fn(accumulator, value)` folds every emission into a running accumulator, and that
-accumulator is the returned Observable's value:
+accumulator is the returned `State`'s value:
 
 ```python
 self.debounced = self.raw_count.debounce(0.5)
@@ -158,7 +158,7 @@ self.executed = self.debounced.scan(lambda n, _: n + 1, initial=0)   # settled w
   source emits, and the value the source holds at construction is not folded in —
   a counter starts at `initial`, not at 1.
 - **`fn` must be a pure function of the two values handed to it.** Reading another
-  Observable inside it creates no dependency; use `combine` for that.
+  `State` inside it creates no dependency; use `combine` for that.
 - **`fn` must not raise.** An escaping exception is a bug: logged, the accumulator
   left as it stood, nothing published.
 
@@ -169,7 +169,7 @@ counter. Where a click or a keystroke is what you are counting, write
 
 ## Hold what you derive
 
-`q.debounce(0.3)` creates a new Observable, and like every derived Observable it
+`q.debounce(0.3)` creates a new `State`, and like every derived `State` it
 is collected unless something holds it — by name, or by the `Disposable` that
 `subscribe()` returns:
 
@@ -223,7 +223,7 @@ def _run(self, path: str) -> None:
   the latest value per tick, not every value. Correct for anything rendered;
   wrong for a consumer that must see every value.
 - Reading `.value` back on the worker right after writing returns the old value.
-- `nv.Observable(0, dispatch=False)` opts out — synchronous, every value
+- `nv.State(0, dispatch=False)` opts out — synchronous, every value
   delivered — for state no widget binds to. Derivations inherit it.
 - One-shot work with a result: `await asyncio.to_thread(fn, ...)` in an `async`
   handler and assign the result; no thread of your own.
@@ -251,7 +251,7 @@ def _run(self, path: str, cancel: threading.Event) -> None:
 ```
 
 Reusing one long-lived `Event` and calling `clear()` is the trap: the superseded
-worker sees the flag down and resumes, so two runs write the same observables.
+worker sees the flag down and resumes, so two runs write the same `State`s.
 Guard `except` / `finally` writes with `cancel.is_set()` too, or a stale run
 reports over a live one.
 
@@ -277,7 +277,7 @@ change to its body or its callers.
 import nuiitivet.material as nv
 
 @nv.worker
-def search(query: str, progress: nv.WriteOnlyObservable[float]) -> list[str]:
+def search(query: str, progress: nv.WriteOnlyState[float]) -> list[str]:
     ...                                       # same parameters and rules as @nv.server below
 
 # app.py
@@ -305,7 +305,7 @@ import nuiitivet.material as nv
 @nv.server
 def search(
     query: str,
-    progress: nv.WriteOnlyObservable[float],  # the function writes, the screen reads
+    progress: nv.WriteOnlyState[float],  # the function writes, the screen reads
     cancel: nv.CancelToken = nv.CancelToken(),  # keep the default; set when the caller cancels
 ) -> list[str]:
     matches: list[str] = []
@@ -353,7 +353,7 @@ async def start(self) -> None:
 
 - OK: side effects — logging, calling a service, analytics.
 - Anti-pattern: subscribing to copy a value into a widget. That is what binding
-  is for; pass the Observable into the widget instead.
+  is for; pass the `State` into the widget instead.
 
 `subscribe(fn)` returns a `Disposable`; keep it. In a widget that means
 `self.bind(...)`, which disposes it at unmount:
@@ -367,12 +367,12 @@ cause on its own:
 
 | Subscribed to | Symptom |
 | --- | --- |
-| a plain Observable | the source holds the callback, so it keeps firing after unmount — into a dead tree |
-| anything derived (`map`, `combine`, `debounce`, `throttle`, `filter`, `scan`) | nothing holds the derived Observable, so it is collected and never fires at all — see **Hold what you derive** |
+| a plain `State` | the source holds the callback, so it keeps firing after unmount — into a dead tree |
+| anything derived (`map`, `combine`, `debounce`, `throttle`, `filter`, `scan`) | nothing holds the derived `State`, so it is collected and never fires at all — see **Hold what you derive** |
 
 ## Run setup exactly once
 
-`Observable`s go in `__init__`. Setup that needs the widget **in the tree** —
+`State`s go in `__init__`. Setup that needs the widget **in the tree** —
 `X.of(self)`, async loading — goes in an `on_mount()` override, which runs once
 per instance: a rebuild replaces the built subtree, not the host.
 
@@ -380,7 +380,7 @@ per instance: a rebuild replaces the built subtree, not the host.
 class DashboardScreen(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
-        self.rows = nv.Observable([])
+        self.rows = nv.State([])
 
     def on_mount(self):
         super().on_mount()                # REQUIRED: this is what runs build()
@@ -399,12 +399,12 @@ widget that is rebuilt every time, so guard it with a flag owned by something th
 outlives the rebuild (the ViewModel). A flag on that widget dies with it.
 
 No `on_appear()` / `on_disappear()` exists — a covered route stays mounted and
-nothing fires. Pause/resume from the caller side, or a `nv.Deck` index Observable.
+nothing fires. Pause/resume from the caller side, or a `nv.Deck` index `State`.
 
 ## Separate logic into a ViewModel
 
 For non-trivial apps, separate state/logic into a ViewModel and keep `build()`
-purely declarative. The View holds Observables (or the VM does) and the VM
+purely declarative. The View holds `State`s (or the VM does) and the VM
 exposes methods for event handlers to call. A ViewModel does not import or
 create Widgets — for dialogs/navigation it issues **Intents** to an injected
 navigator/overlay, annotated with `nv.NavigatorProtocol` / `nv.OverlayProtocol` so the

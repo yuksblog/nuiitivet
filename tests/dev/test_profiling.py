@@ -7,7 +7,7 @@ from typing import Any, Iterator
 import pytest
 
 from nuiitivet.dev import profiling
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.widgeting import widget_binding, widget_builder
 from nuiitivet.widgeting.widget_kernel import WidgetKernel
 
@@ -93,7 +93,7 @@ def test_recomposition_probe_counts_flushed_scopes(profiled: profiling.Profiling
 
 
 def test_binding_probe_counts_observe_updates(profiled: profiling.ProfilingSession) -> None:
-    obs = Observable(0)
+    obs = State(0)
     widget = _Bindable()
     widget.observe(obs, lambda _v: None)
     # The mount-time initial apply is not an update and must not count.
@@ -104,7 +104,7 @@ def test_binding_probe_counts_observe_updates(profiled: profiling.ProfilingSessi
 
 
 def test_binding_probe_counts_bind_to_updates(profiled: profiling.ProfilingSession) -> None:
-    obs = Observable(0)
+    obs = State(0)
     widget = _Bindable()
     widget.bind_to(obs, lambda _v: None, dependency="text")
     assert id(widget) not in profiled.binding_counts
@@ -120,7 +120,7 @@ def test_nothing_counts_outside_a_session() -> None:
     host = _Host()
     widget_builder._queue_scope_recomposition(host, "s1")  # type: ignore[arg-type]
     widget_builder.flush_scope_recompositions()
-    obs = Observable(0)
+    obs = State(0)
     widget = _Bindable()
     widget.observe(obs, lambda _v: None)
     obs.value = 1

@@ -73,7 +73,7 @@ Prominent action button. Multiple color variants and three sizes (small / medium
 
 ## ExtendedFab
 
-FAB with a label beside the icon. Toggle its `expanded` observable to morph between the extended pill and a circular FAB. Available in tonal and solid color variants across all three sizes.
+FAB with a label beside the icon. Toggle its `expanded` `State` to morph between the extended pill and a circular FAB. Available in tonal and solid color variants across all three sizes.
 
 ![ExtendedFab](../../assets/material_widgets_extended_fab.png)
 
@@ -83,7 +83,7 @@ FAB with a label beside the icon. Toggle its `expanded` observable to morph betw
 
 ## FabMenu
 
-M3 Expressive FAB menu. A single `is_open` observable morphs the FAB between its `add` and `close` icons and reveals a stack of labelled `FabMenuItem` actions, dismissed by tapping outside or selecting an action.
+M3 Expressive FAB menu. A single `is_open` `State` morphs the FAB between its `add` and `close` icons and reveals a stack of labelled `FabMenuItem` actions, dismissed by tapping outside or selecting an action.
 
 ![FabMenu](../../assets/material_widgets_fab_menu.png)
 
@@ -137,7 +137,7 @@ Text input, with leading icons, supporting text and error states. The filled and
 
 ![TextField](../../assets/material_widgets_text_field.png)
 
-An `Observable` passed as `value` is the field's value — it is displayed, and what the user types is written into it. A read-only source (`.map(...)`, a computed value) has nowhere to write, so it only displays; pair it with `disabled=True`.
+A `State` passed as `value` is the field's value — it is displayed, and what the user types is written into it. A read-only source (`.map(...)`, a computed value) has nowhere to write, so it only displays; pair it with `disabled=True`.
 
 ```python
 nv.TextField(value=self.query, label="Search")
@@ -145,7 +145,7 @@ nv.TextField(value=self.pin, input_filter=nv.digits_only() | nv.max_length(4))
 nv.TextField.multiline(value=self.notes, label="Notes", max_lines=4)
 ```
 
-Derive what the text means from the observable; `on_change` is for a side effect only. `on_submit` fires on every `Enter` and never on focus loss, and setting it takes `Enter` from the screen's shortcuts ([Interaction modifiers](../modifiers/interaction.md)); work for when the user leaves the field goes in `on_focus_change`. In a multi-line field `Shift+Enter` breaks the line and `Enter` still submits. Restricting what can be typed, and finishing a half-typed value on the way out, are recipes in [Typed Values from Text Input](../state-management/patterns_and_recipes.md#typed-values-from-text-input).
+Derive what the text means from the `State`; `on_change` is for a side effect only. `on_submit` fires on every `Enter` and never on focus loss, and setting it takes `Enter` from the screen's shortcuts ([Interaction modifiers](../modifiers/interaction.md)); work for when the user leaves the field goes in `on_focus_change`. In a multi-line field `Shift+Enter` breaks the line and `Enter` still submits. Restricting what can be typed, and finishing a half-typed value on the way out, are recipes in [Typed Values from Text Input](../state-management/patterns_and_recipes.md#typed-values-from-text-input).
 
 [API Reference](../../api/material.md#nuiitivet.material.TextField)
 
@@ -157,13 +157,13 @@ A search input. `DockedSearchBar` is the same bar with a panel anchored below it
 
 ![SearchBar](../../assets/material_widgets_search_bar.png)
 
-`value` binds exactly as `TextField`'s does — pass an `Observable` and what the user types is written into it.
+`value` binds exactly as `TextField`'s does — pass a `State` and what the user types is written into it.
 
 ```python
 nv.SearchBar(self.query, placeholder="Search fruit", width=440)
 ```
 
-**`DockedSearchBar`** puts one widget in that panel, as `content`. It holds whatever the query currently calls for — recent searches, suggestions, results, a spinner, "no matches" — and you swap what is inside it from your own observables:
+**`DockedSearchBar`** puts one widget in that panel, as `content`. It holds whatever the query currently calls for — recent searches, suggestions, results, a spinner, "no matches" — and you swap what is inside it from your own `State`s:
 
 ```python
 nv.DockedSearchBar(
@@ -177,11 +177,11 @@ nv.DockedSearchBar(
 )
 ```
 
-`content` stays live while the panel is closed, so whatever drives it keeps running. Gate that with your own observable if it is expensive.
+`content` stays live while the panel is closed, so whatever drives it keeps running. Gate that with your own `State` if it is expensive.
 
 ### Opening and closing the panel
 
-The widget drives one observable from these triggers:
+The widget drives one `State` from these triggers:
 
 | Trigger | Effect |
 | --- | --- |
@@ -194,7 +194,7 @@ The widget drives one observable from these triggers:
 
 That default gives you the usual desktop loop for free: `Enter` puts the panel away, `on_submit` renders results on the page, and typing again brings the panel back. The close runs *before* `on_submit`, so a search that wants the panel to stay up can reopen it from inside its own callback. To keep the results *in* the panel instead, pass `close_on_enter=False` and swap `content` when the search returns.
 
-Only *user* edits reopen it. Assigning to the bound observable does not, so filling the bar in after the user picks something leaves the panel closed:
+Only *user* edits reopen it. Assigning to the bound `State` does not, so filling the bar in after the user picks something leaves the panel closed:
 
 ```python
 def pick(self, item: str) -> None:
@@ -202,7 +202,7 @@ def pick(self, item: str) -> None:
     self.search(item)
 ```
 
-Pass `is_open=self.panel_open` to drive the panel from your own `Observable[bool]`, or to react to it opening and closing. Writing to it opens and closes the panel directly; omit it and the widget keeps its own, readable as `bar.is_open`.
+Pass `is_open=self.panel_open` to drive the panel from your own `State[bool]`, or to react to it opening and closing. Writing to it opens and closes the panel directly; omit it and the widget keeps its own, readable as `bar.is_open`.
 
 In a window too short for the panel, it keeps its minimum height and extends past the bottom edge rather than covering the bar.
 
@@ -306,10 +306,10 @@ API References: [Tooltip](../../api/material.md#nuiitivet.material.Tooltip) ・ 
 
 ## StandardSideSheet
 
-Docked side panel that sits beside the main content area. Unlike the modal `SideSheet`, it is a permanent part of the layout. Pass a writable `Observable[bool]` as `opened` and the sheet animates its own width open and closed, staying mounted throughout.
+Docked side panel that sits beside the main content area. Unlike the modal `SideSheet`, it is a permanent part of the layout. Pass a writable `State[bool]` as `opened` and the sheet animates its own width open and closed, staying mounted throughout.
 
 ```python
-opened: nv.Observable[bool] = nv.Observable(True)
+opened: nv.State[bool] = nv.State(True)
 
 nv.Row([
     main_content,
@@ -344,7 +344,7 @@ A text field with a trailing calendar icon button. Tapping the icon opens a cale
 `value` is the field's **text**, not a date. The date is derived from it, and so is anything the application wants to say about it — the widget flags nothing on its own, so `is_error` and `supporting_text` are derived from the same text and passed in.
 
 ```python
-self.arrival_text = nv.Observable("")
+self.arrival_text = nv.State("")
 self.arrival = self.arrival_text.map(nv.parse_date)      # date | None
 
 nv.DockedDatePicker(value=self.arrival_text, label="Arrival")
@@ -400,7 +400,7 @@ nv.DockedDatePicker(
 
 ## MatplotlibFigure
 
-Shows a matplotlib `Figure`, drawn at the widget's size in the theme's colors, replotted from an Observable with `MatplotlibFigure.plot`. The pointer and the keyboard reach the figure as matplotlib events, so `mpl_connect` handlers and `picker` artists work; `MatplotlibController`, made beside the figure, is matplotlib's pan, zoom and view history for the app's own buttons. Needs `pip install nuiitivet[matplotlib]`; the widget sets the figure's size and dpi itself.
+Shows a matplotlib `Figure`, drawn at the widget's size in the theme's colors, replotted from a `State` with `MatplotlibFigure.plot`. The pointer and the keyboard reach the figure as matplotlib events, so `mpl_connect` handlers and `picker` artists work; `MatplotlibController`, made beside the figure, is matplotlib's pan, zoom and view history for the app's own buttons. Needs `pip install nuiitivet[matplotlib]`; the widget sets the figure's size and dpi itself.
 
 ![MatplotlibFigure](../../assets/charts_matplotlib_figure.png)
 

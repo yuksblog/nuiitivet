@@ -1,6 +1,6 @@
 # Observable
 
-An `Observable` is a value that notifies when it changes. A domain model, a
+A `State` is a value that notifies when it changes. A domain model, a
 service or a widget holds one. Every node of the graph is built on one shared
 base. Two kinds of node stand on it: a derivation of other nodes, and a
 wrapper that reshapes what its source emits. A widget joins the graph through
@@ -21,8 +21,8 @@ flowchart LR
     handler["UI handler (inside batch)"]
     worker[worker thread]
     subgraph base[the shared base]
-        value[_ObservableValue]
-        protocols["ObservableProtocol · Disposable"]
+        value[_StateValue]
+        protocols["StateProtocol · Disposable"]
         notify["notify_all()"]
         batching[BatchContext]
         contexts["_batch_context · _tracking_context"]
@@ -44,13 +44,13 @@ flowchart LR
     batching -- "get · set" --> contexts
     deriving -- "subscribe to the sources · record_computed · _tracking_context" --> base
     wrapping -- "subscribe to the source · schedule_once · notify_all" --> base
-    cell -- "isinstance(ObservableProtocol) · subscribe" --> base
+    cell -- "isinstance(StateProtocol) · subscribe" --> base
 ```
 
 | Module | Role |
 | --- | --- |
-| `_ObservableValue` | the mutable value node: compares, decides whether a write is marshalled, notifies (`observable/value.py`) |
-| `ObservableProtocol`, `Disposable` | the read-only and writable protocols, the subscription handle, the mark for the graph's own edges (`observable/protocols.py`) |
+| `_StateValue` | the mutable value node: compares, decides whether a write is marshalled, notifies (`observable/value.py`) |
+| `StateProtocol`, `Disposable` | the read-only and writable protocols, the subscription handle, the mark for the graph's own edges (`observable/protocols.py`) |
 | `notify_all()` | the one loop that delivers a value to every subscriber, surviving one that raises (`observable/_notify.py`) |
 | `BatchContext` | records the dirty values and the queued derivations, flushes at the outermost exit (`observable/batching.py`) |
 | `_batch_context`, `_tracking_context` | the two `contextvars`: the current batch, the tracking derivation (`observable/contexts.py`) |
@@ -68,7 +68,7 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     participant W as worker thread
-    participant V as _ObservableValue
+    participant V as _StateValue
     participant C as installed clock
     participant U as UI thread
     participant S as subscribers
@@ -91,9 +91,9 @@ sequenceDiagram
 sequenceDiagram
     participant I as widget_input.py
     participant H as handler
-    participant V as _ObservableValue
+    participant V as _StateValue
     participant B as BatchContext
-    participant D as ComputedObservable
+    participant D as ComputedState
     participant S as subscribers
 
     I->>B: enter batch()
@@ -124,7 +124,7 @@ sequenceDiagram
   outermost exit. A batch exited off the UI thread marshals that flush when
   any dirty value dispatches.
 - Pointer, key and focus dispatch run inside `batch()`.
-- `_ObservableValue`, `ComputedObservable` and `SourceSubscribingObservable`
+- `_StateValue`, `ComputedState` and `SourceSubscribingState`
   each define the full operator set.
 - A derivation, a predicate or a fold that raises is contained where it runs.
   The node keeps the value it held. Nothing is emitted. The failure is logged
@@ -145,11 +145,11 @@ of their sources. They hold no state of their own.
 flowchart LR
     map["map()"]
     builder[CombineBuilder]
-    computed[ComputedObservable]
+    computed[ComputedState]
     tracking[(_tracking_context)]
     sources[(the source nodes)]
 
-    map -- "ComputedObservable(fn, dispatch)" --> computed
+    map -- "ComputedState(fn, dispatch)" --> computed
     builder -- "compute(fn)" --> computed
     computed -- "set during the function" --> tracking
     tracking -- "every .value read" --> computed
@@ -158,9 +158,9 @@ flowchart LR
 
 | Module | Role |
 | --- | --- |
-| `map()` | builds a `ComputedObservable` over one source; defined on every kind of node |
+| `map()` | builds a `ComputedState` over one source; defined on every kind of node |
 | `CombineBuilder` | collects several sources for one `compute(fn)` |
-| `ComputedObservable` | runs the function under the tracking context, re-arms its edges, stores the result |
+| `ComputedState` | runs the function under the tracking context, re-arms its edges, stores the result |
 | `_tracking_context` | the derivation currently running, so a read can register itself |
 | the source nodes | whatever the function reads |
 
@@ -182,13 +182,13 @@ a source's value is republished. The last two publish values of their own.
 ```mermaid
 flowchart TB
     source[(the source node)]
-    base["SourceSubscribingObservable[TIn, TOut]"]
-    shaping["ShapingObservable[T]"]
-    debounce[DebouncedObservable]
-    throttle[ThrottledObservable]
-    filter[FilteredObservable]
-    switch[SwitchMappedObservable]
-    scan[ScannedObservable]
+    base["SourceSubscribingState[TIn, TOut]"]
+    shaping["ShapingState[T]"]
+    debounce[DebouncedState]
+    throttle[ThrottledState]
+    filter[FilteredState]
+    switch[SwitchMappedState]
+    scan[ScannedState]
     clock[installed clock]
     thread[daemon thread]
     task[spawn_task]
@@ -206,12 +206,12 @@ flowchart TB
 
 | Module | Role |
 | --- | --- |
-| `SourceSubscribingObservable` | the base of every wrapper: the weak edge to the source, the held value, the teardown |
-| `ShapingObservable` | the base of the wrappers whose output type is the input type |
-| `DebouncedObservable`, `ThrottledObservable` | republish on the trailing edge, or on the leading edge, of a time window |
-| `FilteredObservable` | republishes only the values the predicate passes |
-| `SwitchMappedObservable`, `CancelToken` | runs `fn` per change and publishes only the newest run's result |
-| `ScannedObservable` | folds every emission into an accumulator |
+| `SourceSubscribingState` | the base of every wrapper: the weak edge to the source, the held value, the teardown |
+| `ShapingState` | the base of the wrappers whose output type is the input type |
+| `DebouncedState`, `ThrottledState` | republish on the trailing edge, or on the leading edge, of a time window |
+| `FilteredState` | republishes only the values the predicate passes |
+| `SwitchMappedState`, `CancelToken` | runs `fn` per change and publishes only the newest run's result |
+| `ScannedState` | folds every emission into an accumulator |
 | the daemon thread | runs a plain `fn` off the UI thread |
 | `spawn_task` | runs a coroutine `fn` as a task on the event loop |
 | the installed clock | carries a timer or a marshalled result to the UI thread |
@@ -224,7 +224,7 @@ flowchart TB
 ```mermaid
 sequenceDiagram
     participant Src as source
-    participant SM as SwitchMappedObservable
+    participant SM as SwitchMappedState
     participant R1 as run 1 (thread or task)
     participant R2 as run 2 (thread or task)
     participant C as installed clock
@@ -272,22 +272,22 @@ sequenceDiagram
 
 ## The Value Cell
 
-An input widget stores its value in a cell. An observable passed to the
+An input widget stores its value in a cell. A `State` passed to the
 constructor becomes that cell.
 
 ### Structure
 
 ```mermaid
 flowchart LR
-    caller[(the caller's observable)]
-    proto[ObservableProtocol]
+    caller[(the caller's State)]
+    proto[StateProtocol]
     toggle[Toggleable]
     text[EditableText]
     host[BindingHostMixin]
     queue[the invalidation queue]
     window[Window]
 
-    toggle -- "isinstance(value, ObservableProtocol)" --> proto
+    toggle -- "isinstance(value, StateProtocol)" --> proto
     toggle -- "_get_state_obj(): the cell, when writable" --> caller
     text -- "reads · writes back on commit" --> caller
     toggle & text -- "bind(subscribe(...))" --> host
@@ -297,9 +297,9 @@ flowchart LR
 
 | Module | Role |
 | --- | --- |
-| the caller's observable | any writable node the app passed in |
-| `ObservableProtocol` | the writable protocol, told from the read-only one by `set` |
-| `Toggleable` | keeps one live cell, the caller's observable or its own, and reads and writes through it |
+| the caller's `State` | any writable node the app passed in |
+| `StateProtocol` | the writable protocol, told from the read-only one by `set` |
+| `Toggleable` | keeps one live cell, the caller's `State` or its own, and reads and writes through it |
 | `EditableText` | keeps a richer editing value beside the caller's text and mirrors between them |
 | `BindingHostMixin` | holds a widget's subscriptions and disposes them at unmount |
 | the invalidation queue | one entry per widget whose bound value changed this frame, drained by `flush_binding_invalidations()` (`widgeting/widget_binding.py`) |
@@ -313,7 +313,7 @@ flowchart LR
 sequenceDiagram
     participant H as human
     participant Wd as input widget
-    participant O as caller's observable
+    participant O as caller's State
     participant Host as BindingHostMixin
     participant Q as the invalidation queue
     participant Win as Window
@@ -333,7 +333,7 @@ sequenceDiagram
 - The text field's mirror is the one widget that holds a value beside the
   caller's. Its rules are in [TEXT_EDITING.md](TEXT_EDITING.md).
 - Writability is decided at runtime, by `isinstance(value,
-  ObservableProtocol)`.
+  StateProtocol)`.
 - An operator that returns a read-only view returns a distinct object.
 - `bind()` retains a `Disposable`. Unmount disposes every binding.
 - A bound value's update invalidates the widget once per frame.

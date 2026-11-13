@@ -18,13 +18,13 @@ skill front-loads the correct idioms and provides a linter to catch leaks.
 
 2. **UI components subclass `nv.ComposableWidget` and define `build(self)`.**
    There is no `StatelessWidget` / `StatefulWidget`, no `createState`, no
-   `initState`, no `build(self, context)` signature. Create `Observable`s in
+   `initState`, no `build(self, context)` signature. Create `State`s in
    plain `__init__`.
 
-3. **State is `Observable`, and the UI binds to it — never push.** Assign
+3. **State lives in `nv.State`, and the UI binds to it — never push.** Assign
    `obs.value = x` and bound widgets update automatically. There is **no**
    `setState`, `useState`, or manual re-render. Do not `subscribe()` just to
-   shove a value into a widget — pass the Observable straight into the widget.
+   shove a value into a widget — pass the `State` straight into the widget.
 
 4. **Size, spacing, and alignment are widget *parameters*, not wrapper widgets.**
    Write `nv.Text("Hi", padding=12, width=200)`. Do **not** wrap in `Padding`,
@@ -49,7 +49,7 @@ skill front-loads the correct idioms and provides a linter to catch leaks.
    the factory / widget `__init__`, not `main()` (which runs **once**, never on
    reload). *How to run* under hot reload lives in the **nuiitivet-debug** skill.
 
-7. **The one-line mental model:** Logic → UI is declarative (`Observable`
+7. **The one-line mental model:** Logic → UI is declarative (`State`
    binding); UI → logic is imperative (event handlers).
 
 ## A complete minimal app
@@ -60,7 +60,7 @@ import nuiitivet.material as nv
 class Counter(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.count = nv.Observable(0)              # per-tree state: created here
+        self.count = nv.State(0)              # per-tree state: created here
 
     def build(self) -> nv.Widget:
         return nv.Column(
@@ -211,7 +211,7 @@ and spacing stay widget *parameters*, not modifiers.
 | React to this widget's own measured size (adaptive placement, responsive reflow) | `on_size_changed` | `on_size_changed(self._on_size)` |
 
 **Pointer participation**
-which widget catches a click when layers overlap (default is `auto`; each takes `bool` / `Observable[bool]`)
+which widget catches a click when layers overlap (default is `auto`; each takes `bool` / `State[bool]`)
 
 | Need | Modifier | Example |
 | --- | --- | --- |
@@ -271,7 +271,7 @@ day-to-day nuiitivet code is here, offline.
   [references/translation.md](references/translation.md) — the core
   "tempted to write X → in Nuiitivet write Y" table. Read this first when unsure.
 - **State, reactivity, derived/async values** →
-  [references/state.md](references/state.md) — Observable, `combine`/`compute`,
+  [references/state.md](references/state.md) — `State`, `combine`/`compute`,
   `map`/`debounce`/`filter`/`scan`, `switch_map` for async work, background threads and
   cancellation, `@nv.worker` / `@nv.server` for work that also runs in a browser, ViewModel pattern.
 - **Layout, sizing, spacing, dynamic lists, modifiers** →

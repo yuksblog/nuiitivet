@@ -1,7 +1,7 @@
 """Every public widget accepts ``key`` in its constructor.
 
 ``key`` is a widget's stable, layout-independent identity — the dev bridge
-targets widgets by it (``click(key=...)``) and hot reload anchors observable
+targets widgets by it (``click(key=...)``) and hot reload anchors State
 snapshots to it. It replaced the ``keyed()`` modifier, so it must be reachable
 from every public widget's constructor: this test walks the public surface
 (``nuiitivet.material.__all__``, the only import policy apps may use) and

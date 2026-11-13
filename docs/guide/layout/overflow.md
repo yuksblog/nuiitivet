@@ -79,7 +79,7 @@ The scroll axis is chosen by the class (`VerticalScrollable` /
 
 | Argument | Description |
 | --- | --- |
-| `scrollbar_visible` | Whether to display the scrollbar (`bool` or `Observable[bool]`) |
+| `scrollbar_visible` | Whether to display the scrollbar (`bool` or `State[bool]`) |
 | `style` | Scrollbar appearance via `ScrollbarStyle(thickness, min_thumb_length, inset)` |
 | `behavior` | Scrollbar interaction via `ScrollbarBehavior(auto_hide, …)` |
 | `controller` | A `ScrollController` carrying scroll `physics` and `scroll_multiplier` |

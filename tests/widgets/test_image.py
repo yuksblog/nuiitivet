@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.widgets.image import Image
 
 
@@ -55,13 +55,13 @@ def test_image_accepts_none_source() -> None:
     assert w.preferred_size() == (120, 80)
 
 
-def test_image_observable_none_to_bytes_updates_and_draws(monkeypatch) -> None:
+def test_image_state_none_to_bytes_updates_and_draws(monkeypatch) -> None:
     import nuiitivet.widgets.image as image_mod
 
     monkeypatch.setattr(image_mod, "get_skia", lambda raise_if_missing=False: _DummySkia)
     monkeypatch.setattr(image_mod, "make_rect", lambda x, y, w, h: (x, y, w, h))
 
-    source: Observable[bytes | None] = Observable(None)
+    source: State[bytes | None] = State(None)
     w = Image(source, width=100, height=100)
     canvas = MagicMock()
 

@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, TypeVar
 from nuiitivet.common.logging_once import exception_once
 from .callbacks import report_contained
 from .widget_builder import flush_scope_recompositions
-from nuiitivet.observable.protocols import ReadOnlyObservableProtocol
+from nuiitivet.observable.protocols import ReadOnlyStateProtocol
 
 _logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ def _queue_binding_invalidation(widget: Any, dependency: Optional[str], scope_id
     return first_insert
 
 
-# Dev-only observation point: receives the widget each time an Observable
+# Dev-only observation point: receives the widget each time a State
 # update is delivered to it (``observe`` and ``bind_to`` subscriptions; the
 # initial mount-time apply is not an update and does not fire it). ``None``
 # outside a profiling session.
@@ -69,7 +69,7 @@ def set_binding_probe(probe: Optional[Callable[[Any], None]]) -> None:
 
 
 def notify_binding_probe(widget: Any) -> None:
-    """Report one Observable update delivered to *widget* (no-op when idle).
+    """Report one State update delivered to *widget* (no-op when idle).
 
     For binding paths outside :class:`BindingHostMixin` (e.g. a Text label
     subscription) to participate in dev profiling.
@@ -189,14 +189,14 @@ class BindingHostMixin:
         self._bindings = []
         super().__init__(*args, **kwargs)
 
-    def observe(self, observable: ReadOnlyObservableProtocol[T], callback: Callable[[T], None]) -> None:
-        """Subscribe to an observable and manage the subscription lifecycle.
+    def observe(self, state: ReadOnlyStateProtocol[T], callback: Callable[[T], None]) -> None:
+        """Subscribe to a State and manage the subscription lifecycle.
 
         Applies the current value immediately, then updates on changes.
         """
         # Apply initial value
         try:
-            callback(observable.value)
+            callback(state.value)
         except Exception:
             exception_once(
                 _logger,
@@ -219,7 +219,7 @@ class BindingHostMixin:
                 )
 
         try:
-            sub = observable.subscribe(_on_change)
+            sub = state.subscribe(_on_change)
             self.bind(sub)
         except Exception:
             exception_once(
@@ -242,25 +242,25 @@ class BindingHostMixin:
 
     def bind_to(
         self,
-        observable,
+        state,
         setter,
         *,
         dependency: Optional[str] = None,
         scope_id: Optional[str] = None,
     ) -> None:
-        """Subscribe *observable* to *setter*, invalidating a named dependency.
+        """Subscribe *state* to *setter*, invalidating a named dependency.
 
         Applies the current value first, like :meth:`observe`. That initial call
         does not queue a dependency invalidation: nothing is cached yet at this
         point, and the call sites that used to seed this by hand did not queue
         one either.
         """
-        if not hasattr(observable, "subscribe"):
+        if not hasattr(state, "subscribe"):
             return
 
-        if hasattr(observable, "value"):
+        if hasattr(state, "value"):
             try:
-                setter(observable.value)
+                setter(state.value)
             except Exception:
                 exception_once(
                     _logger,
@@ -286,12 +286,12 @@ class BindingHostMixin:
             self._invalidate_binding_dependency(dependency, scope_id)
 
         try:
-            disposable = observable.subscribe(_on_value)
+            disposable = state.subscribe(_on_value)
         except Exception:
             exception_once(
                 _logger,
                 f"widget_binding_subscribe_exc:{type(self).__name__}",
-                "Failed to subscribe observable for widget=%s dependency=%s scope_id=%s",
+                "Failed to subscribe State for widget=%s dependency=%s scope_id=%s",
                 type(self).__name__,
                 dependency,
                 scope_id,

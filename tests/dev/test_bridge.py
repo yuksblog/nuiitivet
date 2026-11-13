@@ -271,10 +271,10 @@ def test_bridge_screenshot_rejects_bad_scope(tmp_path: Path, dev_run: None) -> N
 
 
 def test_bridge_describe_state(tmp_path: Path, dev_run: None) -> None:
-    from nuiitivet.observable.value import Observable
+    from nuiitivet.observable.value import State
 
     app: Any = _FakeApp()
-    app.root._obs_count = Observable(7)
+    app.root._obs_count = State(7)
     bridge = DevBridge(app, tmp_path)
     bridge.start()
     try:
@@ -289,10 +289,10 @@ def test_bridge_describe_state(tmp_path: Path, dev_run: None) -> None:
 
 def test_bridge_describe_state_include_animations(tmp_path: Path, dev_run: None) -> None:
     from nuiitivet.animation.animatable import Animatable
-    from nuiitivet.observable.value import Observable
+    from nuiitivet.observable.value import State
 
     app: Any = _FakeApp()
-    app.root._obs_count = Observable(7)
+    app.root._obs_count = State(7)
     app.root._fade_anim = Animatable(0.5)
     bridge = DevBridge(app, tmp_path)
     bridge.start()

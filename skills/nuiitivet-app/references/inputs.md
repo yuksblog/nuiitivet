@@ -1,22 +1,22 @@
 # Text & date input
 
-An input widget takes an `Observable` as its value and writes the user's edit
+An input widget takes a `State` as its value and writes the user's edit
 back into it. What the text *means* — a number, a date, a query — is derived
-from that `Observable`, never stored beside it.
+from that `State`, never stored beside it.
 
 ## Bind the value
 
 ```python
-self.query = nv.Observable("")
+self.query = nv.State("")
 nv.TextField(value=self.query, label="Name")
 nv.TextField.multiline(value=self.notes, label="Notes")  # the text area, same arguments
 ```
 
 `nv.TextField(value=self.query)`, `nv.Switch(checked=self.on)` and
 `nv.HorizontalSlider(value=self.level)` all write the edit straight back. There is
-no separate opt-in, and no `on_change` is needed to keep the Observable in sync.
+no separate opt-in, and no `on_change` is needed to keep the `State` in sync.
 Use `on_change` only for a *side effect* of the change; anything you can derive
-(`query.debounce(0.3).switch_map(...)`) belongs on the Observable.
+(`query.debounce(0.3).switch_map(...)`) belongs on the `State`.
 
 A read-only source — anything from `.map(...)`, `.compute(...)`, `combine(...)` —
 has no setter, so an input widget can only display it. That is the correct way
@@ -60,7 +60,7 @@ nv.DockedSearchBar(self.query, placeholder="Search", content=panel_widget,
                    on_submit=self.search, width=440)
 ```
 
-- One slot, `content`: a live widget bound to your observables (suggestions,
+- One slot, `content`: a live widget bound to your `State`s (suggestions,
   results, a spinner), not a rebuild callback.
 - It opens on focus, on a tap on the bar, and on typing. It closes on Enter
   (`close_on_enter=False` keeps it up), on Escape, and on blur — never on a tap

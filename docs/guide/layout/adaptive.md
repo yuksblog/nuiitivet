@@ -17,13 +17,13 @@ Column([...], width="wt").modifier(
 )
 ```
 
-Assign the size to an `Observable` in the callback and the widgets bound to it
-update as usual. Those `Observable`s live in a plain `__init__` — nothing about
+Assign the size to a `State` in the callback and the widgets bound to it
+update as usual. Those `State`s live in a plain `__init__` — nothing about
 this needs a lifecycle hook.
 
 > **Mind the initial value.** The callback also runs once when the widget is
-> first shown, not only when the size later changes — so whatever `Observable`
-> you assign in it is overwritten right at startup. Give that `Observable` the
+> first shown, not only when the size later changes — so whatever `State`
+> you assign in it is overwritten right at startup. Give that `State` the
 > value the starting size will produce. If the two differ, the UI shows the
 > initial value for one frame and then switches.
 
@@ -45,7 +45,7 @@ import nuiitivet.material as nv
 class AdaptiveToolbarPanel(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__(width="wt", height="wt")
-        self._landscape = nv.Observable(True)      # this app's initial shape
+        self._landscape = nv.State(True)      # this app's initial shape
         self._portrait = self._landscape.map(lambda landscape: not landscape)
 
     def _on_size(self, size: nv.Size) -> None:

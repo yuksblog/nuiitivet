@@ -38,7 +38,7 @@ from nuiitivet.modifiers.tooltip import tooltip
 from nuiitivet.modifiers.transform import opacity, rotate
 from nuiitivet.modifiers.visible import visible
 from nuiitivet.modifiers.will_pop import will_pop
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.scrolling import ScrollController, ScrollDirection
 from nuiitivet.testing import mount
@@ -64,96 +64,96 @@ def _png(color: int) -> bytes:
     return bytes(surface.makeImageSnapshot().encodeToData())
 
 
-def _set(observable: Any, value: Any) -> Callable[[], None]:
+def _set(state: Any, value: Any) -> Callable[[], None]:
     def change() -> None:
-        observable.value = value
+        state.value = value
 
     return change
 
 
 def _radio() -> _Case:
-    selected: Observable[object] = Observable(1)
-    disabled = Observable(False)
+    selected: State[object] = State(1)
+    disabled = State(False)
     group = RadioGroup(Row(children=[RadioButton(1), RadioButton(2, disabled=disabled)]), value=selected)
     return _Case(group, (_set(selected, 2), _set(disabled, True)))
 
 
 def _icon() -> _Case:
-    name = Observable("star")
+    name = State("star")
     return _Case(Icon(name), (_set(name, "home"),))
 
 
 def _grid() -> _Case:
-    label = Observable("cell")
+    label = State("cell")
     return _Case(Grid([GridItem(Text(label), 0, 0)], rows=["auto"], columns=["auto"]), (_set(label, "changed"),))
 
 
 def _rotated() -> _Case:
-    angle = Observable(10.0)
+    angle = State(10.0)
     return _Case(Text("turned").modifier(rotate(angle)), (_set(angle, 40.0),))
 
 
 def _transform_without_effect() -> _Case:
-    label = Observable("opaque")
+    label = State("opaque")
     return _Case(Text(label).modifier(opacity(1.0)), (_set(label, "changed"),))
 
 
 def _visible() -> _Case:
-    shown = Observable(True)
+    shown = State(True)
     transition = TransitionDefinition(motion=LinearMotion(0.2), pattern=FadePattern())
     return _Case(Text("fades").modifier(visible(shown, transition=transition)), (_set(shown, False),))
 
 
 def _will_pop() -> _Case:
-    label = Observable("guarded")
+    label = State("guarded")
     return _Case(Text(label).modifier(will_pop(lambda: True)), (_set(label, "changed"),))
 
 
 def _linear_progress() -> _Case:
-    value = Observable(0.2)
-    disabled = Observable(False)
+    value = State(0.2)
+    disabled = State(False)
     widget = LinearProgressIndicator(value, disabled=disabled, width=200)
     return _Case(widget, (_set(value, 0.8), _set(disabled, True)))
 
 
 def _circular_progress() -> _Case:
-    value = Observable(0.2)
-    disabled = Observable(False)
+    value = State(0.2)
+    disabled = State(False)
     return _Case(CircularProgressIndicator(value, disabled=disabled), (_set(value, 0.8), _set(disabled, True)))
 
 
 def _for_each() -> _Case:
-    items = Observable(["a", "b"])
+    items = State(["a", "b"])
     return _Case(ForEach(items, lambda item, _index: Text(str(item))), (_set(items, ["a", "b", "c"]),))
 
 
 def _image() -> _Case:
-    source: Observable[bytes | None] = Observable(_png(0xFFFF0000))
+    source: State[bytes | None] = State(_png(0xFFFF0000))
     return _Case(Image(source, width=16, height=16), (_set(source, _png(0xFF0000FF)),))
 
 
 def _tooltip() -> _Case:
-    label = Observable("hover me")
+    label = State("hover me")
     return _Case(Text(label).modifier(tooltip(Text("tip"))), (_set(label, "changed"),))
 
 
 def _context_menu() -> _Case:
-    label = Observable("right-click me")
+    label = State("right-click me")
     return _Case(Text(label).modifier(context_menu(Text("menu"))), (_set(label, "changed"),))
 
 
 def _stick() -> _Case:
-    label = Observable("inbox")
+    label = State("inbox")
     return _Case(Text(label).modifier(stick(SmallBadge())), (_set(label, "changed"),))
 
 
 def _collapsible() -> _Case:
-    opened = Observable(True)
+    opened = State(True)
     return _Case(Collapsible(Text("folds"), opened=opened), (_set(opened, False),))
 
 
 def _text_field_base() -> _Case:
-    text = Observable("typed")
+    text = State("typed")
     return _Case(TextFieldBase(text), (_set(text, "changed"),))
 
 

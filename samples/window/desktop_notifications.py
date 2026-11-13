@@ -14,8 +14,8 @@ import nuiitivet.material as nv
 
 
 class NotificationDemo(nv.ComposableWidget):
-    running = nv.Observable(False)
-    status = nv.Observable("idle")
+    running = nv.State(False)
+    status = nv.State("idle")
 
     def build(self) -> nv.Widget:
         return nv.Column(

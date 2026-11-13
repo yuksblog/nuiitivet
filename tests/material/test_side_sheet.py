@@ -183,11 +183,11 @@ def test_side_sheet_show_back_true():
     assert sheet._resolve_show_back() is True
 
 
-def test_side_sheet_show_back_observable():
-    """show_back_button=Observable — _resolve_show_back reflects observable value."""
-    from nuiitivet.observable import Observable
+def test_side_sheet_show_back_state():
+    """show_back_button=State — _resolve_show_back reflects State value."""
+    from nuiitivet.observable import State
 
-    obs = Observable(False)
+    obs = State(False)
     sheet = SideSheet(Box(), headline="Settings", show_back_button=obs)
     assert sheet._resolve_show_back() is False
     obs.value = True

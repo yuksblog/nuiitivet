@@ -45,13 +45,13 @@ def notify_all(
     unsubscribes while being notified does not disturb this emission.
 
     The value is read from ``current`` **per callback**, not captured once. A
-    subscriber may write back to the observable it is being notified by -- an
+    subscriber may write back to the State it is being notified by -- an
     application normalizing what a text field just produced is the in-tree case
     -- and the subscribers after it must be handed what that write left behind,
     not the value the emission started with. Callers whose value cannot change
     mid-emission pass a thunk over their own local.
 
-    ``key`` names the emitting observable for the log's de-duplication; the
+    ``key`` names the emitting State for the log's de-duplication; the
     raising callback's own type and location are added by
     :func:`~nuiitivet.common.logging_once.exception_once_per_exc`, so two
     different broken subscribers are reported separately while one that keeps
@@ -66,5 +66,5 @@ def notify_all(
             exception_once_per_exc(
                 logger,
                 f"observable_subscriber_raised:{key}",
-                "Observable subscriber raised; the remaining subscribers were still notified",
+                "State subscriber raised; the remaining subscribers were still notified",
             )

@@ -1,4 +1,4 @@
-"""Observable: Thread Safety
+"""Thread Safety
 
 Demonstrates:
 - Cross-thread writes marshalled onto the UI thread automatically
@@ -15,18 +15,18 @@ import nuiitivet.material as nv
 
 
 class ThreadSafetyApp(nv.ComposableWidget):
-    """Fetches data on a worker thread; observables are dispatched to the UI thread."""
+    """Fetches data on a worker thread; States are dispatched to the UI thread."""
 
-    data: nv.Observable[str | None] = nv.Observable(None)
-    loading: nv.Observable[bool] = nv.Observable(False)
-    error: nv.Observable[str | None] = nv.Observable(None)
+    data: nv.State[str | None] = nv.State(None)
+    loading: nv.State[bool] = nv.State(False)
+    error: nv.State[str | None] = nv.State(None)
 
     def __init__(self) -> None:
         super().__init__()
         # Nothing to enable: a write from the worker below is marshalled onto
-        # the UI thread because that is what an Observable does by default.
+        # the UI thread because that is what a State does by default.
 
-        # Derived values built on top of dispatched observables
+        # Derived values built on top of dispatched States
         self.status_text = self.loading.map(lambda loading: "⏳ Loading…" if loading else "")
         self.data_text = self.data.map(lambda d: d if d is not None else "(no data loaded yet)")
         self.error_text = self.error.map(lambda e: f"⚠ {e}" if e else "")
@@ -35,7 +35,7 @@ class ThreadSafetyApp(nv.ComposableWidget):
         self.data_upper = self.data.map(lambda d: d.upper() if d else "")
 
     def fetch(self, should_fail: bool = False) -> None:
-        """Spawn a worker thread that updates observables safely."""
+        """Spawn a worker thread that updates States safely."""
 
         def worker() -> None:
             try:
@@ -86,9 +86,9 @@ class ThreadSafetyApp(nv.ComposableWidget):
             child=nv.Column(
                 gap=16,
                 children=[
-                    nv.Text("Observable: Thread Safety"),
-                    nv.Text("Workers update observables from a background thread."),
-                    nv.Text("Observable marshals those writes onto the UI thread."),
+                    nv.Text("Thread Safety"),
+                    nv.Text("Workers update States from a background thread."),
+                    nv.Text("State marshals those writes onto the UI thread."),
                     nv.Text(self.status_text),
                     nv.Text(self.data_text),
                     nv.Text(self.data_upper),

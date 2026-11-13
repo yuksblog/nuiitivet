@@ -18,10 +18,10 @@ import nuiitivet.material as nv
 class FileDialogApp(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.result: nv.Observable[str] = nv.Observable("(nothing picked yet)")
+        self.result: nv.State[str] = nv.State("(nothing picked yet)")
         # UI-thread heartbeat: the label stalls exactly when the UI thread
         # is busy, e.g. while a modal dialog is up.
-        self.tick: nv.Observable[int] = nv.Observable(0)
+        self.tick: nv.State[int] = nv.State(0)
 
     async def _beat(self) -> None:
         # Started as a task on mount, cancelled automatically on unmount.

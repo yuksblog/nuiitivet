@@ -1,12 +1,12 @@
 from nuiitivet.layout.for_each import ForEach
 from nuiitivet.widgeting.widget import Widget
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 
 
 def _make_obs(initial):
 
     class _Tmp:
-        x = Observable(initial)
+        x = State(initial)
 
     return _Tmp().x
 

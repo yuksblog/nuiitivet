@@ -143,7 +143,7 @@ instance or a registered name.
 
 ### Light / Dark Toggle
 
-`from_seed_pair` generates both a light and a dark `Theme` from a single seed color. Use an `Observable[str]` for the button label so it updates reactively without a full rebuild:
+`from_seed_pair` generates both a light and a dark `Theme` from a single seed color. Use a `State[str]` for the button label so it updates reactively without a full rebuild:
 
 ```python
 import nuiitivet.material as nv

@@ -14,7 +14,7 @@ from nuiitivet.layout.scrollable import VerticalScrollable
 from nuiitivet.material.text import Text
 from nuiitivet.material.text_fields import TextField
 from nuiitivet.modifiers.size_changed import on_size_changed
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.observable.runtime import get_clock, set_clock
 from nuiitivet.testing import (
     ActionNotHandledError,
@@ -41,7 +41,7 @@ class _Counter(ComposableWidget):
 
     def __init__(self) -> None:
         super().__init__()
-        self.count = Observable(0)
+        self.count = State(0)
 
     def build(self) -> Widget:
         from nuiitivet.material.buttons import Button
@@ -125,13 +125,13 @@ def test_get_refuses_two_matches_and_names_the_divergence() -> None:
 # -- Node staleness --------------------------------------------------------
 
 
-def _list_screen(rows: Observable) -> Widget:
+def _list_screen(rows: State) -> Widget:
     """A list whose rows are genuinely rebuilt when the source changes."""
     return Column(children=[ForEach(rows, lambda item, _index: _text(item, item))])
 
 
 def test_node_from_before_a_rebuild_raises(nuiitivet_app) -> None:
-    rows = Observable(["alpha", "beta"])
+    rows = State(["alpha", "beta"])
     app = nuiitivet_app(lambda: _list_screen(rows), size=(800, 600))
     node = app.get(key="alpha")
     assert node.text == "alpha"
@@ -147,7 +147,7 @@ def test_node_from_before_a_rebuild_raises(nuiitivet_app) -> None:
 
 
 def test_stale_message_names_the_action_that_invalidated_it(nuiitivet_app) -> None:
-    rows = Observable(["alpha", "beta"])
+    rows = State(["alpha", "beta"])
     app = nuiitivet_app(lambda: _list_screen(rows), size=(800, 600))
     node = app.get(key="alpha")
 
@@ -177,7 +177,7 @@ def test_type_can_assert_the_negative_deliberately(nuiitivet_app) -> None:
 
 
 def test_type_focuses_its_target_first(nuiitivet_app) -> None:
-    value = Observable("")
+    value = State("")
 
     def screen() -> Widget:
         return Column(children=[TextField(value, key="field")])
@@ -189,7 +189,7 @@ def test_type_focuses_its_target_first(nuiitivet_app) -> None:
 
 
 def test_key_edits_the_focused_text_field(nuiitivet_app) -> None:
-    value = Observable("")
+    value = State("")
 
     def screen() -> Widget:
         return Column(children=[TextField(value, key="field")])
@@ -209,7 +209,7 @@ def test_key_edits_the_focused_text_field(nuiitivet_app) -> None:
 
 
 def test_key_with_shift_extends_the_text_selection(nuiitivet_app) -> None:
-    value = Observable("")
+    value = State("")
 
     def screen() -> Widget:
         return Column(children=[TextField(value, key="field")])
@@ -312,7 +312,7 @@ def test_scroll_moves_the_region(nuiitivet_app) -> None:
 def test_settle_applies_a_write_from_a_worker_thread(
     nuiitivet_app,
 ) -> None:
-    label = Observable("before")
+    label = State("before")
 
     def screen() -> Widget:
         return Column(children=[_text(label, "greeting")])
@@ -340,7 +340,7 @@ def test_settle_converges_while_a_worker_thread_keeps_writing(nuiitivet_app) -> 
     towards the convergence bound would turn any test with a background thread
     into ``LayoutNotConvergedError``.
     """
-    label = Observable("before")
+    label = State("before")
 
     def screen() -> Widget:
         return Column(children=[_text(label, "greeting")])
@@ -390,7 +390,7 @@ def test_immediate_work_counts_only_what_this_thread_armed() -> None:
 
 
 def test_settle_leaves_a_debounce_armed(nuiitivet_app) -> None:
-    source = Observable("")
+    source = State("")
     debounced = source.debounce(0.3)
     seen: list[str] = []
     debounced.subscribe(seen.append)
@@ -407,7 +407,7 @@ def test_settle_leaves_a_debounce_armed(nuiitivet_app) -> None:
 
 
 def test_a_delayed_effect_fires_once_time_really_passes(nuiitivet_app) -> None:
-    source = Observable("")
+    source = State("")
     debounced = source.debounce(0.01)
     seen: list[str] = []
     debounced.subscribe(seen.append)

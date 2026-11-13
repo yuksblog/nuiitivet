@@ -6,7 +6,7 @@ from typing import Optional, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.alignment import alignment_to_point, normalize_alignment
-from nuiitivet.observable import ObservableBase
+from nuiitivet.observable import StateBase
 from ..rendering.sizing import SizingLike
 from ..rendering.visual_bounds import transformed_outsets
 from ..widgeting.modifier import ModifierElement
@@ -17,10 +17,10 @@ from ..widgeting.widget import Widget
 logger = logging.getLogger(__name__)
 
 
-AngleLike = Union[float, ObservableBase[float]]
-ScaleLike = Union[float, Tuple[float, float], ObservableBase[float]]
-TranslateLike = Union[Tuple[float, float], ObservableBase[Tuple[float, float]]]
-OpacityLike = Union[float, ObservableBase[float]]
+AngleLike = Union[float, StateBase[float]]
+ScaleLike = Union[float, Tuple[float, float], StateBase[float]]
+TranslateLike = Union[Tuple[float, float], StateBase[Tuple[float, float]]]
+OpacityLike = Union[float, StateBase[float]]
 OriginLike = Union[str, Tuple[float, float]]
 
 
@@ -81,7 +81,7 @@ class TransformBox(Widget):
 
     def _bind_rotation(self, rotation: AngleLike) -> None:
         self._rotation_source = rotation
-        if isinstance(rotation, ObservableBase):
+        if isinstance(rotation, StateBase):
             try:
                 self.observe(rotation, self._set_rotation)
                 return
@@ -89,7 +89,7 @@ class TransformBox(Widget):
                 exception_once(
                     logger,
                     "transform_box_bind_rotation_exc",
-                    "TransformBox failed to bind to rotation observable",
+                    "TransformBox failed to bind to rotation State",
                 )
         self._set_rotation(rotation)  # type: ignore[arg-type]
 
@@ -102,7 +102,7 @@ class TransformBox(Widget):
 
     def _bind_scale(self, scale: ScaleLike) -> None:
         self._scale_source = scale
-        if isinstance(scale, ObservableBase):
+        if isinstance(scale, StateBase):
             try:
                 self.observe(scale, self._set_scale)
                 return
@@ -110,7 +110,7 @@ class TransformBox(Widget):
                 exception_once(
                     logger,
                     "transform_box_bind_scale_exc",
-                    "TransformBox failed to bind to scale observable",
+                    "TransformBox failed to bind to scale State",
                 )
         self._set_scale(scale)  # type: ignore[arg-type]
 
@@ -128,7 +128,7 @@ class TransformBox(Widget):
 
     def _bind_translation(self, translation: TranslateLike) -> None:
         self._translation_source = translation
-        if isinstance(translation, ObservableBase):
+        if isinstance(translation, StateBase):
             try:
                 self.observe(translation, self._set_translation)
                 return
@@ -136,7 +136,7 @@ class TransformBox(Widget):
                 exception_once(
                     logger,
                     "transform_box_bind_translation_exc",
-                    "TransformBox failed to bind to translation observable",
+                    "TransformBox failed to bind to translation State",
                 )
         self._set_translation(translation)  # type: ignore[arg-type]
 
@@ -151,7 +151,7 @@ class TransformBox(Widget):
 
     def _bind_opacity(self, opacity: OpacityLike) -> None:
         self._opacity_source = opacity
-        if isinstance(opacity, ObservableBase):
+        if isinstance(opacity, StateBase):
             try:
                 self.observe(opacity, self._set_opacity)
                 return
@@ -159,7 +159,7 @@ class TransformBox(Widget):
                 exception_once(
                     logger,
                     "transform_box_bind_opacity_exc",
-                    "TransformBox failed to bind to opacity observable",
+                    "TransformBox failed to bind to opacity State",
                 )
         self._set_opacity(opacity)  # type: ignore[arg-type]
 
@@ -323,7 +323,7 @@ class TransformModifier(ModifierElement):
     transform_origin: OriginLike = "center"
 
     def apply(self, widget: Widget) -> Widget:
-        # Merge with existing TransformBox in-place to preserve active observable
+        # Merge with existing TransformBox in-place to preserve active State
         # bindings from previously applied transform modifiers.
         if isinstance(widget, TransformBox):
             widget._transform_origin = self.transform_origin
@@ -352,7 +352,7 @@ def rotate(angle: AngleLike, origin: OriginLike = "center") -> TransformModifier
     """Return a modifier that rotates a widget during paint.
 
     Args:
-        angle: Rotation angle in degrees, or an observable providing degrees.
+        angle: Rotation angle in degrees, or a State providing degrees.
         origin: Rotation origin. Accepts any of the nine-point alignment tokens
             in canonical hyphen form ("center", "top-left", "top-center",
             "top-right", "center-left", "center-right", "bottom-left",
@@ -371,7 +371,7 @@ def scale(factor: ScaleLike, origin: OriginLike = "center") -> TransformModifier
     """Return a modifier that scales a widget during paint.
 
     Args:
-        factor: Scale factor (uniform) or (sx, sy) tuple, or an observable.
+        factor: Scale factor (uniform) or (sx, sy) tuple, or a State.
         origin: Scale origin. Accepts any of the nine-point alignment tokens
             in canonical hyphen form ("center", "top-left", "top-center",
             "top-right", "center-left", "center-right", "bottom-left",
@@ -390,7 +390,7 @@ def translate(offset: TranslateLike) -> TransformModifier:
     """Return a modifier that translates a widget during paint.
 
     Args:
-        offset: Translation offset as (dx, dy) tuple, or an observable.
+        offset: Translation offset as (dx, dy) tuple, or a State.
 
     Note:
         Translation is paint-only. The widget keeps the rect its layout gave it
@@ -404,7 +404,7 @@ def opacity(value: OpacityLike) -> TransformModifier:
 
     Args:
         value: Opacity value between 0.0 (transparent) and 1.0 (opaque),
-            or an observable providing opacity.
+            or a State providing opacity.
 
     Note:
         Opacity is paint-only. A widget at 0.0 still takes its space and its

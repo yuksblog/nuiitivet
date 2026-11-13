@@ -1,13 +1,13 @@
 import warnings
 
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 
 
 class S:
-    x = Observable(0)
+    x = State(0)
 
 
-def test_observable_basic():
+def test_state_basic():
     s = S()
     obs = s.x
     assert obs.value == 0
@@ -25,11 +25,11 @@ def test_observable_basic():
     assert captured == [3]
 
 
-def test_observable_skips_equal_assignments():
-    class State:
-        value = Observable("ready")
+def test_state_skips_equal_assignments():
+    class Model:
+        value = State("ready")
 
-    state = State()
+    state = Model()
     events = []
     state.value.subscribe(events.append)
 
@@ -40,11 +40,11 @@ def test_observable_skips_equal_assignments():
     assert events == ["go"]
 
 
-def test_observable_custom_compare_and_warning():
-    class State:
-        metric = Observable(0.0, compare=lambda old, new: abs(old - new) < 0.5)
+def test_state_custom_compare_and_warning():
+    class Model:
+        metric = State(0.0, compare=lambda old, new: abs(old - new) < 0.5)
 
-    state = State()
+    state = Model()
     events = []
     state.metric.subscribe(events.append)
 
@@ -55,7 +55,7 @@ def test_observable_custom_compare_and_warning():
     assert events == [1.0]
 
     class BadState:
-        metric = Observable(_NonComparable())
+        metric = State(_NonComparable())
 
     bad = BadState()
 

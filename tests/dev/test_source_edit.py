@@ -1082,7 +1082,7 @@ def test_an_absent_spacing_is_inserted_after_the_last_argument() -> None:
     assert _spaced(text, "Column(children=[])", "gap", 12) == "root = Column(children=[], gap=12)\n"
 
 
-@pytest.mark.parametrize("value", ["gap_px", "self.gap", "Observable(8)", "(8, 4, 2)", "(a, 4)", "-4", "True"])
+@pytest.mark.parametrize("value", ["gap_px", "self.gap", "State(8)", "(8, 4, 2)", "(a, 4)", "-4", "True"])
 def test_a_spacing_that_is_not_an_int_literal_is_refused_by_name(value: str) -> None:
     text = f"root = Column(children=[], gap={value})\n"
 

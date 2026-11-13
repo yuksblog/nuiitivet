@@ -6,8 +6,8 @@ import logging
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.common.logging_once import exception_once, warning_once
 from nuiitivet.rendering.sizing import SizingLike, Sizing, parse_sizing
-from nuiitivet.observable.value import _ObservableValue
-from nuiitivet.observable.protocols import MutableObservableBase, ObservableBase, ReadOnlyObservableProtocol
+from nuiitivet.observable.value import _StateValue
+from nuiitivet.observable.protocols import MutableStateBase, ReadOnlyStateProtocol, StateBase
 from nuiitivet.animation import Animatable, Rect, lerp, lerp_rect
 from nuiitivet.material.text import Text, LabelLike
 from nuiitivet.material.icon import Icon, IconLike
@@ -36,26 +36,26 @@ from nuiitivet.widgeting.paint_replay import replay_safe
 logger = logging.getLogger(__name__)
 
 
-def _reject_readonly_observable(value: Any, param: str) -> None:
-    """Guard a two-way input against a read-only observable.
+def _reject_readonly_state(value: Any, param: str) -> None:
+    """Guard a two-way input against a read-only State.
 
     ``index`` and ``expanded`` are two-way: the rail writes back to them on user
     interaction (item selection, the menu toggle). A read-only/computed
-    observable (e.g. from ``.map(...)``) cannot be written back, so it is
+    State (e.g. from ``.map(...)``) cannot be written back, so it is
     rejected up front rather than silently mishandled. Mirror the derived value
-    into a plain ``Observable`` and pass that instead.
+    into a plain ``State`` and pass that instead.
     """
 
-    if isinstance(value, ObservableBase) and not isinstance(value, MutableObservableBase):
+    if isinstance(value, StateBase) and not isinstance(value, MutableStateBase):
         raise TypeError(
             f"NavigationRail.{param} is two-way (the rail writes back to it on user "
-            f"interaction), so it needs a mutable Observable; a read-only/computed "
-            f"observable cannot be used. Mirror it into an Observable and update that."
+            f"interaction), so it needs a mutable State; a read-only/computed "
+            f"State cannot be used. Mirror it into a State and update that."
         )
 
 
 def _resolve_expanded_width(
-    width: Union[SizingLike, ReadOnlyObservableProtocol, None],
+    width: Union[SizingLike, ReadOnlyStateProtocol, None],
     style: NavigationRailStyle,
 ) -> Tuple[float, Optional[Tuple[str, str]]]:
     """Resolve the effective expanded rail width from the ``width`` argument.
@@ -95,9 +95,9 @@ def _resolve_expanded_width(
             f"expanded width defaulted to {lo:g}dp. Pass a fixed width "
             f"(e.g. width=280) to set the expanded width.",
         )
-    # Observable or otherwise non-interpretable width.
+    # State or otherwise non-interpretable width.
     return style.clamp_expanded_width(lo), (
-        "navigation_rail_width_observable",
+        "navigation_rail_width_state",
         "NavigationRail width must be a fixed size to set the expanded width; "
         f"the expanded width defaulted to {lo:g}dp.",
     )
@@ -115,8 +115,8 @@ class RailItem(Widget):
         icon: IconLike,
         label: LabelLike,
         *,
-        small_badge: Optional[ReadOnlyObservableProtocol[bool]] = None,
-        large_badge: Optional[ReadOnlyObservableProtocol[Optional[str]]] = None,
+        small_badge: Optional[ReadOnlyStateProtocol[bool]] = None,
+        large_badge: Optional[ReadOnlyStateProtocol[Optional[str]]] = None,
         style: Optional[NavigationRailStyle] = None,
         key: Optional[str] = None,
     ) -> None:
@@ -124,10 +124,10 @@ class RailItem(Widget):
 
         Args:
             icon: The icon to display. May be a :class:`Symbol`, a ligature
-                string, or an observable of either (mirroring ``IconButton``).
-            label: The label to display. May be a string or an observable string.
-            small_badge: Optional Observable controlling small dot badge visibility.
-            large_badge: Optional Observable with badge text. ``None`` or ``""`` hides the badge.
+                string, or a State of either (mirroring ``IconButton``).
+            label: The label to display. May be a string or a State of one.
+            small_badge: Optional State controlling small dot badge visibility.
+            large_badge: Optional State with badge text. ``None`` or ``""`` hides the badge.
                 When both ``small_badge`` and ``large_badge`` are provided,
                 ``large_badge`` takes precedence.
             style: Optional style override for this item.
@@ -137,8 +137,8 @@ class RailItem(Widget):
 
         self.icon_spec = icon
         self.label_spec = label
-        self._small_badge_observable: Optional[ReadOnlyObservableProtocol[bool]] = small_badge
-        self._large_badge_observable: Optional[ReadOnlyObservableProtocol[Optional[str]]] = large_badge
+        self._small_badge_state: Optional[ReadOnlyStateProtocol[bool]] = small_badge
+        self._large_badge_state: Optional[ReadOnlyStateProtocol[Optional[str]]] = large_badge
         self._style = style
 
         self._icon_widget: Widget
@@ -182,14 +182,14 @@ class RailItem(Widget):
         return self._label_widget
 
     @property
-    def small_badge_observable(self) -> Optional[ReadOnlyObservableProtocol[bool]]:
-        """Get the optional small badge observable."""
-        return self._small_badge_observable
+    def small_badge_state(self) -> Optional[ReadOnlyStateProtocol[bool]]:
+        """Get the optional small badge State."""
+        return self._small_badge_state
 
     @property
-    def large_badge_observable(self) -> Optional[ReadOnlyObservableProtocol[Optional[str]]]:
-        """Get the optional large badge observable."""
-        return self._large_badge_observable
+    def large_badge_state(self) -> Optional[ReadOnlyStateProtocol[Optional[str]]]:
+        """Get the optional large badge State."""
+        return self._large_badge_state
 
 
 def _clamp01(value: float) -> float:
@@ -325,9 +325,9 @@ class _RailItemButton(InteractiveWidget):
         # Sync interaction state
         self.state.selected = selected
 
-        # Subscribe to badge observables if provided.
-        small_badge_obs = rail_item.small_badge_observable
-        large_badge_obs = rail_item.large_badge_observable
+        # Subscribe to badge States if provided.
+        small_badge_obs = rail_item.small_badge_state
+        large_badge_obs = rail_item.large_badge_state
         if small_badge_obs is not None:
             self._small_badge_value = small_badge_obs.value
             self._small_badge_subscription = small_badge_obs.subscribe(self._on_small_badge_changed)
@@ -343,7 +343,7 @@ class _RailItemButton(InteractiveWidget):
     def _semantics(self) -> Optional[Semantics]:
         # The label is drawn twice, collapsed and expanded; say it once.
         spec = self._label_spec
-        label = str(spec.value if isinstance(spec, ObservableBase) else spec)
+        label = str(spec.value if isinstance(spec, StateBase) else spec)
         if self._large_badge_value:
             label = f"{label}, {self._large_badge_value}"
         return Semantics(
@@ -362,14 +362,14 @@ class _RailItemButton(InteractiveWidget):
             self._large_badge_subscription = None
 
     def _on_small_badge_changed(self, value: bool) -> None:
-        """React to small_badge observable changes."""
+        """React to small_badge State changes."""
         self._small_badge_value = value
         self._refresh_badge_widget()
         self.mark_needs_layout()
         self.invalidate()
 
     def _on_large_badge_changed(self, value: Optional[str]) -> None:
-        """React to large_badge observable changes."""
+        """React to large_badge State changes."""
         self._large_badge_value = value
         self._refresh_badge_widget()
         self.mark_needs_layout()
@@ -966,12 +966,12 @@ class NavigationRail(InteractionHostMixin, Widget):
         self,
         children: Sequence[RailItem],
         *,
-        index: Union[int, MutableObservableBase[int]] = 0,
+        index: Union[int, MutableStateBase[int]] = 0,
         on_select: Optional[Callable[[int], None]] = None,
-        expanded: Union[bool, MutableObservableBase[bool]] = False,
+        expanded: Union[bool, MutableStateBase[bool]] = False,
         show_menu_button: bool = True,
-        width: Union[SizingLike, ReadOnlyObservableProtocol] = None,
-        height: Union[SizingLike, ReadOnlyObservableProtocol] = None,
+        width: Union[SizingLike, ReadOnlyStateProtocol] = None,
+        height: Union[SizingLike, ReadOnlyStateProtocol] = None,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         style: Optional[NavigationRailStyle] = None,
         key: Optional[str] = None,
@@ -981,14 +981,14 @@ class NavigationRail(InteractionHostMixin, Widget):
         Args:
             children: The rail items to display.
             index: The currently selected index. ``int`` or a **mutable**
-                ``Observable[int]`` — the rail writes the selection back, so a
-                read-only/computed observable is rejected.
+                ``State[int]`` — the rail writes the selection back, so a
+                read-only/computed State is rejected.
             on_select: Callback when an item is selected.
             expanded: Whether the rail is expanded. ``bool`` or a **mutable**
-                ``Observable[bool]`` — the menu button writes it back, so a
-                read-only/computed observable is rejected. To drive expansion
-                from derived state (e.g. window size), mirror it into an
-                ``Observable`` and update that.
+                ``State[bool]`` — the menu button writes it back, so a
+                read-only/computed State is rejected. To drive expansion
+                from derived state (e.g. window size), mirror it into a
+                ``State`` and update that.
             show_menu_button: Whether to show the menu toggle button.
             width: Expanded rail width. A *fixed* value (e.g. ``280`` or
                 ``Sizing.fixed(280)``) sets the expanded width, clamped into the
@@ -1002,12 +1002,12 @@ class NavigationRail(InteractionHostMixin, Widget):
             style: Custom NavigationRailStyle.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        _reject_readonly_observable(index, "index")
-        _reject_readonly_observable(expanded, "expanded")
+        _reject_readonly_state(index, "index")
+        _reject_readonly_state(expanded, "expanded")
 
-        self._is_expanded = expanded.value if isinstance(expanded, MutableObservableBase) else bool(expanded)
+        self._is_expanded = expanded.value if isinstance(expanded, MutableStateBase) else bool(expanded)
         self._style = style
-        self._menu_icon_name: Optional[_ObservableValue[str]] = None
+        self._menu_icon_name: Optional[_StateValue[str]] = None
         eff_style = style or NavigationRailStyle()
 
         # Animation setup
@@ -1060,20 +1060,20 @@ class NavigationRail(InteractionHostMixin, Widget):
         self.show_menu_button = show_menu_button
 
         # Handle index.
-        self._index_observable: Optional[MutableObservableBase[int]] = None
+        self._index_state: Optional[MutableStateBase[int]] = None
         self._index_subscription = None
-        if isinstance(index, MutableObservableBase):
-            self._index_observable = index
+        if isinstance(index, MutableStateBase):
+            self._index_state = index
             self._current_index = self._validate_index(index.value)
             self._index_subscription = index.subscribe(self._on_index_changed)
         else:
             self._current_index = self._validate_index(int(index))
 
         # Handle expanded state.
-        self._expanded_observable: Optional[MutableObservableBase[bool]] = None
+        self._expanded_state: Optional[MutableStateBase[bool]] = None
         self._expanded_subscription = None
-        if isinstance(expanded, MutableObservableBase):
-            self._expanded_observable = expanded
+        if isinstance(expanded, MutableStateBase):
+            self._expanded_state = expanded
             # _is_expanded already set above
             self._expanded_subscription = expanded.subscribe(self._on_expanded_changed)
         # else: _is_expanded already set above
@@ -1105,7 +1105,7 @@ class NavigationRail(InteractionHostMixin, Widget):
         return False
 
     def _on_index_changed(self, new_index: int) -> None:
-        """Handle Observable index changes."""
+        """Handle State index changes."""
         old_index = self._current_index
         self._current_index = self._validate_index(new_index)
         if old_index != self._current_index:
@@ -1122,7 +1122,7 @@ class NavigationRail(InteractionHostMixin, Widget):
         self.invalidate()
 
     def _on_expanded_changed(self, new_expanded: bool) -> None:
-        """Handle Observable expanded changes."""
+        """Handle State expanded changes."""
         # Drive animation instead of immediate rebuild.
         should_expand = bool(new_expanded)
         target_value = 1.0 if should_expand else 0.0
@@ -1216,7 +1216,7 @@ class NavigationRail(InteractionHostMixin, Widget):
     def _build_menu_button(self) -> _RailMenuButton:
         """Build the menu toggle button."""
         if self._menu_icon_name is None:
-            self._menu_icon_name = _ObservableValue("menu_open" if self._is_expanded else "menu")
+            self._menu_icon_name = _StateValue("menu_open" if self._is_expanded else "menu")
 
         eff_style = self.style or NavigationRailStyle()
         color = eff_style.menu_icon_color or ColorRole.ON_SURFACE
@@ -1236,18 +1236,18 @@ class NavigationRail(InteractionHostMixin, Widget):
         """Toggle expanded state."""
         new_state = not self._is_expanded
 
-        if self._expanded_observable is not None:
-            # Update Observable (triggers subscription).
-            self._expanded_observable.value = new_state
+        if self._expanded_state is not None:
+            # Update State (triggers subscription).
+            self._expanded_state.value = new_state
         else:
             # Update local state directly.
             self._on_expanded_changed(new_state)
 
     def _handle_item_click(self, index: int) -> None:
         """Handle item selection."""
-        if self._index_observable is not None:
-            # Update Observable.
-            self._index_observable.value = index
+        if self._index_state is not None:
+            # Update State.
+            self._index_state.value = index
         else:
             # Update local state.
             old_index = self._current_index

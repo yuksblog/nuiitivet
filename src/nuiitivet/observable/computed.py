@@ -12,18 +12,18 @@ from ._sentinel import UNSET, _Unset
 from .contexts import _batch_context, _tracking_context
 from .protocols import (
     Disposable,
-    ObservableBase,
-    ReadOnlyObservableProtocol,
+    ReadOnlyStateProtocol,
+    StateBase,
     mark_internal_subscription,
 )
 from . import runtime
 
 if TYPE_CHECKING:
     from .combine import CombineBuilder
-    from .filtered import FilteredObservable
-    from .scanned import ScannedObservable
-    from .switched import CancelToken, SwitchMappedObservable
-    from .timed import DebouncedObservable, ThrottledObservable
+    from .filtered import FilteredState
+    from .scanned import ScannedState
+    from .switched import CancelToken, SwitchMappedState
+    from .timed import DebouncedState, ThrottledState
 
 T = TypeVar("T")
 _R = TypeVar("_R")
@@ -33,8 +33,8 @@ _A = TypeVar("_A")
 logger = logging.getLogger(__name__)
 
 
-class ComputedObservable(ObservableBase[T]):
-    """Computed observable with automatic dependency tracking (Signals pattern)."""
+class ComputedState(StateBase[T]):
+    """Computed State with automatic dependency tracking (Signals pattern)."""
 
     def __init__(
         self,
@@ -62,7 +62,7 @@ class ComputedObservable(ObservableBase[T]):
         """Re-run the derivation, re-arm its dependency edges, store the result.
 
         A derivation that raises is a bug in the caller's function rather than a
-        value this observable could publish, so it is logged and the previous
+        value this State could publish, so it is logged and the previous
         value kept. Nothing is raised at any caller: the
         thread that triggered the recompute is whichever one happened to write
         the source -- a clock callback, a ``debounce`` timer -- and none of them
@@ -70,7 +70,7 @@ class ComputedObservable(ObservableBase[T]):
 
         The dependency edges are re-armed **whether or not the run succeeded**.
         They are torn down before the run, so leaving them down after a failure
-        would make this observable permanently deaf: the derivation would never
+        would make this State permanently deaf: the derivation would never
         be retried, not even once the source that fixes it changes. A run that
         raised before reading anything registers no edge to re-arm, which is the
         one case that stays stuck -- and one that could not have recovered
@@ -200,67 +200,67 @@ class ComputedObservable(ObservableBase[T]):
 
         return Disposable(_dispose)
 
-    def map(self, fn: Callable[[T], Any]) -> "ComputedObservable[Any]":
+    def map(self, fn: Callable[[T], Any]) -> "ComputedState[Any]":
         def compute_fn() -> Any:
             return fn(self.value)
 
-        return ComputedObservable(compute_fn, dispatch=self._dispatch_to_ui)
+        return ComputedState(compute_fn, dispatch=self._dispatch_to_ui)
 
-    def combine(self, *others: ReadOnlyObservableProtocol[Any]) -> "CombineBuilder":
+    def combine(self, *others: ReadOnlyStateProtocol[Any]) -> "CombineBuilder":
         from .combine import CombineBuilder
 
         return CombineBuilder(self, *others)
 
-    def filter(self, pred: Callable[[T], bool], *, initial: T) -> "FilteredObservable[T]":
-        """Observable of the values passing ``pred``, seeded with ``initial``.
+    def filter(self, pred: Callable[[T], bool], *, initial: T) -> "FilteredState[T]":
+        """State of the values passing ``pred``, seeded with ``initial``.
 
-        ``initial`` is required because a filtered observable has no value of
+        ``initial`` is required because a filtered State has no value of
         its own until something passes; see
-        :class:`~nuiitivet.observable.filtered.FilteredObservable`.
+        :class:`~nuiitivet.observable.filtered.FilteredState`.
         """
-        from .filtered import FilteredObservable
+        from .filtered import FilteredState
 
-        return FilteredObservable(self, pred, initial=initial)
+        return FilteredState(self, pred, initial=initial)
 
-    def debounce(self, seconds: float) -> "DebouncedObservable[T]":
-        from .timed import DebouncedObservable
+    def debounce(self, seconds: float) -> "DebouncedState[T]":
+        from .timed import DebouncedState
 
-        return DebouncedObservable(self, seconds)
+        return DebouncedState(self, seconds)
 
-    def throttle(self, seconds: float) -> "ThrottledObservable[T]":
-        from .timed import ThrottledObservable
+    def throttle(self, seconds: float) -> "ThrottledState[T]":
+        from .timed import ThrottledState
 
-        return ThrottledObservable(self, seconds)
+        return ThrottledState(self, seconds)
 
     def switch_map(
         self,
         fn: Callable[[T, "CancelToken"], _R],
         *,
         initial: _R,
-    ) -> "SwitchMappedObservable[T, _R]":
+    ) -> "SwitchMappedState[T, _R]":
         """Asynchronous :meth:`map`: the newest run's result, older runs discarded.
 
-        See :class:`~nuiitivet.observable.switched.SwitchMappedObservable`.
+        See :class:`~nuiitivet.observable.switched.SwitchMappedState`.
         """
-        from .switched import SwitchMappedObservable
+        from .switched import SwitchMappedState
 
-        return SwitchMappedObservable(self, fn, initial=initial)
+        return SwitchMappedState(self, fn, initial=initial)
 
     def scan(
         self,
         fn: Callable[[_A, T], _A],
         *,
         initial: _A,
-    ) -> "ScannedObservable[T, _A]":
-        """Observable of ``fn`` folded over every value this one emits.
+    ) -> "ScannedState[T, _A]":
+        """State of ``fn`` folded over every value this one emits.
 
         ``initial`` is required because the accumulator has no value until the
         source emits; see
-        :class:`~nuiitivet.observable.scanned.ScannedObservable`.
+        :class:`~nuiitivet.observable.scanned.ScannedState`.
         """
-        from .scanned import ScannedObservable
+        from .scanned import ScannedState
 
-        return ScannedObservable(self, fn, initial=initial)
+        return ScannedState(self, fn, initial=initial)
 
     def dispose(self) -> None:
         if self._disposed:

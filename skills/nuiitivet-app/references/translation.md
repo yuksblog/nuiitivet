@@ -46,9 +46,9 @@ nv.App(nv.Window(content=CounterApp(), title="Counter")).run()
 | Tempted to write (foreign) | In Nuiitivet write |
 | --- | --- |
 | `class X(StatelessWidget)` / `StatefulWidget` (Flutter) | `class X(nv.ComposableWidget)` |
-| `createState()` / `initState()` / `dispose()` lifecycle overrides | Plain `__init__` to create `Observable`s; override `on_mount()` for setup that needs the tree (an `X.of(self)` lookup, async loading) |
+| `createState()` / `initState()` / `dispose()` lifecycle overrides | Plain `__init__` to create `State`s; override `on_mount()` for setup that needs the tree (an `X.of(self)` lookup, async loading) |
 | `onAppear` / `onDisappear` (SwiftUI) | `on_mount()` / `on_unmount()` — SwiftUI's `onAppear` fires on *tree insertion*, which is exactly `on_mount`, despite the name |
-| `RouteAware` / `didPushNext` / `didPopNext` (Flutter) | No equivalent exists: a covered route stays mounted and nothing fires. Pause/resume from the side causing it — the code calling `push()`, or the `Observable` behind a `nv.Deck` index |
+| `RouteAware` / `didPushNext` / `didPopNext` (Flutter) | No equivalent exists: a covered route stays mounted and nothing fires. Pause/resume from the side causing it — the code calling `push()`, or the `State` behind a `nv.Deck` index |
 | `LaunchedEffect(Unit)` / `DisposableEffect` (Compose) | An `on_mount()` override runs once per instance; from inside `build()` use `nv.on_mount(cb)` plus a flag owned outside the rebuilt subtree |
 | `def build(self, context):` (Flutter signature) | `def build(self):` |
 | `@Composable def X()` (Compose) | a `ComposableWidget` subclass with `build(self)` |
@@ -59,7 +59,7 @@ nv.App(nv.Window(content=CounterApp(), title="Counter")).run()
 class CounterApp(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
-        self.count = nv.Observable(0)
+        self.count = nv.State(0)
 
     def build(self):
         return nv.Column([
@@ -73,30 +73,30 @@ class CounterApp(nv.ComposableWidget):
 
 ## State & reactivity
 
-The deepest source of leaks. Nuiitivet state is `Observable`; the UI **binds** to
+The deepest source of leaks. Nuiitivet state lives in `nv.State`; the UI **binds** to
 it. You never write code that pushes a value into a widget.
 
 | Tempted to write (foreign) | In Nuiitivet write |
 | --- | --- |
 | `self.setState(() => count++)` (Flutter) | `self.count.value += 1` |
-| `const [count, setCount] = useState(0)` (React) | `self.count = nv.Observable(0)` |
+| `const [count, setCount] = useState(0)` (React) | `self.count = nv.State(0)` |
 | `useEffect(...)`, `useMemo(...)`, `useRef(...)` | derive with `combine().compute()` / `map()`; hold refs as plain attributes |
-| `count.subscribe(lambda v: label.set_text(v))` (Rx habit) | pass the Observable in directly: `nv.Text(self.count)` |
+| `count.subscribe(lambda v: label.set_text(v))` (Rx habit) | pass the `State` in directly: `nv.Text(self.count)` |
 | `derived = computed(() => a + b)` (MobX/Vue) | `self.total = self.a.combine(self.b).compute(lambda a, b: a + b)` |
 | manual `.subscribe()` to trigger a re-render | not needed — binding regenerates the affected region automatically |
 | `source.debounce(0.3).subscribe(cb)` as a bare statement (Rx habit: the source owns the subscription, so dropping the handle is normal) | hold what you derive — name it, or keep the `Disposable`: `self.bind(source.debounce(0.3).subscribe(cb))`. Held by nothing, it is collected and never fires |
-| `scan` written by hand: an empty `nv.Observable(0)` plus `shaped.subscribe(lambda _: self.count.set(self.count.value + 1))` (Rx habit, where the accumulator has to live outside the stream) | `self.count = shaped.scan(lambda n, _: n + 1, initial=0)` — the accumulator **is** the returned Observable's value, so there is no second Observable to seed and no `Disposable` to hold. `initial` is required and keyword-only |
-| `source.where(lambda v: ...)` / `source.select(lambda v: ...)` (Rx/LINQ) | `source.filter(pred, initial=...)` and `source.map(fn)`. `initial` is required and keyword-only: a filtered Observable has no value of its own until something passes, and the caller decides what the UI shows meanwhile |
+| `scan` written by hand: an empty `nv.State(0)` plus `shaped.subscribe(lambda _: self.count.set(self.count.value + 1))` (Rx habit, where the accumulator has to live outside the stream) | `self.count = shaped.scan(lambda n, _: n + 1, initial=0)` — the accumulator **is** the returned `State`'s value, so there is no second `State` to seed and no `Disposable` to hold. `initial` is required and keyword-only |
+| `source.where(lambda v: ...)` / `source.select(lambda v: ...)` (Rx/LINQ) | `source.filter(pred, initial=...)` and `source.map(fn)`. `initial` is required and keyword-only: a filtered `State` has no value of its own until something passes, and the caller decides what the UI shows meanwhile |
 | hop back to the UI thread before writing state (`runOnUiThread`, `DispatchQueue.main`, a hand-rolled queue) | assign `self.x.value` from the worker directly — cross-thread writes are marshalled |
-| `CancellationToken` / `CancellationTokenSource` (.NET), `AbortController` (JS), `Job.cancel()` (Kotlin), `takeUntil(cancel$)` (Rx) | for work derived from an Observable's value, `switch_map` supersedes the previous run for you and hands `fn` a `nv.CancelToken`. A `@nv.worker` or `@nv.server` function takes a `cancel: nv.CancelToken = nv.CancelToken()` parameter, set when the awaiting task is cancelled. Otherwise there is no cancellation API: one `threading.Event` per run, passed to the worker, checked with `cancel.is_set()` |
+| `CancellationToken` / `CancellationTokenSource` (.NET), `AbortController` (JS), `Job.cancel()` (Kotlin), `takeUntil(cancel$)` (Rx) | for work derived from a `State`'s value, `switch_map` supersedes the previous run for you and hands `fn` a `nv.CancelToken`. A `@nv.worker` or `@nv.server` function takes a `cancel: nv.CancelToken = nv.CancelToken()` parameter, set when the awaiting task is cancelled. Otherwise there is no cancellation API: one `threading.Event` per run, passed to the worker, checked with `cancel.is_set()` |
 | `page.run_thread(fn)` (Flet), a Web Worker driven by hand (JS) | `@nv.worker` on a module-level `def` in a module the browser gets, called with `await fn(...)`: a thread on the desktop, the page's Web Worker in the browser, the same screen code on both |
 | `ProcessPoolExecutor`, `multiprocessing.Process` / `Pool` for CPU-bound work; a `Semaphore` around thread work | `@nv.worker(process=True)` on the module-level `def` for a child process on the desktop, `parallel=N` for up to N calls at once (threads, or processes with `process=True`; N Web Workers in the browser), awaited with `await fn(...)`. `multiprocessing` itself dies in the browser |
 | `fetch("/api/...")` from the UI to your own endpoint (JS), a Streamlit/Dash callback that is the server | `@nv.server` on a module-level `def`, called with `await fn(...)`: a thread on the desktop, an HTTP call in the browser, the same screen code on both. No route, no serializer: the types come from the annotations. `nv.server_only()` at the top of the module when it imports what Pyodide lacks or holds a key: then the browser gets a stub instead |
 | `switchMap` / `flatMapLatest` (Rx), `collectLatest` (Kotlin), a `useEffect` that aborts the previous fetch | `source.switch_map(fn, initial=...)` — same name, same semantics. `fn` takes `(value, cancel)`, runs off the UI thread, and must **return** failure as a value rather than raising; there is no `.error` channel |
 | `.map(fetch)` / `.map(search_api)` — an async call inside a `map` (Rx habit, where `map` is on a stream) | `switch_map(fn, initial=...)`. A `map`/`compute` function is **synchronous** and runs on the triggering thread — the UI thread for a `debounce` chain — so I/O in it freezes the window, and two in-flight calls have no ordering guarantee |
-| `Observable<AsyncValue<T>>` / `Resource<T>` / `RemoteData` wrappers around loading + error (Flutter/Compose/Elm) | keep the value position plain and put failure in your own result type: `SearchOutcome(items=..., error=...)`. A wrapper type forces every downstream `map`/`filter`/`combine` and every binding to unwrap it |
+| `State<AsyncValue<T>>` / `Resource<T>` / `RemoteData` wrappers around loading + error (Flutter/Compose/Elm) | keep the value position plain and put failure in your own result type: `SearchOutcome(items=..., error=...)`. A wrapper type forces every downstream `map`/`filter`/`combine` and every binding to unwrap it |
 
-Note: `Observable.subscribe()` **does** exist and is legitimate for side effects
+Note: `State.subscribe()` **does** exist and is legitimate for side effects
 (logging, calling a service). It is *only* an anti-pattern when used to manually
 push a value into the UI — that is what binding is for.
 
@@ -113,7 +113,7 @@ See [state.md](state.md) for the full API and the ViewModel pattern.
 
 | Tempted to write (foreign) | In Nuiitivet write |
 | --- | --- |
-| `TextEditingController()` + `controller:` (Flutter), a `ref` on an input (React) | bind an Observable as the field's value: `self.query = nv.Observable("")` then `nv.TextField(value=self.query)`. Edits are written back into it, and you set the text by assigning `self.query.value` — there is no controller object and no `.text` property to read |
+| `TextEditingController()` + `controller:` (Flutter), a `ref` on an input (React) | bind a `State` as the field's value: `self.query = nv.State("")` then `nv.TextField(value=self.query)`. Edits are written back into it, and you set the text by assigning `self.query.value` — there is no controller object and no `.text` property to read |
 | `onEditingComplete` (Flutter), a `FocusNode` listener, an `onBlur` handler (JS) to finish a value | `on_focus_change(focused, source)` on the field — the same signature as `nv.focusable()`. Branch on `focused`; it can arrive more than once as `True` when the input source changes, and once as `False` |
 | `onSubmitted` expected to fire when the field loses focus | it does not. `on_submit` is **Enter only**, every press including a repeat on an unchanged value. Blur-time work goes to `on_focus_change` |
 | `TextField(maxLines: null)` (Flutter), `singleLine = false` (Compose), `TextArea` | `nv.TextField.multiline(value=obs, label="Notes")` — the same arguments as `nv.TextField`. `Enter` submits through `on_submit`; `Shift+Enter` breaks the line |
@@ -148,7 +148,7 @@ a widget, not widgets in their own right.** This kills Flutter's nesting hell.
 # Correct
 nv.Text("Hello", padding=12, width=200)              # not Padding(SizedBox(Text))
 nv.Column([a, b, c], gap=20, padding=20)             # gap, not spacer widgets
-nv.Column.builder(self.items, lambda item, i: nv.Text(item))   # reactive list from an Observable
+nv.Column.builder(self.items, lambda item, i: nv.Text(item))   # reactive list from a State
 ```
 
 See [layout.md](layout.md) for sizing, dynamic lists, grids, and adaptive layout
@@ -211,7 +211,7 @@ and the ViewModel-friendly navigator/overlay injection patterns.
 | --- | --- |
 | `plyer.notification.notify(...)` / `win10toast` / `notify2` / `desktop_notifier` (external OS-notification libs) | `nv.Desktop.notify("Import done", "1,000 rows written")` — built in, fire-and-forget (never blocks, never raises), safe from any thread. For feedback *inside* the window use `nv.Overlay.of(self).snackbar(...)` instead |
 | `tkinter.filedialog.askopenfilename()` / `file_picker` (Flutter) / `NSOpenPanel` / a hand-rolled path `TextField` | `path = await nv.FileDialog.open_file(file_types=["txt"])` — coroutine, call from an `async` handler. Cancel is `None` (`open_files`: `[]`); also `save_file(default_name=...)` / `open_directory()`; `nv.FileDialogError` when the dialog cannot be shown (Linux without `zenity`/`kdialog`). Never import tkinter: its mainloop cannot coexist with the pyglet-owned event loop |
-| `pystray.Icon(...).run()` / `run_detached()` / `infi.systray` (external tray-icon libs) | `nv.App(win, tray=nv.TrayIcon(icon=..., tooltip=..., menu=[nv.MenuEntry(...)]))` — built in; the menu reuses `MenuEntry` and `tray.installed` (`Observable[bool]`) reports whether the icon actually shows. Never import pystray directly: on macOS it fights the pyglet-owned loop, and `nv.TrayIcon` talks to each platform's tray itself. Close-to-tray is `close_action=tray.installed.map(...)` on the `Window`, plus `exit_policy=nv.ExitPolicy.EXPLICIT` |
+| `pystray.Icon(...).run()` / `run_detached()` / `infi.systray` (external tray-icon libs) | `nv.App(win, tray=nv.TrayIcon(icon=..., tooltip=..., menu=[nv.MenuEntry(...)]))` — built in; the menu reuses `MenuEntry` and `tray.installed` (`State[bool]`) reports whether the icon actually shows. Never import pystray directly: on macOS it fights the pyglet-owned loop, and `nv.TrayIcon` talks to each platform's tray itself. Close-to-tray is `close_action=tray.installed.map(...)` on the `Window`, plus `exit_policy=nv.ExitPolicy.EXPLICIT` |
 | `QFontDatabase.addApplicationFont(...)` (Qt) / `pubspec.yaml` font assets (Flutter) / `tkinter.font.Font(...)` | `nv.Fonts.register("assets/fonts/NotoSansJP.ttf", family_name="NotoSansJP")` once at startup, before any widget renders; then `font_family="NotoSansJP"` wherever a `font_family` is accepted. App-wide default: `nv.Fonts.set_default_family("Hiragino Sans")` |
 
 See [desktop.md](desktop.md) for windows, the menu bar, the tray and file drops.

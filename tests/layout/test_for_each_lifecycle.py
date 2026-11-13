@@ -16,7 +16,7 @@ from typing import List
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.for_each import ForEach
 from nuiitivet.modifiers import on_mount, on_unmount
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgets.box import Box
 
@@ -26,7 +26,7 @@ class _DummyApp:
         del immediate
 
 
-def _mount_column(items: Observable) -> tuple[Column, List[str]]:
+def _mount_column(items: State) -> tuple[Column, List[str]]:
     log: List[str] = []
 
     def builder(item, index):
@@ -43,19 +43,19 @@ def _mount_column(items: Observable) -> tuple[Column, List[str]]:
 
 
 def test_initial_mount_builds_and_mounts_each_item_once() -> None:
-    items = Observable([1, 2])
+    items = State([1, 2])
     _root, log = _mount_column(items)
     assert log == ["build 1", "build 2", "mount 1", "mount 2"]
 
 
 def test_initial_mount_static_list_builds_and_mounts_each_item_once() -> None:
-    # Confirms the double-mount was structural, not observable-subscription driven.
-    _root, log = _mount_column(Observable([1, 2, 3]))
+    # Confirms the double-mount was structural, not State-subscription driven.
+    _root, log = _mount_column(State([1, 2, 3]))
     assert log == ["build 1", "build 2", "build 3", "mount 1", "mount 2", "mount 3"]
 
 
 def test_append_builds_only_the_newcomer_and_leaves_survivors_mounted() -> None:
-    items = Observable([1, 2])
+    items = State([1, 2])
     _root, log = _mount_column(items)
     log.clear()
 
@@ -64,7 +64,7 @@ def test_append_builds_only_the_newcomer_and_leaves_survivors_mounted() -> None:
 
 
 def test_insert_builds_only_the_newcomer_and_leaves_survivors_mounted() -> None:
-    items = Observable([1, 2])
+    items = State([1, 2])
     _root, log = _mount_column(items)
     log.clear()
 
@@ -73,7 +73,7 @@ def test_insert_builds_only_the_newcomer_and_leaves_survivors_mounted() -> None:
 
 
 def test_remove_unmounts_only_the_departed_item() -> None:
-    items = Observable([1, 2, 3])
+    items = State([1, 2, 3])
     _root, log = _mount_column(items)
     log.clear()
 
@@ -82,7 +82,7 @@ def test_remove_unmounts_only_the_departed_item() -> None:
 
 
 def test_reorder_leaves_all_items_built_and_mounted() -> None:
-    items = Observable([1, 2, 3])
+    items = State([1, 2, 3])
     _root, log = _mount_column(items)
     log.clear()
 
@@ -91,7 +91,7 @@ def test_reorder_leaves_all_items_built_and_mounted() -> None:
 
 
 def test_full_sequence_matches_expected_lifecycle() -> None:
-    items = Observable([1, 2])
+    items = State([1, 2])
     _root, log = _mount_column(items)
     assert log == ["build 1", "build 2", "mount 1", "mount 2"]
     log.clear()

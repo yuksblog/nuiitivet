@@ -213,7 +213,7 @@ class ScrollViewport(Widget):
             content_w, content_h = settled_w, settled_h
             content.layout(content_w, content_h)
 
-        # Record metrics; their Observable publish lands between frames.
+        # Record metrics; their State publish lands between frames.
         self._update_scroll_metrics(content_w, content_h, vp_w, vp_h)
 
         # The content sits at (pad_l, pad_t); paint applies the scroll offset.

@@ -17,8 +17,8 @@ from nuiitivet.modifiers.absorb_pointer import (
 from nuiitivet.modifiers.block_pointer import BlockPointerBox, block_pointer
 from nuiitivet.modifiers.defer_pointer import DeferPointerBox, defer_pointer
 from nuiitivet.modifiers.passthrough_pointer import passthrough_pointer
-from nuiitivet.observable import ObservableBase
-from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.observable import StateBase
+from nuiitivet.observable.value import _StateValue
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.stack import Stack
 from nuiitivet.rendering.sizing import Sizing
@@ -166,18 +166,18 @@ def test_reported_bug_repro_with_explicit_defer_pointer() -> None:
     assert stack.hit_test(200, 280) is toolbar
 
 
-def test_observable_condition_read_at_construction() -> None:
+def test_state_condition_read_at_construction() -> None:
     """The condition is resolved at construction, not deferred to first click."""
-    cond = _ObservableValue(True)
+    cond = _StateValue(True)
     child = _make_child()
     wrapped = child.modifier(block_pointer(cond))
     assert isinstance(wrapped, BlockPointerBox)
-    # Active state reflects the observable immediately, before any hit_test.
+    # Active state reflects the State immediately, before any hit_test.
     assert wrapped._active is True
 
 
-class _RaisingObservable(ObservableBase[bool]):
-    """Observable whose value read raises -- to prove construction is defensive."""
+class _RaisingState(StateBase[bool]):
+    """State whose value read raises -- to prove construction is defensive."""
 
     @property
     def value(self) -> bool:  # type: ignore[override]
@@ -187,10 +187,10 @@ class _RaisingObservable(ObservableBase[bool]):
         raise NotImplementedError
 
 
-def test_invalid_observable_condition_caught_at_construction() -> None:
+def test_invalid_state_condition_caught_at_construction() -> None:
     child = _make_child()
     # Construction must not raise; the bad read is swallowed and defaults active.
-    wrapped = child.modifier(defer_pointer(_RaisingObservable()))
+    wrapped = child.modifier(defer_pointer(_RaisingState()))
     assert isinstance(wrapped, DeferPointerBox)
     assert wrapped._active is True
     wrapped.layout(100, 50)
@@ -199,7 +199,7 @@ def test_invalid_observable_condition_caught_at_construction() -> None:
 
 
 def test_reactive_toggle_switches_posture() -> None:
-    cond = _ObservableValue(False)
+    cond = _StateValue(False)
     child = _make_child()
     inner = _inner_of(child)
     wrapped = child.modifier(block_pointer(cond))

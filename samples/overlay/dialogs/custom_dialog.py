@@ -13,7 +13,7 @@ class CustomDialogContent(nv.ComposableWidget):
     def __init__(self, overlay: nv.Overlay):
         super().__init__()
         self.overlay = overlay
-        self.counter = nv.Observable(0)
+        self.counter = nv.State(0)
 
     def _increment(self):
         self.counter.value += 1
@@ -46,7 +46,7 @@ class CustomDialogContent(nv.ComposableWidget):
 
 
 class CustomDialogDemo(nv.ComposableWidget):
-    last_count: nv.Observable[str] = nv.Observable("No count yet")
+    last_count: nv.State[str] = nv.State("No count yet")
 
     async def _show_custom_dialog(self):
         overlay = nv.Overlay.of(self)

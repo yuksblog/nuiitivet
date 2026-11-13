@@ -2,7 +2,7 @@
 
 This is the half of a widget's state ``describe_state`` structurally cannot
 reach: ``disabled`` and ``focused`` are plain fields of an ``InteractionState``,
-never observables, and ``value`` is bound under whatever private attribute the
+never States, and ``value`` is bound under whatever private attribute the
 widget chose. So these run against real widgets rather than fakes -- what is
 under test is whether the live plumbing publishes the flag at all, which a fake
 node would answer by construction.
@@ -18,7 +18,7 @@ from typing import Any, Optional
 from nuiitivet._interaction.perception import describe_tree
 from nuiitivet.layout.column import Column
 from nuiitivet.material.slider import HorizontalRangeSlider
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.testing import mount
 from nuiitivet.widgets.clickable import Clickable
 from nuiitivet.widgets.text_field import TextFieldBase
@@ -78,12 +78,12 @@ def test_text_field_reports_its_current_text() -> None:
 def test_range_slider_reports_its_pair_however_it_was_bound() -> None:
     """A composite value rides the same ``value`` name as every scalar one.
 
-    Bound as plain floats the two ends are not observables at all, so
-    ``describe_state`` reports nothing for the widget; bound as observables it
+    Bound as plain floats the two ends are not States at all, so
+    ``describe_state`` reports nothing for the widget; bound as States it
     reports them under the private attributes they landed in. Either way this is
     the dump that names the value.
     """
-    bound = HorizontalRangeSlider(value_start=Observable(0.2), value_end=Observable(0.8))
+    bound = HorizontalRangeSlider(value_start=State(0.2), value_end=State(0.8))
     plain = HorizontalRangeSlider(value_start=0.3, value_end=0.7)
     with mount(Column(children=[bound, plain])) as host:
         host.layout(600, 300)

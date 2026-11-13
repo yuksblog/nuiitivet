@@ -8,6 +8,6 @@ translation both native surfaces use lives in :mod:`nuiitivet.menus.nsmenu`.
 
 from __future__ import annotations
 
-from .model import MenuEntry, MenuRole, ObservableBool, ObservableStr, read_value
+from .model import BoolOrState, MenuEntry, MenuRole, StrOrState, read_value
 
-__all__ = ["MenuEntry", "MenuRole", "ObservableBool", "ObservableStr", "read_value"]
+__all__ = ["BoolOrState", "MenuEntry", "MenuRole", "StrOrState", "read_value"]

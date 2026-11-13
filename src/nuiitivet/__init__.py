@@ -73,12 +73,12 @@ from nuiitivet.observable import (
     CancelToken,
     Clock,
     ClockCallback,
-    Observable,
+    State,
     batch,
     combine,
 )
 from nuiitivet.observable.clocks import Clocks
-from nuiitivet.remote import RemoteError, WriteOnlyObservable, server, server_only, worker
+from nuiitivet.remote import RemoteError, WriteOnlyState, server, server_only, worker
 
 # Input (keyboard-modifier masks for ``on_key`` / ``on_key_up`` handlers and
 # backend-neutral pointer button codes for ``PointerEvent.button``)
@@ -231,7 +231,7 @@ __all__: list[str] = [
     "OverlayAware",
     "OverlayProtocol",
     # State Management
-    "Observable",
+    "State",
     "CancelToken",
     "batch",
     "combine",
@@ -239,7 +239,7 @@ __all__: list[str] = [
     "ClockCallback",
     "Clocks",
     "RemoteError",
-    "WriteOnlyObservable",
+    "WriteOnlyState",
     "server",
     "server_only",
     "worker",

@@ -6,7 +6,7 @@ import asyncio
 
 import pytest
 
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.observable import runtime
 
 
@@ -64,7 +64,7 @@ async def _settle() -> None:
 
 
 async def test_the_result_lands_through_the_clock(clock: ManualClock) -> None:
-    source = Observable("")
+    source = State("")
     runs = GatedRuns()
     results = source.switch_map(runs, initial="<none>")
 
@@ -80,7 +80,7 @@ async def test_the_result_lands_through_the_clock(clock: ManualClock) -> None:
 
 
 async def test_a_newer_value_cancels_the_run_in_flight(clock: ManualClock) -> None:
-    source = Observable("")
+    source = State("")
     runs = GatedRuns()
     results = source.switch_map(runs, initial="<none>")
 
@@ -99,7 +99,7 @@ async def test_a_newer_value_cancels_the_run_in_flight(clock: ManualClock) -> No
 
 
 async def test_dispose_cancels_the_run_in_flight(clock: ManualClock) -> None:
-    source = Observable("")
+    source = State("")
     runs = GatedRuns()
     results = source.switch_map(runs, initial="<none>")
     source.value = "a"
@@ -115,7 +115,7 @@ async def test_a_raising_run_publishes_nothing(clock: ManualClock) -> None:
     async def broken(value: str) -> str:
         raise RuntimeError("boom")
 
-    source = Observable("")
+    source = State("")
     results = source.switch_map(broken, initial="<none>")
 
     source.value = "a"

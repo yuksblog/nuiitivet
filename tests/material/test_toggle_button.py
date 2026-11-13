@@ -5,13 +5,13 @@ import pytest
 from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.material.buttons import ToggleButton
 from nuiitivet.material.styles.toggle_button_style import ToggleButtonStyle
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from tests.helpers.pointer import send_pointer_event_for_test
 
 
 def _make_obs(initial: bool):
     class _Tmp:
-        x = Observable(initial)
+        x = State(initial)
 
     return _Tmp().x
 
@@ -53,7 +53,7 @@ def test_toggle_button_click_toggles_and_calls_on_change(style_factory):
 
 
 @pytest.mark.parametrize("style_factory", _STYLE_FACTORIES)
-def test_toggle_button_accepts_observable_selected(style_factory):
+def test_toggle_button_accepts_state_selected(style_factory):
     selected = _make_obs(False)
     called: list[bool] = []
 

@@ -58,7 +58,7 @@ from nuiitivet.material.styles.search_bar_style import (
     SearchBarStyle,
 )
 from nuiitivet.modifiers.popup import popup
-from nuiitivet.observable import Observable, ReadOnlyObservableProtocol
+from nuiitivet.observable import ReadOnlyStateProtocol, State
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia import (
     draw_round_rect,
@@ -95,7 +95,7 @@ _logger = logging.getLogger(__name__)
 
 _DENSITY_FLOOR = -4
 
-IconLike = Union["Symbol", str, ReadOnlyObservableProtocol["Symbol"], ReadOnlyObservableProtocol[str], None]
+IconLike = Union["Symbol", str, ReadOnlyStateProtocol["Symbol"], ReadOnlyStateProtocol[str], None]
 
 
 class _SearchBarCore(InteractiveWidget):
@@ -110,7 +110,7 @@ class _SearchBarCore(InteractiveWidget):
     def __init__(
         self,
         *,
-        value: Union[str, ReadOnlyObservableProtocol[str]] = "",
+        value: Union[str, ReadOnlyStateProtocol[str]] = "",
         placeholder: str | None = None,
         leading_icon: IconLike = None,
         on_tap_leading_icon: Optional[Callable[[], None]] = None,
@@ -142,7 +142,7 @@ class _SearchBarCore(InteractiveWidget):
 
         # Read by the pane (to drive the margin animation) and by
         # DockedSearchBar (to open the docked container).
-        self.focused: Observable[bool] = Observable(False)
+        self.focused: State[bool] = State(False)
 
         if on_tap_leading_icon is not None and leading_icon is None:
             raise ValueError("on_tap_leading_icon requires leading_icon to be provided")
@@ -667,7 +667,7 @@ class SearchBar(ComposableWidget):
 
     def __init__(
         self,
-        value: Union[str, ReadOnlyObservableProtocol[str]] = "",
+        value: Union[str, ReadOnlyStateProtocol[str]] = "",
         *,
         placeholder: str | None = None,
         leading_icon: IconLike = "search",
@@ -686,17 +686,17 @@ class SearchBar(ComposableWidget):
         """Initialize SearchBar.
 
         Args:
-            value: Initial query text, or the observable holding it. Edits are
-                written back to a writable observable, exactly as for ``TextField``.
+            value: Initial query text, or the State holding it. Edits are
+                written back to a writable State, exactly as for ``TextField``.
             placeholder: Supporting text shown inside the bar while it is empty.
-            leading_icon: Icon source (Symbol/str, or an Observable of them).
+            leading_icon: Icon source (Symbol/str, or a State of them).
             on_tap_leading_icon: Makes the leading icon a tappable icon button.
             trailing_icon: Icon source for the trailing slot.
             on_tap_trailing_icon: Makes the trailing icon a tappable icon button.
                 The slot is generic — clearing the query is one use of it, not a
                 built-in behaviour.
             on_change: Callback invoked with the query as it changes, for a side
-                effect of the change. The observable bound to *value* carries the
+                effect of the change. The State bound to *value* carries the
                 same signal without it.
             on_submit: Callback invoked with the query when Enter is pressed.
                 Fires on every press, including a repeat on an unchanged query,
@@ -756,12 +756,12 @@ class DockedSearchBar(ComposableWidget):
     A :class:`SearchBar` with a container anchored 2dp below it, holding
     whatever the query currently calls for — recent searches, suggestions,
     results, a spinner, "no matches". There is one slot, ``content``, and the
-    application swaps what is inside it from its own observables; the widget
+    application swaps what is inside it from its own States; the widget
     only shows and hides the container. That also means the query pipeline
     keeps running while the container is closed, so gate it yourself if that
     matters.
 
-    **When the container opens and closes.** The state is a single observable,
+    **When the container opens and closes.** The state is a single State,
     writable at any time by the application, that this widget drives from
     these triggers:
 
@@ -787,7 +787,7 @@ class DockedSearchBar(ComposableWidget):
     The edit trigger is what makes "Enter closes the panel, results render on
     the page" work: focus never changed, so without it the panel could not
     come back. It counts *user* edits only — assigning to ``value``, or a
-    write to the bound observable, does not reopen the container, so filling
+    write to the bound State, does not reopen the container, so filling
     the bar in after a pick stays closed. The tap trigger covers the pointer
     half of the same gap.
 
@@ -799,10 +799,10 @@ class DockedSearchBar(ComposableWidget):
 
     def __init__(
         self,
-        value: Union[str, ReadOnlyObservableProtocol[str]] = "",
+        value: Union[str, ReadOnlyStateProtocol[str]] = "",
         *,
         content: Widget,
-        is_open: Optional[Observable[bool]] = None,
+        is_open: Optional[State[bool]] = None,
         close_on_enter: bool = True,
         placeholder: str | None = None,
         leading_icon: IconLike = "search",
@@ -821,9 +821,9 @@ class DockedSearchBar(ComposableWidget):
         """Initialize DockedSearchBar.
 
         Args:
-            value: Initial query text, or the observable holding it.
+            value: Initial query text, or the State holding it.
             content: Widget rendered inside the docked container.
-            is_open: Observable holding whether the container is open. Pass one to
+            is_open: State holding whether the container is open. Pass one to
                 drive or observe it; when omitted an internal one is created and
                 exposed as :attr:`is_open`.
             close_on_enter: Whether Enter closes the container. The default suits
@@ -837,7 +837,7 @@ class DockedSearchBar(ComposableWidget):
             trailing_icon: Icon source for the trailing slot.
             on_tap_trailing_icon: Makes the trailing icon a tappable icon button.
             on_change: Callback invoked with the query as it changes, for a side
-                effect of the change. The observable bound to *value* carries the
+                effect of the change. The State bound to *value* carries the
                 same signal without it.
             on_submit: Callback invoked with the query when Enter is pressed.
                 Fires on every press, including a repeat on an unchanged query,
@@ -863,7 +863,7 @@ class DockedSearchBar(ComposableWidget):
         # Kept separate from ``core.focused`` so that an outside tap can close
         # the container (popup writes False here) without claiming the bar lost
         # focus.
-        self._is_open: Observable[bool] = is_open if is_open is not None else Observable(False)
+        self._is_open: State[bool] = is_open if is_open is not None else State(False)
 
         # EditableText declines Enter when it has no on_submit, so the key
         # stays available to a shortcut. The wrapper is withheld unless Enter
@@ -918,8 +918,8 @@ class DockedSearchBar(ComposableWidget):
         return self._core.value
 
     @property
-    def is_open(self) -> Observable[bool]:
-        """Observable holding whether the docked container is open.
+    def is_open(self) -> State[bool]:
+        """State holding whether the docked container is open.
 
         Writable: setting it opens or closes the container directly. The
         widget writes it too, on the triggers listed in the class docstring.

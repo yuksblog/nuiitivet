@@ -1,9 +1,9 @@
-"""Observable: Getting Started
+"""Getting Started
 
 Demonstrates:
-- Basic Observable usage (instance attribute style)
+- Basic State usage (instance attribute style)
 - Derived state with .map()
-- Observable as a class attribute (descriptor pattern)
+- State as a class attribute (descriptor pattern)
 - Integration with UI widgets
 """
 
@@ -16,7 +16,7 @@ class Counter:
     """Simple counter with a derived double_count."""
 
     def __init__(self) -> None:
-        self.count = nv.Observable(0)
+        self.count = nv.State(0)
         self.double_count = self.count.map(lambda c: c * 2)
 
     def increment(self) -> None:
@@ -31,7 +31,7 @@ class Counter:
 
 
 class Model:
-    """Class-level Observable descriptor with per-instance state.
+    """Class-level State descriptor with per-instance state.
 
     ``value`` is defined once as a class attribute, so every instance shares the
     same descriptor object. Each instance nonetheless holds its *own* value
@@ -39,14 +39,14 @@ class Model:
     another's.
     """
 
-    value: nv.Observable[int] = nv.Observable(0)
+    value: nv.State[int] = nv.State(0)
 
 
 # --- UI Integration ---
 
 
 class CounterApp(nv.ComposableWidget):
-    """Counter demo that wires Observable state into the widget tree."""
+    """Counter demo that wires a State into the widget tree."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -62,7 +62,7 @@ class CounterApp(nv.ComposableWidget):
             child=nv.Column(
                 gap=16,
                 children=[
-                    nv.Text("Observable: Getting Started"),
+                    nv.Text("Getting Started"),
                     nv.Text(self.label),
                     nv.Text(self.double_label),
                     nv.Row(

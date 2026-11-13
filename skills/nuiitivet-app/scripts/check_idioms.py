@@ -32,7 +32,7 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"\bStateless?Widget\b|\bStatefulWidget\b"), "Flutter",
      "Subclass nv.ComposableWidget and define build(self)."),
     (re.compile(r"\bcreateState\b|\binitState\b"), "Flutter",
-     "No state lifecycle overrides; create Observables in __init__, and put setup "
+     "No state lifecycle overrides; create States in __init__, and put setup "
      "that needs the tree (X.of(self), async loading) in an on_mount() override."),
     (re.compile(r"\bonAppear\b|\bonDisappear\b|\bon_appear\b|\bon_disappear\b"), "SwiftUI",
      "No on_appear/on_disappear exists. SwiftUI's onAppear is tree insertion, which is "
@@ -41,7 +41,7 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"\bRouteAware\b|\bdidPushNext\b|\bdidPopNext\b"), "Flutter",
      "No route-visibility callbacks: a covered route stays mounted and nothing fires. "
      "Pause/resume from the code calling Navigator.of(self).push(...), or from the "
-     "Observable behind a nv.Deck index."),
+     "State behind a nv.Deck index."),
     (re.compile(r"\bLaunchedEffect\b|\bDisposableEffect\b|\brememberCoroutineScope\b"), "Jetpack Compose",
      "Run-once setup: override on_mount() (runs once per instance; a rebuild replaces the "
      "built subtree, not the host). From inside build(), use nv.on_mount(cb) plus a flag "
@@ -49,7 +49,7 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"\bdef\s+build\s*\(\s*self\s*,\s*context\b"), "Flutter",
      "build takes no context: `def build(self):`."),
     (re.compile(r"\bsetState\b"), "Flutter/React",
-     "Assign to an Observable: `self.x.value = ...` — the UI rebinds itself."),
+     "Assign to a State: `self.x.value = ...` — the UI rebinds itself."),
     (re.compile(r"\.run_thread\s*\(|\.run_task\s*\("), "Flet",
      "Work the browser cannot run on a thread goes in a @nv.worker function, or in a @nv.server "
      "function when it needs a server, awaited from the handler: `await fn(...)` on both targets."),
@@ -57,9 +57,9 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "A process pool dies in the browser. Mark the function @nv.worker(process=True) on a module-level "
      "def, with parallel=N for up to N calls at once, and await it: `await fn(...)` on both targets."),
     (re.compile(r"\buseState\b|\buseEffect\b|\buseMemo\b|\buseRef\b|\buseCallback\b"), "React",
-     "Use nv.Observable for state; derive with combine().compute() / map()."),
+     "Use nv.State for state; derive with combine().compute() / map()."),
     (re.compile(r"\buseSelector\b|\buseDispatch\b|\bConsumerWidget\b|\bref\.watch\b"), "Redux/Riverpod",
-     "Bind an Observable directly into the widget; no store/provider hooks."),
+     "Bind a State directly into the widget; no store/provider hooks."),
     (re.compile(r"\bEdgeInsets\b"), "Flutter",
      "Spacing is a parameter: `padding=12` on the widget."),
     (re.compile(r"\bSizedBox\s*\("), "Flutter",
@@ -113,7 +113,7 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "external tray-icon libs",
      "The system tray is built in: nv.App(win, tray=nv.TrayIcon(icon=..., tooltip=..., "
      "menu=[nv.MenuEntry(...)])) — the menu reuses MenuEntry, and tray.installed "
-     "(Observable[bool]) reports whether the icon actually shows. Resident app: "
+     "(State[bool]) reports whether the icon actually shows. Resident app: "
      "exit_policy=nv.ExitPolicy.EXPLICIT + Window(close_action=tray.installed.map(...)) "
      "+ win.hide()/show(). Never import pystray directly."),
     (re.compile(r"\bQFontDatabase\b|\baddApplicationFont\b|\btkinter\.font\b"),
@@ -122,7 +122,7 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "family_name=\"X\") once at startup, then font_family=\"X\" wherever a "
      "font_family is accepted. Default family: nv.Fonts.set_default_family(...)."),
     (re.compile(r"\bTextEditingController\b"), "Flutter",
-     "No controller object: bind an Observable as the field's value, "
+     "No controller object: bind a State as the field's value, "
      "nv.TextField(value=obs). Set the text with obs.value = ..."),
     (re.compile(r"\bonEditingComplete\b"), "Flutter",
      "Finishing a value on blur is nv.TextField(on_focus_change=fn), called as "
@@ -147,7 +147,7 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"\bcomputed\s*\(|\bobservable\s*\(\s*\)|\bmakeAutoObservable\b"), "MobX/Vue",
      "Derived state: a.combine(b).compute(lambda a, b: ...)."),
     (re.compile(r"\bCancellationTokenSource\b|\bCancellationToken\b|\bAbortController\b"), ".NET/JS",
-     "No cancellation primitive of that shape. If the work is a function of an Observable's "
+     "No cancellation primitive of that shape. If the work is a function of a State's "
      "value, use source.switch_map(fn, initial=...) — it supersedes the previous run and hands "
      "fn an nv.CancelToken. Otherwise create a threading.Event per run, pass it to the worker, "
      "and check cancel.is_set() in its loop; a reused Event that gets clear()ed lets a "
@@ -160,7 +160,7 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "is required and keyword-only."),
     (re.compile(r"\.(?:exhaustMap|concatMap|mergeMap|flatMap)\s*\("), "Rx",
      "Only the latest-wins variant exists: switch_map(fn, initial=...). There is no "
-     "exhaust/concat/merge flattening — a derived Observable holds one value, not a queue of "
+     "exhaust/concat/merge flattening — a derived State holds one value, not a queue of "
      "in-flight runs."),
     # switch_map's fn takes (value, cancel). A one-parameter lambda is the natural
     # thing to write coming from map(), and fails only once a run actually starts.
@@ -171,7 +171,7 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
     # Three-state async wrapper types. Rejected deliberately: a wrapper in the
     # value position forces every downstream operator and binding to unwrap it.
     (re.compile(r"\bAsyncValue\b|\bRemoteData\b|\bAsyncSnapshot\b"), "Flutter/Elm",
-     "No loading/error wrapper type around the value. switch_map returns a plain Observable; "
+     "No loading/error wrapper type around the value. switch_map returns a plain State; "
      "put failure in your own result type (SearchOutcome(items=..., error=...)) so one value "
      "carries both and downstream map/filter/combine need no unwrapping."),
     # Bare-statement subscribe on a debounce/throttle/filter chain. In Rx the stream
@@ -186,22 +186,22 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
     # slip past a guard that had already matched.
     (re.compile(r"^(?![ \t]*[\w.\[\]'\"]+\s*=[^=])(?!.*\bbind\s*\().*"
                 r"\.(?:debounce|throttle|filter)\s*\([^()]*\)\s*\.\s*subscribe\s*\("), "Rx habit",
-     "Hold what you derive: debounce/throttle/filter returns a new Observable that is "
+     "Hold what you derive: debounce/throttle/filter returns a new State that is "
      "collected unless something holds it, so this never fires. Name it (self.results = ...), "
      "or keep the Disposable: self.bind(source.debounce(0.3).subscribe(cb))."),
-    # Matched on the read-modify-write of the *same* observable inside the callback:
+    # Matched on the read-modify-write of the *same* State inside the callback:
     # a legitimate subscriber writes a value, never the previous value of the one
     # it writes.
     (re.compile(r"\.subscribe\s*\(\s*lambda\b[^:]*:\s*[\w.]+\.set\s*\(\s*[\w.]+\.value\s*[-+*/]"), "Rx habit",
      "Accumulation is an operator: source.scan(lambda acc, value: ..., initial=...) -- the "
-     "accumulator is the returned Observable's value, so there is no second Observable to seed "
+     "accumulator is the returned State's value, so there is no second State to seed "
      "and no Disposable to hold. initial is required and keyword-only."),
     # LINQ / Rx operator aliases. Neither exists: aliases for the same operation
     # were rejected outright, and `where` in particular now has a real counterpart
     # whose required seed is the whole point.
     (re.compile(r"\.(?:where|select)\s*\(\s*lambda\b"), "Rx/LINQ",
      "No where/select aliases. Filtering is .filter(pred, initial=...) — initial is required "
-     "and keyword-only, because a filtered Observable has no value until something passes. "
+     "and keyword-only, because a filtered State has no value until something passes. "
      "Projection is .map(fn)."),
     (re.compile(r"\bIndexedStack\b|\bBottomNavigationBar\b"), "Flutter",
      "No IndexedStack / BottomNavigationBar: switch children with nv.Deck(index=obs, "
@@ -223,7 +223,7 @@ _LOCAL_WRAPPER = re.compile(r"^[ \t]+([A-Za-z_]\w*)\s*=\s*[^=].*\.(?:debounce|th
 _DISCARDED_SUBSCRIBE = r"^[ \t]*{name}\s*\.\s*subscribe\s*\("
 
 _DEAD_CHAIN_FIX = (
-    "Hold what you derive: this local debounce/throttle/filter Observable is collected when the "
+    "Hold what you derive: this local debounce/throttle/filter State is collected when the "
     "setup method returns, and the discarded Disposable does not hold it either, so it "
     "never fires. Store one of them: self._sub = source.debounce(0.5).subscribe(cb), or "
     "self.bind(...) in a widget."

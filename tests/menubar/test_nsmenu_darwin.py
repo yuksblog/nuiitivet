@@ -17,14 +17,14 @@ import pytest
 from nuiitivet.material.text import Text
 from nuiitivet.menubar.model import MenuBar
 from nuiitivet.menus import MenuEntry
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 
 pytestmark = pytest.mark.skipif(sys.platform != "darwin", reason="NSMenu bridge is macOS-only")
 
 
 def test_appkit_send_action_reaches_on_select(nuiitivet_app) -> None:
     record: List[str] = []
-    checked = Observable(False)
+    checked = State(False)
     model = MenuBar(
         [
             MenuEntry(

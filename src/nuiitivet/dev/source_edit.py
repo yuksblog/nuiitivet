@@ -686,7 +686,7 @@ def written_spacing(text: str, site: Frame, keyword: str) -> Union[None, Spacing
     """The ``padding`` or ``gap`` written on the call at ``site``, ``None`` when absent, or a refusal.
 
     The value is an int or a tuple of ints. A value that is a name or an
-    expression -- an observable among them -- has no literal to write over.
+    expression -- a State among them -- has no literal to write over.
     """
     found = _keyword_node(text, site, keyword)
     if isinstance(found, Refusal):

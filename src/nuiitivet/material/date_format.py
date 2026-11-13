@@ -227,7 +227,7 @@ def is_date(text: str) -> bool:
     Written for the ``filter()`` step of a derived date, where the application
     wants the last valid date held while the user types an incomplete one::
 
-        self.date_text = nv.Observable("")
+        self.date_text = nv.State("")
         self.date = self.date_text.filter(nv.is_date, initial="").map(nv.parse_date)
 
     The seed is filtered text, not a date, so it goes through ``map`` as well:

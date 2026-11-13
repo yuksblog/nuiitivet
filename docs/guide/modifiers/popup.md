@@ -6,18 +6,18 @@ Pick the one that matches how the content opens:
 
 | Modifier | Opens when | Anchored to | Closes when |
 | --- | --- | --- | --- |
-| [`popup`](#popup) | your `Observable[bool]` turns `True` | the widget's rect | you set it back to `False`, or an outside tap |
+| [`popup`](#popup) | your `State[bool]` turns `True` | the widget's rect | you set it back to `False`, or an outside tap |
 | [`tooltip`](#tooltip) | the pointer hovers or focus arrives | the widget's rect | the pointer leaves, after a delay |
 | [`context_menu`](#context_menu) | the widget is right-clicked | the click point | an outside tap |
 
 ## popup
 
-`popup` opens a floating overlay anchored to the widget it modifies. You own the open state: pass an `Observable[bool]` as `is_open` and toggle it.
+`popup` opens a floating overlay anchored to the widget it modifies. You own the open state: pass a `State[bool]` as `is_open` and toggle it.
 
 ```python
 import nuiitivet.material as nv
 
-is_open: nv.Observable[bool] = nv.Observable(False)
+is_open: nv.State[bool] = nv.State(False)
 
 button.modifier(nv.popup(nv.Menu(items=[...]), is_open=is_open))
 ```
@@ -25,7 +25,7 @@ button.modifier(nv.popup(nv.Menu(items=[...]), is_open=is_open))
 | Parameter | Type | Default | Description |
 | --- | --- | --- | --- |
 | `content` | `Widget` | required | Widget shown in the overlay |
-| `is_open` | `Observable[bool] \| None` | `None` | Open state you control |
+| `is_open` | `State[bool] \| None` | `None` | Open state you control |
 | `passthrough` | `bool` | `False` | Whether input reaches the UI behind the popup |
 | `dismiss_on_outside_tap` | `bool \| None` | `None` | Whether an outside tap closes it; follows `passthrough` |
 | `anchor_passthrough` | `bool` | `False` | Whether a tap on the anchor passes through to it instead of counting as an outside tap |
@@ -49,7 +49,7 @@ You rarely set `dismiss_on_outside_tap` yourself — left at `None` it follows `
 
 `anchor_passthrough` is the `passthrough` axis scoped to the anchor's own rect. The default `False` treats a tap on the anchor like any other outside tap — right for a toggle anchor such as a menu button, where re-tapping it should put the popup away. Pass `True` when the tap means something *on* the anchor — a search field, where a click moves the caret: the anchor's rect is exempted from the blocking layer, so the tap reaches the anchor and the popup stays up.
 
-Leaving `is_open` at `None` is legal, but the modifier then owns the observable and you have nothing to open the popup with. Always pass your own.
+Leaving `is_open` at `None` is legal, but the modifier then owns the `State` and you have nothing to open the popup with. Always pass your own.
 
 ### Placement
 
@@ -94,7 +94,7 @@ field.modifier(nv.popup(calendar, is_open=is_open, offset=(0.0, 2.0), flip=False
 ```python
 import nuiitivet.material as nv
 
-is_open: nv.Observable[bool] = nv.Observable(False)
+is_open: nv.State[bool] = nv.State(False)
 
 def toggle() -> None:
     is_open.value = not is_open.value
@@ -142,7 +142,7 @@ With `passthrough=True` the overlay floats above the UI without blocking it, and
 ```python
 import nuiitivet.material as nv
 
-is_open: nv.Observable[bool] = nv.Observable(False)
+is_open: nv.State[bool] = nv.State(False)
 
 def toggle() -> None:
     is_open.value = not is_open.value
@@ -217,7 +217,7 @@ The `content` widget is usually a `Tooltip` or `RichTooltip` from `nuiitivet.mat
 
 The `context_menu` modifier opens a menu **at the pointer** when the widget is right-clicked (secondary button). It closes on an outside tap.
 
-Where `popup` anchors to the widget's rect and is driven by an external `is_open`, a context menu is driven by the click itself. The modifier owns both the open state and the transient click coordinate, so neither appears in your code — there is no `Observable` to wire up and no pointer handler to write.
+Where `popup` anchors to the widget's rect and is driven by an external `is_open`, a context menu is driven by the click itself. The modifier owns both the open state and the transient click coordinate, so neither appears in your code — there is no `State` to wire up and no pointer handler to write.
 
 ```python
 import nuiitivet.material as nv

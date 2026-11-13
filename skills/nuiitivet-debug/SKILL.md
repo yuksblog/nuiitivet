@@ -53,7 +53,7 @@ Save`. `python -m nuiitivet.dev --help` lists them.
 ## Edit — change a widget under hot reload
 
 Write or change the widget with the **nuiitivet-app** skill's idioms, then save:
-the running window reloads in place while `Observable` state survives — no restart,
+the running window reloads in place while `State` values survive — no restart,
 no lost state. A broken value survives too: before replaying a reported problem,
 drive the app back to where the human's steps began, or restart the runner.
 Confirm the reload landed in **Verify**.

@@ -8,9 +8,9 @@ from typing import Any
 
 import pytest
 
-from nuiitivet.observable import Observable, runtime
+from nuiitivet.observable import State, runtime
 from nuiitivet.observable.switched import CancelToken
-from nuiitivet.remote import RemoteError, WriteOnlyObservable, worker
+from nuiitivet.remote import RemoteError, WriteOnlyState, worker
 from nuiitivet.remote.function import lookup
 from nuiitivet.remote.worker import WorkerFunction
 from tests.remote.models import Order
@@ -61,7 +61,7 @@ def fail_custom(order_id: int) -> None:
 
 
 @worker
-def report(progress: WriteOnlyObservable[float]) -> int:
+def report(progress: WriteOnlyState[float]) -> int:
     progress.value = 0.5
     assert _gate.wait(_TIMEOUT)
     progress.value = 1.0
@@ -110,7 +110,7 @@ async def test_any_other_exception_reaches_the_caller_as_remote_error() -> None:
 
 
 async def test_progress_arrives_while_the_call_is_running(clock: ManualClock) -> None:
-    progress = Observable(0.0)
+    progress = State(0.0)
     task = asyncio.ensure_future(report(progress))
 
     await asyncio.to_thread(lambda: None)

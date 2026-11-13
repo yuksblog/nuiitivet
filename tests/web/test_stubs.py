@@ -26,7 +26,7 @@ SECRET = os.environ["SECRET"]
 
 @nv.server
 def load_orders(
-    user_id: int, progress: nv.WriteOnlyObservable[float], cancel: nv.CancelToken = nv.CancelToken()
+    user_id: int, progress: nv.WriteOnlyState[float], cancel: nv.CancelToken = nv.CancelToken()
 ) -> list[Order]:
     return connect(SECRET).query(user_id)
 
@@ -78,7 +78,7 @@ def test_a_stub_keeps_the_signature_and_the_imports_it_needs(app_dir: Path) -> N
         "\n"
         "\n"
         "@_stub\n"
-        "def load_orders(user_id: int, progress: nv.WriteOnlyObservable[float], "
+        "def load_orders(user_id: int, progress: nv.WriteOnlyState[float], "
         "cancel: nv.CancelToken=nv.CancelToken()) -> list[Order]:\n"
         "    ...\n"
     )

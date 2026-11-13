@@ -19,7 +19,7 @@ code by hand. Find your situation below.
 | The same, but no more than N calls at a time | `@nv.worker(parallel=N)` | [Worker and Server Functions](web/worker_and_server_functions.md#cap-the-calls-that-run-at-once) |
 | Work that needs a process: pure Python that should use another core, a loop that never checks its token, native code that may crash | `@nv.worker(process=True)` | [Worker and Server Functions](web/worker_and_server_functions.md#run-calls-in-a-process) |
 | Values arriving faster than the screen needs them | `debounce()` / `throttle()` | [Practical Controls](state-management/practical_controls.md) |
-| Getting a worker's result onto the UI thread | nothing — an observable write is marshalled for you | [Thread Safety](state-management/thread_safety.md) |
+| Getting a worker's result onto the UI thread | nothing — a `State` write is marshalled for you | [Thread Safety](state-management/thread_safety.md) |
 | A consumer that must see every intermediate value, not the newest | `dispatch=False` | [Thread Safety](state-management/thread_safety.md#opting-out-dispatchfalse) |
 | Testing an `async` handler | `await app.idle()`, `await app.wait_for(...)` | [Testing async flows](testing/async.md) |
 | Testing a write that came from a worker thread | `app.settle()` | [Thread Safety](state-management/thread_safety.md#testing) |

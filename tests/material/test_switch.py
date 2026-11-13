@@ -1,6 +1,6 @@
 from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.material.selection_controls import Switch
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from tests.helpers.pointer import send_pointer_event_for_test
 import pytest
 
@@ -11,7 +11,7 @@ pytestmark = pytest.mark.usefixtures("mobile_form_factor")
 def _make_obs(initial: bool):
 
     class _Tmp:
-        x = Observable(initial)
+        x = State(initial)
 
     return _Tmp().x
 
@@ -29,7 +29,7 @@ def test_switch_toggle_calls_handler_and_updates_state() -> None:
     assert called == [True]
 
 
-def test_switch_state_backed_observable_updates() -> None:
+def test_switch_state_backed_updates() -> None:
     state = _make_obs(False)
     called: list[bool] = []
 

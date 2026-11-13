@@ -42,8 +42,8 @@ from jobs import search
 
 
 class SearchScreen(nv.ComposableWidget):
-    query = nv.Observable("word1")
-    status = nv.Observable("")
+    query = nv.State("word1")
+    status = nv.State("")
 
     async def search(self) -> None:
         self.status.value = f"{len(await search(self.query.value))} matches"
@@ -79,12 +79,12 @@ refused with the argument named. An annotation outside the table, `Any`,
 
 ### Report progress
 
-A parameter annotated `nv.WriteOnlyObservable[T]` is written by the function
+A parameter annotated `nv.WriteOnlyState[T]` is written by the function
 and read by the screen:
 
 ```python
 @nv.worker
-def search(query: str, progress: nv.WriteOnlyObservable[float]) -> list[str]:
+def search(query: str, progress: nv.WriteOnlyState[float]) -> list[str]:
     matches: list[str] = []
     for index, word in enumerate(WORDS):
         if query in word:
@@ -94,11 +94,11 @@ def search(query: str, progress: nv.WriteOnlyObservable[float]) -> list[str]:
     return matches
 ```
 
-The caller passes an `nv.Observable[T]` and binds it as usual:
+The caller passes an `nv.State[T]` and binds it as usual:
 
 ```python
 class SearchScreen(nv.ComposableWidget):
-    progress = nv.Observable(0.0)
+    progress = nv.State(0.0)
 
     def build(self) -> nv.Widget:
         return nv.LinearProgressIndicator(value=self.progress)
@@ -107,9 +107,9 @@ class SearchScreen(nv.ComposableWidget):
         matches = await search(self.query.value, self.progress)
 ```
 
-Each write lands on the caller's observable on the UI thread. A tight loop
+Each write lands on the caller's `State` on the UI thread. A tight loop
 can write as often as it likes: the screen sees the latest value per frame.
-The function cannot read the observable back, and a type checker says so.
+The function cannot read the `State` back, and a type checker says so.
 
 ### Cancel
 
@@ -121,7 +121,7 @@ default, is set when the caller gives up. The function checks
 @nv.worker
 def search(
     query: str,
-    progress: nv.WriteOnlyObservable[float],
+    progress: nv.WriteOnlyState[float],
     cancel: nv.CancelToken = nv.CancelToken(),
 ) -> list[str]:
     for index, word in enumerate(WORDS):
@@ -173,7 +173,7 @@ or the server could not be reached.
 
 ```python
 @nv.worker(parallel=3)  # up to three calls at once
-def search(query: str, progress: nv.WriteOnlyObservable[float]) -> list[str]:
+def search(query: str, progress: nv.WriteOnlyState[float]) -> list[str]:
     ...
 ```
 
@@ -192,7 +192,7 @@ its own ceiling.
 
 ```python
 @nv.worker(process=True)  # a child process instead of a thread
-def search(query: str, progress: nv.WriteOnlyObservable[float]) -> list[str]:
+def search(query: str, progress: nv.WriteOnlyState[float]) -> list[str]:
     ...
 ```
 
@@ -210,7 +210,7 @@ the app instead:
 
 ```python
 @nv.worker(parallel=3, process=True, warm=True)  # the three start with the app
-def search(query: str, progress: nv.WriteOnlyObservable[float]) -> list[str]:
+def search(query: str, progress: nv.WriteOnlyState[float]) -> list[str]:
     ...
 ```
 

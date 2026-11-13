@@ -14,7 +14,7 @@ from typing import Iterator, List, Tuple
 import pytest
 
 import nuiitivet.material as nv
-from nuiitivet.observable import Clock, Observable
+from nuiitivet.observable import Clock, State
 from nuiitivet.observable import runtime
 from nuiitivet.observable.runtime import ClockCallback, _ThreadClock
 
@@ -92,7 +92,7 @@ class TestDebounceUnderThreadClock:
         a fresh object per access, and the clock keyed timers on ``id(fn)`` —
         so every write armed its own timer and the burst emitted N times.
         """
-        source: Observable[str] = Observable("")
+        source: State[str] = State("")
         debounced = source.debounce(_WINDOW)
 
         recorder = _Recorder()
@@ -108,7 +108,7 @@ class TestDebounceUnderThreadClock:
 
     def test_unschedule_cancels_pending_emit(self, thread_clock: _CountingThreadClock) -> None:
         """A write followed by disposal of the window leaves nothing armed."""
-        source: Observable[str] = Observable("")
+        source: State[str] = State("")
         debounced = source.debounce(_WINDOW)
 
         recorder = _Recorder()
@@ -186,7 +186,7 @@ class TestCrossThreadWritesUnderThreadClock:
         still off the main thread, so it queued the value again and rescheduled
         forever: thousands of ``schedule_once`` calls and zero deliveries.
         """
-        obs: Observable[int] = Observable(0)
+        obs: State[int] = State(0)
 
         recorder = _Recorder()
         obs.subscribe(recorder)
@@ -208,7 +208,7 @@ class TestCrossThreadWritesUnderThreadClock:
     def test_burst_of_worker_writes_settles(self, thread_clock: _CountingThreadClock) -> None:
         """Rapid worker writes coalesce, land on the final value, and stay bounded."""
         writes = 7
-        obs: Observable[int] = Observable(0)
+        obs: State[int] = State(0)
 
         recorder = _Recorder()
         obs.subscribe(recorder)
@@ -234,7 +234,7 @@ class TestCrossThreadWritesUnderThreadClock:
 
     def test_main_thread_write_is_immediate(self, thread_clock: _CountingThreadClock) -> None:
         """A write already on the UI thread still applies synchronously."""
-        obs: Observable[int] = Observable(0)
+        obs: State[int] = State(0)
 
         recorder = _Recorder()
         obs.subscribe(recorder)
@@ -302,7 +302,7 @@ def test_manual_clock_drives_a_marshalled_write(monkeypatch) -> None:
     monkeypatch.setattr(runtime, "clock", clock)
     assert nv.Clocks.get() is clock, "Clocks.get must report the installed clock, not an import-time snapshot"
 
-    obs: Observable[int] = Observable(0)
+    obs: State[int] = State(0)
 
     recorder = _Recorder()
     obs.subscribe(recorder)
@@ -327,7 +327,7 @@ def test_opting_out_delivers_every_intermediate_value(thread_clock: _CountingThr
     and what a logic-layer consumer counting every step does not. Opting out
     buys back the full sequence, delivered inline on the writing thread.
     """
-    obs: Observable[int] = Observable(0, dispatch=False)
+    obs: State[int] = State(0, dispatch=False)
 
     recorder = _Recorder()
     obs.subscribe(recorder)
@@ -350,7 +350,7 @@ def test_one_servicing_thread_regardless_of_how_many_callbacks() -> None:
     """The fallback clock costs one thread, not one per armed callback.
 
     The previous implementation spent a ``threading.Timer`` -- a thread -- per
-    ``schedule_once``, which every cross-thread observable write now reaches.
+    ``schedule_once``, which every cross-thread State write now reaches.
     """
     def make_noop() -> ClockCallback:
         def noop(dt: float) -> None:

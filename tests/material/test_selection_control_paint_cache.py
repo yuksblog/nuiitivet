@@ -7,7 +7,7 @@ import pytest
 
 from nuiitivet.material.selection_controls import Checkbox, Switch
 from nuiitivet.material.theme.material_theme import MaterialThemeFactory
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.rendering.skia import color as color_module
 from nuiitivet.rendering.skia.skia_module import get_skia
 from nuiitivet.testing import mount
@@ -83,7 +83,7 @@ def test_theme_change_resolves_again(control) -> None:
 @pytest.mark.parametrize("control", CONTROLS)
 def test_disabling_resolves_again(control) -> None:
     class _Model:
-        disabled = Observable(False)
+        disabled = State(False)
 
     model = _Model()
     widget = control(True, disabled=model.disabled)
@@ -101,7 +101,7 @@ def test_disabling_resolves_again(control) -> None:
 
 def test_switch_value_change_resolves_again() -> None:
     class _Model:
-        checked = Observable(False)
+        checked = State(False)
 
     model = _Model()
     widget = Switch(model.checked)

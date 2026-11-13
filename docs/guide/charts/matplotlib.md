@@ -42,16 +42,16 @@ matplotlib drew it.
 
 Each of these is added on its own.
 
-### Feed it from an Observable
+### Feed it from a State
 
 `MatplotlibFigure.plot` is the constructor for a chart that changes, a
-real-time chart for one. It takes the figure, the Observable and a function.
+real-time chart for one. It takes the figure, the `State` and a function.
 
 ```python
 import math
 
 XS = [i / 20 for i in range(200)]
-samples = nv.Observable([math.sin(x) for x in XS])
+samples = nv.State([math.sin(x) for x in XS])
 
 live = Figure()
 live_ax = live.subplots()
@@ -90,7 +90,7 @@ unchanged.
 from matplotlib.backend_bases import PickEvent
 
 rects = list(bars_ax.bar(["Mon", "Tue", "Wed", "Thu", "Fri"], [3, 7, 4, 6, 5], picker=True))  # replaces step 2's bar call
-picked = nv.Observable("Click a bar")
+picked = nv.State("Click a bar")
 
 
 def on_pick(event: PickEvent) -> None:

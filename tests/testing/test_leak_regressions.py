@@ -2,7 +2,7 @@
 
 Each of these passed against a widget that was leaking, because nothing asserted
 on it -- which is the whole argument for the check. They assert on the
-observable's subscriber list rather than on behaviour: the leak *is* the
+State's subscriber list rather than on behaviour: the leak *is* the
 lingering reference, and every one of these widgets still behaves correctly
 while leaking.
 """
@@ -12,7 +12,7 @@ from __future__ import annotations
 from nuiitivet.layout.deck import Deck
 from nuiitivet.material.selection_controls import Checkbox, RadioButton, Switch
 from nuiitivet.material.text_fields import TextField
-from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.observable.value import _StateValue
 from nuiitivet.testing import mount
 from nuiitivet.widgets.text import TextBase as Text
 
@@ -21,13 +21,13 @@ def test_toggleable_releases_its_value_source_on_unmount():
     """``Toggleable.__init__`` subscribed bare, so every toggleable widget held
     its value source forever.
 
-    ``Checkbox`` and ``Switch`` take an ``Observable`` the app owns, which is the
+    ``Checkbox`` and ``Switch`` take a ``State`` the app owns, which is the
     outlives-the-widget case; ``RadioButton`` is driven by its group and only
-    ever subscribes to its own descriptor observable, so it is covered by the
+    ever subscribes to its own descriptor State, so it is covered by the
     same fix through ``Toggleable`` and asserted separately below.
     """
     for widget_type in (Checkbox, Switch):
-        source = _ObservableValue(False)
+        source = _StateValue(False)
         widget = widget_type(checked=source)
         with mount(widget) as host:
             host.layout(100, 100)
@@ -44,8 +44,8 @@ def test_radio_button_releases_its_internal_state_on_unmount():
     assert state._subs == []
 
 
-def test_toggleable_follows_the_observable_again_after_remount():
-    source = _ObservableValue(False)
+def test_toggleable_follows_the_state_again_after_remount():
+    source = _StateValue(False)
     box = Checkbox(checked=source)
     with mount(box) as host:
         host.layout(100, 100)
@@ -84,10 +84,10 @@ def test_text_field_repaints_on_animation_again_after_remount():
         assert host.invalidate_count > before
 
 
-def test_deck_releases_the_index_observable_on_unmount():
+def test_deck_releases_the_index_state_on_unmount():
     """``Deck.dispose()`` did this, and nothing ever called it: ``Widget`` has no
     dispose hook."""
-    index = _ObservableValue(0)
+    index = _StateValue(0)
     deck = Deck(children=[Text("A"), Text("B")], index=index)
     with mount(deck) as host:
         host.layout(200, 100)

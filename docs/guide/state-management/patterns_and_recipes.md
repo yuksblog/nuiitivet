@@ -1,4 +1,4 @@
-# Observable: Patterns and Recipes
+# Patterns and Recipes
 
 ## ViewModel Pattern
 
@@ -16,8 +16,8 @@ As a result, code becomes easier to test, reason about, and maintain.
 import nuiitivet.material as nv
 
 class TodoViewModel:
-    items = nv.Observable([])
-    selected_item = nv.Observable(None)
+    items = nv.State([])
+    selected_item = nv.State(None)
 
     def __init__(self):
         self.item_count = self.items.map(lambda items: len(items))
@@ -30,7 +30,7 @@ class TodoViewModel:
 ```
 
 In this structure, the View does not mutate low-level state directly.
-It only invokes ViewModel methods, while rendering uses Observable-derived values.
+It only invokes ViewModel methods, while rendering uses `State`-derived values.
 
 ```python
 import nuiitivet.material as nv
@@ -53,7 +53,7 @@ class TodoView:
 
 ## Derived State Composition
 
-Use derived state composition when one value should be computed from other observables.
+Use derived state composition when one value should be computed from other `State`s.
 This keeps calculation logic in one place and avoids duplicating the same formula across multiple views.
 It also makes changes safer because you only update the derivation once.
 
@@ -61,8 +61,8 @@ It also makes changes safer because you only update the derivation once.
 import nuiitivet.material as nv
 
 class ShoppingCart:
-    items = nv.Observable([])
-    tax_rate = nv.Observable(0.1)
+    items = nv.State([])
+    tax_rate = nv.State(0.1)
 
     def __init__(self):
         self.subtotal = self.items.map(
@@ -76,8 +76,8 @@ class ShoppingCart:
 ## Typed Values from Text Input
 
 A text field's value is a string; your application's value usually is not.
-Bind the text and derive the value from it — do not keep an `Observable[int]`
-and write the text back into it. Two observables holding the same thing have to
+Bind the text and derive the value from it — do not keep a `State[int]`
+and write the text back into it. Two `State`s holding the same thing have to
 be kept in step, and the field ends up reformatting itself under the user's
 cursor.
 
@@ -94,7 +94,7 @@ def to_int(text: str) -> int | None:
 
 class OrderForm:
     def __init__(self):
-        self.qty_text = nv.Observable("1")      # the field writes into this
+        self.qty_text = nv.State("1")      # the field writes into this
         self.qty = self.qty_text.map(to_int)    # the rest of the app reads this
 ```
 
@@ -145,7 +145,7 @@ def arrival_error(text: str) -> str | None:
 
 class Booking:
     def __init__(self):
-        self.arrival_text = nv.Observable("")
+        self.arrival_text = nv.State("")
         self.arrival = self.arrival_text.map(nv.parse_date)
         self.error = self.arrival_text.map(arrival_error)
 
@@ -200,7 +200,7 @@ only and never on focus loss:
 ```python
 class OrderForm:
     def __init__(self):
-        self.rate_text = nv.Observable("")
+        self.rate_text = nv.State("")
 
     def finish_rate(self, focused: bool, source: nv.FocusSource) -> None:
         if focused:
@@ -221,14 +221,14 @@ user has left, so nothing reformats under their cursor.
 
 ### Binding a derived value by mistake
 
-A derived observable has no setter, so binding one as a field's `value` gives a
+A derived `State` has no setter, so binding one as a field's `value` gives a
 display-only field:
 
 ```python
 nv.TextField(value=self.qty.map(str))   # renders, but cannot be typed into
 ```
 
-Bind the observable you created, and derive from it — never the other way round.
+Bind the `State` you created, and derive from it — never the other way round.
 
 ## Disabling a Control While Its Handler Runs
 
@@ -254,7 +254,7 @@ import nuiitivet.material as nv
 
 class EditorViewModel:
     def __init__(self):
-        self.busy = nv.Observable(False)
+        self.busy = nv.State(False)
 
     async def save(self) -> None:
         async with self.busy.while_value(True):

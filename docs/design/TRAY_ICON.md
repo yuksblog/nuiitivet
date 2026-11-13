@@ -111,7 +111,7 @@ sequenceDiagram
 
     B->>C: schedule_once(hop, 0)
     C->>T: _activate_item(entry), or _fire_activate()
-    opt entry.checked is an observable
+    opt entry.checked is a State
         T->>E: checked = not checked
     end
     alt entry.role is QUIT

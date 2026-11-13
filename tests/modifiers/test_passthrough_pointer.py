@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from nuiitivet.modifiers.passthrough_pointer import PassthroughPointerBox, passthrough_pointer
-from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.observable.value import _StateValue
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgets.box import Box
 
@@ -42,8 +42,8 @@ def test_passthrough_pointer_static_false_does_not_block() -> None:
     assert wrapped.hit_test(50, 25) is not None
 
 
-def test_passthrough_pointer_observable_toggles_active() -> None:
-    cond = _ObservableValue(False)
+def test_passthrough_pointer_state_toggles_active() -> None:
+    cond = _StateValue(False)
     child = _make_child()
     wrapped = child.modifier(passthrough_pointer(cond))
     assert isinstance(wrapped, PassthroughPointerBox)

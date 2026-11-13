@@ -534,7 +534,7 @@ def test_a_harness_the_test_closed_itself_is_not_reported(pytester: pytest.Pytes
 
 
 _LEAKY_MODULE = """
-    from nuiitivet.observable.value import _ObservableValue
+    from nuiitivet.observable.value import _StateValue
     from nuiitivet.testing import mount
     from nuiitivet.widgeting.widget import Widget
 
@@ -551,7 +551,7 @@ _LEAKY_MODULE = """
             pass
 
     def test_leaks():
-        with mount(Leaky(_ObservableValue(0))) as host:
+        with mount(Leaky(_StateValue(0))) as host:
             host.layout(100, 100)
 """
 
@@ -569,10 +569,10 @@ def test_a_fixture_managed_leak_is_reported_at_teardown(pytester: pytest.Pyteste
     pytester.makepyfile(
         _LEAKY_MODULE.replace(
             """    def test_leaks():
-        with mount(Leaky(_ObservableValue(0))) as host:
+        with mount(Leaky(_StateValue(0))) as host:
             host.layout(100, 100)""",
             """    def test_leaks(nuiitivet_mount):
-        host = nuiitivet_mount(Leaky(_ObservableValue(0)))
+        host = nuiitivet_mount(Leaky(_StateValue(0)))
         host.layout(100, 100)""",
         )
     )
@@ -636,10 +636,10 @@ def test_a_failed_test_gets_no_leak_report_from_its_fixture(pytester: pytest.Pyt
     pytester.makepyfile(
         _LEAKY_MODULE.replace(
             """    def test_leaks():
-        with mount(Leaky(_ObservableValue(0))) as host:
+        with mount(Leaky(_StateValue(0))) as host:
             host.layout(100, 100)""",
             """    def test_leaks(nuiitivet_mount):
-        host = nuiitivet_mount(Leaky(_ObservableValue(0)))
+        host = nuiitivet_mount(Leaky(_StateValue(0)))
         host.layout(100, 100)
         assert False, "the real failure\"""",
         )

@@ -128,7 +128,7 @@ def run_app(app: Any, draw_fps: Optional[float] = None, renderer: RendererMode =
     try:
         # The thread that installs the clock is the thread its callbacks fire
         # on, which is what "the UI thread" has to mean for a marshalled
-        # observable write to land somewhere safe.
+        # State write to land somewhere safe.
         set_ui_thread()
         set_clock(pyglet.clock)
     except Exception:
@@ -405,14 +405,14 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
     except Exception:
         exception_once(logger, "pyglet_on_window_created_exc", "App._on_window_created raised")
 
-    # Apply Observable title now that the window exists
+    # Apply State title now that the window exists
     try:
         title_val = getattr(win, "_title_value", None)
         if title_val is not None and hasattr(title_val, "value"):
             v = title_val.value
             window.set_caption(str(v) if v is not None else "")
     except Exception:
-        exception_once(logger, "pyglet_apply_obs_title_exc", "Failed to apply Observable title to window")
+        exception_once(logger, "pyglet_apply_obs_title_exc", "Failed to apply State title to window")
 
     try:
         pos = getattr(win, "window_position", None)

@@ -13,7 +13,7 @@ ICON = Path(__file__).with_name("icon.png")
 
 
 class Counter(nv.ComposableWidget):
-    count = nv.Observable(0)
+    count = nv.State(0)
 
     def build(self) -> nv.Widget:
         return nv.Box(

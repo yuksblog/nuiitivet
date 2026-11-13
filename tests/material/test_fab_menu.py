@@ -5,7 +5,7 @@ import pytest
 from nuiitivet.material.fab_menu import FabMenu, FabMenuItem
 from nuiitivet.material.styles.fab_style import FabStyle
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.observable import Observable, runtime
+from nuiitivet.observable import State, runtime
 
 
 class _FakeCanvas:
@@ -63,13 +63,13 @@ def test_default_is_open_is_false():
     assert menu.is_open.value is False
 
 
-def test_internal_observable_created_when_none():
+def test_internal_state_created_when_none():
     menu = _menu()
-    assert isinstance(menu.is_open, Observable)
+    assert isinstance(menu.is_open, State)
 
 
 def test_external_is_open_is_source_of_truth():
-    state = Observable(False)
+    state = State(False)
     menu = _menu(is_open=state)
     assert menu.is_open is state
     state.value = True
@@ -104,7 +104,7 @@ def test_toggle_flips_is_open():
 
 
 def test_fab_click_toggles_open():
-    """Clicking the morphing FAB flips the single source-of-truth observable."""
+    """Clicking the morphing FAB flips the single source-of-truth State."""
     from nuiitivet.material.app import MaterialApp as App
     from nuiitivet.material.window import MaterialWindow as Window
     from nuiitivet.layout.container import Container

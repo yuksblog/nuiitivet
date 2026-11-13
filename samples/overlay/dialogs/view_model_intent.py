@@ -12,7 +12,7 @@ class DecoupledViewModel:
     """A ViewModel that manages state and logic, decoupled from UI widgets."""
 
     def __init__(self):
-        self.status = nv.Observable("Ready")
+        self.status = nv.State("Ready")
 
     async def process_action(self, overlay: nv.OverlayProtocol):
         self.status.value = "Processing..."

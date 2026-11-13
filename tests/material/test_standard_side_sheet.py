@@ -13,7 +13,7 @@ from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL
 from nuiitivet.material.sheet import StandardSideSheet
 from nuiitivet.material.styles.sheet_style import StandardSideSheetStyle
 from nuiitivet.material.theme.color_role import ColorRole
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.interaction import PointerInputNode
@@ -164,8 +164,8 @@ def test_standard_side_sheet_collapsible_present_for_literal_opened():
     assert isinstance(StandardSideSheet(Box(), opened=True).build(), Collapsible)
 
 
-def test_standard_side_sheet_forwards_opened_observable():
-    opened = Observable(False)
+def test_standard_side_sheet_forwards_opened_state():
+    opened = State(False)
     built = StandardSideSheet(Box(), opened=opened).build()
     assert isinstance(built, Collapsible)
     assert built._opened is opened
@@ -192,7 +192,7 @@ def test_standard_side_sheet_opened_measures_style_width():
 
 def test_close_button_writable_opened_without_callback_closes():
     """Writable opened, no callback: button shown, press writes opened=False."""
-    opened = Observable(True)
+    opened = State(True)
     button = _find_close_button(StandardSideSheet(Box(), opened=opened).build())
     assert button is not None
 
@@ -202,7 +202,7 @@ def test_close_button_writable_opened_without_callback_closes():
 
 def test_close_button_writable_opened_with_callback_does_not_auto_close():
     """Writable opened + callback: the callback replaces the auto-close."""
-    opened = Observable(True)
+    opened = State(True)
     calls: list[int] = []
     sheet = StandardSideSheet(Box(), opened=opened, on_close_click=lambda: calls.append(1))
     button = _find_close_button(sheet.build())
@@ -257,7 +257,7 @@ def test_standard_side_sheet_build_has_header_when_only_close_button():
     """Header Row is present when the close button alone is rendered."""
     sheet = StandardSideSheet(
         Box(),
-        opened=Observable(True),
+        opened=State(True),
         style=StandardSideSheetStyle(show_divider=False),
     )
     body_column = _container(sheet.build()).children[0]

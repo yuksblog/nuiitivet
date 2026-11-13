@@ -1,7 +1,7 @@
 # Hot Reload
 
 A save rebuilds the content tree from the root factory while the process, the
-window, the GL context and the app's `Observable` values survive. The dev
+window, the GL context and the app's `State` values survive. The dev
 bridge that drives the reloaded app is in [DEV_BRIDGE.md](DEV_BRIDGE.md); the
 layout edit that lands through a reload is in [DEV_MODES.md](DEV_MODES.md).
 
@@ -132,7 +132,7 @@ flowchart LR
     ctrl -- "reload_user_modules(project_root, old_factory)" --> reloader
     ctrl -- "retire_pool()" --> pool
     ctrl -- "_rebuild_content_root · _commit_content_root" --> window
-    ctrl -- "snapshot_observables · restore_observables" --> snap
+    ctrl -- "snapshot_states · restore_states" --> snap
     ctrl -- "snapshot_navigation · restore_navigation" --> navsnap
     ctrl -- "snapshot_overlay · restore_overlay" --> ovsnap
     ctrl -- "restore(root)" --> comments
@@ -172,7 +172,7 @@ sequenceDiagram
     participant J as journal
 
     F->>C: _pending.set()
-    C->>Snap: snapshot observables, snapshot navigation
+    C->>Snap: snapshot States, snapshot navigation
     C->>R: reload_user_modules(project_root, old_factory)
     R-->>C: the reloaded modules, the re-fetched factory
     C->>P: retire_pool()
@@ -184,7 +184,7 @@ sequenceDiagram
     else built
         C->>Snap: snapshot overlay
         C->>W: _commit_content_root: unmount the old tree, clear interaction state, mount the new
-        C->>Snap: restore overlay, restore observables, restore navigation
+        C->>Snap: restore overlay, restore States, restore navigation
         C->>Cm: restore(new root)
         C->>E: clear the banner
         C->>L: after_reload(roots)
@@ -205,7 +205,7 @@ sequenceDiagram
 
 ## The Snapshots
 
-The new tree starts with fresh observables, a fresh navigator and a fresh
+The new tree starts with fresh `State`s, a fresh navigator and a fresh
 overlay. Each snapshot writes into the new tree what the old one held,
 matched by an identity that survives the rebuild. The replay of the route
 stack is in [NAVIGATION.md](NAVIGATION.md).
@@ -223,18 +223,18 @@ flowchart LR
     overlay[overlay/overlay.py]
 
     snap -- "children_snapshot() · built_child · key" --> tree
-    snap -- "MutableObservableBase.value, read and written" --> obs
+    snap -- "MutableStateBase.value, read and written" --> obs
     navsnap -- "snapshot_stack() · restore_stack(log)" --> navigator
     ovsnap -- "snapshot_stack() · restore_stack(records)" --> overlay
 ```
 
 | Module | Role |
 | --- | --- |
-| `dev/snapshot.py` | walks the tree by structural path, copies every mutable observable's value, writes it back at the same path |
+| `dev/snapshot.py` | walks the tree by structural path, copies every mutable `State`'s value, writes it back at the same path |
 | `dev/navigation_snapshot.py` | reads the route log before the swap, replays it after the commit |
 | `dev/overlay_snapshot.py` | reads the entry records before the commit, shows them again after it |
 | the widget tree | what the walk reads: `children_snapshot()`, `built_child`, `key` (`widgeting/`) |
-| `observable/protocols.py` | `MutableObservableBase`, the value the snapshot copies |
+| `observable/protocols.py` | `MutableStateBase`, the value the snapshot copies |
 | `navigation/navigator.py` | keeps the route log and replays it ([NAVIGATION.md](NAVIGATION.md)) |
 | `overlay/overlay.py` | keeps the entry records, replays them, hands the old handle to the new entry ([OVERLAY.md](OVERLAY.md)) |
 
@@ -267,12 +267,12 @@ sequenceDiagram
 
 ### Promises
 
-- An observable's value is copied. The object holding it is not.
+- A `State`'s value is copied. The object holding it is not.
 - A widget's `key` is its identity for the restore. A keyless widget is
   identified by its position and type.
-- A path with no match in the new tree leaves that observable at its initial
+- A path with no match in the new tree leaves that `State` at its initial
   value.
-- Only observables held by a widget in the tree are restored.
+- Only `State`s held by a widget in the tree are restored.
 - An intent is resolved by its qualified name.
 - An awaited handle completes once: by its own entry, by the entry that took
   it over, or with `DISPOSED`.

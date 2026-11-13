@@ -345,9 +345,9 @@ class BridgeClient:
     def describe_state(
         self, include_animations: bool = False, *, window: Optional[int] = None
     ) -> dict[str, Any]:
-        """Fetch the reactive ``Observable`` state of the running app.
+        """Fetch the ``State`` values of the running app.
 
-        Complements :meth:`describe_tree`: it returns the live observable values
+        Complements :meth:`describe_tree`: it returns the live State values
         behind the tree, in the same nested shape (``{"type", optional identity,
         optional "state", optional "children"}``) pruned to state-bearing nodes,
         so the two views join structurally. A ``state`` entry is a name -> value

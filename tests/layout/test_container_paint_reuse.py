@@ -16,7 +16,7 @@ from nuiitivet.layout.grid import Grid, GridItem
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.scroll_viewport import ScrollViewport
 from nuiitivet.layout.uniform_flow import UniformFlow
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.rendering.skia import local_clip_bounds
 from nuiitivet.scrolling import ScrollController, ScrollDirection
@@ -127,7 +127,7 @@ def test_a_removed_child_is_not_painted_again() -> None:
 
 def test_a_for_each_data_change_shows_on_the_next_frame() -> None:
     class _Model:
-        names = Observable(["a", "b"])
+        names = State(["a", "b"])
 
     model = _Model()
     built: dict[str, _Leaf] = {}

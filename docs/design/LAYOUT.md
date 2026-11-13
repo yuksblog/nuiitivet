@@ -197,7 +197,7 @@ flowchart LR
 | `layout/row.py · column.py · uniform_flow.py` | `builder()` and `lazy()`; place the provided children, a lazy one at its index times the pitch (The Containers) |
 | `layout/layout_utils.py` | replaces a provider with its children; the layout deadline (The Containers) |
 | `layout/scroll_viewport.py` | the clip rect, the displacement and the controller it scrolls by ([BOX_MODEL.md](BOX_MODEL.md)) |
-| `scrolling/controller.py` | the offset `Observable` |
+| `scrolling/controller.py` | the offset `State` |
 | `widgeting/widget_builder.py` | the recompose scopes ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)) |
 | `widgeting/idle_work.py` | the tasks the frame loop runs before it waits ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
 

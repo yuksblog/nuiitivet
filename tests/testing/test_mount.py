@@ -7,7 +7,7 @@ import pytest
 from nuiitivet.layout.column import Column
 from nuiitivet.material.text import Text
 from nuiitivet.widgeting.widget import Widget
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.testing import StaleNodeError, TargetNotFoundError, mount
 from nuiitivet.theme.plain_theme import PlainTheme
 from nuiitivet.theme.theme import Theme
@@ -31,7 +31,7 @@ def test_settle_before_layout_names_layout() -> None:
 
 
 def test_state_change_becomes_observable_after_settle() -> None:
-    label = Observable("before")
+    label = State("before")
     with mount(_text(label, "greeting")) as host:
         host.layout(200, 50)
         label.value = "after"
@@ -130,7 +130,7 @@ def test_invalidate_takes_the_full_signature() -> None:
 
 def test_settle_does_not_request_a_repaint() -> None:
     """A caller counting repaints must not be counting settle's own."""
-    label = Observable("before")
+    label = State("before")
     with mount(_text(label, "greeting")) as host:
         host.layout(200, 50)
         before = host.invalidate_count

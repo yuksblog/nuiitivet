@@ -145,8 +145,8 @@ flowchart LR
 | --- | --- |
 | `widgeting/hit_participation.py` | overrides a subtree's two axes while its condition holds; reports whether the subtree is inert |
 | `widgeting/widget_kernel.py` | the resolution the box drives (The Resolution) |
-| `widgeting/widget_binding.py` | the subscription to an observable condition ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)) |
-| `observable/value.py` | an `Observable[bool]` condition ([OBSERVABLE.md](OBSERVABLE.md)) |
+| `widgeting/widget_binding.py` | the subscription to a `State` condition ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)) |
+| `observable/value.py` | a `State[bool]` condition ([OBSERVABLE.md](OBSERVABLE.md)) |
 | `runtime/shortcut_dispatch.py` | reads whether a subtree is inert ([KEYBOARD_SHORTCUTS.md](KEYBOARD_SHORTCUTS.md)) |
 | the postures | the four modifiers that configure the box (The Postures) |
 | `overlay/overlay.py` | the backdrop and the blocker ([OVERLAY.md](OVERLAY.md)) |
@@ -191,7 +191,7 @@ flowchart LR
 | `modifiers/passthrough_pointer.py` | the whole subtree is click-through |
 | `modifiers/visible.py` | composes the click-through posture into a hidden widget ([MODIFIER.md](MODIFIER.md)) |
 | `widgeting/hit_participation.py` | the wrapper each posture configures (The Participation Box) |
-| the app | picks a posture, with a `bool` or an `Observable[bool]` |
+| the app | picks a posture, with a `bool` or a `State[bool]` |
 
 ### Sequence
 

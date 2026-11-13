@@ -22,7 +22,7 @@ from typing import List, Optional
 import pytest
 
 from nuiitivet.common.logging_once import _clear_log_once_keys_for_tests
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.observable.protocols import mark_internal_subscription
 from nuiitivet.testing import HarnessClock
 
@@ -74,7 +74,7 @@ class TestRaisingDerivation:
         on the clock's callback -- which has no handler for the application's
         bug. Before the fix, ``pump()`` raised.
         """
-        source: Observable[str] = Observable("ok")
+        source: State[str] = State("ok")
         derived = source.map(_boom)
         assert derived.value == "OK"
 
@@ -92,7 +92,7 @@ class TestRaisingDerivation:
         self, nuiitivet_clock: HarnessClock, caplog: pytest.LogCaptureFixture
     ) -> None:
         """Same for a derivation a ``debounce`` timer drives."""
-        source: Observable[str] = Observable("ok")
+        source: State[str] = State("ok")
         derived = source.debounce(_WINDOW).map(_boom)
         assert derived.value == "OK"
 
@@ -114,7 +114,7 @@ class TestRaisingDerivation:
         and making it one would mean every write site has to guard every
         derivation reachable from it.
         """
-        source: Observable[str] = Observable("ok")
+        source: State[str] = State("ok")
         derived = source.map(_boom)
 
         with caplog.at_level(logging.ERROR, logger=_COMPUTED_LOGGER):
@@ -133,7 +133,7 @@ class TestRaisingDerivation:
         exception and every later one a log line, and it lets a ``map`` built
         during a widget's build take the whole tree down with it.
         """
-        source: Observable[str] = Observable("boom")
+        source: State[str] = State("boom")
 
         with caplog.at_level(logging.ERROR, logger=_COMPUTED_LOGGER):
             derived = source.map(_boom)  # must not raise
@@ -147,10 +147,10 @@ class TestRaisingDerivation:
         """A failed run re-arms its dependency edges, so the next change retries.
 
         The edges are torn down *before* the run. Leaving them down because it
-        raised would make the observable permanently deaf -- logged once, then
+        raised would make the State permanently deaf -- logged once, then
         silently frozen for the rest of the process.
         """
-        source: Observable[str] = Observable("ok")
+        source: State[str] = State("ok")
         derived = source.map(_boom)
 
         seen: List[Optional[str]] = []
@@ -165,9 +165,9 @@ class TestRaisingDerivation:
         assert seen == ["FINE"], "the failed recompute must not emit a value"
 
     def test_combine_compute_is_covered_too(self, caplog: pytest.LogCaptureFixture) -> None:
-        """``combine(...).compute(fn)`` is the same ``ComputedObservable``."""
-        left: Observable[int] = Observable(1)
-        right: Observable[int] = Observable(2)
+        """``combine(...).compute(fn)`` is the same ``ComputedState``."""
+        left: State[int] = State(1)
+        right: State[int] = State(2)
         total = left.combine(right).compute(lambda a, b: a // b)
 
         with caplog.at_level(logging.ERROR, logger=_COMPUTED_LOGGER):
@@ -183,7 +183,7 @@ class TestRaisingFilterPredicate:
     def test_raising_pred_treats_the_value_as_not_passing(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
-        source: Observable[Optional[int]] = Observable(2)
+        source: State[Optional[int]] = State(2)
         positive = source.filter(lambda n: n > 0, initial=0)  # type: ignore[operator]
         assert positive.value == 2
 
@@ -194,7 +194,7 @@ class TestRaisingFilterPredicate:
         assert [r.message for r in _records(caplog, _FILTERED_LOGGER)] == [_PRED_FAILED]
 
     def test_filter_recovers_once_the_source_is_fixed(self) -> None:
-        source: Observable[Optional[int]] = Observable(2)
+        source: State[Optional[int]] = State(2)
         positive = source.filter(lambda n: n > 0, initial=0)  # type: ignore[operator]
 
         source.value = None
@@ -209,7 +209,7 @@ class TestRaisingScanFunction:
     def test_raising_fn_leaves_the_accumulator_alone(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
-        source: Observable[Optional[int]] = Observable(2)
+        source: State[Optional[int]] = State(2)
         total = source.scan(lambda acc, n: acc + n, initial=0)  # type: ignore[operator]
 
         source.value = 3
@@ -222,7 +222,7 @@ class TestRaisingScanFunction:
         assert [r.message for r in _records(caplog, _SCANNED_LOGGER)] == [_FOLD_FAILED]
 
     def test_scan_recovers_once_the_source_is_fixed(self) -> None:
-        source: Observable[Optional[int]] = Observable(2)
+        source: State[Optional[int]] = State(2)
         total = source.scan(lambda acc, n: acc + n, initial=0)  # type: ignore[operator]
 
         source.value = 3
@@ -246,10 +246,10 @@ class _Thrower:
 class TestThrowingSubscriber:
     """One broken subscriber must not silence the ones registered after it."""
 
-    def test_observable_notifies_past_a_thrower(
+    def test_state_notifies_past_a_thrower(
         self, caplog: pytest.LogCaptureFixture
     ) -> None:
-        source: Observable[int] = Observable(0)
+        source: State[int] = State(0)
         thrower = _Thrower()
         seen: List[int] = []
 
@@ -264,7 +264,7 @@ class TestThrowingSubscriber:
         assert len(_records(caplog, _VALUE_LOGGER)) == 1
 
     def test_computed_notifies_past_a_thrower(self, caplog: pytest.LogCaptureFixture) -> None:
-        source: Observable[int] = Observable(0)
+        source: State[int] = State(0)
         doubled = source.map(lambda n: n * 2)
         thrower = _Thrower()
         seen: List[int] = []
@@ -282,7 +282,7 @@ class TestThrowingSubscriber:
         self, nuiitivet_clock: HarnessClock, caplog: pytest.LogCaptureFixture
     ) -> None:
         """The marshalled notify loop is a second copy, and needs the same guard."""
-        source: Observable[int] = Observable(0)
+        source: State[int] = State(0)
         doubled = source.map(lambda n: n * 2)
         thrower = _Thrower()
         seen: List[int] = []
@@ -302,7 +302,7 @@ class TestThrowingSubscriber:
 
     def test_wrapper_notifies_past_a_thrower(self, caplog: pytest.LogCaptureFixture) -> None:
         """Covers every operator on the wrapper base: filter, debounce, throttle."""
-        source: Observable[int] = Observable(0)
+        source: State[int] = State(0)
         positive = source.filter(lambda n: n > 0, initial=0)
         thrower = _Thrower()
         seen: List[int] = []
@@ -317,7 +317,7 @@ class TestThrowingSubscriber:
         assert seen == [7]
 
     def test_a_throwing_subscriber_does_not_stop_later_emissions(self) -> None:
-        source: Observable[int] = Observable(0)
+        source: State[int] = State(0)
         thrower = _Thrower()
         seen: List[int] = []
 
@@ -337,7 +337,7 @@ class TestThrowingSubscriber:
         loop, and the subscribers after it are handed what that write left --
         the behaviour ``EditableText``'s external-write path depends on.
         """
-        source: Observable[str] = Observable("")
+        source: State[str] = State("")
         seen: List[str] = []
 
         source.subscribe(lambda text: setattr(source, "value", text.upper()))
@@ -356,10 +356,10 @@ class TestInternalEdgesStillPropagate:
         """Swallowing one would turn a loud framework guard into a silent one.
 
         The batch queue's infinite-loop detector raises through exactly this
-        path (``tests/observable/test_observable_batch.py``), so a blanket guard
+        path (``tests/observable/test_state_batch.py``), so a blanket guard
         on the notify loop would make a runaway dependency cycle invisible.
         """
-        source: Observable[int] = Observable(0)
+        source: State[int] = State(0)
 
         def internal_edge(_value: int) -> None:
             raise RuntimeError("framework invariant broken")

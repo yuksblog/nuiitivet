@@ -93,7 +93,7 @@ class NSMenuBridge:
     Created by the :class:`~nuiitivet.menubar.controller.MenuBarController`
     once the pyglet window exists; framework-internal. ``install()`` rebuilds
     the whole ``NSMenu`` tree (structure is replaced wholesale, matching the
-    model contract), while Observable ``label`` / ``enabled`` / ``checked``
+    model contract), while State ``label`` / ``enabled`` / ``checked``
     changes flow through targeted setters without a rebuild.
     """
 

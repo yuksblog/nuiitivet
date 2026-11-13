@@ -11,14 +11,14 @@ from __future__ import annotations
 import threading
 from typing import Callable
 
-from nuiitivet.observable import Observable, batch
+from nuiitivet.observable import State, batch
 from nuiitivet.observable import runtime
-from nuiitivet.observable.computed import ComputedObservable
-from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.observable.computed import ComputedState
+from nuiitivet.observable.value import _StateValue
 
 
 def test_set_writes_and_notifies():
-    obs = Observable(0)
+    obs = State(0)
     seen: list[int] = []
     obs.subscribe(seen.append)
 
@@ -29,7 +29,7 @@ def test_set_writes_and_notifies():
 
 
 def test_set_de_dupes_like_the_setter():
-    obs = Observable("ready")
+    obs = State("ready")
     seen: list[str] = []
     obs.subscribe(seen.append)
 
@@ -42,7 +42,7 @@ def test_set_de_dupes_like_the_setter():
 
 def test_set_honours_custom_compare():
     # compare says "never equal", so even an identical write must notify.
-    obs = Observable(0, compare=lambda a, b: False)
+    obs = State(0, compare=lambda a, b: False)
     seen: list[int] = []
     obs.subscribe(seen.append)
 
@@ -51,10 +51,10 @@ def test_set_honours_custom_compare():
 
 
 def test_set_works_through_the_descriptor():
-    class State:
-        count = Observable(0)
+    class Model:
+        count = State(0)
 
-    state = State()
+    state = Model()
     seen: list[int] = []
     state.count.subscribe(seen.append)
 
@@ -67,7 +67,7 @@ def test_set_works_through_the_descriptor():
 
 def test_set_is_usable_from_a_lambda():
     """The motivating case: a write where only an expression is allowed."""
-    expanded = Observable(False)
+    expanded = State(False)
     on_click = lambda: expanded.set(not expanded.value)  # noqa: E731
 
     on_click()
@@ -78,9 +78,9 @@ def test_set_is_usable_from_a_lambda():
 
 
 def test_set_participates_in_batching():
-    price = Observable(100)
-    quantity = Observable(2)
-    total = ComputedObservable(lambda: price.value * quantity.value)
+    price = State(100)
+    quantity = State(2)
+    total = ComputedState(lambda: price.value * quantity.value)
 
     recomputed: list[int] = []
     total.subscribe(recomputed.append)
@@ -111,7 +111,7 @@ def test_set_defers_to_the_ui_thread_like_the_setter():
 
     runtime.set_clock(_RecordingClock())
     try:
-        obs = _ObservableValue(0)
+        obs = _StateValue(0)
         seen: list[int] = []
         obs.subscribe(seen.append)
 
@@ -132,6 +132,6 @@ def test_set_defers_to_the_ui_thread_like_the_setter():
         runtime.set_clock(prev_clock)
 
 
-def test_read_only_observables_have_no_set():
-    computed = ComputedObservable(lambda: 1)
+def test_read_only_states_have_no_set():
+    computed = ComputedState(lambda: 1)
     assert not hasattr(computed, "set")

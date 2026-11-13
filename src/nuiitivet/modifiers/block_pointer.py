@@ -18,7 +18,7 @@ Posture pairing: ``block_pointer`` is the opposite of :func:`passthrough_pointer
 Usage::
 
     widget.modifier(block_pointer())               # always block what's behind
-    widget.modifier(block_pointer(self.vm.is_modal)) # observable-driven
+    widget.modifier(block_pointer(self.vm.is_modal)) # State-driven
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ def block_pointer(condition: BlockPointerConditionLike = True) -> BlockPointerMo
     """Return a modifier that catches on the whole surface to block widgets behind.
 
     Args:
-        condition: Static ``bool`` or an ``Observable[bool]``. When truthy the
+        condition: Static ``bool`` or a ``State[bool]``. When truthy the
             widget's whole rectangle catches (including transparent areas), so
             nothing behind receives the pointer; children are still hit-tested
             first. Defaults to ``True``. Read and validated at construction /

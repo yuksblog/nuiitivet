@@ -61,12 +61,12 @@ aligner.
 
 ```python
 overlay.modifier(nv.defer_pointer())              # always defer
-overlay.modifier(nv.defer_pointer(vm.overlay))    # driven by an Observable[bool]
+overlay.modifier(nv.defer_pointer(vm.overlay))    # driven by a State[bool]
 ```
 
-Every `_pointer` modifier also accepts an `Observable[bool]`, as shown on the
+Every `_pointer` modifier also accepts a `State[bool]`, as shown on the
 second line: the condition is read and validated when the widget is built, and
-the posture switches whenever the observable changes — you never wait until the
+the posture switches whenever the `State` changes — you never wait until the
 first click for it to take effect. The other three modifiers take a condition
 the same way.
 
@@ -78,7 +78,7 @@ one-piece overlay such as a disabled state built from interactive parts.
 
 ```python
 card.modifier(nv.absorb_pointer())               # always absorb
-card.modifier(nv.absorb_pointer(vm.disabled))    # driven by an Observable[bool]
+card.modifier(nv.absorb_pointer(vm.disabled))    # driven by a State[bool]
 ```
 
 ## block_pointer
@@ -89,7 +89,7 @@ keep working; only the gaps between them are caught by the widget itself.
 
 ```python
 scrim.modifier(nv.block_pointer())               # always block what's behind
-scrim.modifier(nv.block_pointer(vm.is_modal))    # driven by an Observable[bool]
+scrim.modifier(nv.block_pointer(vm.is_modal))    # driven by a State[bool]
 ```
 
 ## passthrough_pointer
@@ -100,5 +100,5 @@ keyboard handling are untouched.
 
 ```python
 ghost.modifier(nv.passthrough_pointer())             # always pass through
-ghost.modifier(nv.passthrough_pointer(vm.hidden))    # driven by an Observable[bool]
+ghost.modifier(nv.passthrough_pointer(vm.hidden))    # driven by a State[bool]
 ```

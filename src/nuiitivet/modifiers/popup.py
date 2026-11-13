@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from typing import Any
 
     from nuiitivet.transition.spec import TransitionSpec
-    from nuiitivet.observable.value import Observable
+    from nuiitivet.observable.value import State
     from nuiitivet.overlay.overlay_handle import OverlayHandle
 
 
@@ -51,8 +51,8 @@ class PopupBox(Widget):
     avoids clipping and sits at the top of the Z-order.
 
     Open/close behaviour is driven exclusively through *is_open*. When ``None``
-    is passed, an internal :class:`~nuiitivet.observable.value.Observable` is
-    created; callers can toggle it via :attr:`is_open`. The observable is also
+    is passed, an internal :class:`~nuiitivet.observable.value.State` is
+    created; callers can toggle it via :attr:`is_open`. The State is also
     set to ``False`` when the overlay is dismissed externally.
     """
 
@@ -61,7 +61,7 @@ class PopupBox(Widget):
         child: Widget,
         content: Widget,
         *,
-        is_open: Optional["Observable[bool]"] = None,
+        is_open: Optional["State[bool]"] = None,
         passthrough: bool = False,
         dismiss_on_outside_tap: bool | None = None,
         anchor_passthrough: bool = False,
@@ -79,7 +79,7 @@ class PopupBox(Widget):
         Args:
             child: Anchor widget that determines popup attachment point.
             content: Widget rendered inside the popup overlay.
-            is_open: Optional external observable controlling open/close state.
+            is_open: Optional external State controlling open/close state.
             passthrough: Whether input reaches the content behind the popup.
             dismiss_on_outside_tap: Whether an outside tap closes the popup.
                 ``None`` resolves to ``not passthrough``.
@@ -114,10 +114,10 @@ class PopupBox(Widget):
         self._open_retry_callback: Optional[Callable[[float], None]] = None
         self._handle_monitor_callback: Optional[Callable[[float], None]] = None
 
-        # Single observable drives all open/close state.
-        from nuiitivet.observable.value import Observable as _Observable
+        # Single State drives all open/close state.
+        from nuiitivet.observable.value import State as _State
 
-        self._is_open: "Observable[bool]" = is_open if is_open is not None else _Observable(False)
+        self._is_open: "State[bool]" = is_open if is_open is not None else _State(False)
 
         self._child = child
         self.add_child(child)
@@ -127,8 +127,8 @@ class PopupBox(Widget):
     # ------------------------------------------------------------------
 
     @property
-    def is_open(self) -> "Observable[bool]":
-        """Observable that controls the open/close state of the popup."""
+    def is_open(self) -> "State[bool]":
+        """State that controls the open/close state of the popup."""
         return self._is_open
 
     # ------------------------------------------------------------------
@@ -316,7 +316,7 @@ class PopupModifier(ModifierElement):
     """Modifier that attaches an anchored transient popup overlay to a widget."""
 
     content: Widget
-    is_open: Optional["Observable[bool]"] = None
+    is_open: Optional["State[bool]"] = None
     passthrough: bool = False
     dismiss_on_outside_tap: bool | None = None
     anchor_passthrough: bool = False
@@ -357,7 +357,7 @@ class PopupModifier(ModifierElement):
 def popup(
     content: Widget,
     *,
-    is_open: Optional["Observable[bool]"] = None,
+    is_open: Optional["State[bool]"] = None,
     passthrough: bool = False,
     dismiss_on_outside_tap: bool | None = None,
     anchor_passthrough: bool = False,
@@ -385,8 +385,8 @@ def popup(
 
     Args:
         content: Widget to display as the popup overlay.
-        is_open: ``Observable[bool]`` to control open/close state.
-            When ``None``, an internal observable is created and exposed via
+        is_open: ``State[bool]`` to control open/close state.
+            When ``None``, an internal State is created and exposed via
             :attr:`PopupBox.is_open`. Callers are responsible for toggling it.
         passthrough: Whether input reaches the content behind the popup.
             ``False`` (the default) blocks it, as a menu does; ``True`` lets it
@@ -428,7 +428,7 @@ def popup(
     Example::
 
         # External state control (recommended)
-        is_open: Observable[bool] = Observable(False)
+        is_open: State[bool] = State(False)
         icon_button.modifier(popup(Menu(...), is_open=is_open))
 
         # Explicit positioning with animation

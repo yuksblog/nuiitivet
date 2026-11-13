@@ -1,6 +1,6 @@
 # What Differs from the Desktop
 
-The widgets, the observables, the handlers and the navigation behave in a
+The widgets, the `State`s, the handlers and the navigation behave in a
 browser as they do on the desktop. What follows is the rest.
 
 ## Needs a change

@@ -2,7 +2,7 @@ import nuiitivet.material as nv
 
 
 class CollapsibleDemo(nv.ComposableWidget):
-    opened: nv.Observable[bool] = nv.Observable(True)
+    opened: nv.State[bool] = nv.State(True)
 
     def toggle(self) -> None:
         self.opened.value = not self.opened.value

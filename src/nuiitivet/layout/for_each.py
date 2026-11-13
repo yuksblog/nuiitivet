@@ -1,4 +1,4 @@
-"""ForEach: build children from iterables or observable state.
+"""ForEach: build children from iterables or a State.
 
 ForEach acts as a layout provider that materializes its children inside
 scoped fragments so individual items can be invalidated without forcing
@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union, cast
 
 from ..widgeting.widget import ComposableWidget, Widget
-from nuiitivet.observable import ObservableProtocol
+from nuiitivet.observable import StateProtocol
 from nuiitivet.common.logging_once import exception_once
 from .spacer import Spacer
 from nuiitivet.widgeting.paint_replay import replay_safe
@@ -24,7 +24,7 @@ from nuiitivet.widgeting.paint_replay import replay_safe
 logger = logging.getLogger(__name__)
 
 
-ItemsLike = Union[Iterable[Any], ObservableProtocol, Any]
+ItemsLike = Union[Iterable[Any], StateProtocol, Any]
 BuilderFn = Callable[[Any, int], Optional[Widget]]
 KeyFn = Callable[[Any, int], Any]
 
@@ -91,7 +91,7 @@ class ForEach(ComposableWidget):
         """Initialize the ForEach data provider.
 
         Args:
-            items: The source data collection. Can be an Iterable, an Observable,
+            items: The source data collection. Can be an Iterable, a State,
                 or an object with a .value attribute (checking value first).
             builder: A function that takes (item, index) and returns a Widget.
             key_fn: An optional function `(item, index) -> Any` to identify items
@@ -464,10 +464,10 @@ class ForEach(ComposableWidget):
     def on_mount(self) -> None:
         super().on_mount()
         unsub = None
-        observable = self._observable_items()
-        if observable is not None and hasattr(observable, "subscribe"):
+        state = self._state_items()
+        if state is not None and hasattr(state, "subscribe"):
             try:
-                disp = observable.subscribe(self._handle_items_changed)
+                disp = state.subscribe(self._handle_items_changed)
                 # Normalize subscribe return: Disposable with dispose() or a callable
                 if hasattr(disp, "dispose"):
 
@@ -531,7 +531,7 @@ class ForEach(ComposableWidget):
                     self._active_scope_ids.clear()
                     self._build_ctx = None
 
-    # ---- Observable canonicalization helpers -------------------------
+    # ---- State canonicalization helpers -------------------------
     def _capture_items_handle(self, items: ItemsLike) -> _ItemsHandle:
         owner = getattr(items, "_owner", None)
         attr_name = getattr(items, "_name", None)
@@ -560,8 +560,8 @@ class ForEach(ComposableWidget):
         self.items = resolved
         return resolved
 
-    def _observable_items(self) -> Optional[ObservableProtocol]:
+    def _state_items(self) -> Optional[StateProtocol]:
         candidate = self._resolve_items_object()
         if hasattr(candidate, "subscribe") and callable(getattr(candidate, "subscribe")):
-            return cast(ObservableProtocol, candidate)
+            return cast(StateProtocol, candidate)
         return None

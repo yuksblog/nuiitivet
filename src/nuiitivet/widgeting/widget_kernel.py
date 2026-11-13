@@ -14,7 +14,7 @@ from ..rendering.size import Size
 from ..rendering.sizing import Sizing, SizingLike, parse_sizing
 from ..runtime.threading import assert_ui_thread
 from .widget_size_change import SizeCallback, invoke_size_callback, queue_size_change
-from nuiitivet.observable.protocols import ObservableBase
+from nuiitivet.observable.protocols import StateBase
 
 if TYPE_CHECKING:
     from ..widgets.semantics import SemanticsNode
@@ -50,9 +50,9 @@ class WidgetKernel:
     def __init__(
         self,
         *,
-        width: Union[SizingLike, ObservableBase] = None,
-        height: Union[SizingLike, ObservableBase] = None,
-        padding: Union[PaddingLike, ObservableBase] = None,
+        width: Union[SizingLike, StateBase] = None,
+        height: Union[SizingLike, StateBase] = None,
+        padding: Union[PaddingLike, StateBase] = None,
         **_: Any,
     ) -> None:
         super().__init__()
@@ -62,14 +62,14 @@ class WidgetKernel:
         self._size_callbacks = None
         self._reported_size = None
 
-        # Initialize with None/default first, as properties will handle observables later
+        # Initialize with None/default first, as properties will handle States later
         # But properties rely on binding mixin capabilities already being initialized?
         # Typically MRO calls Mixins.__init__ FIRST if using super().
         # Wait, WidgetKernel calls super().__init__() at top.
         # But WidgetKernel is at the END of Widget MRO.
         # So BindingHostMixin.__init__ has already run.
 
-        # However, we cannot pass Observable to parse_sizing.
+        # However, we cannot pass State to parse_sizing.
         # We should use the setters we defined!
         # But setters need `self` to be fully initialized?
 
@@ -81,7 +81,7 @@ class WidgetKernel:
         self._layout_align: Optional[Union[str, Tuple[str, str]]] = None
         self._cross_align: Optional[str] = None
 
-        # Now use property setters which handle Observables
+        # Now use property setters which handle States
         self.width_sizing = width  # type: ignore
         self.height_sizing = height  # type: ignore
         self.padding = padding  # type: ignore
@@ -313,8 +313,8 @@ class WidgetKernel:
         return self._width_sizing
 
     @width_sizing.setter
-    def width_sizing(self, value: Union[SizingLike, ObservableBase]) -> None:
-        if isinstance(value, ObservableBase):
+    def width_sizing(self, value: Union[SizingLike, StateBase]) -> None:
+        if isinstance(value, StateBase):
             if hasattr(self, "observe"):
                 self.observe(value, lambda v: setattr(self, "width_sizing", v))  # type: ignore
             return
@@ -326,8 +326,8 @@ class WidgetKernel:
         return self._height_sizing
 
     @height_sizing.setter
-    def height_sizing(self, value: Union[SizingLike, ObservableBase]) -> None:
-        if isinstance(value, ObservableBase):
+    def height_sizing(self, value: Union[SizingLike, StateBase]) -> None:
+        if isinstance(value, StateBase):
             if hasattr(self, "observe"):
                 self.observe(value, lambda v: setattr(self, "height_sizing", v))  # type: ignore
             return
@@ -340,8 +340,8 @@ class WidgetKernel:
         return self._padding
 
     @padding.setter
-    def padding(self, pad: Union[PaddingLike, ObservableBase]) -> None:
-        if isinstance(pad, ObservableBase):
+    def padding(self, pad: Union[PaddingLike, StateBase]) -> None:
+        if isinstance(pad, StateBase):
             if hasattr(self, "observe"):
                 self.observe(pad, lambda v: setattr(self, "padding", v))  # type: ignore
             return

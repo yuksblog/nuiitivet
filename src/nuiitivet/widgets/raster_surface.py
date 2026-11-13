@@ -6,7 +6,7 @@ import logging
 from typing import Any, Callable, Optional, TypeVar
 
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.observable.protocols import ObservableBase
+from nuiitivet.observable.protocols import StateBase
 from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia import make_raster_image, make_rect
@@ -74,7 +74,7 @@ class RasterSurface(Widget):
     @classmethod
     def draw(
         cls,
-        data: ObservableBase[T],
+        data: StateBase[T],
         draw: Callable[[T, int, int], Any],
         *,
         width: SizingLike = None,
@@ -85,7 +85,7 @@ class RasterSurface(Widget):
         """Create a RasterSurface redrawn from *data* on every change.
 
         Args:
-            data: The observable the pixels are made from.
+            data: The State the pixels are made from.
             draw: Called as ``draw(value, width_px, height_px)`` with the
                 current value whenever it changes or the device size does;
                 returns the RGBA buffer, or ``None`` for an empty surface.

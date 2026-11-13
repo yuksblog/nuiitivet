@@ -3,14 +3,14 @@ from typing import Any
 import skia
 
 from nuiitivet.widgets.text import TextBase as Text
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.layout.row import Row
 
 
 def _make_obs(initial):
 
     class _Tmp:
-        x = Observable(initial)
+        x = State(initial)
 
     return _Tmp().x
 
@@ -33,7 +33,7 @@ def test_text_auto_bind_and_unbind(nuiitivet_mount):
     assert host.invalidate_count == after_bind
 
 
-def test_text_observable_change_marks_layout_needs_on_parent(nuiitivet_mount) -> None:
+def test_text_state_change_marks_layout_needs_on_parent(nuiitivet_mount) -> None:
     s = _make_obs("hi")
     bound = Text(s)
     root = Row([Text("Last click:"), bound], gap=8)

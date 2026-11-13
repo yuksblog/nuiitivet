@@ -14,7 +14,7 @@ light, dark = nv.ThemeFactory.from_seed_pair("#6750A4")
 
 class HomeScreen(nv.ComposableWidget):
     _is_dark: bool = False
-    _toggle_label: nv.Observable[str] = nv.Observable("Switch to Dark")
+    _toggle_label: nv.State[str] = nv.State("Switch to Dark")
 
     def build(self) -> nv.Widget:
         return nv.Container(

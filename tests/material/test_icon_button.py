@@ -6,7 +6,7 @@ from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.material.buttons import IconButton, IconToggleButton
 from nuiitivet.material.icon import Icon
 from nuiitivet.material.styles.button_style import IconButtonStyle, IconToggleButtonStyle
-from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.observable.value import _StateValue
 from tests.helpers.pointer import send_pointer_event_for_test
 
 
@@ -104,7 +104,7 @@ def test_icon_toggle_button_selected_unselected_appearances_differ(style):
 
 
 def test_icon_button_born_disabled_hides_focus_ring_on_pointer_focus(nuiitivet_app) -> None:
-    disabled = _ObservableValue(True)
+    disabled = _StateValue(True)
     btn = IconButton("add", disabled=disabled, on_click=lambda: None, key="btn")
     app = nuiitivet_app(btn, size=(200, 200))
 
@@ -117,7 +117,7 @@ def test_icon_button_born_disabled_hides_focus_ring_on_pointer_focus(nuiitivet_a
 
 def test_icon_button_born_disabled_activates_on_space_and_enter(nuiitivet_app) -> None:
     clicked: list[int] = []
-    disabled = _ObservableValue(True)
+    disabled = _StateValue(True)
     btn = IconButton("add", disabled=disabled, on_click=lambda: clicked.append(1), key="btn")
     app = nuiitivet_app(btn, size=(200, 200))
 

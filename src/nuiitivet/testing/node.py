@@ -133,7 +133,7 @@ class Node:
         not covered by anything on top. **Says nothing about opacity**: it is
         applied at paint time and no cross-widget effective-opacity query exists,
         so a ``visible(False)`` widget -- still laid out at full size, merely
-        faded to nothing -- reports ``True``. Assert on the ``Observable`` driving
+        faded to nothing -- reports ``True``. Assert on the ``State`` driving
         ``visible()`` for that.
 
         Computed on access, not captured at query time; see the class docstring.

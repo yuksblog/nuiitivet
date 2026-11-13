@@ -7,7 +7,7 @@ exits — the icon lives exactly as long as the app runs and has no lifecycle
 or policy of its own. It never affects the App's exit policy; a resident app
 declares ``ExitPolicy.EXPLICIT`` itself.
 
-The menu reuses :class:`~nuiitivet.menubar.model.MenuEntry`, so Observable
+The menu reuses :class:`~nuiitivet.menubar.model.MenuEntry`, so State
 ``label`` / ``enabled`` / ``checked`` propagate live to the native menu, the
 same as the menu bar. Install success is queryable through
 :attr:`TrayIcon.installed`; a failure never takes the app down (the
@@ -24,8 +24,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional, Sequence, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once, warning_once
-from nuiitivet.menus import MenuEntry, MenuRole, ObservableStr
-from nuiitivet.observable import Observable, ObservableBase
+from nuiitivet.menus import MenuEntry, MenuRole, StrOrState
+from nuiitivet.observable import State, StateBase
 from nuiitivet.widgeting.callbacks import VoidCallback, invoke_event_handler
 
 if TYPE_CHECKING:
@@ -43,7 +43,7 @@ class TrayIcon:
         self,
         *,
         icon: Optional[Union[str, Path]] = None,
-        tooltip: ObservableStr = "",
+        tooltip: StrOrState = "",
         menu: Optional[Sequence[MenuEntry]] = None,
         on_activate: Optional[VoidCallback] = None,
         dock_visibility: str = "always",
@@ -56,7 +56,7 @@ class TrayIcon:
                 image, so the system recolors it for light/dark menu bars.
                 Without an icon the tray shows the tooltip text (macOS) or a
                 neutral placeholder — real apps should always ship an icon.
-            tooltip: Hover text; a plain string or an Observable one.
+            tooltip: Hover text; a plain string or a State of one.
             menu: The tray menu as :class:`MenuEntry` entries — actions,
                 separators, submenus and checkable items, exactly as in the menu
                 bar. ``MenuEntry.quit()`` works (a resident app should include
@@ -89,7 +89,7 @@ class TrayIcon:
         self._menu = entries
         self._on_activate = on_activate
         self._dock_visibility = dock_visibility
-        self._installed = Observable(False)
+        self._installed = State(False)
         self._bridge: Any = None
         self._app_ref: Optional["weakref.ref[App]"] = None
 
@@ -101,8 +101,8 @@ class TrayIcon:
         return self._icon_path
 
     @property
-    def tooltip(self) -> ObservableStr:
-        """The hover text, as given (plain or Observable)."""
+    def tooltip(self) -> StrOrState:
+        """The hover text, as given (plain or State)."""
         return self._tooltip
 
     @property
@@ -116,7 +116,7 @@ class TrayIcon:
         return self._dock_visibility
 
     @property
-    def installed(self) -> ObservableBase[bool]:
+    def installed(self) -> StateBase[bool]:
         """Whether the icon is actually showing in the system tray.
 
         ``False`` until the backend installs it, and again after removal or

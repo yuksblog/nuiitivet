@@ -7,7 +7,7 @@ from dataclasses import dataclass, replace
 from enum import Enum
 from typing import Callable, Optional, Sequence, Union, cast
 
-from nuiitivet.observable import ReadOnlyObservableProtocol
+from nuiitivet.observable import ReadOnlyStateProtocol
 from nuiitivet.widgeting.widget import Widget
 
 from .interaction import InteractionHostMixin, InteractionNode
@@ -52,7 +52,7 @@ class SemanticsAction(Enum):
 CONTAINER_ROLES = frozenset({SemanticsRole.GROUP, SemanticsRole.MENU, SemanticsRole.RADIO_GROUP})
 
 #: A label for the widget, or one label per part for a widget that has parts.
-SemanticsLabel = Union[str, ReadOnlyObservableProtocol[str], Sequence[str]]
+SemanticsLabel = Union[str, ReadOnlyStateProtocol[str], Sequence[str]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,7 +132,7 @@ class SemanticsNode(InteractionNode):
             return None
         if isinstance(label, str):
             return label
-        return str(cast(ReadOnlyObservableProtocol[str], label).value)
+        return str(cast(ReadOnlyStateProtocol[str], label).value)
 
     def describe(self) -> Optional[Semantics]:
         """Return what the widget says now, or ``None`` when it says nothing."""

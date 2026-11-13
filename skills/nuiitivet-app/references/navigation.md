@@ -26,7 +26,7 @@ call rather than in its constructor.
 | Need | Approach |
 | --- | --- |
 | Wizard / step switch inside one screen, no back history | switch children with a `Deck`: `nv.Deck(index=step_obs, children=[Step1(), Step2()])` |
-| Tabs / rail, independent screens, keep state | `NavigationRail` + a `Deck` keyed on the selected-index `Observable` |
+| Tabs / rail, independent screens, keep state | `NavigationRail` + a `Deck` keyed on the selected-index `State` |
 | List → detail with back history | imperative `nv.Navigator.of(self).push(DetailScreen())` |
 | From a ViewModel (decoupled, testable) | **Intent-based** routing |
 | Per-region history (nested) | `nv.Navigator.of(self).push(...)` inside a nested `Navigator` |
@@ -143,7 +143,7 @@ Annotate what a ViewModel receives with the protocols, not the concrete objects:
   `side_sheet()`, `bottom_sheet()`, `close()`.
 - `nv.WindowProtocol` — `close()`, `hide()`, `show()`, `minimize()`, `maximize()`,
   `restore()`, `full_screen()`, `center()`, `move_to()`, `resize()`, plus
-  `is_open` / `is_visible` (Observables) and the awaitable `closed`.
+  `is_open` / `is_visible` (`State`s) and the awaitable `closed`.
 - `nv.AppProtocol` — `exit()`, `set_theme()`, `register_themes()`. This is also
   the declared return type of `nv.App.of(context)`.
 

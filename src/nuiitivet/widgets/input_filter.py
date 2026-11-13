@@ -11,7 +11,7 @@ a *finished* value is acceptable belong in ``is_error`` / ``supporting_text``, a
 rules that reshape a finished value belong in ``on_submit``.
 
 Filters are applied to user input only. A value the application assigns --
-the initial ``value``, or a write to a bound observable -- is passed through
+the initial ``value``, or a write to a bound State -- is passed through
 untouched: the field never silently rewrites what its owner put there.
 
 Composition uses ``|``, matching the modifier vocabulary::

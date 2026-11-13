@@ -1,13 +1,13 @@
-# Observable: Basic API
+# Basic API
 
-## Creating an Observable
+## Creating a State
 
 ```python
 import nuiitivet.material as nv
 
-name = nv.Observable("Alice")
-age = nv.Observable(20)
-items = nv.Observable([])
+name = nv.State("Alice")
+age = nv.State(20)
+items = nv.State([])
 ```
 
 ## Getting and Setting Values
@@ -46,20 +46,20 @@ the widget unmounts.
 By default, value equality uses `==`.
 
 ```python
-count = nv.Observable(0)
+count = nv.State(0)
 ```
 
 You can customize comparison behavior when needed.
 
 ```python
-always_notify = nv.Observable(0, compare=lambda a, b: False)
+always_notify = nv.State(0, compare=lambda a, b: False)
 
 def compare_users(a, b):
     if a is None or b is None:
         return a is b
     return a.uid == b.uid
 
-user = nv.Observable(None, compare=compare_users)
+user = nv.State(None, compare=compare_users)
 ```
 
 ---

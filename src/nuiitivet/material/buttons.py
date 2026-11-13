@@ -20,7 +20,7 @@ import logging
 from typing import Any, Optional, Tuple, Type, Union, TYPE_CHECKING, cast
 
 from nuiitivet.common.logging_once import debug_once, exception_once
-from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
+from nuiitivet.observable import ReadOnlyStateProtocol, StateProtocol
 from nuiitivet.widgeting.callbacks import invoke_event_handler, VoidCallback, BoolCallback
 from nuiitivet.animation import Animatable, LinearMotion, RgbaTupleConverter
 from nuiitivet.material.motion import (
@@ -127,7 +127,7 @@ def make_child_from_label(
     """Return a Material ``Text`` widget for the given label.
 
     Args:
-        label: Label source (string, observable, etc.).
+        label: Label source (string, State, etc.).
         foreground: Foreground colour role for the label.
         font_size: Label font size in dp (M3 size token derived).
     """
@@ -146,8 +146,8 @@ def make_child_from_label(
 
 
 def build_button_child(
-    label: str | ReadOnlyObservableProtocol[str] | None,
-    icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None,
+    label: str | ReadOnlyStateProtocol[str] | None,
+    icon: "Symbol" | str | ReadOnlyStateProtocol["Symbol"] | ReadOnlyStateProtocol[str] | None,
     foreground: ColorSpec = ColorRole.ON_SURFACE,
     button_height: Optional[Union[int, float]] = None,
     icon_position: str = "leading",
@@ -168,14 +168,14 @@ def build_button_child(
         if container_h > 0:
             base_height = container_h
     if icon is not None:
-        # Accept plain strings, Symbol instances, or ReadOnlyObservableProtocol sources.
+        # Accept plain strings, Symbol instances, or ReadOnlyStateProtocol sources.
         ok = (
             isinstance(icon, str)
             or (_Symbol is not None and isinstance(icon, _Symbol))
             or (hasattr(icon, "subscribe") and hasattr(icon, "value"))
         )
         if not ok:
-            raise TypeError("icon must be a Symbol, string, or ReadOnlyObservableProtocol")
+            raise TypeError("icon must be a Symbol, string, or ReadOnlyStateProtocol")
 
         from nuiitivet.material.styles.icon_style import IconStyle
 
@@ -219,7 +219,7 @@ def resolve_button_style_params(
     style: Optional[ButtonStyle],
     padding: PaddingLike,
     height: SizingLike,
-    disabled: bool | ReadOnlyObservableProtocol[bool],
+    disabled: bool | ReadOnlyStateProtocol[bool],
 ) -> dict[str, Any]:
     """Resolve style parameters for ButtonBase.
 
@@ -345,7 +345,7 @@ class MaterialButtonBase(InteractiveWidget):
         child: Widget,
         *,
         on_click: Optional[VoidCallback] = None,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: Union[int, Tuple[int, int, int, int]] = 0,
@@ -825,11 +825,11 @@ class Button(MaterialButtonBase):
 
     def __init__(
         self,
-        label: str | ReadOnlyObservableProtocol[str] | None = None,
-        icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
+        label: str | ReadOnlyStateProtocol[str] | None = None,
+        icon: "Symbol" | str | ReadOnlyStateProtocol["Symbol"] | ReadOnlyStateProtocol[str] | None = None,
         *,
         on_click: Optional[VoidCallback] = None,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = None,
         padding: PaddingLike = None,
         style: Optional[ButtonStyle] = None,
@@ -844,7 +844,7 @@ class Button(MaterialButtonBase):
 
         Args:
             label: Text label for the button.
-            icon: Icon glyph for the button (Symbol, string, or observable).
+            icon: Icon glyph for the button (Symbol, string, or State).
             on_click: Callback invoked when the button is clicked.
             disabled: Whether the button is disabled.
             width: Width specification. Defaults to auto.
@@ -899,10 +899,10 @@ class IconButton(MaterialButtonBase):
 
     def __init__(
         self,
-        icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str],
+        icon: "Symbol" | str | ReadOnlyStateProtocol["Symbol"] | ReadOnlyStateProtocol[str],
         *,
         on_click: Optional[VoidCallback] = None,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         padding: PaddingLike = 0,
         style: Optional[ButtonStyle] = None,
         key: Optional[str] = None,
@@ -972,7 +972,7 @@ class IconButton(MaterialButtonBase):
 class ToggleButtonBase(MaterialButtonBase):
     """Internal base class for toggle buttons.
 
-    Manages ``selected`` state (internal flag or external observable) and
+    Manages ``selected`` state (internal flag or external State) and
     wires the widget state layer to it.  Subclasses must override
     :meth:`_resolve_style_for_selected` to supply the concrete
     :class:`ButtonStyle` for the current state.
@@ -1009,12 +1009,12 @@ class ToggleButtonBase(MaterialButtonBase):
 
     def __init__(
         self,
-        label: str | ReadOnlyObservableProtocol[str] | None = None,
-        icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
+        label: str | ReadOnlyStateProtocol[str] | None = None,
+        icon: "Symbol" | str | ReadOnlyStateProtocol["Symbol"] | ReadOnlyStateProtocol[str] | None = None,
         *,
-        selected: bool | ObservableProtocol[bool] = False,
+        selected: bool | StateProtocol[bool] = False,
         on_change: Optional[BoolCallback] = None,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = None,
         height: SizingLike = None,
         padding: PaddingLike = None,
@@ -1025,7 +1025,7 @@ class ToggleButtonBase(MaterialButtonBase):
         Args:
             label: Text label for the button.
             icon: Icon glyph for the button.
-            selected: Initial selected state or external observable.
+            selected: Initial selected state or external State.
             on_change: Callback invoked with the new selected value.
             disabled: Whether the button is disabled.
             width: Width specification.
@@ -1037,9 +1037,9 @@ class ToggleButtonBase(MaterialButtonBase):
         self._user_height = height
         self.on_change = on_change
 
-        self._selected_external: ObservableProtocol[bool] | None = None
+        self._selected_external: StateProtocol[bool] | None = None
         if hasattr(selected, "subscribe") and hasattr(selected, "value"):
-            self._selected_external = cast("ObservableProtocol[bool]", selected)
+            self._selected_external = cast("StateProtocol[bool]", selected)
             self._selected_internal = bool(self._selected_external.value)
         else:
             self._selected_internal = bool(selected)
@@ -1156,12 +1156,12 @@ class ToggleButton(ToggleButtonBase):
 
     def __init__(
         self,
-        label: str | ReadOnlyObservableProtocol[str] | None = None,
-        icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
+        label: str | ReadOnlyStateProtocol[str] | None = None,
+        icon: "Symbol" | str | ReadOnlyStateProtocol["Symbol"] | ReadOnlyStateProtocol[str] | None = None,
         *,
-        selected: bool | ObservableProtocol[bool] = False,
+        selected: bool | StateProtocol[bool] = False,
         on_change: Optional[BoolCallback] = None,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = None,
         padding: PaddingLike = None,
         style: Optional[ToggleButtonStyle] = None,
@@ -1177,7 +1177,7 @@ class ToggleButton(ToggleButtonBase):
         Args:
             label: Text label for the button.
             icon: Icon glyph for the button.
-            selected: Initial selected state or external observable.
+            selected: Initial selected state or external State.
             on_change: Callback invoked with the new selected value.
             disabled: Whether the button is disabled.
             width: Width specification.
@@ -1227,11 +1227,11 @@ class IconToggleButton(ToggleButtonBase):
 
     def __init__(
         self,
-        icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str],
+        icon: "Symbol" | str | ReadOnlyStateProtocol["Symbol"] | ReadOnlyStateProtocol[str],
         *,
-        selected: bool | ObservableProtocol[bool] = False,
+        selected: bool | StateProtocol[bool] = False,
         on_change: Optional[BoolCallback] = None,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         padding: PaddingLike = 0,
         style: Optional[IconToggleButtonStyle] = None,
         key: Optional[str] = None,
@@ -1240,7 +1240,7 @@ class IconToggleButton(ToggleButtonBase):
 
         Args:
             icon: Icon glyph source.
-            selected: Selected state value or observable.
+            selected: Selected state value or State.
             on_change: Callback invoked with the new selected state.
             disabled: Whether the button is disabled.
             padding: Insets from the allocated rect to the container.
@@ -1450,10 +1450,10 @@ class Fab(_FabBase):
 
     def __init__(
         self,
-        icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str],
+        icon: "Symbol" | str | ReadOnlyStateProtocol["Symbol"] | ReadOnlyStateProtocol[str],
         *,
         on_click: Optional[VoidCallback] = None,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         padding: PaddingLike = None,
         style: Optional[FabStyle] = None,
         key: Optional[str] = None,
@@ -1514,7 +1514,7 @@ class ExtendedFab(_FabBase):
     """Material Design 3 Extended FAB with a collapse/expand state.
 
     A pill-shaped FAB carrying a required ``label`` and an optional leading
-    ``icon``.  The ``expanded`` observable morphs the button between the
+    ``icon``.  The ``expanded`` State morphs the button between the
     extended pill (icon + label) and a collapsed circular FAB (icon only).
     The width is content-driven when expanded and animates down to the
     circular container footprint when collapsed.
@@ -1562,12 +1562,12 @@ class ExtendedFab(_FabBase):
 
     def __init__(
         self,
-        label: str | ReadOnlyObservableProtocol[str],
+        label: str | ReadOnlyStateProtocol[str],
         *,
-        icon: "Symbol" | str | ReadOnlyObservableProtocol["Symbol"] | ReadOnlyObservableProtocol[str] | None = None,
+        icon: "Symbol" | str | ReadOnlyStateProtocol["Symbol"] | ReadOnlyStateProtocol[str] | None = None,
         on_click: Optional[VoidCallback] = None,
-        expanded: bool | ObservableProtocol[bool] = True,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        expanded: bool | StateProtocol[bool] = True,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         padding: PaddingLike = 0,
         style: Optional[FabStyle] = None,
         key: Optional[str] = None,
@@ -1575,11 +1575,11 @@ class ExtendedFab(_FabBase):
         """Initialize ExtendedFab.
 
         Args:
-            label: Required text label (string or observable).
+            label: Required text label (string or State).
             icon: Optional leading icon.  When present, the collapsed state
                 shows it as a circular FAB; when absent, collapse is a no-op.
             on_click: Callback invoked when the button is clicked.
-            expanded: Initial expanded state or external observable.  ``True``
+            expanded: Initial expanded state or external State.  ``True``
                 (default) shows the icon + label pill; ``False`` collapses to
                 the circular FAB footprint.
             disabled: Whether the button is disabled.
@@ -1603,9 +1603,9 @@ class ExtendedFab(_FabBase):
         self._user_height = self._container_height + pt + pb
         self._has_icon = icon is not None
 
-        self._expanded_external: ObservableProtocol[bool] | None = None
+        self._expanded_external: StateProtocol[bool] | None = None
         if hasattr(expanded, "subscribe") and hasattr(expanded, "value"):
-            self._expanded_external = cast("ObservableProtocol[bool]", expanded)
+            self._expanded_external = cast("StateProtocol[bool]", expanded)
             self._expanded_internal = bool(self._expanded_external.value)
         else:
             self._expanded_internal = bool(expanded)

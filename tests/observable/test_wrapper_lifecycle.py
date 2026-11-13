@@ -1,4 +1,4 @@
-"""The lifetime contract for observables that subscribe to a source.
+"""The lifetime contract for States that subscribe to a source.
 
 ``debounce`` / ``throttle`` stay subscribed upstream for as long as they live.
 These tests pin the two halves of the contract: the source must not keep the
@@ -10,9 +10,9 @@ import weakref
 
 import pytest
 
-from nuiitivet.observable import Observable
-from nuiitivet.observable.computed import ComputedObservable
-from nuiitivet.observable.timed import DebouncedObservable, ThrottledObservable
+from nuiitivet.observable import State
+from nuiitivet.observable.computed import ComputedState
+from nuiitivet.observable.timed import DebouncedState, ThrottledState
 
 
 class MockClock:
@@ -50,10 +50,10 @@ def _wrappers(source):
 class TestSourceDoesNotOwnTheWrapper:
     """The subscription must point weakly, or the chain can never be collected."""
 
-    @pytest.mark.parametrize("factory", [DebouncedObservable, ThrottledObservable])
+    @pytest.mark.parametrize("factory", [DebouncedState, ThrottledState])
     def test_the_callback_on_the_source_holds_no_strong_reference(self, mock_clock, factory):
         """The structural half of the contract, independent of when the GC runs."""
-        source = Observable(0)
+        source = State(0)
         wrapper = factory(source, 0.3)
 
         (registered,) = source._subs
@@ -63,9 +63,9 @@ class TestSourceDoesNotOwnTheWrapper:
         assert all(isinstance(value, weakref.ref) for value in held)
         assert wrapper not in held
 
-    @pytest.mark.parametrize("factory", [DebouncedObservable, ThrottledObservable])
+    @pytest.mark.parametrize("factory", [DebouncedState, ThrottledState])
     def test_dropping_the_wrapper_releases_the_source(self, mock_clock, collectable, factory):
-        source = Observable(0)
+        source = State(0)
         wrapper = factory(source, 0.3)
         ref = weakref.ref(wrapper)
         assert len(source._subs) == 1
@@ -78,7 +78,7 @@ class TestSourceDoesNotOwnTheWrapper:
 
     def test_source_outliving_the_wrapper_does_not_pin_it(self, mock_clock, collectable):
         """The leak this contract exists to prevent, stated directly."""
-        source = Observable(0)
+        source = State(0)
         refs = [weakref.ref(w) for w in _wrappers(source)]
         gc.collect()
 
@@ -91,7 +91,7 @@ class TestSubscribeCarriesTheLifetime:
     """Holding the Disposable holds the chain — the framework's bind() shape."""
 
     def test_disposable_keeps_the_chain_alive(self, mock_clock, collectable):
-        source = Observable(0)
+        source = State(0)
         seen = []
 
         # The wrapper itself is never bound to a name, exactly as `self.bind(...)`
@@ -109,8 +109,8 @@ class TestSubscribeCarriesTheLifetime:
         assert source._subs == []
 
     def test_dropping_the_disposable_drops_the_chain(self, mock_clock, collectable):
-        """A derived observable nobody holds does not exist — same as `compute`."""
-        source = Observable(0)
+        """A derived State nobody holds does not exist — same as `compute`."""
+        source = State(0)
         source.debounce(0.3).subscribe(lambda v: None)
         gc.collect()
 
@@ -118,18 +118,18 @@ class TestSubscribeCarriesTheLifetime:
 
 
 class TestDispose:
-    @pytest.mark.parametrize("factory", [DebouncedObservable, ThrottledObservable])
+    @pytest.mark.parametrize("factory", [DebouncedState, ThrottledState])
     def test_releases_the_source_subscription(self, mock_clock, factory):
-        source = Observable(0)
+        source = State(0)
         wrapper = factory(source, 0.3)
 
         wrapper.dispose()
 
         assert source._subs == []
 
-    @pytest.mark.parametrize("factory", [DebouncedObservable, ThrottledObservable])
+    @pytest.mark.parametrize("factory", [DebouncedState, ThrottledState])
     def test_is_idempotent(self, mock_clock, factory):
-        source = Observable(0)
+        source = State(0)
         wrapper = factory(source, 0.3)
 
         wrapper.dispose()
@@ -137,9 +137,9 @@ class TestDispose:
 
         assert source._subs == []
 
-    @pytest.mark.parametrize("factory", [DebouncedObservable, ThrottledObservable])
+    @pytest.mark.parametrize("factory", [DebouncedState, ThrottledState])
     def test_stops_emission(self, mock_clock, factory):
-        source = Observable(0)
+        source = State(0)
         wrapper = factory(source, 0.3)
         seen = []
         wrapper.subscribe(seen.append)
@@ -151,7 +151,7 @@ class TestDispose:
         assert seen == []
 
     def test_disarms_a_pending_debounce_timer(self, mock_clock):
-        source = Observable(0)
+        source = State(0)
         wrapper = source.debounce(0.3)
         seen = []
         wrapper.subscribe(seen.append)
@@ -166,7 +166,7 @@ class TestDispose:
         assert seen == []
 
     def test_disarms_a_pending_throttle_timer(self, mock_clock):
-        source = Observable(0)
+        source = State(0)
         wrapper = source.throttle(0.3)
         seen = []
         wrapper.subscribe(seen.append)
@@ -182,9 +182,9 @@ class TestDispose:
         mock_clock.fire_all()
         assert seen == [1]
 
-    @pytest.mark.parametrize("factory", [DebouncedObservable, ThrottledObservable])
+    @pytest.mark.parametrize("factory", [DebouncedState, ThrottledState])
     def test_runs_from_del_as_a_backstop(self, mock_clock, collectable, factory):
-        source = Observable(0)
+        source = State(0)
         wrapper = factory(source, 0.3)
         assert len(source._subs) == 1
 
@@ -193,7 +193,7 @@ class TestDispose:
 
         assert source._subs == []
 
-    @pytest.mark.parametrize("factory", [DebouncedObservable, ThrottledObservable])
+    @pytest.mark.parametrize("factory", [DebouncedState, ThrottledState])
     def test_an_armed_timer_keeps_the_wrapper_alive_until_it_fires(
         self, mock_clock, collectable, factory
     ):
@@ -203,7 +203,7 @@ class TestDispose:
         with work outstanding survives being dropped — deliberately. It becomes
         collectable once that work is done.
         """
-        source = Observable(0)
+        source = State(0)
         wrapper = factory(source, 0.3)
         ref = weakref.ref(wrapper)
         source.value = 1
@@ -225,7 +225,7 @@ class TestDerivationsDependOnTheWrapper:
 
     def test_map_over_debounce_is_debounced(self, mock_clock):
         """Regression: the derivation used to subscribe past the wrapper."""
-        source = Observable(0)
+        source = State(0)
         derived = source.debounce(0.3).map(lambda x: x * 2)
         seen = []
         derived.subscribe(seen.append)
@@ -237,7 +237,7 @@ class TestDerivationsDependOnTheWrapper:
         assert seen == [10]
 
     def test_map_over_throttle_follows_the_throttle(self, mock_clock):
-        source = Observable(0)
+        source = State(0)
         derived = source.throttle(0.3).map(lambda x: x * 2)
         seen = []
         derived.subscribe(seen.append)
@@ -253,7 +253,7 @@ class TestDerivationsDependOnTheWrapper:
 
     def test_value_holds_the_last_emission(self, mock_clock):
         """Shaping applies to reads too: `.value` is what the wrapper emitted."""
-        source = Observable(1)
+        source = State(1)
         debounced = source.debounce(0.3)
 
         assert debounced.value == 1  # seeded from the source
@@ -265,15 +265,15 @@ class TestDerivationsDependOnTheWrapper:
 
     def test_seeding_does_not_leak_into_an_enclosing_derivation(self, mock_clock):
         """Building a wrapper inside a compute must not register its source."""
-        source = Observable(1)
-        other = Observable(10)
+        source = State(1)
+        other = State(10)
         wrappers = []
 
         def build() -> int:
             wrappers.append(source.debounce(0.3))
             return other.value
 
-        derived = ComputedObservable(build)
+        derived = ComputedState(build)
         seen = []
         derived.subscribe(seen.append)
 
@@ -289,7 +289,7 @@ class TestDisposableReleasesItsClosure:
     """Disposing must free the subscriber and the chain, not just unhook them."""
 
     def test_disposing_releases_the_chain_while_still_held(self, mock_clock, collectable):
-        source = Observable(0)
+        source = State(0)
         disposable = source.debounce(0.3).subscribe(lambda v: None)
 
         disposable.dispose()
@@ -304,7 +304,7 @@ class TestDisposableReleasesItsClosure:
             def on_value(self, value):
                 pass
 
-        source = Observable(0)
+        source = State(0)
         subscriber = Subscriber()
         ref = weakref.ref(subscriber)
         disposable = source.subscribe(subscriber.on_value)
@@ -317,7 +317,7 @@ class TestDisposableReleasesItsClosure:
         assert disposable.is_disposed
 
     def test_dispose_stays_idempotent(self, mock_clock):
-        source = Observable(0)
+        source = State(0)
         seen = []
         disposable = source.subscribe(seen.append)
 
@@ -334,7 +334,7 @@ class TestLeakCheckExemption:
     def test_wrapper_and_computed_edges_are_internal(self, mock_clock):
         from nuiitivet.testing._leaks import track_subscriptions, _classify
 
-        source = Observable(0)
+        source = State(0)
         with track_subscriptions() as registry:
             debounced = source.debounce(0.3)
             throttled = source.throttle(0.3)

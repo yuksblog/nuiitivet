@@ -7,7 +7,7 @@ and its text blurs on a 2x display.
 
 ## Pixels
 
-`RasterSurface.draw` takes an Observable and a function. The function
+`RasterSurface.draw` takes a `State` and a function. The function
 receives the value and the surface's size in device pixels, and returns the
 RGBA bytes.
 
@@ -28,7 +28,7 @@ def draw_meter(level: float, width_px: int, height_px: int) -> bytes:
     return bytes(row) * height_px
 
 
-level = nv.Observable(0.6)
+level = nv.State(0.6)
 
 nv.RasterSurface.draw(level, draw_meter, width="wt", height=48)
 ```

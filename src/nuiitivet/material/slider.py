@@ -14,7 +14,7 @@ from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS
 from nuiitivet.material.styles.slider_style import SliderStyle
-from nuiitivet.observable import ObservableProtocol, ReadOnlyObservableProtocol
+from nuiitivet.observable import ReadOnlyStateProtocol, StateProtocol
 from nuiitivet.rendering.sizing import Sizing, SizingLike, parse_sizing
 from nuiitivet.widgeting.paint_replay import replay_safe
 from nuiitivet.widgets.interaction import DraggableNode, FocusScope, PointerInputNode, VirtualStopPolicy
@@ -71,7 +71,7 @@ class _SliderBase(InteractiveWidget):
         max_value: float,
         stops: Optional[int],
         show_value_indicator: bool,
-        disabled: bool | ReadOnlyObservableProtocol[bool],
+        disabled: bool | ReadOnlyStateProtocol[bool],
         orientation: Orientation,
         length: SizingLike,
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int],
@@ -740,14 +740,14 @@ class _Slider(_SliderBase):
 
     def __init__(
         self,
-        value: float | ObservableProtocol[float] = 0.0,
+        value: float | StateProtocol[float] = 0.0,
         *,
         on_change: Optional[Callable[[float], None]] = None,
         min_value: float = 0.0,
         max_value: float = 1.0,
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         orientation: Orientation = Orientation.HORIZONTAL,
         length: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
@@ -757,7 +757,7 @@ class _Slider(_SliderBase):
         """Initialize Slider.
 
         Args:
-            value: Current slider value or observable value.
+            value: Current slider value, or a State of it.
             on_change: Callback invoked when value changes.
             min_value: Minimum value.
             max_value: Maximum value.
@@ -771,10 +771,10 @@ class _Slider(_SliderBase):
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
         self._on_change = on_change
-        self._value_external: ObservableProtocol[float] | None = None
+        self._value_external: StateProtocol[float] | None = None
 
         if hasattr(value, "subscribe") and hasattr(value, "value"):
-            self._value_external = cast("ObservableProtocol[float]", value)
+            self._value_external = cast("StateProtocol[float]", value)
             initial = float(self._value_external.value)
         else:
             initial = float(value)
@@ -861,14 +861,14 @@ class _CenteredSlider(_Slider):
 
     def __init__(
         self,
-        value: float | ObservableProtocol[float] = 0.0,
+        value: float | StateProtocol[float] = 0.0,
         *,
         on_change: Optional[Callable[[float], None]] = None,
         min_value: float = -1.0,
         max_value: float = 1.0,
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         orientation: Orientation = Orientation.HORIZONTAL,
         length: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
@@ -878,7 +878,7 @@ class _CenteredSlider(_Slider):
         """Initialize CenteredSlider.
 
         Args:
-            value: Current slider value or observable value.
+            value: Current slider value, or a State of it.
             on_change: Callback invoked when value changes.
             min_value: Minimum value (default: -1.0).
             max_value: Maximum value (default: 1.0).
@@ -921,15 +921,15 @@ class _RangeSlider(_SliderBase):
 
     def __init__(
         self,
-        value_start: float | ObservableProtocol[float] = 0.0,
-        value_end: float | ObservableProtocol[float] = 1.0,
+        value_start: float | StateProtocol[float] = 0.0,
+        value_end: float | StateProtocol[float] = 1.0,
         *,
         on_change: Optional[Callable[[Tuple[float, float]], None]] = None,
         min_value: float = 0.0,
         max_value: float = 1.0,
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         orientation: Orientation = Orientation.HORIZONTAL,
         length: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
@@ -939,8 +939,8 @@ class _RangeSlider(_SliderBase):
         """Initialize RangeSlider.
 
         Args:
-            value_start: Start value or observable value.
-            value_end: End value or observable value.
+            value_start: Start value, or a State of it.
+            value_end: End value, or a State of it.
             on_change: Callback invoked when range changes.
             min_value: Minimum value.
             max_value: Maximum value.
@@ -955,17 +955,17 @@ class _RangeSlider(_SliderBase):
         """
         self._on_change = on_change
 
-        self._value_start_external: ObservableProtocol[float] | None = None
-        self._value_end_external: ObservableProtocol[float] | None = None
+        self._value_start_external: StateProtocol[float] | None = None
+        self._value_end_external: StateProtocol[float] | None = None
 
         if hasattr(value_start, "subscribe") and hasattr(value_start, "value"):
-            self._value_start_external = cast("ObservableProtocol[float]", value_start)
+            self._value_start_external = cast("StateProtocol[float]", value_start)
             start_initial = float(self._value_start_external.value)
         else:
             start_initial = float(value_start)
 
         if hasattr(value_end, "subscribe") and hasattr(value_end, "value"):
-            self._value_end_external = cast("ObservableProtocol[float]", value_end)
+            self._value_end_external = cast("StateProtocol[float]", value_end)
             end_initial = float(self._value_end_external.value)
         else:
             end_initial = float(value_end)
@@ -1138,14 +1138,14 @@ class HorizontalSlider(_Slider):
 
     def __init__(
         self,
-        value: float | ObservableProtocol[float] = 0.0,
+        value: float | StateProtocol[float] = 0.0,
         *,
         on_change: Optional[Callable[[float], None]] = None,
         min_value: float = 0.0,
         max_value: float = 1.0,
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
@@ -1154,7 +1154,7 @@ class HorizontalSlider(_Slider):
         """Initialize HorizontalSlider.
 
         Args:
-            value: Current slider value or observable value.
+            value: Current slider value, or a State of it.
             on_change: Callback invoked when value changes.
             min_value: Minimum value.
             max_value: Maximum value.
@@ -1187,14 +1187,14 @@ class VerticalSlider(_Slider):
 
     def __init__(
         self,
-        value: float | ObservableProtocol[float] = 0.0,
+        value: float | StateProtocol[float] = 0.0,
         *,
         on_change: Optional[Callable[[float], None]] = None,
         min_value: float = 0.0,
         max_value: float = 1.0,
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         height: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
@@ -1203,7 +1203,7 @@ class VerticalSlider(_Slider):
         """Initialize VerticalSlider.
 
         Args:
-            value: Current slider value or observable value.
+            value: Current slider value, or a State of it.
             on_change: Callback invoked when value changes.
             min_value: Minimum value.
             max_value: Maximum value.
@@ -1236,14 +1236,14 @@ class HorizontalCenteredSlider(_CenteredSlider):
 
     def __init__(
         self,
-        value: float | ObservableProtocol[float] = 0.0,
+        value: float | StateProtocol[float] = 0.0,
         *,
         on_change: Optional[Callable[[float], None]] = None,
         min_value: float = -1.0,
         max_value: float = 1.0,
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
@@ -1252,7 +1252,7 @@ class HorizontalCenteredSlider(_CenteredSlider):
         """Initialize HorizontalCenteredSlider.
 
         Args:
-            value: Current slider value or observable value.
+            value: Current slider value, or a State of it.
             on_change: Callback invoked when value changes.
             min_value: Minimum value (default: -1.0).
             max_value: Maximum value (default: 1.0).
@@ -1285,14 +1285,14 @@ class VerticalCenteredSlider(_CenteredSlider):
 
     def __init__(
         self,
-        value: float | ObservableProtocol[float] = 0.0,
+        value: float | StateProtocol[float] = 0.0,
         *,
         on_change: Optional[Callable[[float], None]] = None,
         min_value: float = -1.0,
         max_value: float = 1.0,
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         height: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
@@ -1301,7 +1301,7 @@ class VerticalCenteredSlider(_CenteredSlider):
         """Initialize VerticalCenteredSlider.
 
         Args:
-            value: Current slider value or observable value.
+            value: Current slider value, or a State of it.
             on_change: Callback invoked when value changes.
             min_value: Minimum value (default: -1.0).
             max_value: Maximum value (default: 1.0).
@@ -1334,15 +1334,15 @@ class HorizontalRangeSlider(_RangeSlider):
 
     def __init__(
         self,
-        value_start: float | ObservableProtocol[float] = 0.0,
-        value_end: float | ObservableProtocol[float] = 1.0,
+        value_start: float | StateProtocol[float] = 0.0,
+        value_end: float | StateProtocol[float] = 1.0,
         *,
         on_change: Optional[Callable[[Tuple[float, float]], None]] = None,
         min_value: float = 0.0,
         max_value: float = 1.0,
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
@@ -1351,8 +1351,8 @@ class HorizontalRangeSlider(_RangeSlider):
         """Initialize HorizontalRangeSlider.
 
         Args:
-            value_start: Start value or observable value.
-            value_end: End value or observable value.
+            value_start: Start value, or a State of it.
+            value_end: End value, or a State of it.
             on_change: Callback invoked when range changes.
             min_value: Minimum value.
             max_value: Maximum value.
@@ -1386,15 +1386,15 @@ class VerticalRangeSlider(_RangeSlider):
 
     def __init__(
         self,
-        value_start: float | ObservableProtocol[float] = 0.0,
-        value_end: float | ObservableProtocol[float] = 1.0,
+        value_start: float | StateProtocol[float] = 0.0,
+        value_end: float | StateProtocol[float] = 1.0,
         *,
         on_change: Optional[Callable[[Tuple[float, float]], None]] = None,
         min_value: float = 0.0,
         max_value: float = 1.0,
         stops: Optional[int] = None,
         show_value_indicator: bool = False,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         height: SizingLike = "wt",
         padding: Optional[Tuple[int, int] | Tuple[int, int, int, int] | int] = None,
         style: Optional["SliderStyle"] = None,
@@ -1403,8 +1403,8 @@ class VerticalRangeSlider(_RangeSlider):
         """Initialize VerticalRangeSlider.
 
         Args:
-            value_start: Start value or observable value.
-            value_end: End value or observable value.
+            value_start: Start value, or a State of it.
+            value_end: End value, or a State of it.
             on_change: Callback invoked when range changes.
             min_value: Minimum value.
             max_value: Maximum value.

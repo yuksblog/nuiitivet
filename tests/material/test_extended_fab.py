@@ -6,7 +6,7 @@ from nuiitivet.material.buttons import ExtendedFab
 from nuiitivet.material.icon import Icon
 from nuiitivet.material.styles.fab_style import FabStyle
 from nuiitivet.layout.row import Row
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.widgets.text import TextBase
 
 
@@ -71,9 +71,9 @@ def test_internal_expanded_setter_retargets_morph():
         fab._morph_anim.stop()
 
 
-def test_observable_expanded_drives_morph():
-    """An external observable drives collapse/expand after mount."""
-    expanded = Observable(True)
+def test_state_expanded_drives_morph():
+    """An external State drives collapse/expand after mount."""
+    expanded = State(True)
     fab = ExtendedFab("Compose", icon="edit", expanded=expanded)
     fab.on_mount()
     try:
@@ -87,8 +87,8 @@ def test_observable_expanded_drives_morph():
 
 
 def test_collapse_then_expand_roundtrips_width():
-    """Toggling the observable collapses, then expands the width back."""
-    expanded = Observable(True)
+    """Toggling the State collapses, then expands the width back."""
+    expanded = State(True)
     fab = ExtendedFab("Compose", icon="edit", expanded=expanded, style=FabStyle.primary("s"))
     fab.on_mount()
     try:

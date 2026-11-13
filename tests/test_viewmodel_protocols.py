@@ -22,7 +22,7 @@ from nuiitivet.navigation.navigator import Navigator as CoreNavigator
 from nuiitivet.overlay.overlay import Overlay as CoreOverlay
 from nuiitivet.overlay.overlay_handle import OverlayHandle
 from nuiitivet.overlay.result import OverlayDismissReason, OverlayResult
-from nuiitivet.observable.protocols import ObservableBase
+from nuiitivet.observable.protocols import StateBase
 from nuiitivet.runtime.app import App as CoreApp
 from nuiitivet.runtime.window import Window as CoreWindow
 from nuiitivet.transition.spec import TransitionSpec
@@ -347,10 +347,10 @@ class FakeApp:
         self.exit_codes: list[int] = []
         self.themes: list[Any] = []
         self.registry: dict[str, Any] = {}
-        self._badge: core.Observable[int | str | None] = core.Observable(None)
+        self._badge: core.State[int | str | None] = core.State(None)
 
     @property
-    def badge(self) -> core.Observable[int | str | None]:
+    def badge(self) -> core.State[int | str | None]:
         return self._badge
 
     def exit(self, exit_code: int = 0) -> None:
@@ -364,12 +364,12 @@ class FakeApp:
 
 
 class FakeWindow:
-    """Implements ``WindowProtocol`` with recorded calls and live observables."""
+    """Implements ``WindowProtocol`` with recorded calls and live States."""
 
     def __init__(self) -> None:
         self.calls: list[str] = []
-        self._is_open: core.Observable[bool] = core.Observable(True)
-        self._is_visible: core.Observable[bool] = core.Observable(True)
+        self._is_open: core.State[bool] = core.State(True)
+        self._is_visible: core.State[bool] = core.State(True)
         self._closed_event = asyncio.Event()
 
     def close(self) -> None:
@@ -408,11 +408,11 @@ class FakeWindow:
         self.calls.append(f"resize({width},{height})")
 
     @property
-    def is_open(self) -> ObservableBase[bool]:
+    def is_open(self) -> StateBase[bool]:
         return self._is_open
 
     @property
-    def is_visible(self) -> ObservableBase[bool]:
+    def is_visible(self) -> StateBase[bool]:
         return self._is_visible
 
     @property

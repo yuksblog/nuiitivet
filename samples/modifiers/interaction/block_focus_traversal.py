@@ -15,7 +15,7 @@ class TabStop(nv.ComposableWidget):
     def __init__(self, label: str):
         super().__init__()
         self.label = label
-        self.is_focused = nv.Observable(False)
+        self.is_focused = nv.State(False)
 
     def _set_focused(self, focused: bool, source) -> None:
         del source
@@ -39,7 +39,7 @@ class TabStop(nv.ComposableWidget):
 class BlockFocusTraversalDemo(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
-        self.blocked = nv.Observable(True)
+        self.blocked = nv.State(True)
 
     def _toggle(self) -> None:
         self.blocked.value = not self.blocked.value

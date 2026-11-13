@@ -16,7 +16,7 @@ from nuiitivet.layout.collapsible import Collapsible
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.deck import Deck
 from nuiitivet.modifiers.key_shortcut import key_shortcut
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.runtime.app import App
 from nuiitivet.runtime.window import Window
@@ -148,7 +148,7 @@ def test_focused_widget_gets_first_refusal() -> None:
 
 def test_foreground_does_not_fire_when_hidden() -> None:
     saved: list[str] = []
-    shown = Observable(True)
+    shown = State(True)
     panel = _box().modifier(
         key_shortcut("Accel+S", on_trigger=lambda: saved.append("save")) | nv.visible(shown)
     )
@@ -211,7 +211,7 @@ def test_foreground_does_not_fire_on_a_hidden_deck_page() -> None:
     fired: list[str] = []
     page0 = _box().modifier(key_shortcut("Accel+S", on_trigger=lambda: fired.append("page0")))
     page1 = _box().modifier(key_shortcut("Accel+S", on_trigger=lambda: fired.append("page1")))
-    index = Observable(0)
+    index = State(0)
     app = App(Window(content=Column([Deck(children=[page0, page1], index=index)]))).main_window
     app.root.mount(app)
 
@@ -225,7 +225,7 @@ def test_foreground_does_not_fire_on_a_hidden_deck_page() -> None:
 
 def test_foreground_does_not_fire_inside_a_closed_collapsible() -> None:
     fired: list[str] = []
-    opened = Observable(True)
+    opened = State(True)
     panel = _box().modifier(key_shortcut("Accel+S", on_trigger=lambda: fired.append("panel")))
     app = App(Window(content=Column([Collapsible(panel, opened=opened)]))).main_window
     app.root.mount(app)
@@ -240,7 +240,7 @@ def test_foreground_does_not_fire_inside_a_closed_collapsible() -> None:
 
 def test_foreground_does_not_fire_inside_a_disabled_clickable() -> None:
     fired: list[str] = []
-    disabled = Observable(False)
+    disabled = State(False)
     label = _box().modifier(key_shortcut("Accel+S", on_trigger=lambda: fired.append("button")))
     app = App(Window(content=Column([Clickable(label, disabled=disabled)]))).main_window
     app.root.mount(app)

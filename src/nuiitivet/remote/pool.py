@@ -167,7 +167,7 @@ class Pool:
             name: The function's module and name, dotted.
             ceiling: How many calls of that function may run at once.
             values: The data arguments by name, encoded.
-            writers: Where each ``WriteOnlyObservable`` parameter's writes go.
+            writers: Where each ``WriteOnlyState`` parameter's writes go.
 
         Raises:
             ConnectionError: If the worker ended before it answered, or none

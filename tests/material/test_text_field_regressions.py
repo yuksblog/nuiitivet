@@ -3,7 +3,7 @@
 Covers:
 - Japanese label / supporting text rendering uses CJK-aware font fallback.
 - Click-outside the TextField clears focus state.
-- External Observable updates synchronize the floating label state.
+- External State updates synchronize the floating label state.
 - Pointer drag selects a text range.
 - Long text is clipped (canvas clip is applied) and the cursor stays in view.
 """
@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 
 from nuiitivet.input.pointer import PointerEvent, PointerEventType
 from nuiitivet.material.text_fields import TextField
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.runtime.app_events import dispatch_mouse_press
 from nuiitivet.widgets.editable_text import EditableText
 from nuiitivet.widgets.interaction import FocusNode
@@ -242,12 +242,12 @@ def test_click_on_layout_ancestor_blurs_focus() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 3. External Observable update synchronizes floating label state.
+# 3. External State update synchronizes floating label state.
 # ---------------------------------------------------------------------------
 
 
-def test_external_observable_value_updates_label_state() -> None:
-    obs = Observable("")
+def test_external_state_value_updates_label_state() -> None:
+    obs = State("")
     tf = TextField(value=obs, label="Name")
 
     # Mount to wire up the external subscription.

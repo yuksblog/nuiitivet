@@ -1,16 +1,16 @@
-# Observable: Practical Controls
+# Practical Controls
 
 ## `batch()`
 
 Use `batch()` to group related updates and avoid redundant recalculations.
 
-This is especially useful when multiple source observables affect the same derived value.
+This is especially useful when multiple source `State`s affect the same derived value.
 
 ```python
 import nuiitivet.material as nv
 
-price = nv.Observable(100)
-quantity = nv.Observable(2)
+price = nv.State(100)
+quantity = nv.State(2)
 total = price.combine(quantity).compute(lambda p, q: p * q)
 
 with nv.batch():
@@ -27,7 +27,7 @@ Use `debounce()` when you want to run logic only after input has settled for a p
 ```python
 import nuiitivet.material as nv
 
-query = nv.Observable("")
+query = nv.State("")
 debounced_query = query.debounce(0.5)
 debounced_query.subscribe(lambda q: print(f"search: {q}"))
 ```
@@ -39,7 +39,7 @@ Typical use cases are search boxes, validation, and autosave.
 Use `throttle()` when you need periodic sampling for high-frequency updates.
 
 ```python
-mouse_x = nv.Observable(0)
+mouse_x = nv.State(0)
 throttled_x = mouse_x.throttle(0.1)
 throttled_x.subscribe(lambda x: print(f"x={x}"))
 ```
@@ -58,10 +58,10 @@ Typical use cases are scrolling, pointer movement, resize handling, and real-tim
 ## `filter()`
 
 Use `filter()` when only some of the source's values should reach the UI.
-`initial` is required: it is what the observable reports until a value passes.
+`initial` is required: it is what the `State` reports until a value passes.
 
 ```python
-amount = nv.Observable(0)
+amount = nv.State(0)
 last_valid = amount.filter(lambda n: n > 0, initial=0)
 
 nv.Text(last_valid.map(str))
@@ -72,23 +72,23 @@ reporting the last one that passed. At construction the source's current value i
 tested too, so `initial` shows only when nothing has passed.
 
 The predicate must be a pure function of the value it is handed. Reading another
-observable inside it does not create a dependency, so the filter will not re-run
-when that observable changes — use `combine()` for that.
+`State` inside it does not create a dependency, so the filter will not re-run
+when that `State` changes — use `combine()` for that.
 
 ## `scan()`
 
 Use `scan()` for a value that depends on what came before — a count, a running
-total, a list appended to. `initial` is required: it is what the observable
+total, a list appended to. `initial` is required: it is what the `State`
 reports until the source emits.
 
-Counting how often a debounced observable fired, written without it:
+Counting how often a debounced `State` fired, written without it:
 
 ```python
-raw_count = nv.Observable(0)
+raw_count = nv.State(0)
 debounced = raw_count.debounce(0.5)
 
-# without scan(): an empty Observable, plus the callback that fills it
-execute_count = nv.Observable(0)
+# without scan(): an empty State, plus the callback that fills it
+execute_count = nv.State(0)
 subscription = debounced.subscribe(
     lambda _: execute_count.set(execute_count.value + 1)
 )
@@ -97,7 +97,7 @@ subscription = debounced.subscribe(
 and with it:
 
 ```python
-# with scan(): the accumulator is the Observable
+# with scan(): the accumulator is the State
 execute_count = debounced.scan(lambda n, _: n + 1, initial=0)
 
 nv.Text(execute_count.map(lambda n: f"Executed: {n}x"))
@@ -126,12 +126,12 @@ The value the source holds when the chain is built is not folded in, so the
 counter starts at `initial` rather than at 1.
 
 The fold must be a pure function of the two values it is handed. Reading another
-observable inside it does not create a dependency — use `combine()` for that.
+`State` inside it does not create a dependency — use `combine()` for that.
 
 ## Binding into a widget
 
 A `debounce()` / `throttle()` / `filter()` result holds the value it last emitted,
-so pass it into a widget the same way you would any other observable:
+so pass it into a widget the same way you would any other `State`:
 
 ```python
 nv.Text(query.debounce(0.5))

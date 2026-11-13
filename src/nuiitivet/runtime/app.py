@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.common.target import is_web
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.platform.badge import BadgeBinding, BadgeValue, WindowHandle
 from nuiitivet.platform.tray import TrayIcon
 from nuiitivet.theme.manager import ThemeManager
@@ -141,7 +141,7 @@ class App:
         if tray is not None and not isinstance(tray, TrayIcon):
             raise TypeError("App(tray=...) takes a TrayIcon.")
         self._tray = tray
-        self._badge: Observable[BadgeValue] = Observable(None)
+        self._badge: State[BadgeValue] = State(None)
         self._badge_binding: Optional[BadgeBinding] = None
         self._windows: list[Window] = []
         self._main_window: Window | None = None
@@ -353,7 +353,7 @@ class App:
             self._tray._uninstall()
 
     @property
-    def badge(self) -> Observable[BadgeValue]:
+    def badge(self) -> State[BadgeValue]:
         """The badge on the app's Dock or taskbar icon.
 
         Write a count or a short text to show it; ``None``, ``0`` or ``""``

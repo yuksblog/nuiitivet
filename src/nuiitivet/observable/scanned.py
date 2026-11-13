@@ -1,14 +1,14 @@
-"""``scan``: an observable whose value is folded over everything its source emits.
+"""``scan``: a State whose value is folded over everything its source emits.
 
 ``map`` recomputes from the source's current value, so it cannot express a count,
 a total, or anything else that depends on what came before. The imperative
 alternative -- ``self.count.value += 1`` -- needs a handler to hold the line, and
 an operator's output has none. ``scan`` is that missing place to write it: the
-accumulator is this observable's own value.
+accumulator is this State's own value.
 
 Everything else follows from the wrapper contract in
 :mod:`~nuiitivet.observable.wrapper` rather than being decided again here:
-``.value`` is the last value this observable emitted, the source is held weakly,
+``.value`` is the last value this State emitted, the source is held weakly,
 and ``dispose`` releases it.
 """
 
@@ -19,8 +19,8 @@ from typing import Callable, TypeVar
 
 from nuiitivet.common.logging_once import exception_once_per_exc
 
-from .protocols import ReadOnlyObservableProtocol
-from .wrapper import SourceSubscribingObservable, _untracked
+from .protocols import ReadOnlyStateProtocol
+from .wrapper import SourceSubscribingState, _untracked
 
 TIn = TypeVar("TIn")
 TAcc = TypeVar("TAcc")
@@ -29,8 +29,8 @@ TAcc = TypeVar("TAcc")
 logger = logging.getLogger(__name__)
 
 
-class ScannedObservable(SourceSubscribingObservable[TIn, TAcc]):
-    """Observable of ``fn(accumulator, value)`` folded over the source's emissions.
+class ScannedState(SourceSubscribingState[TIn, TAcc]):
+    """State of ``fn(accumulator, value)`` folded over the source's emissions.
 
     ``value`` is ``initial`` until the source emits, and the accumulator from
     then on::
@@ -41,14 +41,14 @@ class ScannedObservable(SourceSubscribingObservable[TIn, TAcc]):
     is not folded in -- what is accumulated is emissions, and that one has not
     been emitted -- so ``initial`` means strictly "the source has emitted
     nothing". Nor does the accumulator ever re-seed: a rebuilt chain is a new
-    observable, which starts from ``initial`` again.
+    State, which starts from ``initial`` again.
 
     Lifetime follows the contract in
     :mod:`~nuiitivet.observable.wrapper`: hold this object, or the ``Disposable``
     from :meth:`subscribe`, for as long as the emissions are wanted.
 
     ``fn`` is a pure function of the two values handed to it. It runs with
-    dependency tracking suppressed, so reading another observable inside it
+    dependency tracking suppressed, so reading another State inside it
     creates no edge and will not re-run the fold -- express that dependency with
     ``combine`` instead.
 
@@ -61,7 +61,7 @@ class ScannedObservable(SourceSubscribingObservable[TIn, TAcc]):
 
     def __init__(
         self,
-        source: ReadOnlyObservableProtocol[TIn],
+        source: ReadOnlyStateProtocol[TIn],
         fn: Callable[[TAcc, TIn], TAcc],
         *,
         initial: TAcc,
@@ -70,7 +70,7 @@ class ScannedObservable(SourceSubscribingObservable[TIn, TAcc]):
         self._initial = initial
         super().__init__(source)
 
-    def _seed(self, source: ReadOnlyObservableProtocol[TIn]) -> TAcc:
+    def _seed(self, source: ReadOnlyStateProtocol[TIn]) -> TAcc:
         # The source is deliberately not read: folding the value it happens to
         # hold at construction would count an emission that never happened.
         return self._initial

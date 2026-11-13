@@ -14,7 +14,7 @@ What to verify:
 
 1. An "NV" item appears at the right side of the macOS menu bar.
 2. The window's "uptime" counter ticks once a second (a worker thread writes
-   an Observable; the write path marshals onto the UI thread).
+   a State; the write path marshals onto the UI thread).
 3. Clicking the "NV" item opens its menu; "Ping" prints the delivering thread
    to the terminal (expected: MainThread, is_ui_thread=True) and bumps the
    ping counter shown in the window.
@@ -121,8 +121,8 @@ def _install_status_item(pings: Any, app: nv.App) -> None:
 class Screen(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.uptime = nv.Observable(0)
-        self.pings = nv.Observable(0)
+        self.uptime = nv.State(0)
+        self.pings = nv.State(0)
 
     def build(self):
         return nv.Column(
@@ -146,7 +146,7 @@ def main() -> None:
     app = nv.App(nv.Window(content=screen, title="tray spike", width=480, height=240))
 
     def tick(stop: threading.Event) -> None:
-        # Worker-thread writes: the Observable write path marshals to the UI
+        # Worker-thread writes: the State write path marshals to the UI
         # thread — the same path tray callbacks would rely on under pystray.
         while not stop.is_set():
             time.sleep(1.0)

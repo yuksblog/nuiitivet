@@ -220,7 +220,7 @@ def test_scrollable_updates_metrics_without_explicit_height():
     scrollable = VerticalScrollable(child=TallWidget())
     canvas = DummyCanvas()
     scrollable.paint(canvas, 0, 0, 120, 150)
-    # The Observable publish is deferred to the between-frames flush.
+    # The State publish is deferred to the between-frames flush.
     flush_size_change_callbacks()
     axis_state = scrollable._controller.axis_state(ScrollDirection.VERTICAL)
     assert axis_state.viewport_size.value == 150
@@ -500,13 +500,13 @@ def test_reactive_scrollbar_visibility_binding_is_disposed_on_unmount():
     an ``on_unmount`` that skipped ``super()`` left one live subscription per
     mount, each firing a relayout against a detached widget.
     """
-    from nuiitivet.observable import Observable
+    from nuiitivet.observable import State
 
     class _CountingApp:
         def invalidate(self, immediate: bool = False) -> None:
             del immediate
 
-    visible = Observable(True)
+    visible = State(True)
     scrollable = VerticalScrollable(child=Column([Text("Item")]), scrollbar_visible=visible)
     app = _CountingApp()
 

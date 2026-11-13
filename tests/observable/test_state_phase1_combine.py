@@ -1,18 +1,18 @@
-"""Test Observable Phase 1: combine() and CombineBuilder"""
+"""Test State Phase 1: combine() and CombineBuilder"""
 
-from nuiitivet.observable import Observable, combine
+from nuiitivet.observable import State, combine
 
 
 def test_combine_basic():
     """Test basic combine functionality"""
 
-    class State:
-        x = Observable(1)
-        y = Observable(2)
+    class Model:
+        x = State(1)
+        y = State(2)
 
-    state = State()
+    state = Model()
 
-    # Combine two observables
+    # Combine two States
     sum_obs = state.x.combine(state.y).compute(lambda x, y: x + y)
     assert sum_obs.value == 3
 
@@ -28,12 +28,12 @@ def test_combine_basic():
 def test_combine_function():
     """Test combine() function"""
 
-    class State:
-        x = Observable(1)
-        y = Observable(2)
-        z = Observable(3)
+    class Model:
+        x = State(1)
+        y = State(2)
+        z = State(3)
 
-    state = State()
+    state = Model()
 
     # Use combine function
     sum_obs = combine(state.x, state.y, state.z).compute(lambda x, y, z: x + y + z)
@@ -46,13 +46,13 @@ def test_combine_function():
 def test_combine_dispatches_unless_every_source_opted_out():
     """One source that expects marshalling is enough to need it."""
 
-    class State:
-        x = Observable(1)
-        y = Observable(2)
-        internal_a = Observable(1, dispatch=False)
-        internal_b = Observable(2, dispatch=False)
+    class Model:
+        x = State(1)
+        y = State(2)
+        internal_a = State(1, dispatch=False)
+        internal_b = State(2, dispatch=False)
 
-    state = State()
+    state = Model()
 
     both_bound = state.x.combine(state.y).compute(lambda x, y: x + y)
     assert both_bound.value == 3
@@ -71,11 +71,11 @@ def test_combine_dispatches_unless_every_source_opted_out():
 def test_combine_compute_takes_an_explicit_dispatch():
     """The inferred answer can be overridden either way."""
 
-    class State:
-        x = Observable(1)
-        internal = Observable(2, dispatch=False)
+    class Model:
+        x = State(1)
+        internal = State(2, dispatch=False)
 
-    state = State()
+    state = Model()
 
     assert state.x.combine(state.x).compute(lambda a, b: a + b, dispatch=False)._dispatch_to_ui is False
     assert (
@@ -87,11 +87,11 @@ def test_combine_compute_takes_an_explicit_dispatch():
 def test_combine_subscription():
     """Test combine with subscription"""
 
-    class State:
-        x = Observable(1)
-        y = Observable(2)
+    class Model:
+        x = State(1)
+        y = State(2)
 
-    state = State()
+    state = Model()
 
     sum_obs = state.x.combine(state.y).compute(lambda x, y: x + y)
 
@@ -112,17 +112,17 @@ def test_combine_subscription():
     assert calls == [12, 30]
 
 
-def test_observable_compute_static():
-    """Test Observable.compute() static method"""
+def test_state_compute_static():
+    """Test State.compute() static method"""
 
-    class State:
-        x = Observable(1)
-        y = Observable(2)
+    class Model:
+        x = State(1)
+        y = State(2)
 
-    state = State()
+    state = Model()
 
     # Use static compute method
-    sum_obs = Observable.compute(lambda: state.x.value + state.y.value)
+    sum_obs = State.compute(lambda: state.x.value + state.y.value)
     assert sum_obs.value == 3
 
     state.x.value = 10
@@ -132,32 +132,32 @@ def test_observable_compute_static():
     assert sum_obs.value == 30
 
 
-def test_observable_compute_dispatch_flag():
-    """``Observable.compute`` dispatches by default and takes the opt-out."""
+def test_state_compute_dispatch_flag():
+    """``State.compute`` dispatches by default and takes the opt-out."""
 
-    class State:
-        x = Observable(1)
-        y = Observable(2)
+    class Model:
+        x = State(1)
+        y = State(2)
 
-    state = State()
+    state = Model()
 
-    sum_obs = Observable.compute(lambda: state.x.value + state.y.value)
+    sum_obs = State.compute(lambda: state.x.value + state.y.value)
     assert sum_obs.value == 3
     assert sum_obs._dispatch_to_ui is True
 
-    internal = Observable.compute(lambda: state.x.value + state.y.value, dispatch=False)
+    internal = State.compute(lambda: state.x.value + state.y.value, dispatch=False)
     assert internal._dispatch_to_ui is False
 
 
 def test_batch_with_combine():
-    """Test batch with combined observables"""
+    """Test batch with combined States"""
     from nuiitivet.observable import batch
 
-    class State:
-        x = Observable(1)
-        y = Observable(2)
+    class Model:
+        x = State(1)
+        y = State(2)
 
-    state = State()
+    state = Model()
 
     sum_obs = state.x.combine(state.y).compute(lambda x, y: x + y)
 

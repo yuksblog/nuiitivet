@@ -29,7 +29,7 @@ import nuiitivet.material as nv
 class HoverDemo(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
-        self.is_hovered = nv.Observable(False)
+        self.is_hovered = nv.State(False)
 
     def _set_hovered(self, hovered: bool) -> None:
         self.is_hovered.value = hovered
@@ -105,7 +105,7 @@ import nuiitivet.material as nv
 class FocusDemo(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
-        self.is_focused = nv.Observable(False)
+        self.is_focused = nv.State(False)
 
     def _set_focused(self, focused: bool) -> None:
         self.is_focused.value = focused
@@ -140,7 +140,7 @@ import nuiitivet.material as nv
 class BlockFocusTraversalDemo(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
-        self.blocked = nv.Observable(True)
+        self.blocked = nv.State(True)
 
     def _toggle(self) -> None:
         self.blocked.value = not self.blocked.value

@@ -17,7 +17,7 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT, resolve_modifiers
 from nuiitivet.input.shortcut import Shortcut
-from nuiitivet.observable import ObservableBase, runtime
+from nuiitivet.observable import StateBase, runtime
 
 from .model import MenuEntry
 
@@ -93,7 +93,7 @@ class NSMenuBuilder:
 
     Owns everything a native menu needs beyond the model: the Objective-C
     action target, Python-side references keeping AppKit objects alive, and
-    the subscriptions syncing Observable ``label`` / ``enabled`` / ``checked``
+    the subscriptions syncing State ``label`` / ``enabled`` / ``checked``
     changes into the items. Shared by the global menu bar bridge and the tray
     icon so every native surface renders the model identically. ``activate``
     receives the :class:`MenuEntry` whose ``NSMenuItem`` fired, on the main
@@ -187,9 +187,9 @@ class NSMenuBuilder:
             self._observe(entry, ns_item)
 
     def _observe(self, entry: MenuEntry, ns_item: Any) -> None:
-        """Wire the entry's Observable properties to the NSMenuItem's setters.
+        """Wire the entry's State properties to the NSMenuItem's setters.
 
-        Observables may fire off the UI thread; the setter is applied on the
+        States may fire off the UI thread; the setter is applied on the
         next clock tick, which runs on the main thread.
         """
 
@@ -208,7 +208,7 @@ class NSMenuBuilder:
             runtime.clock.schedule_once(apply, 0.0)
 
         for prop in (entry.label, entry.enabled, entry.checked):
-            if isinstance(prop, ObservableBase):
+            if isinstance(prop, StateBase):
                 self._subscriptions.append(prop.subscribe(on_change))
 
     def _ensure_target(self) -> Any:

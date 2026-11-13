@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 import nuiitivet.widgets.raster_surface as raster_mod
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.widgeting.widget_size_change import flush_size_change_callbacks
 from nuiitivet.widgets.raster_surface import RasterSurface
 
@@ -140,7 +140,7 @@ def test_requests_in_one_frame_make_one_raster(fake_skia: list[tuple[int, int]])
 
 
 def test_draw_from_data_passes_the_value_and_follows_changes(fake_skia: list[tuple[int, int]]) -> None:
-    data: Observable[int] = Observable(1)
+    data: State[int] = State(1)
     seen: list[tuple[int, int, int]] = []
 
     def draw(value: int, w: int, h: int) -> bytes:

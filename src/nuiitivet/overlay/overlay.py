@@ -17,7 +17,7 @@ from nuiitivet.layout.container import Container
 from nuiitivet.widgeting.hit_participation import HitParticipationBox
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.interaction import ensure_interaction_region
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.observable import runtime
 from nuiitivet.transition.engine import TransitionEngine
 from nuiitivet.transition.spec import (
@@ -215,11 +215,11 @@ class _OverlayLayer:
         self.entry._content = widget
 
     @property
-    def transition_phase_obs(self) -> Observable[TransitionPhase]:
+    def transition_phase_obs(self) -> State[TransitionPhase]:
         return self.transition_state.phase_obs
 
     @property
-    def transition_progress_obs(self) -> Observable[float]:
+    def transition_progress_obs(self) -> State[float]:
         return self.transition_state.progress_obs
 
     def start_enter(self, *, on_update: Callable[[], None], on_complete: Callable[[], None]) -> None:

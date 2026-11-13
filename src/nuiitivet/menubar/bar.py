@@ -26,7 +26,7 @@ from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.symbols import Symbols
 from nuiitivet.material.text import Text
 from nuiitivet.modifiers.key_shortcut import KeyShortcutModifier
-from nuiitivet.observable import ComputedObservable, ObservableBase
+from nuiitivet.observable import ComputedState, StateBase
 from nuiitivet.overlay.overlay import Overlay
 from nuiitivet.overlay.overlay_position import OverlayPosition
 from nuiitivet.rendering.sizing import Sizing
@@ -48,10 +48,10 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _inverted(enabled: "bool | ObservableBase[bool]") -> "bool | ObservableBase[bool]":
-    """``disabled`` from ``enabled``: negate a bool or derive from an Observable."""
-    if isinstance(enabled, ObservableBase):
-        return ComputedObservable(lambda: not bool(enabled.value))
+def _inverted(enabled: "bool | StateBase[bool]") -> "bool | StateBase[bool]":
+    """``disabled`` from ``enabled``: negate a bool or derive from a State."""
+    if isinstance(enabled, StateBase):
+        return ComputedState(lambda: not bool(enabled.value))
     return not bool(enabled)
 
 
@@ -264,7 +264,7 @@ class MenuBarWidget(ComposableWidget):
         def walk(entries: Sequence[MenuEntry]) -> None:
             for entry in entries:
                 for prop in (entry.label, entry.enabled, entry.checked):
-                    if isinstance(prop, ObservableBase):
+                    if isinstance(prop, StateBase):
                         self._open_subscriptions.append(prop.subscribe(on_change))
                 if entry.submenu is not None:
                     walk(entry.submenu)
@@ -352,7 +352,7 @@ class _MenuBarTopItem(InteractiveWidget):
         self._index = index
         self._item = item
         self._open_background = palette.bar_open_background
-        label = item.label if isinstance(item.label, ObservableBase) else item.resolved_label()
+        label = item.label if isinstance(item.label, StateBase) else item.resolved_label()
         text = Text(
             label,
             style=TextStyle(color=palette.bar_foreground),

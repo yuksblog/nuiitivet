@@ -76,7 +76,7 @@ _IDS_BY_KEY = {"increment": BUTTON_ID, "reset": SECOND_BUTTON_ID}
 class Screen(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.count = nv.Observable(0)
+        self.count = nv.State(0)
 
     def build(self) -> nv.Widget:
         return nv.Column(

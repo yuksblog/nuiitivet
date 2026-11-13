@@ -25,7 +25,7 @@ from nuiitivet.layout.row import Row
 from nuiitivet.layout.stack import Stack
 from nuiitivet.material.buttons import Button
 from nuiitivet.material.text import Text
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 import pytest
@@ -34,13 +34,13 @@ ITEMS = ("a", "b", "c")
 
 
 class _BuilderScreen(ComposableWidget):
-    """One ``*.builder`` fed by an ``Observable``, offset from the origin.
+    """One ``*.builder`` fed by a ``State``, offset from the origin.
 
     The sibling ``Text`` is not decoration: it pushes the list off ``x = 0`` so a
     wrong descent cannot pass by landing on the origin.
     """
 
-    def __init__(self, make: Callable[[Observable, Callable], Widget], items: Observable) -> None:
+    def __init__(self, make: Callable[[State, Callable], Widget], items: State) -> None:
         super().__init__()
         self.make = make
         self.items = items
@@ -71,7 +71,7 @@ BUILDERS = {
 def test_builder_items_arriving_after_mount_stay_clickable(nuiitivet_app, name: str) -> None:
     """The regression: empty at mount, filled afterwards, clicked from that mount."""
 
-    screen = _BuilderScreen(BUILDERS[name], Observable(()))
+    screen = _BuilderScreen(BUILDERS[name], State(()))
     app = nuiitivet_app(screen, size=(600, 400))
 
     screen.items.value = ITEMS
@@ -85,7 +85,7 @@ def test_builder_items_arriving_after_mount_stay_clickable(nuiitivet_app, name: 
 def test_builder_items_present_at_mount_stay_clickable(nuiitivet_app, name: str) -> None:
     """The control: a list populated at mount always worked."""
 
-    screen = _BuilderScreen(BUILDERS[name], Observable(ITEMS))
+    screen = _BuilderScreen(BUILDERS[name], State(ITEMS))
     app = nuiitivet_app(screen, size=(600, 400))
 
     app.click(key="b-c")
@@ -97,7 +97,7 @@ def test_builder_items_present_at_mount_stay_clickable(nuiitivet_app, name: str)
 def test_builder_grown_after_mount_stays_clickable(nuiitivet_app, name: str) -> None:
     """A list that was non-empty at mount never carried a rect to go stale."""
 
-    screen = _BuilderScreen(BUILDERS[name], Observable(("a",)))
+    screen = _BuilderScreen(BUILDERS[name], State(("a",)))
     app = nuiitivet_app(screen, size=(600, 400))
 
     screen.items.value = ITEMS
@@ -111,7 +111,7 @@ def test_builder_grown_after_mount_stays_clickable(nuiitivet_app, name: str) -> 
 def test_builder_emptied_after_mount_stays_clickable_when_refilled(nuiitivet_app, name: str) -> None:
     """Emptying the list re-stamps the provider; refilling must clear the rect again."""
 
-    screen = _BuilderScreen(BUILDERS[name], Observable(ITEMS))
+    screen = _BuilderScreen(BUILDERS[name], State(ITEMS))
     app = nuiitivet_app(screen, size=(600, 400))
 
     screen.items.value = ()
@@ -126,7 +126,7 @@ def test_builder_emptied_after_mount_stays_clickable_when_refilled(nuiitivet_app
 def test_provider_does_not_retain_a_layout_rect_once_it_has_items(nuiitivet_app) -> None:
     """The mechanism, asserted directly: no stale zero-area rect survives the refill."""
 
-    screen = _BuilderScreen(BUILDERS["row"], Observable(()))
+    screen = _BuilderScreen(BUILDERS["row"], State(()))
     app = nuiitivet_app(screen, size=(600, 400))
 
     screen.items.value = ITEMS

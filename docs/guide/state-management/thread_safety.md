@@ -1,8 +1,8 @@
-# Observable: Thread Safety
+# Thread Safety
 
 ## The default is safe
 
-An `Observable` written from a thread other than the UI thread marshals the
+A `State` written from a thread other than the UI thread marshals the
 notification onto the UI thread for you. Subscribers therefore always run where
 it is safe to touch widgets, whichever thread set the value.
 
@@ -13,7 +13,7 @@ import nuiitivet.material as nv
 
 
 class CsvPreview(nv.ComposableWidget):
-    rows = nv.Observable([])
+    rows = nv.State([])
 
     def load(self, path: str) -> None:
         def worker() -> None:
@@ -43,7 +43,7 @@ import asyncio
 
 
 class CsvPreview(nv.ComposableWidget):
-    rows = nv.Observable([])
+    rows = nv.State([])
 
     async def _open(self) -> None:
         async with nv.Overlay.of(self).while_loading():
@@ -104,8 +104,8 @@ cannot know whether its work still matters — so writes keep arriving from a
 worker whose screen has left.
 
 They are safe. Unmounting disposes the widget's bindings, so the value lands on
-the observable with nobody subscribed: no paint, no error, no reference held to
-the departed widget tree. The observable itself stays alive exactly as long as
+the `State` with nobody subscribed: no paint, no error, no reference held to
+the departed widget tree. The `State` itself stays alive exactly as long as
 the worker's own reference to it, and is collected after.
 
 So a worker that keeps running past unmount wastes work; it does not corrupt
@@ -115,31 +115,31 @@ how to wire the stopping one.
 
 ## Opting out: `dispatch=False`
 
-For an observable no widget will ever bind to — a value that lives entirely in
+For a `State` no widget will ever bind to — a value that lives entirely in
 the logic layer — pass `dispatch=False`:
 
 ```python
 class CsvImport:
     # Consumed by the audit-log writer on the worker thread, never by a widget.
-    rejected_row = nv.Observable(0, dispatch=False)
+    rejected_row = nv.State(0, dispatch=False)
 ```
 
 Notification then stays synchronous on the writing thread, and **every**
 intermediate value is delivered rather than only the latest per tick. Reach for
 it when a consumer counts values rather than rendering the newest one — a log
-that must record every rejected row cannot be built from an observable whose
+that must record every rejected row cannot be built from a `State` whose
 intermediate values are dropped.
 
-Binding a widget to a `dispatch=False` observable and then writing to it from a
+Binding a widget to a `dispatch=False` `State` and then writing to it from a
 worker thread is the bug the default exists to prevent, so opt out only for
 values you are sure the UI never sees.
 
 ### The opt-out propagates
 
-Derivations of a logic-layer observable stay logic-layer:
+Derivations of a logic-layer `State` stay logic-layer:
 
 ```python
-internal = nv.Observable(0, dispatch=False)
+internal = nv.State(0, dispatch=False)
 doubled = internal.map(lambda v: v * 2)      # also dispatch=False
 ```
 

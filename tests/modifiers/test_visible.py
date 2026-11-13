@@ -12,7 +12,7 @@ from nuiitivet.modifiers.passthrough_pointer import PassthroughPointerBox
 from nuiitivet.modifiers.transform import TransformBox
 from nuiitivet.modifiers.visible import _AnimatedVisibleBox, visible
 from nuiitivet.observable import runtime as observable_runtime
-from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.observable.value import _StateValue
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.box import Box
@@ -100,8 +100,8 @@ def test_visible_static_false_keeps_layout_and_blocks_input() -> None:
     assert wrapped.hit_test(50, 25) is None
 
 
-def test_visible_observable_toggles_input_blocking_and_opacity() -> None:
-    cond = _ObservableValue(True)
+def test_visible_state_toggles_input_blocking_and_opacity() -> None:
+    cond = _StateValue(True)
     child = _make_child()
     wrapped = child.modifier(visible(cond))
     assert isinstance(wrapped, PassthroughPointerBox)
@@ -123,8 +123,8 @@ def test_visible_observable_toggles_input_blocking_and_opacity() -> None:
     assert inner._opacity == 1.0
 
 
-def test_visible_observable_layout_space_preserved_when_hidden() -> None:
-    cond = _ObservableValue(False)
+def test_visible_state_layout_space_preserved_when_hidden() -> None:
+    cond = _StateValue(False)
     child = _make_child()
     wrapped = child.modifier(visible(cond))
 
@@ -140,7 +140,7 @@ def test_visible_observable_layout_space_preserved_when_hidden() -> None:
 
 
 def test_visible_child_stays_mounted_across_hide_show_cycles() -> None:
-    cond = _ObservableValue(True)
+    cond = _StateValue(True)
     child = _make_child()
     wrapped = child.modifier(visible(cond))
 
@@ -169,7 +169,7 @@ def test_visible_with_transition_initial_visible_animates_exit() -> None:
     fake_clock = _FakeClock()
     observable_runtime.set_clock(fake_clock)
     try:
-        cond = _ObservableValue(True)
+        cond = _StateValue(True)
         child = _make_child()
         transition = TransitionDefinition(
             motion=LinearMotion(1.0),
@@ -212,7 +212,7 @@ def test_visible_with_transition_enter_animates_progress_up() -> None:
     fake_clock = _FakeClock()
     observable_runtime.set_clock(fake_clock)
     try:
-        cond = _ObservableValue(False)
+        cond = _StateValue(False)
         child = _make_child()
         transition = TransitionDefinition(
             motion=LinearMotion(1.0),
@@ -246,7 +246,7 @@ def test_visible_transition_out_used_on_exit() -> None:
     fake_clock = _FakeClock()
     observable_runtime.set_clock(fake_clock)
     try:
-        cond = _ObservableValue(True)
+        cond = _StateValue(True)
         child = _make_child()
         # Slow enter (1.0s), fast exit (0.1s) with distinct definitions.
         transition = TransitionDefinition(
@@ -279,7 +279,7 @@ def test_visible_transition_out_omitted_falls_back_to_transition() -> None:
     fake_clock = _FakeClock()
     observable_runtime.set_clock(fake_clock)
     try:
-        cond = _ObservableValue(True)
+        cond = _StateValue(True)
         child = _make_child()
         transition = TransitionDefinition(
             motion=LinearMotion(1.0),
@@ -307,7 +307,7 @@ def test_visible_transition_out_omitted_falls_back_to_transition() -> None:
 def test_visible_chains_with_other_modifiers() -> None:
     from nuiitivet.modifiers import opacity
 
-    cond = _ObservableValue(True)
+    cond = _StateValue(True)
     child = _make_child()
     # Apply opacity first, then visible. visible() expands to opacity|passthrough_pointer
     # so the outer-most wrapper is PassthroughPointerBox.
@@ -320,7 +320,7 @@ def test_visible_paint_outsets_follow_the_slide() -> None:
     """Mid-transition the child is drawn away from its rect, and reports it."""
     from nuiitivet.animation.transition_pattern import FractionalSlidePattern
 
-    cond = _ObservableValue(True)
+    cond = _StateValue(True)
     child = _make_child()
     transition = TransitionDefinition(
         motion=LinearMotion(1.0),

@@ -8,7 +8,7 @@ from nuiitivet.layout.collapsible import Collapsible
 from nuiitivet.layout.column import Column
 from nuiitivet.material.sheet import StandardSideSheet
 from nuiitivet.modifiers.visible import visible
-from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.observable.value import _StateValue
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.runtime.app import App
 from nuiitivet.runtime.window import Window
@@ -89,7 +89,7 @@ def test_tab_moves_across_a_closed_collapsible() -> None:
 def test_closing_a_collapsible_releases_focus_held_inside() -> None:
     """Focus may not stay on a widget the user can no longer see."""
     inside = Clickable()
-    opened = _ObservableValue(True)
+    opened = _StateValue(True)
     root = Column([Collapsible(Column([inside]), opened=opened)])
     app = _mounted_app(root)
 
@@ -106,7 +106,7 @@ def test_closing_a_collapsible_releases_focus_held_inside() -> None:
 def test_collapsible_traversal_follows_opened_not_the_size_animation() -> None:
     """Traversal flips with ``opened``, without waiting for the size animation."""
     inside = Clickable()
-    opened = _ObservableValue(False)
+    opened = _StateValue(False)
     content = Box(Column([inside]), width=Sizing.fixed(100), height=Sizing.fixed(50))
     collapsible = Collapsible(content, opened=opened)
     app = _mounted_app(Column([collapsible]))
@@ -140,8 +140,8 @@ def test_hidden_visible_subtree_is_skipped_by_tab() -> None:
     assert app._collect_focus_nodes() == [_focus_node(before)]
 
 
-def test_visible_observable_restores_tab_stops_when_shown() -> None:
-    shown = _ObservableValue(False)
+def test_visible_state_restores_tab_stops_when_shown() -> None:
+    shown = _StateValue(False)
     inside = Clickable()
     root = Column([Column([inside]).modifier(visible(shown))])
     app = _mounted_app(root)

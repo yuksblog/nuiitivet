@@ -24,7 +24,7 @@ thread to give the first.
 
 **Failure is a value, not a channel.** ``fn`` runs where no caller is on the
 stack, so an exception has nowhere to go. Rather than grow a second read
-surface on the returned observable -- which would not survive ``.map()``, and
+surface on the returned State -- which would not survive ``.map()``, and
 would need its own supersede and clearing rules -- ``fn`` is expected to catch
 what it can handle and *return* it, in whatever type the app already uses for
 the result::
@@ -54,8 +54,8 @@ if TYPE_CHECKING:
     from nuiitivet.widgeting.callbacks import PendingTask
 
 from ._sentinel import UNSET, _Unset
-from .protocols import ReadOnlyObservableProtocol
-from .wrapper import SourceSubscribingObservable
+from .protocols import ReadOnlyStateProtocol
+from .wrapper import SourceSubscribingState
 from . import runtime
 
 TIn = TypeVar("TIn")
@@ -108,8 +108,8 @@ class CancelToken:
         self._flag.set()
 
 
-class SwitchMappedObservable(SourceSubscribingObservable[TIn, TOut]):
-    """Observable of the newest run's result, superseding runs still in flight.
+class SwitchMappedState(SourceSubscribingState[TIn, TOut]):
+    """State of the newest run's result, superseding runs still in flight.
 
     ``value`` is ``initial`` until the first run lands, then the most recent
     landed result::
@@ -117,14 +117,14 @@ class SwitchMappedObservable(SourceSubscribingObservable[TIn, TOut]):
         results = query.debounce(0.3).switch_map(search, initial=SearchOutcome())
 
     ``initial`` is required and keyword-only for the same reason as
-    ``filter``'s: this observable has no value derivable from its
+    ``filter``'s: this State has no value derivable from its
     source, so the caller states what the UI shows meanwhile. Unlike ``filter``,
     **no run starts at construction** -- building a ViewModel should not fire
     I/O, and the source's construction-time value is usually the empty one -- so
     ``initial`` here means "no run has landed yet".
 
     A plain ``fn`` takes ``(value, CancelToken)`` and never runs on the UI
-    thread. It may read observables, but must not touch widgets or anything
+    thread. It may read States, but must not touch widgets or anything
     else the UI thread owns, the same constraint §2 already places on compute
     functions. Results are marshalled back before they are published, so
     subscribers and bindings still run on the UI thread.
@@ -142,7 +142,7 @@ class SwitchMappedObservable(SourceSubscribingObservable[TIn, TOut]):
 
     def __init__(
         self,
-        source: ReadOnlyObservableProtocol[TIn],
+        source: ReadOnlyStateProtocol[TIn],
         fn: Union[Callable[[TIn, CancelToken], TOut], Callable[[TIn], Awaitable[TOut]]],
         *,
         initial: TOut,
@@ -160,7 +160,7 @@ class SwitchMappedObservable(SourceSubscribingObservable[TIn, TOut]):
         self._pending_result: TOut | _Unset = UNSET
         super().__init__(source)
 
-    def _seed(self, source: ReadOnlyObservableProtocol[TIn]) -> TOut:
+    def _seed(self, source: ReadOnlyStateProtocol[TIn]) -> TOut:
         # The source is deliberately not read: its value has no bearing on what
         # a run would return, and no run has been started to find out.
         return self._initial
@@ -261,7 +261,7 @@ class SwitchMappedObservable(SourceSubscribingObservable[TIn, TOut]):
             self._pending_result = UNSET
 
         # Outside the lock: subscribers run arbitrary app code, and a binding
-        # that reads back through this observable would deadlock on a re-entrant
+        # that reads back through this State would deadlock on a re-entrant
         # acquire.
         self._emit_to_subscribers(pending)
 

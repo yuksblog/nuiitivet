@@ -42,12 +42,12 @@ def on_size_changed(callback: SizeCallback) -> OnSizeChangedModifier:
 
     The callback receives a :class:`Size` - the widget's own ``(width, height)``
     after layout, excluding its position. Use it to feed a size into imperative
-    state: a ViewModel, or a plain ``Observable`` a child widget binds to::
+    state: a ViewModel, or a plain ``State`` a child widget binds to::
 
         class ResponsiveScaffold(ComposableWidget):
             def __init__(self) -> None:
                 super().__init__()
-                self.expanded = Observable(False)
+                self.expanded = State(False)
 
             def _on_size(self, size: Size) -> None:
                 self.expanded.value = size.width >= 700
@@ -71,11 +71,11 @@ def on_size_changed(callback: SizeCallback) -> OnSizeChangedModifier:
 
     Note:
         **Dispatched between frames, never during layout**, so the callback may
-        safely do anything - push a route, write an Observable, replace
+        safely do anything - push a route, write a State, replace
         children - and its effect lands on the frame after the measurement.
 
         That includes the first call, which therefore arrives *after* the first
-        paint. Give an Observable the value you expect at the initial size and
+        paint. Give a State the value you expect at the initial size and
         the first report writes the same value, which de-dupes: no visible
         transition. Seed it differently and the widget animates once on startup.
 

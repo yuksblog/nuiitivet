@@ -14,7 +14,7 @@ from typing import Any, Callable, Optional, Tuple, Type, Union, TYPE_CHECKING, c
 from nuiitivet.input.cursor import MouseCursor
 from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import Widget
-from nuiitivet.observable import ReadOnlyObservableProtocol
+from nuiitivet.observable import ReadOnlyStateProtocol
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgets.input_filter import InputFilterLike
 from nuiitivet.widgeting.callbacks import invoke_event_handler
@@ -85,7 +85,7 @@ def _build_text_field_icon(
 
     if isinstance(icon, Widget):
         raise TypeError(
-            f"{arg_name} does not accept Widget instances. " "Pass a Symbol/str (or an Observable of them)."
+            f"{arg_name} does not accept Widget instances. " "Pass a Symbol/str (or a State of them)."
         )
 
     ok = (
@@ -94,7 +94,7 @@ def _build_text_field_icon(
         or (hasattr(icon, "subscribe") and hasattr(icon, "value"))
     )
     if not ok:
-        raise TypeError(f"{arg_name} must be a Symbol/str (or an Observable of them). " f"Got: {type(icon)!r}")
+        raise TypeError(f"{arg_name} must be a Symbol/str (or a State of them). " f"Got: {type(icon)!r}")
 
     if on_tap is not None:
         from nuiitivet.material.buttons import IconButton
@@ -109,9 +109,9 @@ def _build_text_field_icon(
 class TextField(InteractiveWidget):
     """A Material Design 3 text field; ``style`` picks filled or outlined.
 
-    An observable passed as ``value`` holds the field's value, the same as
+    A State passed as ``value`` holds the field's value, the same as
     for every other input widget: it is displayed, and edits are written
-    back to it. A read-only observable (``.map(...)``, a computed value)
+    back to it. A read-only State (``.map(...)``, a computed value)
     has nowhere to write, so it displays only -- pair it with
     ``disabled=True`` to make that visible to the user.
 
@@ -125,23 +125,23 @@ class TextField(InteractiveWidget):
 
     def __init__(
         self,
-        value: Union[str, ReadOnlyObservableProtocol[str]] = "",
+        value: Union[str, ReadOnlyStateProtocol[str]] = "",
         *,
         on_change: Optional[Callable[[str], None]] = None,
         on_submit: Optional[Callable[[str], None]] = None,
         on_focus_change: Optional[FocusChangeCallback] = None,
         input_filter: Optional[InputFilterLike] = None,
-        label: str | ReadOnlyObservableProtocol[str] | None = None,
-        leading_icon: Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None = None,
+        label: str | ReadOnlyStateProtocol[str] | None = None,
+        leading_icon: Symbol | str | ReadOnlyStateProtocol[Symbol] | ReadOnlyStateProtocol[str] | None = None,
         on_tap_leading_icon: Optional[Callable[[], None]] = None,
         trailing_icon: (
-            Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None
+            Symbol | str | ReadOnlyStateProtocol[Symbol] | ReadOnlyStateProtocol[str] | None
         ) = None,
         on_tap_trailing_icon: Optional[Callable[[], None]] = None,
         obscure_text: bool = False,
-        supporting_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
-        is_error: bool | ReadOnlyObservableProtocol[bool] = False,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        supporting_text: str | ReadOnlyStateProtocol[str | None] | None = None,
+        is_error: bool | ReadOnlyStateProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = 200,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         style: Optional[TextFieldStyle] = None,
@@ -150,10 +150,10 @@ class TextField(InteractiveWidget):
         """Initialize TextField.
 
         Args:
-            value: Initial text, or the observable holding the field's value.
-                Edits are written back to a writable observable.
+            value: Initial text, or the State holding the field's value.
+                Edits are written back to a writable State.
             on_change: Callback invoked with the text as it changes, for a
-                side effect of the change. The observable bound to *value* is
+                side effect of the change. The State bound to *value* is
                 already updated without it, and carries the same signal: the
                 two are announced together, so neither reports the provisional
                 text of an unconfirmed IME composition.
@@ -217,14 +217,14 @@ class TextField(InteractiveWidget):
             focusable=False,
         )
 
-        self._label_source: ReadOnlyObservableProtocol[str] | None = None
-        self._supporting_text_source: ReadOnlyObservableProtocol[str | None] | None = None
-        self._is_error_source: ReadOnlyObservableProtocol[bool] | None = None
-        self._disabled_source: ReadOnlyObservableProtocol[bool] | None = None
+        self._label_source: ReadOnlyStateProtocol[str] | None = None
+        self._supporting_text_source: ReadOnlyStateProtocol[str | None] | None = None
+        self._is_error_source: ReadOnlyStateProtocol[bool] | None = None
+        self._disabled_source: ReadOnlyStateProtocol[bool] | None = None
 
         label_value: str | None
         if hasattr(label, "subscribe") and hasattr(label, "value"):
-            self._label_source = cast("ReadOnlyObservableProtocol[str]", label)
+            self._label_source = cast("ReadOnlyStateProtocol[str]", label)
             try:
                 label_value = str(self._label_source.value)
             except Exception:
@@ -234,7 +234,7 @@ class TextField(InteractiveWidget):
 
         supporting_text_value: str | None
         if hasattr(supporting_text, "subscribe") and hasattr(supporting_text, "value"):
-            self._supporting_text_source = cast("ReadOnlyObservableProtocol[str | None]", supporting_text)
+            self._supporting_text_source = cast("ReadOnlyStateProtocol[str | None]", supporting_text)
             try:
                 v = self._supporting_text_source.value
                 supporting_text_value = str(v) if v is not None else None
@@ -245,7 +245,7 @@ class TextField(InteractiveWidget):
 
         initial_is_error: bool
         if hasattr(is_error, "subscribe") and hasattr(is_error, "value"):
-            self._is_error_source = cast("ReadOnlyObservableProtocol[bool]", is_error)
+            self._is_error_source = cast("ReadOnlyStateProtocol[bool]", is_error)
             try:
                 initial_is_error = bool(self._is_error_source.value)
             except Exception:
@@ -255,7 +255,7 @@ class TextField(InteractiveWidget):
 
         initial_disabled: bool
         if hasattr(disabled, "subscribe") and hasattr(disabled, "value"):
-            self._disabled_source = cast("ReadOnlyObservableProtocol[bool]", disabled)
+            self._disabled_source = cast("ReadOnlyStateProtocol[bool]", disabled)
             try:
                 initial_disabled = bool(self._disabled_source.value)
             except Exception:
@@ -362,7 +362,7 @@ class TextField(InteractiveWidget):
     @classmethod
     def multiline(
         cls,
-        value: Union[str, ReadOnlyObservableProtocol[str]] = "",
+        value: Union[str, ReadOnlyStateProtocol[str]] = "",
         *,
         min_lines: int = 1,
         max_lines: Optional[int] = None,
@@ -370,16 +370,16 @@ class TextField(InteractiveWidget):
         on_submit: Optional[Callable[[str], None]] = None,
         on_focus_change: Optional[FocusChangeCallback] = None,
         input_filter: Optional[InputFilterLike] = None,
-        label: str | ReadOnlyObservableProtocol[str] | None = None,
-        leading_icon: Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None = None,
+        label: str | ReadOnlyStateProtocol[str] | None = None,
+        leading_icon: Symbol | str | ReadOnlyStateProtocol[Symbol] | ReadOnlyStateProtocol[str] | None = None,
         on_tap_leading_icon: Optional[Callable[[], None]] = None,
         trailing_icon: (
-            Symbol | str | ReadOnlyObservableProtocol[Symbol] | ReadOnlyObservableProtocol[str] | None
+            Symbol | str | ReadOnlyStateProtocol[Symbol] | ReadOnlyStateProtocol[str] | None
         ) = None,
         on_tap_trailing_icon: Optional[Callable[[], None]] = None,
-        supporting_text: str | ReadOnlyObservableProtocol[str | None] | None = None,
-        is_error: bool | ReadOnlyObservableProtocol[bool] = False,
-        disabled: bool | ReadOnlyObservableProtocol[bool] = False,
+        supporting_text: str | ReadOnlyStateProtocol[str | None] | None = None,
+        is_error: bool | ReadOnlyStateProtocol[bool] = False,
+        disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = 200,
         padding: Union[int, Tuple[int, int], Tuple[int, int, int, int]] = 0,
         style: Optional[TextFieldStyle] = None,
@@ -395,8 +395,8 @@ class TextField(InteractiveWidget):
         and the icons sit there.
 
         Args:
-            value: Initial text, or the observable holding the field's value.
-                Edits are written back to a writable observable.
+            value: Initial text, or the State holding the field's value.
+                Edits are written back to a writable State.
             min_lines: Lines shown when the text has fewer, at least 1.
             max_lines: Lines shown before the field scrolls, at least
                 *min_lines*; ``None`` grows without bound. Neither bounds the

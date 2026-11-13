@@ -9,7 +9,7 @@ from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.material.chip import AssistChip, FilterChip, InputChip, SuggestionChip
 from nuiitivet.material.icon import Icon
 from nuiitivet.material.text import Text
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.widgets.interaction import FocusNode
 from tests.helpers.pointer import send_pointer_event_for_test, send_pointer_event_for_test_via_app_routing
 
@@ -158,8 +158,8 @@ def test_filter_chip_click_toggles_selected() -> None:
     assert events == [True, False]
 
 
-def test_filter_chip_observable_selected_sync() -> None:
-    selected = Observable(False)
+def test_filter_chip_state_selected_sync() -> None:
+    selected = State(False)
     chip = FilterChip("Filter", selected=selected)
     chip.on_mount()
 

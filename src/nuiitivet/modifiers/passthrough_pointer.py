@@ -22,7 +22,7 @@ Typical use cases:
 Usage::
 
     widget.modifier(passthrough_pointer())              # always pass through
-    widget.modifier(passthrough_pointer(self.vm.busy))  # observable-driven
+    widget.modifier(passthrough_pointer(self.vm.busy))  # State-driven
 """
 
 from __future__ import annotations
@@ -70,7 +70,7 @@ def passthrough_pointer(
     clicks fall through to widgets behind.
 
     Args:
-        condition: Static ``bool`` or an ``Observable[bool]``. When truthy the
+        condition: Static ``bool`` or a ``State[bool]``. When truthy the
             child subtree does not receive pointer / hit events, letting clicks
             pass through. Defaults to ``True`` (always pass through). Read and
             validated at construction / mount, not at first click.

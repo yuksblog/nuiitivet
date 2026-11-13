@@ -7,9 +7,9 @@ import threading
 from nuiitivet.layout.column import Column
 from nuiitivet.material.buttons import Button
 from nuiitivet.material.text import Text
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.observable.switched import CancelToken
-from nuiitivet.remote import WriteOnlyObservable, server, server_only
+from nuiitivet.remote import WriteOnlyState, server, server_only
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 
 server_only()
@@ -20,7 +20,7 @@ _finish = threading.Event()
 
 
 @server
-def import_rows(count: int, progress: WriteOnlyObservable[str]) -> int:
+def import_rows(count: int, progress: WriteOnlyState[str]) -> int:
     progress.value = "half"
     _halfway.set()
     assert _finish.wait(_TIMEOUT)
@@ -47,8 +47,8 @@ def search(query: str, cancel: CancelToken = CancelToken()) -> list[str]:
 class _Importer(ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.progress = Observable("none")
-        self.result = Observable("")
+        self.progress = State("none")
+        self.result = State("")
 
     def build(self) -> Widget:
         return Column(
@@ -66,7 +66,7 @@ class _Importer(ComposableWidget):
 class _Search(ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.query = Observable("")
+        self.query = State("")
         nothing: list[str] = []
         self.results = self.query.switch_map(search, initial=nothing)
 

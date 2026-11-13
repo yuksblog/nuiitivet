@@ -16,7 +16,7 @@ import pytest
 from nuiitivet.layout.column import Column
 from nuiitivet.material.buttons import Button
 from nuiitivet.material.text import Text
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.testing import AppHarness, ContainedCallbackWarning, mount
 from nuiitivet.widgeting import callbacks as _callbacks
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
@@ -34,7 +34,7 @@ class _Screen(ComposableWidget):
 
     def __init__(self, work) -> None:
         super().__init__()
-        self.status = Observable("idle")
+        self.status = State("idle")
         self._work = work
 
     def build(self) -> Widget:
@@ -134,7 +134,7 @@ class _RaisingInvalidate(Widget):
 
 
 def test_a_raising_invalidate_during_a_binding_flush_reaches_the_test() -> None:
-    source = Observable("a")
+    source = State("a")
     with pytest.raises(ValueError, match="invalidate blew up"):
         with mount(_RaisingInvalidate(source)) as host:
             host.layout(100, 100)

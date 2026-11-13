@@ -11,10 +11,10 @@ from jobs import search
 
 
 class SearchScreen(nv.ComposableWidget):
-    query = nv.Observable("word1")
-    status = nv.Observable("")
-    progress = nv.Observable(0.0)
-    clicks = nv.Observable(0)
+    query = nv.State("word1")
+    status = nv.State("")
+    progress = nv.State(0.0)
+    clicks = nv.State(0)
 
     def __init__(self) -> None:
         super().__init__()

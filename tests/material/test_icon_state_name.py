@@ -1,12 +1,12 @@
-"""Test Icon name Observable integration."""
+"""Test Icon name State integration."""
 
 from nuiitivet.material.icon import Icon
 from nuiitivet.material.symbols import Symbols
-from nuiitivet.observable import _ObservableValue
+from nuiitivet.observable import _StateValue
 
 
-def test_icon_name_observable_updates_from_str() -> None:
-    name_obs = _ObservableValue("home")
+def test_icon_name_state_updates_from_str() -> None:
+    name_obs = _StateValue("home")
     icon = Icon(name_obs)
 
     icon.on_mount()
@@ -16,8 +16,8 @@ def test_icon_name_observable_updates_from_str() -> None:
     assert icon.name == "menu"
 
 
-def test_icon_name_observable_updates_from_symbol() -> None:
-    name_obs = _ObservableValue(Symbols.home)
+def test_icon_name_state_updates_from_symbol() -> None:
+    name_obs = _StateValue(Symbols.home)
     icon = Icon(name_obs)
 
     icon.on_mount()
@@ -29,8 +29,8 @@ def test_icon_name_observable_updates_from_symbol() -> None:
     assert icon._symbol_codepoint == Symbols.menu.glyph()
 
 
-def test_icon_name_observable_unsubscribes_on_unmount() -> None:
-    name_obs = _ObservableValue("home")
+def test_icon_name_state_unsubscribes_on_unmount() -> None:
+    name_obs = _StateValue("home")
     icon = Icon(name_obs)
 
     icon.on_mount()

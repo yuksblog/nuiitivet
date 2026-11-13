@@ -1,30 +1,30 @@
-"""Tests for debounce and throttle observables."""
+"""Tests for debounce and throttle States."""
 
 import time
 from typing import Optional
 
 import pytest
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 
 
 class Model:
-    """Test model with observables."""
+    """Test model with States."""
 
-    source = Observable(0)
-    source2 = Observable(10)
-    price = Observable(100)
-    qty = Observable(1)
-    count = Observable(0)
+    source = State(0)
+    source2 = State(10)
+    price = State(100)
+    qty = State(1)
+    count = State(0)
 
 
 class OptionalModel:
-    """Test model whose observable legitimately carries ``None``."""
+    """Test model whose State legitimately carries ``None``."""
 
-    selection: Observable[Optional[str]] = Observable(None)
+    selection: State[Optional[str]] = State(None)
 
 
 class MockClock:
-    """Mock pyglet clock for testing timing-based observables."""
+    """Mock pyglet clock for testing timing-based States."""
 
     def __init__(self):
         self.scheduled = []
@@ -402,10 +402,10 @@ class TestDebounceThrottleComparison:
 
 
 class TestWithComputed:
-    """Test debounce/throttle with computed observables."""
+    """Test debounce/throttle with computed States."""
 
     def test_computed_debounce(self, mock_clock):
-        """Debounce works with computed observables."""
+        """Debounce works with computed States."""
         m = Model()
 
         total = m.price.combine(m.qty).compute(lambda p, q: p * q)
@@ -422,7 +422,7 @@ class TestWithComputed:
         assert results == [400]
 
     def test_computed_throttle(self, mock_clock):
-        """Throttle works with computed observables."""
+        """Throttle works with computed States."""
         m = Model()
         doubled = m.count.map(lambda x: x * 2)
         throttled = doubled.throttle(0.1)
@@ -442,7 +442,7 @@ class TestWithComputed:
 
 
 class TestBindingDirectlyIntoAWidget:
-    """The headline rule — pass the observable in — must hold for wrappers too.
+    """The headline rule — pass the State in — must hold for wrappers too.
 
     Each pair of tests moves the source past the last emission *before* the
     widget renders, which is what a read-through ``.value`` would leak.
@@ -456,7 +456,7 @@ class TestBindingDirectlyIntoAWidget:
         return lambda: Column(children=[Text(bound, key="readout")])
 
     def test_debounce_bound_without_map_is_debounced(self, nuiitivet_app):
-        source = Observable("start")
+        source = State("start")
         debounced = source.debounce(5.0)  # long enough that it cannot fire here
 
         source.value = "typing"
@@ -465,7 +465,7 @@ class TestBindingDirectlyIntoAWidget:
         assert app.get(key="readout").text == "start", "the debounce was bypassed"
 
     def test_debounce_bound_without_map_follows_the_emission(self, nuiitivet_app):
-        source = Observable("start")
+        source = State("start")
         debounced = source.debounce(0.01)
 
         app = nuiitivet_app(self._screen(debounced), size=(800, 600))
@@ -478,7 +478,7 @@ class TestBindingDirectlyIntoAWidget:
         assert app.get(key="readout").text == "typing"
 
     def test_throttle_bound_without_map_is_throttled(self, nuiitivet_app):
-        source = Observable("start")
+        source = State("start")
         throttled = source.throttle(5.0)
 
         source.value = "first"  # leading edge: emitted
@@ -491,7 +491,7 @@ class TestBindingDirectlyIntoAWidget:
         """Nothing names the wrapper, so only the widget's binding can hold it."""
         import gc
 
-        source = Observable("start")
+        source = State("start")
 
         def screen():
             from nuiitivet.layout.column import Column
@@ -510,7 +510,7 @@ class TestBindingDirectlyIntoAWidget:
         assert app.get(key="readout").text == "typing"
 
     def test_throttle_bound_without_map_follows_the_emission(self, nuiitivet_app):
-        source = Observable("start")
+        source = State("start")
         throttled = source.throttle(0.01)
 
         app = nuiitivet_app(self._screen(throttled), size=(800, 600))

@@ -11,7 +11,7 @@ from nuiitivet.modifiers.transform import (
 )
 from nuiitivet.widgets.box import Box
 from nuiitivet.rendering.sizing import Sizing
-from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.observable.value import _StateValue
 
 
 class MockWidget(Box):
@@ -112,9 +112,9 @@ def test_multiple_transforms_chained():
     assert modified._opacity == 0.8
 
 
-def test_transform_box_with_observable_rotation():
-    """Test TransformBox with observable rotation."""
-    angle_obs = _ObservableValue(0.0)
+def test_transform_box_with_state_rotation():
+    """Test TransformBox with State rotation."""
+    angle_obs = _StateValue(0.0)
     widget = MockWidget()
     modified = widget.modifier(rotate(angle_obs))
 
@@ -125,9 +125,9 @@ def test_transform_box_with_observable_rotation():
     assert modified._rotation == 90.0
 
 
-def test_transform_box_with_observable_scale():
-    """Test TransformBox with observable scale."""
-    scale_obs = _ObservableValue(1.0)
+def test_transform_box_with_state_scale():
+    """Test TransformBox with State scale."""
+    scale_obs = _StateValue(1.0)
     widget = MockWidget()
     modified = widget.modifier(scale(scale_obs))
 
@@ -140,9 +140,9 @@ def test_transform_box_with_observable_scale():
     assert modified._scale_y == 2.0
 
 
-def test_transform_box_with_observable_translation():
-    """Test TransformBox with observable translation."""
-    trans_obs = _ObservableValue((0.0, 0.0))
+def test_transform_box_with_state_translation():
+    """Test TransformBox with State translation."""
+    trans_obs = _StateValue((0.0, 0.0))
     widget = MockWidget()
     modified = widget.modifier(translate(trans_obs))
 
@@ -155,9 +155,9 @@ def test_transform_box_with_observable_translation():
     assert modified._translate_y == 20.0
 
 
-def test_transform_box_with_observable_opacity():
-    """Test TransformBox with observable opacity."""
-    opacity_obs = _ObservableValue(1.0)
+def test_transform_box_with_state_opacity():
+    """Test TransformBox with State opacity."""
+    opacity_obs = _StateValue(1.0)
     widget = MockWidget()
     modified = widget.modifier(opacity(opacity_obs))
 
@@ -168,10 +168,10 @@ def test_transform_box_with_observable_opacity():
     assert modified._opacity == 0.5
 
 
-def test_chained_transform_preserves_existing_observable_bindings() -> None:
+def test_chained_transform_preserves_existing_state_bindings() -> None:
     """Applying additional transform modifiers must not break existing bindings."""
-    opacity_obs = _ObservableValue(0.0)
-    scale_obs = _ObservableValue(1.0)
+    opacity_obs = _StateValue(0.0)
+    scale_obs = _StateValue(1.0)
 
     widget = MockWidget()
     modified = widget.modifier(opacity(opacity_obs) | scale(scale_obs))
@@ -522,7 +522,7 @@ def test_bind_rotation_exception_handling():
     """Test _bind_rotation handles invalid rotation values gracefully."""
     widget = MockWidget()
 
-    # Pass a plain number instead of observable - should work
+    # Pass a plain number instead of State - should work
     box = TransformBox(widget, rotation=45.0)
     assert box._rotation == 45.0
 
@@ -531,7 +531,7 @@ def test_bind_scale_exception_handling():
     """Test _bind_scale handles invalid scale values gracefully."""
     widget = MockWidget()
 
-    # Pass a plain number instead of observable - should work
+    # Pass a plain number instead of State - should work
     box = TransformBox(widget, scale=2.0)
     assert box._scale_x == 2.0
     assert box._scale_y == 2.0
@@ -541,7 +541,7 @@ def test_bind_translation_exception_handling():
     """Test _bind_translation handles invalid translation values gracefully."""
     widget = MockWidget()
 
-    # Pass a plain tuple instead of observable - should work
+    # Pass a plain tuple instead of State - should work
     box = TransformBox(widget, translation=(10, 20))
     assert box._translate_x == 10.0
     assert box._translate_y == 20.0
@@ -551,7 +551,7 @@ def test_bind_opacity_exception_handling():
     """Test _bind_opacity handles invalid opacity values gracefully."""
     widget = MockWidget()
 
-    # Pass a plain number instead of observable - should work
+    # Pass a plain number instead of State - should work
     box = TransformBox(widget, opacity=0.5)
     assert box._opacity == 0.5
 

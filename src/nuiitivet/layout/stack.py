@@ -16,7 +16,7 @@ from .measure import preferred_size as measure_preferred_size
 class Stack(Widget):
     """Layout children on top of each other.
 
-    From a data collection, or an observable of one: :meth:`builder`.
+    From a data collection, or a State of one: :meth:`builder`.
     """
 
     def __init__(
@@ -61,7 +61,7 @@ class Stack(Widget):
         """Create a Stack whose children are built from *items*.
 
         Args:
-            items: Source data: a collection, or an observable of one -- the
+            items: Source data: a collection, or a State of one -- the
                 children then follow its changes.
             builder: Called as ``builder(item, index)`` for each item; returns
                 the item's widget.

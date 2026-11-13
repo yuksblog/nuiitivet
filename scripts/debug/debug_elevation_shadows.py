@@ -18,8 +18,8 @@ class ElevationGallery(nv.ComposableWidget):
 
     def __init__(self) -> None:
         super().__init__()
-        self.menu_open = nv.Observable(False)
-        self.arrival = nv.Observable("")
+        self.menu_open = nv.State(False)
+        self.arrival = nv.State("")
 
     def build(self) -> nv.Widget:
         return nv.VerticalScrollable(

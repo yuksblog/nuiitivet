@@ -18,7 +18,7 @@ class PaintCanvas(nv.ComposableWidget):
 
     def __init__(self):
         super().__init__()
-        self.strokes = nv.Observable(3)
+        self.strokes = nv.State(3)
 
     def undo(self) -> None:
         self.strokes.value = max(0, self.strokes.value - 1)
@@ -51,8 +51,8 @@ class EditorPane(nv.ComposableWidget):
     def __init__(self, title: str, text: str = ""):
         super().__init__()
         self.title = title
-        self.text = nv.Observable(text)
-        self.saved_text = nv.Observable(text)
+        self.text = nv.State(text)
+        self.saved_text = nv.State(text)
         # status is a function of the two texts, so derive it — nothing to keep in sync.
         self.status = nv.combine(self.text, self.saved_text).compute(
             lambda current, saved: "saved" if current == saved else "modified"

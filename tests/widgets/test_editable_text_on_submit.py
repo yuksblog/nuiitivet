@@ -11,7 +11,7 @@ focus loss. Work that belongs to leaving the field goes to ``on_focus_change``.
 
 from unittest.mock import MagicMock
 
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.widgets.editable_text import EditableText
 from nuiitivet.widgets.interaction import FocusSource
 from nuiitivet.widgets.text_editing import TextRange
@@ -245,7 +245,7 @@ def test_repeated_enter_on_an_unchanged_value_submits_every_time():
 
 def test_a_value_set_by_the_application_does_not_submit():
     seen: list[str] = []
-    obs = Observable("")
+    obs = State("")
     w = EditableText(value=obs, on_submit=seen.append)
     w.mount(MagicMock())
 

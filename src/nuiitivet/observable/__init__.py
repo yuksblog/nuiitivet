@@ -2,22 +2,22 @@
 
 from .batching import BatchContext, batch, detach_batch
 from .combine import CombineBuilder, combine
-from .computed import ComputedObservable
-from .filtered import FilteredObservable
+from .computed import ComputedState
+from .filtered import FilteredState
 from .protocols import (
     CompareFunc,
     Disposable,
-    MutableObservableBase,
-    ObservableBase,
-    ObservableProtocol,
-    ReadOnlyObservableProtocol,
+    MutableStateBase,
+    ReadOnlyStateProtocol,
+    StateBase,
+    StateProtocol,
 )
 from .runtime import Clock, ClockCallback, get_clock, set_clock
-from .scanned import ScannedObservable
-from .switched import CancelToken, SwitchMappedObservable
-from .timed import DebouncedObservable, ThrottledObservable
-from .value import Observable, WhileValue, _ObservableValue
-from .wrapper import ShapingObservable, SourceSubscribingObservable
+from .scanned import ScannedState
+from .switched import CancelToken, SwitchMappedState
+from .timed import DebouncedState, ThrottledState
+from .value import State, WhileValue, _StateValue
+from .wrapper import ShapingState, SourceSubscribingState
 
 __all__ = [
     "BatchContext",
@@ -29,22 +29,22 @@ __all__ = [
     "CombineBuilder",
     "combine",
     "CompareFunc",
-    "ComputedObservable",
-    "DebouncedObservable",
+    "ComputedState",
+    "DebouncedState",
     "Disposable",
-    "FilteredObservable",
-    "MutableObservableBase",
-    "Observable",
-    "ObservableBase",
-    "ObservableProtocol",
-    "ReadOnlyObservableProtocol",
-    "ScannedObservable",
-    "ShapingObservable",
-    "SourceSubscribingObservable",
-    "SwitchMappedObservable",
-    "ThrottledObservable",
+    "FilteredState",
+    "MutableStateBase",
+    "ReadOnlyStateProtocol",
+    "ScannedState",
+    "ShapingState",
+    "SourceSubscribingState",
+    "State",
+    "StateBase",
+    "StateProtocol",
+    "SwitchMappedState",
+    "ThrottledState",
     "WhileValue",
-    "_ObservableValue",
+    "_StateValue",
     "get_clock",
     "set_clock",
 ]

@@ -93,7 +93,7 @@ class TextEditingValue:
 #
 # Every operation below is a pure function of a value: it returns the value
 # that results, or ``None`` when the input changes nothing. ``EditableText``
-# runs them over its observable state and the dev runner's inline field over a
+# runs them over its State and the dev runner's inline field over a
 # plain value, so a caret, a selection, a composition and the clipboard behave
 # the same in both, and a fix lands in both.
 

@@ -12,7 +12,7 @@ from typing import List
 
 import pytest
 
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.platform.tray import TrayIcon
 from nuiitivet.runtime.app import App
 from nuiitivet.runtime.window import Window
@@ -27,7 +27,7 @@ def test_close_action_validated() -> None:
     with pytest.raises(ValueError):
         Window(content=_Root(), close_action="minimize")
     Window(content=_Root(), close_action="hide")
-    Window(content=_Root(), close_action=Observable("close"))
+    Window(content=_Root(), close_action=State("close"))
 
 
 def test_hide_show_flip_visibility_without_os_window() -> None:
@@ -65,8 +65,8 @@ def test_close_request_hide_parks_the_window_and_warns(
     assert any("no way back" in message for message in caplog.messages)
 
 
-def test_close_request_follows_observable() -> None:
-    action = Observable("hide")
+def test_close_request_follows_state() -> None:
+    action = State("hide")
     app = App(Window(content=_Root(), close_action=action))
     window = app.main_window
     window._handle_close_request()

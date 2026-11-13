@@ -1,6 +1,6 @@
 """Shared "no value" sentinel for the observable package.
 
-Several observables need to distinguish "nothing is pending" from "the pending
+Several States need to distinguish "nothing is pending" from "the pending
 value happens to be ``None``". ``None`` cannot carry both meanings, so they hold
 :data:`UNSET` instead and test against it with ``is``.
 

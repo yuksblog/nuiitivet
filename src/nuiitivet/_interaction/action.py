@@ -404,7 +404,7 @@ def settle(
 ) -> None:
     """Flush pending reactive work and re-lay-out the tree after an action.
 
-    An action mutates observables; the visible effect (and any layout change)
+    An action mutates States; the visible effect (and any layout change)
     lands on the *next* frame. To make the immediately-following ``describe_tree``
     / ``screenshot`` observe the settled state, flush binding invalidations and
     scope recompositions, then run a layout pass so ``global_layout_rect`` is
@@ -502,7 +502,7 @@ def _settle_strict(
     from nuiitivet.widgeting.widget_size_change import flush_size_change_callbacks
 
     def run_pass(root: Any) -> None:
-        # Before the flushes, not after: a hook that mutates observables (the
+        # Before the flushes, not after: a hook that mutates States (the
         # harness pumping a cross-thread marshal) needs the same pass to
         # turn that into an updated tree, or the value lands one pass late and
         # the final pass never lands it at all.

@@ -11,7 +11,7 @@ from nuiitivet.material.date_format import (
     is_date,
     parse_date,
 )
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 
 # ---------------------------------------------------------------------------
 # Pattern compilation
@@ -217,7 +217,7 @@ def test_format_date_of_none_is_empty():
 
 def test_derived_date_holds_the_last_valid_value():
     """Text is the cell, the date is derived: filter() keeps the last good one."""
-    text: Observable[str] = Observable("")
+    text: State[str] = State("")
     derived = text.filter(is_date, initial="").map(parse_date)
 
     # The seed is text, so it goes through map as well.
@@ -240,7 +240,7 @@ def test_derived_date_holds_the_last_valid_value():
 def test_a_custom_format_derives_with_its_own_bound_methods():
     """The point of the object: one source for the widget and the derivation."""
     fmt = DateFormat("dd.mm.yyyy")
-    text: Observable[str] = Observable("")
+    text: State[str] = State("")
     derived = text.map(fmt.parse)
 
     text.value = "10.06.2026"

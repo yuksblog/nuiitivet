@@ -1,4 +1,4 @@
-"""``filter``: an observable that updates only on source values passing a test.
+"""``filter``: a State that updates only on source values passing a test.
 
 ``map`` answers "what is ``.value`` right now?" with a pure function of the
 source, so it is always defined. ``filter`` cannot: its source may produce
@@ -9,7 +9,7 @@ inventing a fallback. ``initial`` is therefore keyword-only and **required**.
 
 Everything else follows from the wrapper contract in
 :mod:`~nuiitivet.observable.wrapper` rather than being decided again here:
-``.value`` is the last value this observable emitted, the source is held weakly,
+``.value`` is the last value this State emitted, the source is held weakly,
 and ``dispose`` releases it.
 """
 
@@ -20,8 +20,8 @@ from typing import Callable, TypeVar
 
 from nuiitivet.common.logging_once import exception_once_per_exc
 
-from .protocols import ReadOnlyObservableProtocol
-from .wrapper import ShapingObservable, _untracked
+from .protocols import ReadOnlyStateProtocol
+from .wrapper import ShapingState, _untracked
 
 T = TypeVar("T")
 
@@ -29,8 +29,8 @@ T = TypeVar("T")
 logger = logging.getLogger(__name__)
 
 
-class FilteredObservable(ShapingObservable[T]):
-    """Observable that emits only the source values satisfying ``pred``.
+class FilteredState(ShapingState[T]):
+    """State that emits only the source values satisfying ``pred``.
 
     ``value`` is the last value that passed, or ``initial`` if none has. At
     construction the source's current value is itself tested, so ``initial``
@@ -44,7 +44,7 @@ class FilteredObservable(ShapingObservable[T]):
     from :meth:`subscribe`, for as long as the emissions are wanted.
 
     ``pred`` is a pure function of the value handed to it. It runs with
-    dependency tracking suppressed, so reading another observable inside it
+    dependency tracking suppressed, so reading another State inside it
     creates no edge and will not re-run the filter — express that dependency
     with ``combine`` instead.
 
@@ -58,7 +58,7 @@ class FilteredObservable(ShapingObservable[T]):
 
     def __init__(
         self,
-        source: ReadOnlyObservableProtocol[T],
+        source: ReadOnlyStateProtocol[T],
         pred: Callable[[T], bool],
         *,
         initial: T,

@@ -18,7 +18,7 @@ from nuiitivet.material.text_fields import TextField
 from nuiitivet.material.theme.form_factor import FormFactor, FormFactorLike
 from nuiitivet.material.theme.material_theme import MaterialThemeFactory
 from nuiitivet.material.theme.theme_data import MaterialThemeData
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.testing import WidgetHost, mount
 from nuiitivet.widgeting.widget import Widget
 
@@ -92,7 +92,7 @@ def test_a_seed_pair_shares_the_form_factor() -> None:
 def test_desktop_puts_a_row_of_controls_at_40() -> None:
     assert _size(TextField("x", label="Name"), "desktop")[1] == 40
     assert _size(TextField("x", style=TextFieldStyle.outlined()), "desktop")[1] == 40
-    assert _size(SearchBar(Observable("")), "desktop")[1] == 40
+    assert _size(SearchBar(State("")), "desktop")[1] == 40
     assert _size(Button("Save"), "desktop")[1] == 40
     assert _size(ToggleButton("A"), "desktop")[1] == 40
     assert _size(Checkbox(), "desktop") == (40, 40)
@@ -105,7 +105,7 @@ def test_a_desktop_switch_is_as_wide_as_its_track() -> None:
 
 def test_mobile_keeps_the_md3_sizes() -> None:
     assert _size(TextField("x", label="Name"), "mobile")[1] == 56
-    assert _size(SearchBar(Observable("")), "mobile")[1] == 56
+    assert _size(SearchBar(State("")), "mobile")[1] == 56
     assert _size(Button("Save"), "mobile")[1] == 48
     assert _size(ToggleButton("A"), "mobile")[1] == 48
     assert _size(Checkbox(), "mobile") == (48, 48)
@@ -148,12 +148,12 @@ def test_a_style_density_wins_over_the_form_factor() -> None:
 def test_a_form_factor_step_applies_to_the_whole_theme() -> None:
     custom = FormFactor.desktop().copy_with(text_field=-1, search_bar=-2)
     assert _size(TextField("x"), custom)[1] == 52
-    assert _size(SearchBar(Observable("")), custom)[1] == 48
+    assert _size(SearchBar(State("")), custom)[1] == 48
 
 
 def test_a_density_below_the_floor_stops_at_the_floor() -> None:
     assert _size(TextField("x", style=TextFieldStyle.outlined().copy_with(density=-9)), "mobile")[1] == 36
-    assert _size(SearchBar(Observable(""), style=SearchBarStyle(density=-9)), "mobile")[1] == 40
+    assert _size(SearchBar(State(""), style=SearchBarStyle(density=-9)), "mobile")[1] == 40
     menu = Menu([MenuItem("Open")], style=MenuStyle(density=-9))
     _mounted(menu, "mobile")
     assert menu._dense.item_height == 32

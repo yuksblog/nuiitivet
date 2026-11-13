@@ -12,7 +12,7 @@ E2E           the running process        the dev bridge (already shipped)
 
 Targeting is by ``key`` / ``label`` at every level, and the action verbs are the
 dev bridge's one for one, so what an author learns writing E2E carries down
-unchanged. Asserting on an ``Observable`` the test already holds, or on a node's
+unchanged. Asserting on a ``State`` the test already holds, or on a node's
 presence, is the front door; geometry is reachable and deliberately not as
 convenient.
 

@@ -3,7 +3,7 @@ from typing import Any, cast
 from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.layout.column import Column
 from nuiitivet.material.selection_controls import RadioButton, RadioGroup
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.widgets.box import Box
 from tests.helpers.pointer import send_pointer_event_for_test
 
@@ -30,7 +30,7 @@ def test_radio_button_does_not_accept_group_value_or_on_change() -> None:
 
 
 def test_radio_group_updates_on_nested_descendant_click() -> None:
-    selected = Observable("a")
+    selected = State("a")
     called: list[object | None] = []
 
     radio_a = RadioButton("a")
@@ -55,8 +55,8 @@ def test_radio_group_updates_on_nested_descendant_click() -> None:
 
 
 def test_radio_group_nearest_ancestor_wins() -> None:
-    outer_selected = Observable("outer-a")
-    inner_selected = Observable("inner-a")
+    outer_selected = State("outer-a")
+    inner_selected = State("inner-a")
 
     outer_radio = RadioButton("outer-a")
     inner_radio_a = RadioButton("inner-a")

@@ -1,4 +1,4 @@
-"""Observable: Async State
+"""Async State
 
 Demonstrates:
 - switch_map() to run a slow query off the UI thread and keep only the newest result
@@ -50,7 +50,7 @@ def search_page(query: str, page: int) -> list[str]:
 class SearchOutcome:
     """One run's answer: the items, or why there are none.
 
-    Failure lives here rather than on a channel beside the observable, so a
+    Failure lives here rather than on a channel beside the State, so a
     single value carries both and the two can never disagree. That is what lets
     the error case decide the item list too -- a failed search shows *no* stale
     rows, which a separate error channel could not have expressed.
@@ -65,7 +65,7 @@ class SearchModel:
     """Search-as-you-type, with only the newest query's result on screen."""
 
     def __init__(self) -> None:
-        self.query = nv.Observable("")
+        self.query = nv.State("")
 
         # debounce thins the keystrokes; switch_map runs what survives off the
         # UI thread and throws away any run the next keystroke supersedes.
@@ -126,7 +126,7 @@ class SearchScreen(nv.ComposableWidget):
             child=nv.Column(
                 gap=16,
                 children=[
-                    nv.Text("Observable: Async State"),
+                    nv.Text("Async State"),
                     nv.Text("Type fast -- only the newest query's result is shown."),
                     # width names the box the bar is inset into, not the bar.
                     nv.SearchBar(self.model.query, placeholder="Search fruit", width=420),
@@ -145,7 +145,7 @@ class SearchScreen(nv.ComposableWidget):
 
 def main() -> None:
     random.seed(0)
-    app = nv.App(nv.Window(content=SearchScreen, title="Observable: Async State"))
+    app = nv.App(nv.Window(content=SearchScreen, title="Async State"))
     app.run()
 
 

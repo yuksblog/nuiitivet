@@ -20,7 +20,7 @@ class Flow(Widget):
     Arranges children in a horizontal run, wrapping to a new line when the line
     runs out of space.
 
-    From a data collection, or an observable of one: :meth:`builder`.
+    From a data collection, or a State of one: :meth:`builder`.
     """
 
     def __init__(
@@ -85,7 +85,7 @@ class Flow(Widget):
         """Create a Flow whose children are built from *items*.
 
         Args:
-            items: Source data: a collection, or an observable of one -- the
+            items: Source data: a collection, or a State of one -- the
                 children then follow its changes.
             builder: Called as ``builder(item, index)`` for each item; returns
                 the item's widget.

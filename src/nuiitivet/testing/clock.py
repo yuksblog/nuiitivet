@@ -2,7 +2,7 @@
 
 The fallback ``_ThreadClock`` fires scheduled callbacks on its own servicing
 thread at wall-clock time, so a test that arms a debounce, a tooltip delay or a
-cross-thread observable write races that thread. :class:`HarnessClock` holds
+cross-thread State write races that thread. :class:`HarnessClock` holds
 every scheduled callback in a queue and fires it only when the test **pumps** —
 on the pumping thread, deterministically.
 
@@ -86,7 +86,7 @@ class HarnessClock:
     fires idealistically — an interval of 0.1 pumped after 1.0 s has elapsed
     fires ten times with ``dt == 0.1`` — with no drift compensation.
 
-    Thread-safe: a marshalled observable write schedules from worker threads.
+    Thread-safe: a marshalled State write schedules from worker threads.
     Callbacks fire outside the lock, on the pumping thread, and may schedule or
     unschedule freely while a pump is in progress; a callback that schedules
     another already-due callback has it fire in the same pump.

@@ -5,7 +5,7 @@ value of ``_samples`` with ``line.set_ydata``. A ``MatplotlibController`` made
 beside its figure is matplotlib's pan, zoom and view history behind MD3 icon
 buttons; the wheel zooms around the pointer. The bar chart is drawn once and
 handed over; a click on a bar picks it, through ``mpl_connect`` as in a
-matplotlib window, and writes the pick to an Observable. Both follow the theme:
+matplotlib window, and writes the pick to a State. Both follow the theme:
 press Dark and the lines, text and ticks take the dark scheme's colors.
 """
 
@@ -33,10 +33,10 @@ class ChartScreen(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__(width="wt", height="wt")
         self._is_dark = False
-        self._toggle_label = nv.Observable("Dark")
+        self._toggle_label = nv.State("Dark")
 
         # The figures live with the screen, not in build(): a rebuild keeps them and their history.
-        self._samples = nv.Observable([math.sin(x) for x in XS])
+        self._samples = nv.State([math.sin(x) for x in XS])
         self._live = Figure()
         live_ax = self._live.subplots()
         (self._line,) = live_ax.plot(XS, self._samples.value)
@@ -44,7 +44,7 @@ class ChartScreen(nv.ComposableWidget):
         live_ax.set_title("Live")
         self._controller = nv.MatplotlibController(self._live)  # pan, zoom and the view history
 
-        self._picked = nv.Observable("Click a bar")
+        self._picked = nv.State("Click a bar")
         self._bars = Figure()
         bars_ax = self._bars.subplots()
         self._rects = list(bars_ax.bar(DAYS, COUNTS, picker=True))

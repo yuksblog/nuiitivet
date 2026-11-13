@@ -21,7 +21,7 @@ import logging
 from typing import ClassVar, Optional, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.observable.protocols import ObservableBase
+from nuiitivet.observable.protocols import StateBase
 
 from ..widgeting.widget import Widget
 from ..scrolling import (
@@ -45,15 +45,15 @@ from .scroll_viewport import ScrollViewport
 logger = logging.getLogger(__name__)
 
 
-ScrollbarVisibleLike = Union[bool, ObservableBase[bool]]
+ScrollbarVisibleLike = Union[bool, StateBase[bool]]
 
 
 def _read_bool(value: ScrollbarVisibleLike) -> bool:
-    if isinstance(value, ObservableBase):
+    if isinstance(value, StateBase):
         try:
             return bool(value.value)
         except Exception:
-            exception_once(logger, "scrollable_read_visible_exc", "Failed to read scrollbar_visible observable")
+            exception_once(logger, "scrollable_read_visible_exc", "Failed to read scrollbar_visible State")
             return True
     return bool(value)
 
@@ -100,7 +100,7 @@ class _ScrollableBase(Widget):
             controller: External :class:`ScrollController` (auto-created when
                 omitted). ``physics`` and ``scroll_multiplier`` are read from it.
             scrollbar_visible: Whether the scrollbar is shown. Accepts a ``bool``
-                or an ``Observable[bool]`` for reactive visibility.
+                or a ``State[bool]`` for reactive visibility.
             width: Width sizing override.
             height: Height sizing override.
             padding: Insets from the allocated rect to the viewport and its bar.
@@ -197,7 +197,7 @@ class _ScrollableBase(Widget):
         self._scroll_unsubscribe = axis_state.offset.subscribe(_offset_cb)
 
         # Reactive scrollbar visibility: relayout / repaint when it changes.
-        if isinstance(self._scrollbar_visible, ObservableBase):
+        if isinstance(self._scrollbar_visible, StateBase):
             self.observe(self._scrollbar_visible, self._on_scrollbar_visible_changed)
 
     def _on_scrollbar_visible_changed(self, _value: bool) -> None:

@@ -2,7 +2,7 @@
 
 The surface asks ``draw`` for exactly the device pixels it covers, so the
 one-pixel ticks stay one device pixel wide on any display and the meter never
-blurs. Drag the slider: the level is an Observable, and the surface redraws
+blurs. Drag the slider: the level is a State, and the surface redraws
 from it.
 """
 
@@ -25,7 +25,7 @@ def draw_meter(level: float, width_px: int, height_px: int) -> bytes:
     return bytes(row) * height_px
 
 
-level = nv.Observable(0.6)
+level = nv.State(0.6)
 
 
 def build_root() -> nv.Widget:

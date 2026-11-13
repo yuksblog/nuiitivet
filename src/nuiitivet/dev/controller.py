@@ -7,7 +7,7 @@ the main-thread-only rule for tree mutation.
 
 The reload sequence:
 
-1. snapshot ``Observable`` state and the declarative navigation stack from the
+1. snapshot ``State`` values and the declarative navigation stack from the
    live tree;
 2. reload user modules in dependency order and re-fetch the factory (§9.6/§9.1);
 3. rebuild the content root (on commit: unmounts the old tree and hands the App
@@ -37,7 +37,7 @@ from .navigation_snapshot import restore_navigation, snapshot_navigation
 from .overlay_snapshot import restore_overlay, snapshot_overlay
 from .comments import Comments
 from .reloader import identify_user_modules, reload_user_modules
-from .snapshot import restore_observables, snapshot_observables
+from .snapshot import restore_states, snapshot_states
 from .source_edit import EditLog
 from .watcher import FileWatcher
 
@@ -72,7 +72,7 @@ class HotReloadController:
         self._journal = journal
         # The human's comment-mode mark, whose members are weak and so
         # evaporate when the rebuild replaces every live object. Re-resolved
-        # below like observable state and the navigation stack, because a reload
+        # below like State values and the navigation stack, because a reload
         # lands in the middle of essentially every use of it.
         self._comments = comments
         # Layout edit mode's edits. Told after every reload whether its pending edit
@@ -127,7 +127,7 @@ class HotReloadController:
         # Determine which files' content actually changed before reloading, so
         # every recorded event -- success or failure -- can carry it.
         changed = self._detect_changed_modules()
-        snapshot = snapshot_observables(app.root)
+        snapshot = snapshot_states(app.root)
         # Capture the declarative navigation stack before the rebuild replaces
         # the App's navigator with a fresh one at its initial route.
         nav_snapshot = snapshot_navigation(app)
@@ -153,9 +153,9 @@ class HotReloadController:
         overlay_snapshot = snapshot_overlay(app)
         try:
             app._commit_content_root(new_content)
-            # Before the Observable restore, so a re-shown dialog gets its state back too.
+            # Before the State restore, so a re-shown dialog gets its state back too.
             restored_entries = restore_overlay(app, overlay_snapshot)
-            restored = restore_observables(app.root, snapshot)
+            restored = restore_states(app.root, snapshot)
             restored_routes = restore_navigation(app, nav_snapshot)
             if self._comments is not None:
                 self._comments.restore(app.root)
@@ -220,7 +220,7 @@ class HotReloadController:
         The main window's rebuild re-resolves its factory from the reloaded
         entry module; a secondary window keeps the factory it was constructed
         with, re-invoked here so its content picks up the reloaded modules.
-        Observable state is snapshotted and restored per window, like the main
+        State values are snapshotted and restored per window, like the main
         one. A window whose rebuild fails shows the reload error overlay in
         that window and does not abort the others.
         """
@@ -231,11 +231,11 @@ class HotReloadController:
         for window in list(getattr(owner, "windows", ()) or ()):
             if window is self._app:
                 continue
-            snapshot = snapshot_observables(window.root)
+            snapshot = snapshot_states(window.root)
             try:
                 content = window._rebuild_content_root()
                 window._commit_content_root(content)
-                restore_observables(window.root, snapshot)
+                restore_states(window.root, snapshot)
             except Exception:
                 tb = traceback.format_exc()
                 self._record_error(tb, changed)

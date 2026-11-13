@@ -1,20 +1,20 @@
-# Observable: Getting Started
+# Getting Started
 
-Observables are the foundation of reactive state management in nuiitivet.
+`State`s are the foundation of reactive state management in nuiitivet.
 They let you model values that notify subscribers when updated.
 
 ## Quick Start
 
 ### Basic Usage
 
-The most intuitive way to define Observables is inside `__init__`, like normal instance fields.
+The most intuitive way to define `State`s is inside `__init__`, like normal instance fields.
 
 ```python
 import nuiitivet.material as nv
 
 class Counter:
     def __init__(self):
-        self.count = nv.Observable(0)
+        self.count = nv.State(0)
         self.double_count = self.count.map(lambda c: c * 2)
 
 counter = Counter()
@@ -29,7 +29,7 @@ import nuiitivet.material as nv
 
 class CounterApp:
     def __init__(self):
-        self.count = nv.Observable(0)
+        self.count = nv.State(0)
 
     def build(self):
         return nv.Column(
@@ -48,9 +48,9 @@ class CounterApp:
 
 ## Core Concepts
 
-### What is an Observable?
+### What is a State?
 
-An Observable is a value you can observe. When it changes, all subscribers are notified.
+A `State` is a value you can observe. When it changes, all subscribers are notified.
 
 **Features:**
 
@@ -61,13 +61,13 @@ An Observable is a value you can observe. When it changes, all subscribers are n
 
 ### Class Attributes (Advanced)
 
-You can also define an Observable as a class attribute (descriptor pattern).
+You can also define a `State` as a class attribute (descriptor pattern).
 
 ```python
 import nuiitivet.material as nv
 
 class Model:
-    value = nv.Observable(0)
+    value = nv.State(0)
 
 x = Model()
 y = Model()

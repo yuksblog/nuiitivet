@@ -7,7 +7,7 @@ from nuiitivet.animation.motion import LinearMotion
 from nuiitivet.layout.collapsible import Collapsible
 from nuiitivet.layout.column import Column
 from nuiitivet.observable import runtime as observable_runtime
-from nuiitivet.observable.value import _ObservableValue
+from nuiitivet.observable.value import _StateValue
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgeting.widget import Widget
@@ -132,7 +132,7 @@ def test_opened_false_collapses_initial_size(nuiitivet_mount) -> None:
 
 def test_axis_horizontal_only_animates_width(nuiitivet_mount) -> None:
     with _fake_clock():
-        opened = _ObservableValue(True)
+        opened = _StateValue(True)
         widget = Collapsible(_make_child(100, 50), opened=opened, axis="horizontal")
         nuiitivet_mount(widget)
         # Height passes through unchanged immediately even mid-animation.
@@ -149,7 +149,7 @@ def test_axis_horizontal_only_animates_width(nuiitivet_mount) -> None:
 
 def test_opened_toggle_animates_width_to_zero(nuiitivet_mount) -> None:
     with _fake_clock() as clock:
-        opened = _ObservableValue(True)
+        opened = _StateValue(True)
         widget = Collapsible(
             _make_child(100, 50),
             opened=opened,
@@ -171,7 +171,7 @@ def test_opened_toggle_animates_width_to_zero(nuiitivet_mount) -> None:
 
 def test_distinct_motion_out_used_on_close(nuiitivet_mount) -> None:
     with _fake_clock() as clock:
-        opened = _ObservableValue(True)
+        opened = _StateValue(True)
         widget = Collapsible(
             _make_child(100, 50),
             opened=opened,
@@ -263,7 +263,7 @@ def test_collapsed_axis_ignores_the_size_the_parent_echoes_back(nuiitivet_mount)
     back in would pin the target at zero, and the panel could never reopen.
     """
     with _fake_clock() as clock:
-        opened = _ObservableValue(False)
+        opened = _StateValue(False)
         widget = Collapsible(
             _ClampingChild(),
             opened=opened,
@@ -288,7 +288,7 @@ def test_collapsed_axis_ignores_the_size_the_parent_echoes_back(nuiitivet_mount)
 
 def test_unmount_stops_ticking_and_disposes(nuiitivet_mount) -> None:
     with _fake_clock() as clock:
-        opened = _ObservableValue(True)
+        opened = _StateValue(True)
         widget = Collapsible(
             _make_child(100, 50),
             opened=opened,

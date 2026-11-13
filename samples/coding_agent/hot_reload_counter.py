@@ -5,8 +5,8 @@ Run with hot reload::
     python -m nuiitivet.dev run samples/coding_agent/hot_reload_counter.py
 
 Then edit ``build()`` below — tweak the padding, the label, the button style —
-and save. The UI updates in place and ``count`` keeps its value because it is an
-``Observable`` snapshotted and restored across the reload.
+and save. The UI updates in place and ``count`` keeps its value because it is a
+``State`` snapshotted and restored across the reload.
 
 The increment button carries a stable ``key`` so the dev action bridge can drive
 it without pixel coordinates::
@@ -21,11 +21,11 @@ import nuiitivet.material as nv
 
 
 class Counter(nv.ComposableWidget):
-    """A button that increments an observable count."""
+    """A button that increments a count held in a State."""
 
     def __init__(self) -> None:
         super().__init__()
-        self.count = nv.Observable(0)
+        self.count = nv.State(0)
 
     def _increment(self) -> None:
         self.count.value += 1

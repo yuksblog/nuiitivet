@@ -41,21 +41,21 @@ returns the window for chaining. `close()` destroys it: the tree is
 unmounted and the object is finished — to show the same content again,
 construct a new `Window`. The OS close button is equivalent to `close()`.
 
-State that must survive a window therefore lives **in the app layer** — an
-`Observable` created outside the window and passed into its content. This is
+State that must survive a window therefore lives **in the app layer** — a
+`State` created outside the window and passed into its content. This is
 the framework's ordinary state idiom; a palette rebuilt from the same shared
 state reopens exactly where it left off:
 
 ```python
 class AppState:
     def __init__(self) -> None:
-        self.color = nv.Observable("#6750A4")
+        self.color = nv.State("#6750A4")
 
 state = AppState()
 nv.Window(content=lambda: Palette(state), title="Palette").open()
 ```
 
-`window.is_open` is an `Observable[bool]`, and `await window.closed`
+`window.is_open` is a `State[bool]`, and `await window.closed`
 resolves once the window has closed.
 
 ## Everything resolves per window

@@ -1,18 +1,18 @@
-"""Test ComputedObservable .map() and .combine() methods."""
+"""Test ComputedState .map() and .combine() methods."""
 
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 
 
 def test_computed_map():
-    """Test that ComputedObservable supports .map()"""
+    """Test that ComputedState supports .map()"""
 
     class Model:
-        price = Observable(100)
-        quantity = Observable(2)
+        price = State(100)
+        quantity = State(2)
 
     model = Model()
 
-    # Create computed observable
+    # Create computed State
     subtotal = model.price.combine(model.quantity).compute(lambda p, q: p * q)
 
     # Chain .map() on computed
@@ -30,19 +30,19 @@ def test_computed_map():
 
 
 def test_computed_combine():
-    """Test that ComputedObservable supports .combine()"""
+    """Test that ComputedState supports .combine()"""
 
     class Model:
-        a = Observable(10)
-        b = Observable(20)
-        c = Observable(30)
+        a = State(10)
+        b = State(20)
+        c = State(30)
 
     model = Model()
 
-    # Create computed observable
+    # Create computed State
     sum_ab = model.a.combine(model.b).compute(lambda a, b: a + b)
 
-    # Combine computed with another observable
+    # Combine computed with another State
     sum_abc = sum_ab.combine(model.c).compute(lambda ab, c: ab + c)
 
     # Check initial value
@@ -57,15 +57,15 @@ def test_computed_combine():
 
 
 def test_computed_map_chain():
-    """Test chaining multiple .map() on computed observables"""
+    """Test chaining multiple .map() on computed States"""
 
     class Model:
-        value = Observable(5)
+        value = State(5)
 
     model = Model()
 
     # Create computed and chain multiple maps
-    computed = Observable.compute(lambda: model.value.value * 2)
+    computed = State.compute(lambda: model.value.value * 2)
     doubled = computed.map(lambda x: x * 2)
     formatted = doubled.map(lambda x: f"Result: {x}")
 

@@ -1,6 +1,6 @@
 """Material Widgets - FabMenu (MD3 Expressive FAB Menu).
 
-A single ``FabMenu`` drives everything through one ``is_open`` observable: the
+A single ``FabMenu`` drives everything through one ``is_open`` State: the
 FAB morphs its icon between ``add`` and ``close``, the labelled actions reveal
 with a staggered animation, and tapping outside (or selecting an action)
 dismisses the menu via the shared light-dismiss overlay.
@@ -39,7 +39,7 @@ def _build_png_content() -> nv.Container:
     open state with static tonal pills above the solid close button.
     """
     pills = [
-        nv.ExtendedFab(label, icon=icon, style=nv.FabStyle.primary(), expanded=nv.Observable(True))
+        nv.ExtendedFab(label, icon=icon, style=nv.FabStyle.primary(), expanded=nv.State(True))
         for icon, label in _ACTIONS
     ]
     return nv.Container(

@@ -10,7 +10,7 @@ from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.material.split_button import SplitButton
 from nuiitivet.material.styles.button_size import ButtonSize
 from nuiitivet.material.styles.split_button_style import SplitButtonStyle, SPLIT_BUTTON_SIZE_TOKENS
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from tests.helpers.pointer import send_pointer_event_for_test
 
 # ---------------------------------------------------------------------------
@@ -191,24 +191,24 @@ class TestSplitButtonBehavior:
 
 
 # ===========================================================================
-# SplitButton — observable menu_open
+# SplitButton — State menu_open
 # ===========================================================================
 
 
-class TestSplitButtonObservable:
+class TestSplitButtonState:
     def _make_obs(self, initial: bool):
         class _Tmp:
-            x = Observable(initial)
+            x = State(initial)
 
         return _Tmp().x
 
-    def test_external_observable_initial_state(self):
+    def test_external_state_initial_value(self):
         obs = self._make_obs(False)
         btn = SplitButton("Action", menu_open=obs)
         _mount(btn)
         assert btn.menu_open is False
 
-    def test_external_observable_initial_state_true(self):
+    def test_external_state_initial_value_true(self):
         obs = self._make_obs(True)
         btn = SplitButton("Action", menu_open=obs)
         _mount(btn)

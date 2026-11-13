@@ -4,7 +4,7 @@ import nuiitivet.material as nv
 class CounterCard(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.count = nv.Observable(0)
+        self.count = nv.State(0)
 
     def handle_add(self) -> None:
         self.count.value += 1

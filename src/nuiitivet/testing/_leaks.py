@@ -1,8 +1,8 @@
 """Subscription-leak detection: what was subscribed and never disposed.
 
 The framework's central bug class is a subscription that outlives its widget. A
-widget subscribes to an ``Observable``; if unmount does not dispose it, the
-observable keeps a reference to a dead widget's callback, and firing it later
+widget subscribes to a ``State``; if unmount does not dispose it, the
+State keeps a reference to a dead widget's callback, and firing it later
 mutates an unmounted tree -- off the UI thread if the source was a background
 one. The failure is silent where it is introduced and loud somewhere unrelated
 later, so the harness asserts it automatically and an author gets the check
@@ -34,7 +34,7 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
 from nuiitivet.observable.protocols import (
     Disposable,
-    ObservableBase,
+    StateBase,
     _set_subscription_tracker,
     is_internal_subscription,
 )
@@ -53,7 +53,7 @@ _PLUMBING = (
 
 # How far up to look for a call site before giving up. Deep enough for the
 # longest in-tree chain (widget -> bind_to -> Animatable.subscribe ->
-# _ObservableValue.subscribe -> Disposable), with room to spare.
+# _StateValue.subscribe -> Disposable), with room to spare.
 _MAX_SITE_DEPTH = 16
 
 # How many leaks one message lists before truncating.
@@ -212,14 +212,14 @@ def _is_widget(value: Any) -> bool:
 
 
 def attribute(disposable: Disposable) -> Tuple[Any, Any, Any]:
-    """``(observable, callback, owner)`` recovered from the dispose closure.
+    """``(state, callback, owner)`` recovered from the dispose closure.
 
-    Every ``_dispose`` closes over the observable as ``self`` and the subscriber
+    Every ``_dispose`` closes over the State as ``self`` and the subscriber
     as ``cb`` or ``callback``; the owner is then the callback's bound instance,
     or the widget captured by the lambda.
     """
     env = _closure_of(disposable._dispose_fn)
-    observable = env.get("self")
+    state = env.get("self")
     callback = env.get("cb", env.get("callback"))
     owner = getattr(callback, "__self__", None)
     if owner is None and callback is not None:
@@ -227,7 +227,7 @@ def attribute(disposable: Disposable) -> Tuple[Any, Any, Any]:
             if _is_widget(value):
                 owner = value
                 break
-    return observable, callback, owner
+    return state, callback, owner
 
 
 def _classify(record: _Record) -> Tuple[str, Optional[Any]]:
@@ -235,7 +235,7 @@ def _classify(record: _Record) -> Tuple[str, Optional[Any]]:
 
     ``internal`` is an edge of the observable graph itself -- ``Computed``'s
     subscription to its dependencies, ``Debounced``'s to its source. Those are
-    disposed with the observable that owns them and have nothing to do with a
+    disposed with the State that owns them and have nothing to do with a
     widget's lifetime, so reporting them would be the check crying wolf on the
     framework's own wiring. They are recognised by an explicit mark
     (:func:`~nuiitivet.observable.protocols.mark_internal_subscription`) rather
@@ -252,12 +252,12 @@ def _classify(record: _Record) -> Tuple[str, Optional[Any]]:
     intended, and one constructed but never mounted never entered a tree for a
     subscription to outlive. Reporting either would fail tests that are correct.
     """
-    _observable, callback, owner = attribute(record.disposable)
+    _state, callback, owner = attribute(record.disposable)
     if is_internal_subscription(callback):
         return "internal", owner
     if owner is None:
         return "unattributed", None
-    if isinstance(owner, ObservableBase):
+    if isinstance(owner, StateBase):
         return "internal", owner
     if _is_widget(owner):
         # The lifecycle flag rather than a public accessor: there is none, and
@@ -304,7 +304,7 @@ def format_leak_report(widget_leaks: List[Tuple[str, str]], other: int = 0) -> O
 
     lines = [
         f"{len(widget_leaks)} subscription(s) were created during this test and "
-        "never disposed. The observable still holds a callback into a widget that "
+        "never disposed. The State still holds a callback into a widget that "
         "has been unmounted, so firing it now mutates a dead tree:",
         "",
     ]

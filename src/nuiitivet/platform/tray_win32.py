@@ -2,7 +2,7 @@
 
 A dedicated daemon thread owns a hidden window and its message loop, and the
 icon belongs to that window. The popup menu is built from the model on every
-right click, so Observable ``label`` / ``enabled`` / ``checked`` are current
+right click, so State ``label`` / ``enabled`` / ``checked`` are current
 without a sync step. Activations hop onto the UI thread through the runtime
 clock before they touch the model.
 
@@ -25,7 +25,7 @@ if sys.platform != "win32":  # pragma: no cover - guards Windows-only ctypes use
 from ctypes import wintypes
 
 from nuiitivet.menus import read_value
-from nuiitivet.observable import ObservableBase, runtime
+from nuiitivet.observable import StateBase, runtime
 
 from . import notify_icon_win32 as _w
 from .tray_win32_plan import MF_POPUP, MenuItemPlan, load_icon_bgra, plan_menu
@@ -180,7 +180,7 @@ class TrayWin32Bridge:
             raise RuntimeError(f"tray icon could not be installed: {self._error}")
 
         tooltip = self._tray.tooltip
-        if isinstance(tooltip, ObservableBase):
+        if isinstance(tooltip, StateBase):
 
             def on_change(_value: Any) -> None:
                 self._post(_WM_SYNC_TOOLTIP)

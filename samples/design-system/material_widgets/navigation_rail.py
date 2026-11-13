@@ -8,13 +8,13 @@ import nuiitivet.material as nv
 def build_root() -> nv.Widget:
     rail = nv.NavigationRail(
         children=[
-            nv.RailItem(icon="home", label="Home", small_badge=nv.Observable(True)),
-            nv.RailItem(icon="search", label="Search", large_badge=nv.Observable("3")),
+            nv.RailItem(icon="home", label="Home", small_badge=nv.State(True)),
+            nv.RailItem(icon="search", label="Search", large_badge=nv.State("3")),
             nv.RailItem(icon="library_books", label="Library"),
             nv.RailItem(icon="settings", label="Settings"),
         ],
-        index=nv.Observable(0),
-        expanded=nv.Observable(False),
+        index=nv.State(0),
+        expanded=nv.State(False),
         show_menu_button=True,
     )
     body = nv.Card(

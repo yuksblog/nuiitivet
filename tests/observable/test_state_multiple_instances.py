@@ -1,14 +1,14 @@
-"""Test that Observable works correctly with multiple instances."""
+"""Test that State works correctly with multiple instances."""
 
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.widgeting.widget import ComposableWidget
 
 
-def test_observable_multiple_instances():
-    """Each instance should have independent Observable values."""
+def test_state_multiple_instances():
+    """Each instance should have independent State values."""
 
     class CounterWidget(ComposableWidget):
-        count = Observable(0)
+        count = State(0)
 
         def build(self):
             return None
@@ -42,11 +42,11 @@ def test_observable_multiple_instances():
     assert counter3.count.value == 30
 
 
-def test_observable_subscriptions_per_instance():
+def test_state_subscriptions_per_instance():
     """Subscriptions should be independent per instance."""
 
     class CounterWidget(ComposableWidget):
-        count = Observable(0)
+        count = State(0)
 
         def build(self):
             return None
@@ -72,11 +72,11 @@ def test_observable_subscriptions_per_instance():
     assert notifications2 == [20]
 
 
-def test_observable_in_row_builder_scenario():
-    """Test Observable with Row.builder() scenario - multiple instances from same class."""
+def test_state_in_row_builder_scenario():
+    """Test State with Row.builder() scenario - multiple instances from same class."""
 
     class ItemWidget(ComposableWidget):
-        value = Observable("")
+        value = State("")
 
         def __init__(self, initial: str):
             super().__init__()

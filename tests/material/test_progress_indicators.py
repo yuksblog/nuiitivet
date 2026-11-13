@@ -4,7 +4,7 @@ from dataclasses import replace
 import math
 from typing import Any
 
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.material import (
     CircularProgressIndicator,
     IndeterminateCircularProgressIndicator,
@@ -32,8 +32,8 @@ def test_circular_progress_value_clamped():
     assert p.value == 1.0
 
 
-def test_determinate_progress_supports_observable_value():
-    value = Observable(0.1)
+def test_determinate_progress_supports_state_value():
+    value = State(0.1)
     linear = LinearProgressIndicator(value=value)
     circular = CircularProgressIndicator(value=value)
 
@@ -52,8 +52,8 @@ def test_determinate_progress_supports_observable_value():
         circular.on_unmount()
 
 
-def test_progress_supports_observable_disabled():
-    disabled = Observable(False)
+def test_progress_supports_state_disabled():
+    disabled = State(False)
     p = LinearProgressIndicator(value=0.5, disabled=disabled)
 
     p.on_mount()

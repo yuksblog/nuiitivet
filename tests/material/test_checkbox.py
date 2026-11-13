@@ -1,6 +1,6 @@
 from typing import Optional
 from nuiitivet.material.selection_controls import Checkbox
-from nuiitivet.observable import Observable
+from nuiitivet.observable import State
 from nuiitivet.input.pointer import PointerEventType
 from tests.helpers.pointer import send_pointer_event_for_test
 import pytest
@@ -12,7 +12,7 @@ pytestmark = pytest.mark.usefixtures("mobile_form_factor")
 def _make_obs(initial):
 
     class _Tmp:
-        x = Observable(initial)
+        x = State(initial)
 
     return _Tmp().x
 
@@ -135,7 +135,7 @@ def test_disabled_prevents_toggle_and_press():
     assert c.state.pressed is False
 
 
-def test_disabled_observable_updates_interaction_state():
+def test_disabled_state_updates_interaction_state():
     disabled = _make_obs(True)
 
     called: list[Optional[bool]] = []
@@ -156,7 +156,7 @@ def test_disabled_observable_updates_interaction_state():
     assert called == [True]
 
 
-def test_indeterminate_observable_separate_from_checked():
+def test_indeterminate_state_separate_from_checked():
     checked = _make_obs(False)
     indeterminate = _make_obs(True)
 
