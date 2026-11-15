@@ -359,6 +359,8 @@ flowchart LR
     notify["notify_all()"]
     clock[the installed clock]
     threading["is_ui_thread()"]
+    listener[Listener]
+    lifecycle[LifecycleHostMixin]
     leaks[the leak check]
 
     publisher -- "publish(value)" --> topic
@@ -368,7 +370,9 @@ flowchart LR
     topic -- "is_ui_thread()" --> threading
     topic -- "schedule_once(_drain_on_tick, 0) off the UI thread" --> clock
     clock -- "the tick, on the UI thread" --> topic
-    topic -- "notify_all(the living subscribers, value)" --> notify
+    topic -- "notify_all(the living subscribers, value, ask_listeners=True)" --> notify
+    notify -- "_is_listening(), asked of a bound method's owner" --> listener
+    lifecycle -- "is a" --> listener
     notify -- "cb(value)" --> subscriber
     disposable -- "_unsubscribe(callback)" --> topic
     leaks -- "the callback in the dispose closure" --> disposable
@@ -378,9 +382,11 @@ flowchart LR
 | --- | --- |
 | `Topic` | keeps the subscribers and the queue of published values, and drains the queue on the UI thread (`observable/topic.py`) |
 | `Disposable` | ends one subscription; keeps a subscriber that is not a bound method alive (`observable/protocols.py`) |
-| `notify_all()` | hands one value to each subscriber, surviving one that raises |
+| `notify_all()` | hands one value to each subscriber, surviving one that raises; asks a `Listener` first when a `Topic` calls it |
 | the installed clock | carries a drain to the UI thread |
 | `is_ui_thread()` | tells a publish on the UI thread from one off it |
+| `Listener` | answers whether its bound methods may be called now (`observable/protocols.py`) |
+| `LifecycleHostMixin` | the `Listener` a widget is; listens while the widget is mounted (`widgeting/widget_lifecycle.py`) |
 | the leak check | recovers a subscription's callback and owner from its `Disposable` (`testing/_leaks.py`) |
 | the publisher | whatever holds the `Topic` and calls `publish` |
 | the subscriber | a callable, most often a bound method of a ViewModel or a widget |
@@ -438,6 +444,32 @@ sequenceDiagram
     T-->>P: return
 ```
 
+#### A subscriber unmounts a later one
+
+```mermaid
+sequenceDiagram
+    participant P as the publisher (UI thread)
+    participant T as Topic
+    participant N as notify_all()
+    participant A as subscriber A (a function)
+    participant L as LifecycleHostMixin (the owner of subscriber B)
+    participant B as subscriber B
+
+    P->>T: publish(1)
+    T->>N: A and B, with 1
+    N->>A: cb(1)
+    Note over A,L: A takes B's widget out of the tree
+    N->>L: _is_listening()
+    alt listening
+        L-->>N: True
+        N->>B: cb(1)
+    else not listening
+        L-->>N: False
+        Note over N,B: B is not called, and 1 is not kept for B
+    end
+    T-->>P: return
+```
+
 ### Promises
 
 - A `Topic` is not a `StateProtocol`. No widget parameter accepts one.
@@ -465,4 +497,20 @@ sequenceDiagram
 - The dispose closure holds the `Topic` under the name `self`. It holds the
   subscriber under the name `callback`. The leak check reads both by those
   names. It resolves a `WeakMethod` it finds there.
+- A bound method is not called while its owner answers `_is_listening()`
+  false. The answer is read per call, not per publish.
+- Every promise in this list about reaching a subscriber holds for the
+  subscribers that are called.
+- A skipped value never reaches that subscriber. The subscription stays.
+- Only a bound method whose owner is a `Listener` is asked. A function, a
+  lambda and a method of any other object are called unasked.
+- A widget answers `_is_listening()` true from the start of `mount()` to the
+  end of `unmount()`.
+- The owner of a `dispatch=False` subscriber is asked on the publishing
+  thread.
+- `notify_all()` asks a `Listener` only when a `Topic` calls it.
+- `topic.py`, `_notify.py` and `protocols.py` import nothing from
+  `nuiitivet.widgeting`.
+- The leak check exempts a `Listener`'s bound method left subscribed to a
+  `Topic`.
 - `batch()` does not defer a publish.

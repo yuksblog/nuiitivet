@@ -65,18 +65,14 @@ The type in the brackets is what the subscribed method receives. Each
 
 ### 2. Show the snackbar
 
-Subscribe a method of the screen in `on_mount`. Hand the result to `bind()`,
-and the method is not called after the screen unmounts:
+Subscribe a method of the screen in `__init__`:
 
 ```python
 class ImportScreen(nv.ComposableWidget):
     def __init__(self, importer: CsvImporter) -> None:
         super().__init__()
         self._importer = importer
-
-    def on_mount(self) -> None:
-        super().on_mount()
-        self.bind(self._importer.finished.subscribe(self.show_finished))
+        importer.finished.subscribe(self.show_finished)
 
     def show_finished(self, path: str) -> None:
         nv.Overlay.of(self).snackbar(f"Imported {path}")
@@ -91,6 +87,8 @@ class ImportScreen(nv.ComposableWidget):
         )
 ```
 
+You keep nothing that `subscribe()` returns, and you write no `bind()`.
+
 Press Import, and a snackbar appears for each file, in the order the files
 finish. `publish()` runs on the worker thread. `show_finished` runs on the UI
 thread.
@@ -99,10 +97,10 @@ The whole screen is `samples/state-management/topic.py`.
 
 ## Keep in mind
 
-### A publish reaches the screens subscribed at that moment
+### A publish reaches the screens mounted at that moment
 
-Start the import on one screen and move to another. The files that finish
-after the move reach the second screen only:
+Start the import on one screen, close it and open another. The files that
+finish after that reach the second screen only:
 
 ```mermaid
 sequenceDiagram
@@ -110,14 +108,19 @@ sequenceDiagram
     participant finished as finished (Topic)
     participant first as First screen
     participant second as Second screen
-    Note over first: mounted, subscribed
+    Note over first: mounted
     importer->>finished: publish("contacts.csv")
     finished->>first: show_finished("contacts.csv")
-    Note over first,second: you move to the second screen
-    Note over second: mounted, subscribed
+    Note over first,second: you close the first screen and open the second
+    Note over first: unmounted
+    Note over second: mounted
     importer->>finished: publish("orders.csv")
     finished->>second: show_finished("orders.csv")
 ```
+
+Open the first screen again, and it does not show the files it missed. A
+screen with another pushed on top of it stays mounted, and still shows its
+snackbars.
 
 ### Subscribe a method, not a lambda
 

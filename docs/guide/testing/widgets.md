@@ -141,10 +141,11 @@ binding is released at unmount, so a widget that subscribed in its constructor
 stops working if it is ever re-mounted.
 
 What is *not* reported: a widget that was never mounted (nothing outlived
-anything), a widget still mounted in another harness, and the observable graph's
-own internal edges. A subscription with no widget behind it — app code with a
-lifetime the harness cannot know — is counted in the message but never fails a
-test on its own.
+anything), a widget still mounted in another harness, a widget's own method
+subscribed to a `Topic` (it is not called after the unmount), and the observable
+graph's own internal edges. A subscription with no widget behind it — app code
+with a lifetime the harness cannot know — is counted in the message but never
+fails a test on its own.
 
 To turn it down, narrowest wins:
 

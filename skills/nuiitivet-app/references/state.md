@@ -394,10 +394,7 @@ class ImportScreen(nv.ComposableWidget):           # the screen subscribes a met
     def __init__(self, importer: CsvImporter) -> None:
         super().__init__()
         self._importer = importer
-
-    def on_mount(self) -> None:
-        super().on_mount()
-        self.bind(self._importer.finished.subscribe(self.show_finished))  # stops at unmount
+        importer.finished.subscribe(self.show_finished)  # in __init__: no on_mount, no bind()
 
     def show_finished(self, path: str) -> None:    # on the UI thread, once per publish, in order
         nv.Overlay.of(self).snackbar(f"Imported {path}")
@@ -411,9 +408,9 @@ class ImportScreen(nv.ComposableWidget):           # the screen subscribes a met
 - **A plain class subscribes a method and keeps nothing.**
   `importer.finished.subscribe(self._on_finished)` is held weakly and stops
   when the object is collected.
-- **A subscriber receives only what is published while it is subscribed.** A
-  screen mounted later gets nothing from before. What it must still show is a
-  `State`.
+- **A widget's method is called only while the widget is mounted.** A publish
+  made at any other time never reaches it. What it must still show is a
+  `State`. A screen under a pushed one is still mounted.
 - **`subscribe(cb, dispatch=False)`** runs `cb` inside `publish()`, on the
   publishing thread. Use it for a subscriber that belongs to the worker, such
   as a log line; no widget in that `cb`.

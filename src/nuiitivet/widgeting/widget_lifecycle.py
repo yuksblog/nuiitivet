@@ -7,6 +7,7 @@ import logging
 from typing import Any, Callable, List, Optional, Tuple
 
 from ..common.logging_once import exception_once
+from ..observable.protocols import Listener
 from ..runtime.threading import assert_ui_thread
 from .callbacks import PendingTask, VoidCallback, invoke_event_handler, report_contained
 from .context_lookup import forget_app_scope
@@ -15,7 +16,7 @@ from .context_lookup import forget_app_scope
 _logger = logging.getLogger(__name__)
 
 
-class LifecycleHostMixin:
+class LifecycleHostMixin(Listener):
     """Manages app association and lifecycle hooks."""
 
     # The base hooks below end both super() chains, so a flag set there tells
@@ -23,6 +24,10 @@ class LifecycleHostMixin:
     _requires_on_mount_chain: bool = False
     _on_mount_chained: bool = False
     _on_unmount_chained: bool = False
+
+    # A class default: a Topic may ask a widget that subscribed above
+    # ``super().__init__()``.
+    _mounted: bool = False
 
     _app: Any
     _mount_callbacks: List[VoidCallback]
@@ -39,6 +44,9 @@ class LifecycleHostMixin:
         self._mount_tasks = []
         self._unmounted = False
         self._mounted = False
+
+    def _is_listening(self) -> bool:
+        return self._mounted
 
     # --- Lifecycle ---------------------------------------------------------
     def mount(self, app) -> None:

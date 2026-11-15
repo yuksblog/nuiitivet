@@ -153,6 +153,23 @@ class MutableStateBase(StateBase[T]):
         self.value = value
 
 
+class Listener:
+    """An owner a ``Topic`` asks before it calls one of its bound methods.
+
+    The ``Topic`` calls the method only while :meth:`_is_listening` is true. It
+    skips the value otherwise, and the subscription stays. A widget is a
+    ``Listener`` that listens while mounted: one that left the tree lives until
+    the cycle collector runs, and a publish must not reach it meanwhile.
+
+    A concrete base for the reason :class:`StateBase` is one.
+    """
+
+    __slots__ = ()
+
+    def _is_listening(self) -> bool:  # pragma: no cover - overridden
+        raise NotImplementedError
+
+
 @runtime_checkable
 class ReadOnlyStateProtocol(Protocol, Generic[T_co]):
     def subscribe(self, cb: Callable[[T_co], None]) -> Disposable: ...

@@ -124,7 +124,7 @@ they see.** Its place follows from when they meet it:
 | The reader meets it | Where | Form |
 | --- | --- | --- |
 | on the first round, whoever they are | the step | one sentence after the action, as what they see ("the selection stays until the next click"); no callout |
-| after the round, whoever they are: the app grows a second screen, or they write the call another way | a "Keep in mind" section after the round | the fact, the rule or the request as the heading ("A publish reaches the screens subscribed at that moment", "Subscribe a method, not a lambda"); the fact under it, with a scene where one helps; no workaround for a behaviour that is correct |
+| after the round, whoever they are: the app grows a second screen, or they write the call another way | a "Keep in mind" section after the round | the fact, the rule or the request as the heading ("A publish reaches the screens mounted at that moment", "Subscribe a method, not a lambda"); the fact under it, with a scene where one helps; no workaround for a behaviour that is correct |
 | only with a particular widget or setup | the way's section in the reference, or a case below it | a heading when it runs a few lines, a sentence in the way otherwise |
 | as a refusal, or as nothing happening | the page's last lists ("What it refuses", "What does nothing") | one line each; the reader searches backwards from the symptom |
 | as a loss they cannot see coming: no confirmation, an edit that silently stops applying | a callout in the step | one or two on a page, naming the loss |

@@ -99,7 +99,7 @@ class Topic(Generic[T]):
                     self._is_scheduled = True
                     runtime.clock.schedule_once(self._drain_on_tick, 0)
         if inline:
-            notify_all(inline, lambda: value, logger=logger, key="topic")
+            notify_all(inline, lambda: value, logger=logger, key="topic", ask_listeners=True)
         if queued and on_ui_thread:
             self._drain()
 
@@ -111,6 +111,10 @@ class Topic(Generic[T]):
         references it, and the returned ``Disposable`` does. A callable that
         takes no weak reference, such as a built-in method, is held until
         disposed.
+
+        A widget's method is called only while the widget is mounted. A value
+        published at any other time never reaches it. A lambda that calls into
+        a widget is called whatever the widget's state.
 
         Args:
             cb: Receives each published value.
@@ -174,7 +178,7 @@ class Topic(Generic[T]):
                         return
                     value = self._queue.popleft()
                     live = self._live(dispatch=True)
-                notify_all(live, lambda: value, logger=logger, key="topic")
+                notify_all(live, lambda: value, logger=logger, key="topic", ask_listeners=True)
         except BaseException:
             with self._lock:
                 self._is_draining = False

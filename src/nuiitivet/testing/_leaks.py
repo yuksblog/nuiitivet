@@ -35,10 +35,12 @@ from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
 from nuiitivet.observable.protocols import (
     Disposable,
+    Listener,
     StateBase,
     _set_subscription_tracker,
     is_internal_subscription,
 )
+from nuiitivet.observable.topic import Topic
 
 from .errors import SubscriptionLeakError
 
@@ -235,7 +237,7 @@ def attribute(disposable: Disposable) -> Tuple[Any, Any, Any]:
 
 
 def _classify(record: _Record) -> Tuple[str, Optional[Any]]:
-    """``("widget" | "live" | "internal" | "unattributed", owner)``.
+    """``("widget" | "live" | "internal" | "listener" | "unattributed", owner)``.
 
     ``internal`` is an edge of the observable graph itself -- ``Computed``'s
     subscription to its dependencies, ``Debounced``'s to its source. Those are
@@ -255,10 +257,17 @@ def _classify(record: _Record) -> Tuple[str, Optional[Any]]:
     mounted in a second harness the test has not closed yet is working exactly as
     intended, and one constructed but never mounted never entered a tree for a
     subscription to outlive. Reporting either would fail tests that are correct.
+
+    ``listener`` is a ``Listener``'s own method subscribed to a ``Topic``. The
+    ``Topic`` stops calling it at unmount, so the open subscription reaches no
+    dead tree. A lambda over the same widget is not one: it is called whatever
+    the widget's state.
     """
-    _state, callback, owner = attribute(record.disposable)
+    state, callback, owner = attribute(record.disposable)
     if is_internal_subscription(callback):
         return "internal", owner
+    if isinstance(state, Topic) and isinstance(getattr(callback, "__self__", None), Listener):
+        return "listener", owner
     if owner is None:
         return "unattributed", None
     if isinstance(owner, StateBase):
