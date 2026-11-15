@@ -273,7 +273,8 @@ day-to-day nuiitivet code is here, offline.
 - **State, reactivity, derived/async values** →
   [references/state.md](references/state.md) — `State`, `combine`/`compute`,
   `map`/`debounce`/`filter`/`scan`, `switch_map` for async work, background threads and
-  cancellation, `@nv.worker` / `@nv.server` for work that also runs in a browser, ViewModel pattern.
+  cancellation, `@nv.worker` / `@nv.server` for work that also runs in a browser,
+  `Topic` for events, ViewModel pattern.
 - **Layout, sizing, spacing, dynamic lists, modifiers** →
   [references/layout.md](references/layout.md).
 - **Navigation, dialogs, snackbars, overlays** →

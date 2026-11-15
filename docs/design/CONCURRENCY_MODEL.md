@@ -1,7 +1,7 @@
 # Concurrency Model
 
 The UI runs on one thread. A value produced on another thread reaches the UI
-through a `State`.
+through a `State` or a `Topic`.
 
 ## Overview
 
@@ -22,7 +22,7 @@ flowchart LR
     backend -- "set_clock(clock)" --> marshal
     tree -- "assert_ui_thread()" --> thread
     marshal -- "is_ui_thread()" --> thread
-    workers -- "obs.value = result, off the UI thread" --> marshal
+    workers -- "obs.value = result · topic.publish(event), off the UI thread" --> marshal
     marshal -- "the subscribers, on the UI thread" --> tree
     harness -- "set_clock(harness)" --> marshal
 ```
@@ -30,7 +30,7 @@ flowchart LR
 | Module | Role |
 | --- | --- |
 | The UI Thread | one definition of which thread the UI runs on |
-| The Marshal | carries a `State` write from any thread onto the UI thread |
+| The Marshal | carries a `State` write or a `Topic` publish from any thread onto the UI thread |
 | The Workers | the places work runs away from the UI thread |
 | The Harness | runs a test on the UI thread with its own clock |
 | the widget tree | the subscribers ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)) |
@@ -40,7 +40,7 @@ flowchart LR
 
 - A worker thread never touches a widget.
 - Every value that crosses from a worker to the UI crosses through a
-  `State`.
+  `State` or a `Topic`.
 
 ## The UI Thread
 
@@ -80,7 +80,8 @@ flowchart LR
 
 ## The Marshal
 
-A `State` written off the UI thread notifies on the UI thread.
+A `State` written off the UI thread notifies on the UI thread. A `Topic`
+published off the UI thread delivers there.
 
 ### Structure
 
@@ -89,16 +90,19 @@ flowchart LR
     value[observable/value.py]
     computed[observable/computed.py]
     batching[observable/batching.py]
+    topic[observable/topic.py]
     clock[observable/runtime.py]
     threading[runtime/threading.py]
     worker[a worker thread]
     tree[the widget tree]
 
     worker -- "obs.value = v" --> value
-    value & computed & batching -- "is_ui_thread()" --> threading
+    worker -- "topic.publish(v)" --> topic
+    value & computed & batching & topic -- "is_ui_thread()" --> threading
     value & computed & batching -- "schedule_once(_process_pending_update, 0)" --> clock
-    clock -- "the tick, on the UI thread" --> value & computed & batching
-    value & computed -- "the subscribers" --> tree
+    topic -- "schedule_once(_drain_on_tick, 0)" --> clock
+    clock -- "the tick, on the UI thread" --> value & computed & batching & topic
+    value & computed & topic -- "the subscribers" --> tree
 ```
 
 | Module | Role |
@@ -106,9 +110,10 @@ flowchart LR
 | `observable/value.py` | `State`: holds a pending value and the scheduled flag; applies and notifies |
 | `observable/computed.py` | `ComputedState`: the same for a derived value |
 | `observable/batching.py` | `BatchContext`: flushes the queued recomputes |
+| `observable/topic.py` | `Topic`: holds the queue of published values and the scheduled flag; drains the queue on the tick ([OBSERVABLE.md](OBSERVABLE.md)) |
 | `observable/runtime.py` | the installed clock ([OBSERVABLE.md](OBSERVABLE.md)) |
 | `runtime/threading.py` | the thread test (The UI Thread) |
-| a worker thread | writes a value |
+| a worker thread | writes a value or publishes one |
 | the widget tree | the subscribers |
 
 ### Sequence
@@ -146,6 +151,9 @@ sequenceDiagram
   tick coalesce to the latest value.
 - A write on the UI thread applies inline.
 - A batch whose `State`s want the UI thread flushes its recomputes there.
+- A publish off the UI thread is delivered no later than the next tick.
+  Every publish before the tick is delivered. The order is the order of
+  publishing.
 
 ## The Workers
 

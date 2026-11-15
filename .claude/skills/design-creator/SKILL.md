@@ -98,9 +98,15 @@ repeated only where the two places are far apart.
 capture is a construction-time concern" makes the reader translate back to
 "the runner wraps `Widget.__init__` and records the frames"; write the second.
 
-**A sentence carries one fact, whole.** Two facts joined by "and" or a colon
-are two facts in a sentence that got shorter and harder. Give each its own
-sentence, or delete the one the reader does not need.
+**A sentence carries one fact, whole.** Two facts that would each stand
+alone, joined by "and" or a colon, are two facts in a sentence that got
+shorter and harder. Give each its own sentence, or delete the one the reader
+does not need. An action joined to its result is one fact ("Press Import,
+and a snackbar appears for each file"). So is a statement with its examples
+after a colon.
+
+**Wrap by the rendered width.** A link counts as its text; the URL adds
+nothing. Counting the URL breaks a short sentence in two around its link.
 
 ## Standing Alone
 
@@ -123,7 +129,11 @@ GitHub, diffs as text, and a tool that never renders it can still read it.
   drawing *is* the point
 
 `mkdocs build --strict` does not validate Mermaid syntax. Check a new diagram
-in `mkdocs serve` or the GitHub preview.
+in `mkdocs serve` or the GitHub preview. A node id that is a Mermaid keyword
+does not parse: `style`, `call`, `interpolate`, `end`, `class`, `click`,
+`default`, `subgraph`, `direction`. Name the node after the module
+(`mbstyle`, `safecall`, `lerp`). A `;` inside a label breaks a
+`sequenceDiagram`.
 
 ## Checklist
 
@@ -134,5 +144,5 @@ in `mkdocs serve` or the GitHub preview.
 - [ ] No reason, no alternative, no history: `grep -nwE 'because|since|so that' docs/design/<page>.md`, every hit read, every reason deleted
 - [ ] No link into `docs/guide/`, no issue number: `uv run pytest tests/test_design_docs_stand_alone.py`
 - [ ] Structure drawn as `mermaid`; every new diagram rendered once
-- [ ] One fact per sentence; no two joined by "and" or a colon
+- [ ] One fact per sentence; no two that stand alone joined by "and" or a colon
 - [ ] `uv run --group docs mkdocs build --strict` passes

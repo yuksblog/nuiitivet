@@ -196,6 +196,16 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
      "Accumulation is an operator: source.scan(lambda acc, value: ..., initial=...) -- the "
      "accumulator is the returned State's value, so there is no second State to seed "
      "and no Disposable to hold. initial is required and keyword-only."),
+    # An event carried by a State. A compare that never matches turns off the
+    # equality check and leaves the worker-side coalescing in place.
+    (re.compile(r"\bcompare\s*=\s*lambda\s+\w+\s*,\s*\w+\s*:\s*False\b"), "event as State",
+     "An event is an nv.Topic, not a State that always notifies: saved = nv.Topic[str](), "
+     "self.saved.publish(title), store.saved.subscribe(self._on_saved). Every publish is "
+     "delivered, from a worker thread too."),
+    (re.compile(r"\bPublishSubject\b|\bEventEmitter\b|\bpyqtSignal\b"), "Rx/JS/Qt",
+     "Events go through nv.Topic: saved = nv.Topic[str](), publish(value) to send, "
+     "subscribe(cb) to receive. A method subscriber is held weakly, so a ViewModel "
+     "disposes nothing; a widget writes self.bind(topic.subscribe(cb))."),
     # LINQ / Rx operator aliases. Neither exists: aliases for the same operation
     # were rejected outright, and `where` in particular now has a real counterpart
     # whose required seed is the whole point.

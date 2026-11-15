@@ -94,7 +94,8 @@ Neither applies to writes made on the UI thread, which are applied inline.
 Coalescing is what you want for anything a widget renders: an import that
 writes its row counter 400,000 times still paints one progress bar per frame,
 showing the newest count. It is the wrong behaviour only when a consumer has to
-see every value rather than the newest one.
+see every value rather than the newest one. That consumer subscribes to a
+[`Topic`](topic.md).
 
 ## After the widget is gone
 
@@ -120,15 +121,12 @@ the logic layer — pass `dispatch=False`:
 
 ```python
 class CsvImport:
-    # Consumed by the audit-log writer on the worker thread, never by a widget.
-    rejected_row = nv.State(0, dispatch=False)
+    # Written and read back on the worker thread, never bound by a widget.
+    position = nv.State(0, dispatch=False)
 ```
 
-Notification then stays synchronous on the writing thread, and **every**
-intermediate value is delivered rather than only the latest per tick. Reach for
-it when a consumer counts values rather than rendering the newest one — a log
-that must record every rejected row cannot be built from a `State` whose
-intermediate values are dropped.
+The write then applies at once, on the writing thread. The worker reads back
+the value it just wrote, and subscribers run before the assignment returns.
 
 Binding a widget to a `dispatch=False` `State` and then writing to it from a
 worker thread is the bug the default exists to prevent, so opt out only for
@@ -146,6 +144,30 @@ doubled = internal.map(lambda v: v * 2)      # also dispatch=False
 `combine(...).compute(...)` follows the sources, dispatching unless **every**
 source opted out — one source that expects marshalling is enough to need it.
 Pass `dispatch=` explicitly to override either way.
+
+### A `Topic` subscriber that stays on the worker
+
+A method subscribed to a [`Topic`](topic.md) runs on the UI thread. A worker
+that publishes has moved on to its next file before the method runs. For a
+subscriber that touches no widget, such as a log line, pass `dispatch=False`
+to `subscribe()`:
+
+```python
+import logging
+
+audit = logging.getLogger("audit")
+
+
+def write_audit_line(path: str) -> None:
+    audit.info("imported %s", path)
+
+
+importer = CsvImporter()
+importer.finished.subscribe(write_audit_line, dispatch=False)
+```
+
+`publish()` now returns after the line is written. `write_audit_line` runs on
+the thread that published.
 
 ## Testing
 

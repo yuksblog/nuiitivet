@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import os
 import sys
+import weakref
 from contextlib import contextmanager
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
@@ -221,6 +222,9 @@ def attribute(disposable: Disposable) -> Tuple[Any, Any, Any]:
     env = _closure_of(disposable._dispose_fn)
     state = env.get("self")
     callback = env.get("cb", env.get("callback"))
+    if isinstance(callback, weakref.WeakMethod):
+        # A Topic's Disposable holds a bound method weakly.
+        callback = callback()
     owner = getattr(callback, "__self__", None)
     if owner is None and callback is not None:
         for value in _closure_of(callback).values():

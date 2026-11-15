@@ -4,7 +4,8 @@ A `State` is a value that notifies when it changes. A domain model, a
 service or a widget holds one. Every node of the graph is built on one shared
 base. Two kinds of node stand on it: a derivation of other nodes, and a
 wrapper that reshapes what its source emits. A widget joins the graph through
-its value cell. The thread the graph runs on is defined in
+its value cell. A `Topic` stands beside the graph. It carries events. It
+holds no value. The thread the graph runs on is defined in
 [CONCURRENCY_MODEL.md](CONCURRENCY_MODEL.md).
 
 ## What Every Observable Shares
@@ -12,7 +13,7 @@ its value cell. The thread the graph runs on is defined in
 The shared base carries the held value, the notify loop, the batch, the
 marshalling of a worker's write onto the UI thread, and the containment of a
 callback that raises. The Structure is the whole page: the shared modules,
-and the three subjects below as groups.
+and the four subjects below as groups.
 
 ### Structure
 
@@ -33,6 +34,7 @@ flowchart LR
     deriving[Deriving Operators]
     wrapping[Wrapping Operators]
     cell[The Value Cell]
+    topic[Topic]
 
     handler -- ".value = …" --> value
     worker -- ".value = …" --> value
@@ -45,6 +47,7 @@ flowchart LR
     deriving -- "subscribe to the sources · record_computed · _tracking_context" --> base
     wrapping -- "subscribe to the source · schedule_once · notify_all" --> base
     cell -- "isinstance(StateProtocol) · subscribe" --> base
+    topic -- "Disposable · notify_all · schedule_once · is_ui_thread()" --> base
 ```
 
 | Module | Role |
@@ -60,6 +63,7 @@ flowchart LR
 | Deriving Operators | compute a value from other nodes and hold no state |
 | Wrapping Operators | stay subscribed to a source and reshape what it emits |
 | The Value Cell | the cell an input widget keeps its value in, and the bindings that repaint it |
+| Topic | hands each published value to its subscribers |
 
 ### Sequence
 
@@ -337,3 +341,128 @@ sequenceDiagram
 - An operator that returns a read-only view returns a distinct object.
 - `bind()` retains a `Disposable`. Unmount disposes every binding.
 - A bound value's update invalidates the widget once per frame.
+
+## Topic
+
+A `State` says what a value is now. A `Topic` says that something happened,
+once each time it happens. It holds no value. A publish that no subscriber
+hears is gone.
+
+### Structure
+
+```mermaid
+flowchart LR
+    publisher[(the publisher)]
+    subscriber[(the subscriber)]
+    topic[Topic]
+    disposable[Disposable]
+    notify["notify_all()"]
+    clock[the installed clock]
+    threading["is_ui_thread()"]
+    leaks[the leak check]
+
+    publisher -- "publish(value)" --> topic
+    subscriber -- "subscribe(cb, dispatch), returns the Disposable" --> topic
+    subscriber -- "dispose()" --> disposable
+    topic -- "a weak reference to cb" --> subscriber
+    topic -- "is_ui_thread()" --> threading
+    topic -- "schedule_once(_drain_on_tick, 0) off the UI thread" --> clock
+    clock -- "the tick, on the UI thread" --> topic
+    topic -- "notify_all(the living subscribers, value)" --> notify
+    notify -- "cb(value)" --> subscriber
+    disposable -- "_unsubscribe(callback)" --> topic
+    leaks -- "the callback in the dispose closure" --> disposable
+```
+
+| Module | Role |
+| --- | --- |
+| `Topic` | keeps the subscribers and the queue of published values, and drains the queue on the UI thread (`observable/topic.py`) |
+| `Disposable` | ends one subscription; keeps a subscriber that is not a bound method alive (`observable/protocols.py`) |
+| `notify_all()` | hands one value to each subscriber, surviving one that raises |
+| the installed clock | carries a drain to the UI thread |
+| `is_ui_thread()` | tells a publish on the UI thread from one off it |
+| the leak check | recovers a subscription's callback and owner from its `Disposable` (`testing/_leaks.py`) |
+| the publisher | whatever holds the `Topic` and calls `publish` |
+| the subscriber | a callable, most often a bound method of a ViewModel or a widget |
+
+### Sequence
+
+#### A publish from a worker thread
+
+```mermaid
+sequenceDiagram
+    participant P as the publisher (worker thread)
+    participant T as Topic
+    participant C as the installed clock
+    participant N as notify_all()
+    participant S as the subscribers
+
+    P->>T: publish(1)
+    T->>T: queue 1
+    T->>C: schedule_once(_drain_on_tick, 0)
+    T->>N: the dispatch=False subscribers, with 1
+    N->>S: cb(1), on the worker thread
+    P->>T: publish(2)
+    T->>T: queue 2, a drain is already scheduled
+    T->>N: the dispatch=False subscribers, with 2
+    N->>S: cb(2), on the worker thread
+    Note over C: the next tick, on the UI thread
+    C->>T: _drain_on_tick
+    loop until the queue is empty
+        T->>N: the dispatch=True subscribers subscribed now, with the oldest value
+        N->>S: cb(value), on the UI thread
+    end
+```
+
+#### A publish from inside a subscriber
+
+```mermaid
+sequenceDiagram
+    participant P as the publisher (UI thread)
+    participant T as Topic
+    participant N as notify_all()
+    participant A as subscriber A
+    participant B as subscriber B
+
+    P->>T: publish(1)
+    T->>T: queue 1, start the drain
+    T->>N: A and B, with 1
+    N->>A: cb(1)
+    A->>T: publish(2)
+    T->>T: queue 2, a drain is running
+    T-->>A: return
+    N->>B: cb(1)
+    T->>N: A and B, with 2
+    N->>A: cb(2)
+    N->>B: cb(2)
+    T-->>P: return
+```
+
+### Promises
+
+- A `Topic` is not a `StateProtocol`. No widget parameter accepts one.
+- A publish is compared with nothing. Each one is delivered.
+- `dispatch` belongs to the subscription, not to the `Topic`.
+- A `dispatch=True` subscriber runs on the UI thread. Every such subscriber
+  receives the values in the order `publish` accepted them, whichever threads
+  published.
+- A publish on the UI thread, outside a drain, has reached every
+  `dispatch=True` subscriber when `publish` returns. So has every value
+  queued before it.
+- A publish off the UI thread reaches the `dispatch=True` subscribers no
+  later than the next tick.
+- A queued value goes to the `dispatch=True` subscribers subscribed when the
+  UI thread delivers it, not those subscribed when it was published.
+- A value published while no `dispatch=True` subscriber exists never reaches
+  one that subscribes later.
+- A publish made while a drain runs is delivered by that drain, after the
+  value in hand has reached every `dispatch=True` subscriber.
+- A `dispatch=False` subscriber runs on the publishing thread, before
+  `publish` returns. It takes no part in the queue.
+- The `Topic` holds a subscriber weakly wherever the callable takes a weak
+  reference. The `Disposable` holds a bound method weakly. It holds any other
+  callable strongly.
+- The dispose closure holds the `Topic` under the name `self`. It holds the
+  subscriber under the name `callback`. The leak check reads both by those
+  names. It resolves a `WeakMethod` it finds there.
+- `batch()` does not defer a publish.
