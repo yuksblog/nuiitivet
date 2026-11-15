@@ -31,10 +31,7 @@ class ImportScreen(nv.ComposableWidget):
     def __init__(self, importer: CsvImporter) -> None:
         super().__init__()
         self._importer = importer
-
-    def on_mount(self) -> None:
-        super().on_mount()
-        self.bind(self._importer.finished.subscribe(self.show_finished))
+        importer.finished.subscribe(self.show_finished)
 
     def show_finished(self, path: str) -> None:
         nv.Overlay.of(self).snackbar(f"Imported {path}")

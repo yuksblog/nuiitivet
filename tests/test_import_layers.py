@@ -10,6 +10,10 @@ clients, so an overlay import of a modifier closes a cycle.
 The remote package is the app's API for server functions and runs on both
 targets; the web package is the tooling that serves and builds the page. An
 import from remote into web would load the tooling into every desktop app.
+
+A Topic asks a widget whether it is mounted through ``Listener``, which the
+observable package defines and the widget inherits. An import of widgeting into
+the modules that deliver would turn that question into a dependency.
 """
 
 from __future__ import annotations
@@ -21,7 +25,7 @@ import pytest
 
 SRC = Path(__file__).parent.parent / "src" / "nuiitivet"
 
-# (importing package, imported package)
+# (importing package or module, imported package)
 FORBIDDEN: list[tuple[str, str]] = [
     ("overlay", "navigation"),
     ("navigation", "overlay"),
@@ -29,7 +33,15 @@ FORBIDDEN: list[tuple[str, str]] = [
     ("transition", "overlay"),
     ("overlay", "modifiers"),
     ("remote", "web"),
+    ("observable/topic.py", "widgeting"),
+    ("observable/_notify.py", "widgeting"),
+    ("observable/protocols.py", "widgeting"),
 ]
+
+
+def _sources(importer: str) -> list[Path]:
+    path = SRC / importer
+    return [path] if path.is_file() else sorted(path.rglob("*.py"))
 
 
 def _imported_modules(path: Path) -> list[tuple[int, str]]:
@@ -53,7 +65,7 @@ def test_package_does_not_import(importer: str, imported: str) -> None:
     target = f"nuiitivet.{imported}"
     violations = [
         f"{path.relative_to(SRC)}:{lineno}: {module}"
-        for path in sorted((SRC / importer).rglob("*.py"))
+        for path in _sources(importer)
         for lineno, module in _imported_modules(path)
         if module == target or module.startswith(target + ".")
     ]

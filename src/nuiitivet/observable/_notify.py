@@ -27,9 +27,15 @@ from typing import Callable, List, TypeVar
 
 from nuiitivet.common.logging_once import exception_once_per_exc
 
-from .protocols import is_internal_subscription
+from .protocols import Listener, is_internal_subscription
 
 T = TypeVar("T")
+
+
+def _owner_is_listening(callback: Callable[[T], None]) -> bool:
+    """Whether ``callback`` may be called now. True for a callable with no ``Listener`` behind it."""
+    owner = getattr(callback, "__self__", None)
+    return not isinstance(owner, Listener) or owner._is_listening()
 
 
 def notify_all(
@@ -38,6 +44,7 @@ def notify_all(
     *,
     logger: logging.Logger,
     key: str,
+    ask_listeners: bool = False,
 ) -> None:
     """Notify each of ``subscribers`` in turn, surviving any that raise.
 
@@ -56,8 +63,15 @@ def notify_all(
     :func:`~nuiitivet.common.logging_once.exception_once_per_exc`, so two
     different broken subscribers are reported separately while one that keeps
     failing stays a single line.
+
+    ``ask_listeners`` skips a bound method whose owner is a
+    :class:`~nuiitivet.observable.protocols.Listener` that is not listening.
+    The owner is asked just before its own call, because a subscriber earlier
+    in the list may have unmounted it.
     """
     for callback in list(subscribers):
+        if ask_listeners and not _owner_is_listening(callback):
+            continue
         try:
             callback(current())
         except Exception:

@@ -12,8 +12,10 @@ import pytest
 
 import nuiitivet.material as nv
 from nuiitivet.common.logging_once import _clear_log_once_keys_for_tests
+from nuiitivet.layout.column import Column
 from nuiitivet.observable import protocols
 from nuiitivet.observable.topic import Topic
+from nuiitivet.observable.value import State
 from nuiitivet.testing import HarnessClock, SubscriptionLeakError, mount
 from nuiitivet.widgeting.widget import Widget
 
@@ -331,44 +333,205 @@ def test_a_topic_declared_on_a_class_is_per_instance() -> None:
 # -- in a widget ------------------------------------------------------------
 
 
-class _Bound(Widget):
-    def __init__(self, topic: Topic[int]) -> None:
+class _Probe(Widget):
+    def __init__(self) -> None:
         super().__init__()
-        self._topic = topic
         self.seen: List[int] = []
-
-    def on_mount(self) -> None:
-        super().on_mount()
-        self.bind(self._topic.subscribe(self._record))
 
     def _record(self, value: int) -> None:
         self.seen.append(value)
 
 
-class _Leaky(_Bound):
-    def on_mount(self) -> None:
-        Widget.on_mount(self)
-        self._topic.subscribe(self._record)
+class _Screen(_Probe):
+    """Subscribes its own method in ``__init__``, as a screen does."""
+
+    def __init__(self, topic: Topic[int], *, dispatch: bool = True) -> None:
+        super().__init__()
+        topic.subscribe(self._record, dispatch=dispatch)
 
 
-def test_bind_disposes_the_subscription_at_unmount() -> None:
+class _Remover:
+    """A subscriber that takes ``child`` out of the tree when called."""
+
+    def __init__(self, parent: Column, child: Widget) -> None:
+        self._parent = parent
+        self._child = child
+
+    def remove(self, value: int) -> None:
+        self._parent.remove_child(self._child)
+
+
+def test_a_widget_method_is_not_called_before_the_mount() -> None:
     topic: Topic[int] = Topic()
-    widget = _Bound(topic)
+    screen = _Screen(topic)
 
-    with mount(widget) as host:
+    topic.publish(1)
+
+    assert screen.seen == []
+
+
+def test_a_widget_method_is_called_while_the_widget_is_mounted() -> None:
+    topic: Topic[int] = Topic()
+    screen = _Screen(topic)
+
+    with mount(screen) as host:
+        host.layout(100, 100)
+        topic.publish(1)
+
+    assert screen.seen == [1]
+
+
+def test_a_widget_method_is_not_called_after_the_unmount() -> None:
+    topic: Topic[int] = Topic()
+    screen = _Screen(topic)
+
+    with mount(screen) as host:
+        host.layout(100, 100)
+    topic.publish(1)
+
+    assert screen.seen == []
+
+
+def test_a_widget_method_is_called_again_after_a_remount() -> None:
+    topic: Topic[int] = Topic()
+    screen = _Screen(topic)
+
+    with mount(screen) as host:
+        host.layout(100, 100)
+        topic.publish(1)
+    topic.publish(2)
+    with mount(screen) as host:
+        host.layout(100, 100)
+        topic.publish(3)
+
+    assert screen.seen == [1, 3]
+
+
+def test_a_value_still_queued_at_the_unmount_is_not_delivered(nuiitivet_clock: HarnessClock) -> None:
+    topic: Topic[int] = Topic()
+    screen = _Screen(topic)
+
+    with mount(screen) as host:
+        host.layout(100, 100)
+        _on_worker(lambda: topic.publish(1))
+    nuiitivet_clock.pump()
+
+    assert screen.seen == []
+
+
+def test_a_widget_unmounted_by_an_earlier_subscriber_is_not_called() -> None:
+    topic: Topic[int] = Topic()
+    parent = Column(children=[])
+    screen = _Probe()
+    remover = _Remover(parent, screen)
+    topic.subscribe(remover.remove)
+    topic.subscribe(screen._record)
+
+    with mount(parent) as host:
+        host.layout(100, 100)
+        parent.add_child(screen)
+        topic.publish(1)
+
+    assert screen.seen == []
+
+
+def test_the_rule_holds_for_a_dispatch_false_subscriber() -> None:
+    topic: Topic[int] = Topic()
+    screen = _Screen(topic, dispatch=False)
+
+    topic.publish(1)
+    with mount(screen) as host:
+        host.layout(100, 100)
+        topic.publish(2)
+    topic.publish(3)
+
+    assert screen.seen == [2]
+
+
+def test_a_widget_that_subscribed_above_super_init_is_asked_without_error() -> None:
+    class Early(Widget):
+        def __init__(self, topic: Topic[int]) -> None:
+            self.seen: List[int] = []
+            topic.subscribe(self._record)
+            topic.publish(0)
+            super().__init__()
+
+        def _record(self, value: int) -> None:
+            self.seen.append(value)
+
+    topic: Topic[int] = Topic()
+
+    screen = Early(topic)
+
+    assert screen.seen == []
+
+
+def test_a_lambda_over_a_widget_is_called_whatever_its_mount_state() -> None:
+    topic: Topic[int] = Topic()
+    probe = _Probe()
+    subscription = topic.subscribe(lambda value: probe.seen.append(value))
+
+    topic.publish(1)
+    subscription.dispose()
+
+    assert probe.seen == [1]
+
+
+def test_a_state_calls_a_widget_method_whatever_its_mount_state() -> None:
+    state: State[int] = State(0)
+    probe = _Probe()
+    subscription = state.subscribe(probe._record)
+
+    state.value = 1
+    subscription.dispose()
+
+    assert probe.seen == [1]
+
+
+# -- the leak check ---------------------------------------------------------
+
+
+class _LambdaScreen(_Probe):
+    """Subscribes a lambda at mount; ``bound`` hands it to ``bind()``."""
+
+    def __init__(self, topic: Topic[int], *, bound: bool) -> None:
+        super().__init__()
+        self._topic = topic
+        self._bound = bound
+
+    def on_mount(self) -> None:
+        super().on_mount()
+        self._subscription = self._topic.subscribe(lambda value: self.seen.append(value))
+        if self._bound:
+            self.bind(self._subscription)
+
+
+def test_the_leak_check_passes_a_method_subscribed_without_bind() -> None:
+    topic: Topic[int] = Topic()
+    screen = _Screen(topic)
+
+    with mount(screen, leak_check="error") as host:
+        host.layout(100, 100)
+
+
+def test_the_leak_check_reports_a_lambda_subscribed_without_bind() -> None:
+    topic: Topic[int] = Topic()
+    screen = _LambdaScreen(topic, bound=False)
+
+    with pytest.raises(SubscriptionLeakError) as excinfo:
+        with mount(screen, leak_check="error") as host:
+            host.layout(100, 100)
+
+    assert "_LambdaScreen" in str(excinfo.value)
+
+
+def test_bind_ends_a_lambda_subscription_at_unmount() -> None:
+    topic: Topic[int] = Topic()
+    screen = _LambdaScreen(topic, bound=True)
+
+    with mount(screen, leak_check="error") as host:
         host.layout(100, 100)
         topic.publish(1)
     topic.publish(2)
 
-    assert widget.seen == [1]
-
-
-def test_the_leak_check_reports_an_unbound_subscription() -> None:
-    topic: Topic[int] = Topic()
-    widget = _Leaky(topic)
-
-    with pytest.raises(SubscriptionLeakError) as excinfo:
-        with mount(widget) as host:
-            host.layout(100, 100)
-
-    assert "_Leaky" in str(excinfo.value)
+    assert screen.seen == [1]
