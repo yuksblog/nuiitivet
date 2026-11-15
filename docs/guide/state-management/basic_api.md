@@ -52,8 +52,6 @@ count = nv.State(0)
 You can customize comparison behavior when needed.
 
 ```python
-always_notify = nv.State(0, compare=lambda a, b: False)
-
 def compare_users(a, b):
     if a is None or b is None:
         return a is b

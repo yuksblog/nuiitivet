@@ -51,7 +51,7 @@ def notify_all(
     not the value the emission started with. Callers whose value cannot change
     mid-emission pass a thunk over their own local.
 
-    ``key`` names the emitting State for the log's de-duplication; the
+    ``key`` names the emitter for the log's de-duplication; the
     raising callback's own type and location are added by
     :func:`~nuiitivet.common.logging_once.exception_once_per_exc`, so two
     different broken subscribers are reported separately while one that keeps
@@ -66,5 +66,5 @@ def notify_all(
             exception_once_per_exc(
                 logger,
                 f"observable_subscriber_raised:{key}",
-                "State subscriber raised; the remaining subscribers were still notified",
+                "Subscriber raised; the remaining subscribers were still notified",
             )

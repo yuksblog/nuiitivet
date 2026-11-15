@@ -74,6 +74,7 @@ from nuiitivet.observable import (
     Clock,
     ClockCallback,
     State,
+    Topic,
     batch,
     combine,
 )
@@ -232,6 +233,7 @@ __all__: list[str] = [
     "OverlayProtocol",
     # State Management
     "State",
+    "Topic",
     "CancelToken",
     "batch",
     "combine",

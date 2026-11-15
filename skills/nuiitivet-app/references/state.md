@@ -31,8 +31,7 @@ use `.value =` wherever a statement fits.
 Custom equality when needed (keyword-only `compare`):
 
 ```python
-always = nv.State(0, compare=lambda a, b: False)
-user   = nv.State(None, compare=lambda a, b: (a is b) if (a is None or b is None) else a.uid == b.uid)
+user = nv.State(None, compare=lambda a, b: (a is b) if (a is None or b is None) else a.uid == b.uid)
 ```
 
 ## Bind into the UI
@@ -220,11 +219,12 @@ def _run(self, path: str) -> None:
 ```
 
 - Marshalled writes land on the next tick and are **coalesced**: subscribers see
-  the latest value per tick, not every value. Correct for anything rendered;
-  wrong for a consumer that must see every value.
+  the latest value per tick, not every value. Correct for anything rendered.
+  A consumer that must see every value subscribes to a `nv.Topic` — see
+  **Publish an event (`nv.Topic`)**.
 - Reading `.value` back on the worker right after writing returns the old value.
-- `nv.State(0, dispatch=False)` opts out — synchronous, every value
-  delivered — for state no widget binds to. Derivations inherit it.
+- `nv.State(0, dispatch=False)` opts out — the write applies at once, on the
+  writing thread — for state no widget binds to. Derivations inherit it.
 - One-shot work with a result: `await asyncio.to_thread(fn, ...)` in an `async`
   handler and assign the result; no thread of your own.
 
@@ -369,6 +369,54 @@ cause on its own:
 | --- | --- |
 | a plain `State` | the source holds the callback, so it keeps firing after unmount — into a dead tree |
 | anything derived (`map`, `combine`, `debounce`, `throttle`, `filter`, `scan`) | nothing holds the derived `State`, so it is collected and never fires at all — see **Hold what you derive** |
+
+## Publish an event (`nv.Topic`)
+
+A worker finishes a file, and the screen shows a snackbar. What the logic
+reports while no UI event handler is running is a `nv.Topic`, never a
+`State`: a `State` drops a value equal to the last and keeps only the newest
+of a worker's writes. A `Topic` has no `.value`, and no widget parameter
+takes one.
+
+```python
+class CsvImporter:                                 # the logic publishes
+    finished = nv.Topic[str]()
+
+    def start(self, paths: list[str]) -> None:
+        threading.Thread(target=self._run, args=(paths,), daemon=True).start()
+
+    def _run(self, paths: list[str]) -> None:
+        for path in paths:
+            import_csv(path)
+            self.finished.publish(path)            # from any thread
+
+class ImportScreen(nv.ComposableWidget):           # the screen subscribes a method
+    def __init__(self, importer: CsvImporter) -> None:
+        super().__init__()
+        self._importer = importer
+
+    def on_mount(self) -> None:
+        super().on_mount()
+        self.bind(self._importer.finished.subscribe(self.show_finished))  # stops at unmount
+
+    def show_finished(self, path: str) -> None:    # on the UI thread, once per publish, in order
+        nv.Overlay.of(self).snackbar(f"Imported {path}")
+```
+
+- **Inside a UI event handler, call `nv.Overlay.of(self)` directly.** A
+  `Topic` is for what happens while no handler is running.
+- **Subscribe a method, not a lambda.** A lambda or a nested function is held
+  only by the returned `Disposable`: as a bare statement,
+  `importer.finished.subscribe(lambda path: ...)` never fires.
+- **A plain class subscribes a method and keeps nothing.**
+  `importer.finished.subscribe(self._on_finished)` is held weakly and stops
+  when the object is collected.
+- **A subscriber receives only what is published while it is subscribed.** A
+  screen mounted later gets nothing from before. What it must still show is a
+  `State`.
+- **`subscribe(cb, dispatch=False)`** runs `cb` inside `publish()`, on the
+  publishing thread. Use it for a subscriber that belongs to the worker, such
+  as a log line; no widget in that `cb`.
 
 ## Run setup exactly once
 

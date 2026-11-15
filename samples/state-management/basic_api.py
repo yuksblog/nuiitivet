@@ -34,12 +34,7 @@ class BasicApiApp(nv.ComposableWidget):
         self.age = nv.State(20)
         self.items: nv.State[list[str]] = nv.State([])
 
-        # Custom comparison 1: always notify even when the value is unchanged
-        self.noise = nv.State(0, compare=lambda a, b: False)
-        self._noise_write_count = nv.State(0)
-        self._noise_notify_count = self.noise.scan(lambda n, _: n + 1, initial=0)
-
-        # Custom comparison 2: user identity determined by uid only
+        # Custom comparison: user identity determined by uid only
         self.user: nv.State[UserRecord] = nv.State(UserRecord(1, "Alice"), compare=compare_users)
         self._rename_write_count = nv.State(0)
         self._user_notify_count = self.user.scan(lambda n, _: n + 1, initial=0)
@@ -47,9 +42,6 @@ class BasicApiApp(nv.ComposableWidget):
         # --- Derived display labels ---
         self.age_label = self.age.map(lambda a: f"Age: {a}")
         self.items_label = self.items.map(lambda lst: f"Items: {lst}")
-        # noise value は常に 0 のまま。書き込み回数と通知回数を並べて対比する。
-        self.noise_write_label = self._noise_write_count.map(lambda n: f"Noise: written {n}x")
-        self.noise_notify_label = self._noise_notify_count.map(lambda n: f"Noise: notified {n}x  (value always 0)")
         # user_label は通知が来たときだけ更新される。rename_write_count と対比する。
         self.user_label = self.user.map(lambda u: f"User (last notified): uid={u.uid}  name={u.name}")
         self.rename_write_label = self._rename_write_count.map(lambda n: f"Name writes: {n}x")
@@ -66,11 +58,6 @@ class BasicApiApp(nv.ComposableWidget):
 
     def _add_item(self) -> None:
         self.items.value = self.items.value + [f"item{len(self.items.value) + 1}"]
-
-    def _tick_noise(self) -> None:
-        # Assign the same value; compare=lambda a,b: False guarantees notification.
-        self.noise.value = self.noise.value
-        self._noise_write_count.value += 1
 
     def _rename_user(self) -> None:
         # uid stays the same → compare_users returns True → no notification, _value not updated.
@@ -112,16 +99,7 @@ class BasicApiApp(nv.ComposableWidget):
                         on_click=self._unsubscribe_age,
                         style=nv.ButtonStyle.text(),
                     ),
-                    # Custom comparison 1: always notify
-                    # compare=lambda a,b: False なので同じ値でも必ず通知される
-                    nv.Text(self.noise_write_label),
-                    nv.Text(self.noise_notify_label),
-                    nv.Button(
-                        "Set same noise value (written = notified)",
-                        on_click=self._tick_noise,
-                        style=nv.ButtonStyle.outlined(),
-                    ),
-                    # Custom comparison 2: compare by uid
+                    # Custom comparison: compare by uid
                     # uid が同じなら通知されない → ラベルも更新されない
                     nv.Text(self.user_label),
                     nv.Text(self.rename_write_label),

@@ -139,10 +139,9 @@ The same applies to `step`. If two stages complete inside one frame, the
 intermediate name never appears on screen. For a status line that is correct
 behaviour — it is a display of *now*, not a log.
 
-It stops being correct the moment something has to *count* the values rather
-than render the newest. A per-row audit trail cannot be built from a
-`State` a widget binds to; give it its own `dispatch=False` `State`, as
-[Thread Safety](thread_safety.md#opting-out-dispatchfalse) describes.
+It stops being correct the moment every value has to arrive rather than the
+newest. A snackbar for each finished file cannot be built from a `State`;
+publish each file through a [`Topic`](topic.md).
 
 ## Cancelling
 
@@ -378,5 +377,5 @@ sleeping. See [the `settle()` example](thread_safety.md#testing).
 
 ## Next Steps
 
-- [Patterns and Recipes](patterns_and_recipes.md)
+- [Events with Topic](topic.md)
 - [State Management Overview](index.md)

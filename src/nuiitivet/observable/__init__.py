@@ -16,6 +16,7 @@ from .runtime import Clock, ClockCallback, get_clock, set_clock
 from .scanned import ScannedState
 from .switched import CancelToken, SwitchMappedState
 from .timed import DebouncedState, ThrottledState
+from .topic import Topic
 from .value import State, WhileValue, _StateValue
 from .wrapper import ShapingState, SourceSubscribingState
 
@@ -43,6 +44,7 @@ __all__ = [
     "StateProtocol",
     "SwitchMappedState",
     "ThrottledState",
+    "Topic",
     "WhileValue",
     "_StateValue",
     "get_clock",
