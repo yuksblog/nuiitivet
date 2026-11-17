@@ -26,6 +26,7 @@ from nuiitivet.theme.manager import ThemeManager
 from nuiitivet.theme.plain_theme import PlainTheme
 from ..widgeting.context_lookup import find_app_scope, raise_if_premature_lookup
 from ..widgeting.widget import Widget
+from .proxy import AppProxy
 from .renderer import RendererMode, parse_renderer_mode
 from .window import Window
 
@@ -233,8 +234,8 @@ class App:
 
         The declared type is :class:`~nuiitivet.runtime.protocols.AppProtocol`
         so callers in the widget tree depend only on the narrow surface
-        (``exit``, ``set_theme``, ``register_themes``, ``badge``). Valid from
-        ``on_mount``, not from ``__init__``, like every ``.of()`` lookup.
+        (``exit``, ``set_theme``, ``register_themes``, ``badge``). For a
+        ViewModel, or in ``__init__``, use :meth:`proxy`.
 
         Args:
             context: The widget context.
@@ -252,6 +253,23 @@ class App:
             raise_if_premature_lookup("App.of", context)
             raise RuntimeError("AppScope not found. Is the widget attached to an App?")
         return app
+
+    @staticmethod
+    def proxy(context: Widget) -> "AppProtocol":
+        """Return a stand-in for the App that :meth:`of` resolves.
+
+        Unlike :meth:`of` it can be called in ``__init__``, to hand the app to
+        a ViewModel. Before ``context`` is mounted a call raises
+        ``RuntimeError``. After it is unmounted, calls go to the app it was
+        mounted in. It holds ``context`` weakly.
+
+        Args:
+            context: The widget to resolve from.
+
+        Raises:
+            RuntimeError: If called before ``super().__init__()``.
+        """
+        return AppProxy("App.proxy", context, App.of, keep=True)
 
     # --- Theme ---------------------------------------------------------
 

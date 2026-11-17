@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from contextlib import AbstractAsyncContextManager, AbstractContextManager
 from functools import partial
-from typing import Any, Callable, Literal, Mapping, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, Literal, Mapping, Protocol, TypeVar
 
 from nuiitivet.material.loading_indicator import LoadingIndicator
 from nuiitivet.material.buttons import Button
@@ -13,8 +13,9 @@ from nuiitivet.material.dialogs import BasicDialog
 from nuiitivet.material.snackbar import Snackbar
 from nuiitivet.overlay import Overlay
 from nuiitivet.overlay.intent_resolver import IntentResolver, MappingIntentResolver
-from nuiitivet.overlay.overlay_handle import OverlayHandle
+from nuiitivet.overlay.overlay_handle import OverlayHandle, disposed_handle
 from nuiitivet.overlay.overlay_position import OverlayPosition
+from nuiitivet.overlay.proxy import OverlayProxy
 from nuiitivet.modifiers.corner_radius import corner_radius
 from nuiitivet.widgeting.widget import Widget
 from .overlay_visual_state import MaterialOverlayLayerComposer
@@ -24,6 +25,9 @@ from .transition_spec import (
 )
 
 from .intents import BasicDialogIntent, LoadingIntent
+
+if TYPE_CHECKING:
+    from .protocols import MaterialOverlayProtocol
 
 _T = TypeVar("_T", bound=Widget)
 
@@ -127,6 +131,27 @@ class MaterialOverlay(Overlay):
             intent_resolver = MappingIntentResolver(defaults)
 
         self._intent_resolver = intent_resolver
+
+    @classmethod
+    def proxy(cls, context: Widget, root: bool = False) -> MaterialOverlayProtocol:
+        """Return a stand-in for the ``MaterialOverlay`` that :meth:`of` resolves.
+
+        Unlike :meth:`of` it can be called in ``__init__``, to hand an overlay
+        to a ViewModel. Each call on it resolves the overlay at that moment.
+        Before ``context`` is mounted a call raises ``RuntimeError``. After it
+        is unmounted a call shows nothing: ``dialog``, ``snackbar``,
+        ``loading`` and the sheets return a handle already completed with
+        ``OverlayDismissReason.DISPOSED``, and ``while_loading`` runs its
+        block with no indicator. It holds ``context`` weakly.
+
+        Args:
+            context: The widget to resolve from at each call.
+            root: Skip the ancestor search and use the window's overlay.
+
+        Raises:
+            RuntimeError: If called before ``super().__init__()``.
+        """
+        return MaterialOverlayProxy(f"{cls.__name__}.proxy", context, lambda widget: cls.of(widget, root=root))
 
     def dialog(
         self,
@@ -325,3 +350,77 @@ class MaterialOverlay(Overlay):
             replay = partial(MaterialOverlay.bottom_sheet, dismiss_on_outside_tap=dismiss_on_outside_tap)
             self._record_for_restore(handle, sheet, replay)
         return handle
+
+
+class MaterialOverlayProxy(OverlayProxy[MaterialOverlay]):
+    """Forwards :class:`~nuiitivet.material.protocols.MaterialOverlayProtocol` to the overlay of one widget.
+
+    A call after the widget is unmounted shows nothing.
+    """
+
+    def dialog(
+        self,
+        dialog: Widget | Any,
+        *,
+        dismiss_on_outside_tap: bool = True,
+    ) -> OverlayHandle[Any]:
+        """Display a modal dialog from a widget or an intent."""
+        overlay = self._provider()
+        if overlay is None:
+            return disposed_handle()
+        return overlay.dialog(dialog, dismiss_on_outside_tap=dismiss_on_outside_tap)
+
+    def snackbar(
+        self,
+        message: str | Snackbar,
+        *,
+        duration: float = 3.0,
+    ) -> OverlayHandle[None]:
+        """Display a brief, non-blocking snackbar."""
+        overlay = self._provider()
+        if overlay is None:
+            return disposed_handle()
+        return overlay.snackbar(message, duration=duration)
+
+    def loading(
+        self,
+        indicator: Widget | Any | None = None,
+    ) -> OverlayHandle[Any]:
+        """Show a loading indicator and return a handle for manual dismissal."""
+        overlay = self._provider()
+        if overlay is None:
+            return disposed_handle()
+        return overlay.loading(indicator)
+
+    def while_loading(
+        self,
+        indicator: Widget | Any | None = None,
+    ) -> WhileLoading:
+        """Return a (sync or async) context manager that shows a loading indicator."""
+        # The overlay is resolved when the block is entered.
+        return WhileLoading(self, indicator)
+
+    def side_sheet(
+        self,
+        sheet: Widget | Any,
+        *,
+        side: Literal["right", "left"] = "right",
+        dismiss_on_outside_tap: bool = True,
+    ) -> OverlayHandle[Any]:
+        """Display a modal side sheet from a widget or an intent."""
+        overlay = self._provider()
+        if overlay is None:
+            return disposed_handle()
+        return overlay.side_sheet(sheet, side=side, dismiss_on_outside_tap=dismiss_on_outside_tap)
+
+    def bottom_sheet(
+        self,
+        sheet: Widget | Any,
+        *,
+        dismiss_on_outside_tap: bool = True,
+    ) -> OverlayHandle[Any]:
+        """Display a modal bottom sheet from a widget or an intent."""
+        overlay = self._provider()
+        if overlay is None:
+            return disposed_handle()
+        return overlay.bottom_sheet(sheet, dismiss_on_outside_tap=dismiss_on_outside_tap)

@@ -120,7 +120,7 @@ nv.Navigator.intents(
 
 `push(intent, transition=...)` raises `TypeError`. The transition belongs to the factory, so a hot reload that replays the intent restores it too.
 
-## Why Use Intents?
+## Navigating from a ViewModel
 
 Intent-based navigation is highly recommended, especially when navigating from a ViewModel or controller. It allows your business logic to request a screen transition without needing to know how that screen is built or what widgets it uses. This separation of concerns makes your code more modular, testable, and easier to maintain.
 
@@ -130,29 +130,29 @@ Here is an example of how a ViewModel can trigger navigation using `Navigator` a
 import nuiitivet.material as nv
 
 class ItemViewModel:
-    def __init__(self, item_id: int):
-        self.item_id = item_id
-
     # The navigator is passed in, so the ViewModel never touches a widget.
-    def on_item_selected(self, navigator: nv.NavigatorProtocol):
-        navigator.push(DetailsIntent(item_id=self.item_id))
+    def __init__(self, item_id: int, navigator: nv.NavigatorProtocol):
+        self.item_id = item_id
+        self._navigator = navigator
+
+    def on_item_selected(self):
+        self._navigator.push(DetailsIntent(item_id=self.item_id))
 
 
 class HomeScreen(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
-        self.vm = ItemViewModel(item_id=42)
+        self.view_model = ItemViewModel(item_id=42, navigator=nv.Navigator.proxy(self))
 
     def build(self):
-        def go_to_details():
-            self.vm.on_item_selected(nv.Navigator.of(self))
-
-        return nv.Button("View Details", on_click=go_to_details, style=nv.ButtonStyle.filled())
+        return nv.Button("View Details", on_click=self.view_model.on_item_selected, style=nv.ButtonStyle.filled())
 ```
 
-!!! warning "Not in `__init__`"
-    Neither `nv.Navigator.of(self)` nor `nv.Navigator.of(self)` works there. Resolve one in
-    the event handler, every time.
+`HomeScreen` makes `nv.Navigator.proxy(self)` in its `__init__` and passes it to the
+ViewModel's constructor.
+[Giving a ViewModel the navigator](../state-management/patterns_and_recipes.md#giving-a-viewmodel-the-navigator-the-overlay-the-window-or-the-app)
+covers why it is not `nv.Navigator.of(self)`, and what `push()` does once the screen
+has been popped.
 
 Because the ViewModel only depends on `NavigatorProtocol` and `DetailsIntent`, you can test the navigation decision logic in isolation.
 
@@ -179,10 +179,10 @@ class FakeNavigator:
 def test_selecting_an_item_navigates_to_details():
     navigator = FakeNavigator()
 
-    ItemViewModel(item_id=42).on_item_selected(navigator)
+    ItemViewModel(item_id=42, navigator=navigator).on_item_selected()
 
     assert navigator.pushed == [DetailsIntent(item_id=42)]
 ```
 
 For the overlay side of the same boundary, see
-[Dialogs](../overlay/dialogs.md#typing-the-overlay-nvoverlayprotocol).
+[Dialogs](../overlay/dialogs.md#architecting-dialogs-in-mvvm).

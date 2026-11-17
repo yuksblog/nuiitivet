@@ -56,6 +56,7 @@ flowchart LR
 ```mermaid
 flowchart LR
     overlay[overlay/overlay.py]
+    proxy[overlay/proxy.py]
     stackrt[transition/stack.py]
     engine[transition/engine.py]
     layout[layout/stack.py]
@@ -65,6 +66,9 @@ flowchart LR
     app[the app]
 
     app -- "Overlay.of(self) · show(...) · close(value, target)" --> overlay
+    app -- "Overlay.proxy(self), kept · close(value, target)" --> proxy
+    proxy -- "Overlay.of(context), at each call" --> overlay
+    proxy -- "is a: ContextProxy" --> lookup
     overlay -- "find_provider(context, cls) · find_window(context)" --> lookup
     window -- "overlay_factory() · _overlay · async_request_close_topmost() · occluding_content_widget()" --> overlay
     overlay -- "push(layer) · mark_active · mark_exiting · pop · can_pop" --> stackrt
@@ -76,11 +80,12 @@ flowchart LR
 | Module | Role |
 | --- | --- |
 | `overlay/overlay.py` | `Overlay`: the entries, their layers, their futures; `_LayerStack`, the `Stack` of layer widgets; `_OverlayLayer`, one entry with its transition state |
+| `overlay/proxy.py` | `OverlayProxy`: a stand-in made from one widget, forwarding each call to the overlay that widget resolves |
 | `transition/stack.py` | tracks which layers enter, stay and exit ([NAVIGATION.md](NAVIGATION.md)) |
 | `transition/engine.py` | drives a transition's progress ([ANIMATION_SYSTEM.md](ANIMATION_SYSTEM.md)) |
 | `layout/stack.py` | paints the layers in order ([LAYOUT.md](LAYOUT.md)) |
 | `runtime/window.py` | holds the overlay as a sibling of the navigator, routes a back action to it, asks what blocks the keyboard ([NAVIGATION.md](NAVIGATION.md)) |
-| `widgeting/context_lookup.py` | the ancestor search and the window lookup behind `Overlay.of` |
+| `widgeting/context_lookup.py` | the ancestor search and the window lookup behind `Overlay.of`; `ContextProxy`, the weak hold on the widget and the mounted check behind a proxy |
 | `runtime/shortcut_dispatch.py` | asks what blocks the keyboard ([KEYBOARD_SHORTCUTS.md](KEYBOARD_SHORTCUTS.md)) |
 | the app | shows and closes entries |
 
@@ -125,6 +130,11 @@ sequenceDiagram
   leaves the stack. The other layers are untouched by a show or a close.
 - `Overlay.of` searches the ancestors for the calling class first, then
   falls back to the window's overlay.
+- An `OverlayProxy` resolves `Overlay.of` at each call. It keeps no overlay,
+  and it holds its widget weakly.
+- A proxy call before the widget's first mount raises. A call while the
+  widget is unmounted reaches no overlay, and one debug line per proxy
+  records it.
 - An entry stays open until its exit transition finishes.
 - The keyboard side of `passthrough` is read through
   `occluding_content_widget()`, the content of the topmost layer shown with
@@ -241,7 +251,7 @@ flowchart LR
 | --- | --- |
 | `overlay/overlay.py` | one future per entry; completes it with a reason; the records of the entries shown from an intent |
 | `overlay/overlay_entry.py` | `OverlayEntry`: builds the layer widget on demand, unmounts it on dispose, names its content without building |
-| `overlay/overlay_handle.py` | `OverlayHandle`: `close`, `request_close`, `done`, `result`, awaitable |
+| `overlay/overlay_handle.py` | `OverlayHandle`: `close`, `request_close`, `done`, `result`, awaitable; `disposed_handle()`, a handle with no entry, already completed with `DISPOSED` |
 | `overlay/result.py` | `OverlayResult`, the value and the reason: `CLOSED`, `OUTSIDE_TAP`, `TIMEOUT` or `DISPOSED` |
 | `overlay/overlay_aware.py` | `OverlayAware`, a content widget that receives its own handle |
 | `modifiers/will_pop.py` | lets the content refuse a dismissal ([MODIFIER.md](MODIFIER.md)) |
@@ -323,6 +333,8 @@ The Material design system subclasses the overlay.
 flowchart LR
     moverlay[material/overlay.py]
     overlay[overlay/overlay.py]
+    proxy[overlay/proxy.py]
+    handle[overlay/overlay_handle.py]
     mcomposer[material/overlay_visual_state.py]
     resolver[overlay/intent_resolver.py]
     protocols[material/protocols.py]
@@ -331,6 +343,8 @@ flowchart LR
     theme[theme/theme.py]
 
     moverlay -- "is a · show(content, backdrop, dismiss_on_outside_tap, position, transition) · _record_for_restore(handle, intent, replay)" --> overlay
+    moverlay -- "is a: OverlayProxy" --> proxy
+    moverlay -- "disposed_handle()" --> handle
     moverlay -- "layer_composer=MaterialOverlayLayerComposer()" --> mcomposer
     moverlay -- "resolve(intent)" --> resolver
     moverlay -- "is a: MaterialOverlayProtocol" --> protocols
@@ -341,8 +355,10 @@ flowchart LR
 
 | Module | Role |
 | --- | --- |
-| `material/overlay.py` | `MaterialOverlay`: the presets, each a `show` with the MD3 transition and position; `WhileLoading`, the context manager |
+| `material/overlay.py` | `MaterialOverlay`: the presets, each a `show` with the MD3 transition and position; `WhileLoading`, the context manager; `MaterialOverlayProxy`, the presets on a proxy |
 | `overlay/overlay.py` | the core (The Overlay) |
+| `overlay/proxy.py` | the core proxy (The Overlay) |
+| `overlay/overlay_handle.py` | the handle a dropped preset returns (The Handle) |
 | `material/overlay_visual_state.py` | `MaterialOverlayLayerComposer`, the scrim at the theme's `SCRIM` colour, faded with the transition |
 | `overlay/intent_resolver.py` | `IntentResolver` and `MappingIntentResolver`, an intent type to the widget that shows it |
 | `material/protocols.py` | `MaterialOverlayProtocol`, exported as `nv.OverlayProtocol`, what a ViewModel sees |
@@ -353,5 +369,10 @@ flowchart LR
 ### Promises
 
 - An intent cannot change how its entry enters.
+- `MaterialOverlay.proxy` carries the methods of `MaterialOverlayProtocol`
+  and no other.
+- A preset called through a proxy whose widget is unmounted shows nothing.
+  It returns a handle already completed with `DISPOSED`.
+- `while_loading` through such a proxy runs its body with no indicator.
 - No design-system colour appears in `overlay/`. The default composer's
   backdrop is a private constant.

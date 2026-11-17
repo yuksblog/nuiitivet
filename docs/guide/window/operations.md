@@ -43,39 +43,45 @@ app.register_themes({...})    # name → Theme, for set_theme by name
 ## In a ViewModel
 
 A ViewModel should not depend on the full `Window` or `App` — annotate the
-parameter as `nv.WindowProtocol` / `nv.AppProtocol` instead. Pass it **per
-method call**, not in the constructor: a widget builds its ViewModel in
-`__init__`, and `.of(context)` does not work that early (the widget is not
-mounted yet). So the event handler resolves the object and hands it to the
-ViewModel method:
+constructor parameter as `nv.WindowProtocol` / `nv.AppProtocol` instead. The
+widget that builds the ViewModel makes `nv.Window.proxy(self)` and
+`nv.App.proxy(self)` in its `__init__` and passes them in:
 
 ```python
 class ShellViewModel:
-    def send_to_background(self, window: nv.WindowProtocol) -> None:
-        window.hide()
+    def __init__(self, window: nv.WindowProtocol, app: nv.AppProtocol) -> None:
+        self._window = window
+        self._app = app
 
-    def quit(self, app: nv.AppProtocol) -> None:
-        app.exit()
+    def send_to_background(self) -> None:
+        self._window.hide()
+
+    def quit(self) -> None:
+        self._app.exit()
 
 
 class Shell(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self._vm = ShellViewModel()
+        self._vm = ShellViewModel(nv.Window.proxy(self), nv.App.proxy(self))
 
     def build(self):
         return nv.Column(
             children=[
-                nv.Button("Hide", on_click=lambda: self._vm.send_to_background(nv.Window.of(self))),
-                nv.Button("Quit", on_click=lambda: self._vm.quit(nv.App.of(self))),
+                nv.Button("Hide", on_click=self._vm.send_to_background),
+                nv.Button("Quit", on_click=self._vm.quit),
             ],
         )
 ```
 
-A test calls the ViewModel methods with hand-written fakes — no widget tree
+[Giving a ViewModel the window or the app](../state-management/patterns_and_recipes.md#giving-a-viewmodel-the-navigator-the-overlay-the-window-or-the-app)
+covers why it is not `.of(self)`, and what a call does once the widget has left
+the tree.
+
+A test builds the ViewModel with hand-written fakes — no widget tree
 needed. `WindowProtocol` carries the operation methods above plus `is_open`,
 `is_visible`, and the awaitable `closed`. `AppProtocol` carries `exit`,
-`set_theme`, and `register_themes`.
+`set_theme`, `register_themes`, and `badge`.
 
 ## Example Usage
 

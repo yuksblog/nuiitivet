@@ -81,3 +81,45 @@ class OverlayHandle(Generic[T]):
         if future is None:
             raise RuntimeError("Result is not available because the handle was never awaited.")
         return future.result()
+
+
+class _DisposedHost:
+    """The host of a handle for an overlay that was never shown."""
+
+    def __init__(self) -> None:
+        from .result import OverlayDismissReason
+
+        self._result: OverlayResult[Any] = OverlayResult(value=None, reason=OverlayDismissReason.DISPOSED)
+
+    def _close_entry(self, entry: Any, value: Any = None) -> None:
+        del entry, value
+
+    def _future_for_entry(self, entry: Any) -> asyncio.Future[OverlayResult[Any]]:
+        del entry
+        future: asyncio.Future[OverlayResult[Any]] = asyncio.get_running_loop().create_future()
+        future.set_result(self._result)
+        return future
+
+    def _get_future_for_entry(self, entry: Any) -> asyncio.Future[OverlayResult[Any]] | None:
+        del entry
+        return None
+
+    def _get_pending_result_for_entry(self, entry: Any) -> OverlayResult[Any] | None:
+        del entry
+        return self._result
+
+    def _pop_pending_result_for_entry(self, entry: Any) -> OverlayResult[Any] | None:
+        del entry
+        return self._result
+
+    def _request_dismiss_entry(self, entry: Any, *, value: Any = None, reason: Any) -> None:
+        del entry, value, reason
+
+
+def disposed_handle() -> OverlayHandle[Any]:
+    """Return a handle already completed with ``OverlayDismissReason.DISPOSED``.
+
+    ``await`` returns at once with a ``None`` value, ``done()`` is true, and
+    ``close()`` does nothing.
+    """
+    return OverlayHandle(overlay=_DisposedHost(), entry=None)

@@ -143,22 +143,24 @@ through.
 
 ```python
 class Badge(nv.ComposableWidget):
-    def on_mount(self) -> None:
-        size = nv.Geometry.of(self).size                        # State[Size]
+    def __init__(self) -> None:
+        super().__init__()
+        size = nv.Geometry.proxy(self).size                     # State[Size]
         self._label = size.map(lambda s: f"{s.width}px")
-        super().on_mount()
 
 nv.Geometry(Pane(), width="wt", height="wt")   # filling: defines the scope
 ```
 
-- **Resolve in `on_mount`, not `__init__`.** `Geometry.of(self)` walks the
-  ancestor chain, which does not exist yet in `__init__`.
+- **`Geometry.proxy(self)` in `__init__`, never `Geometry.of(self)`.** `of`
+  walks the ancestor chain, which does not exist yet in `__init__`, and raises.
+  No `on_mount` override for the lookup.
 - **Bind it; don't read `.value` in `build()`.** A `.value` read at build time is
   a one-time snapshot that never updates.
 - **Nearest provider wins.** The app installs a root `Geometry` at the window, so
   a top-level read tracks the window.
-- Measured during layout, published between frames: every consumer sees the
-  size on the next frame.
+- **The size starts as `Size(0, 0)`.** The measured size arrives a frame or two
+  after the window opens, then one frame after each layout. The `map` function
+  must accept `Size(0, 0)`.
 
 ## Dynamic lists
 

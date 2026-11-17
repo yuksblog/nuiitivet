@@ -52,8 +52,8 @@ def test_of_after_init_before_mount_reports_premature(name, lookup) -> None:
 
 
 @pytest.mark.parametrize("name,lookup", _lookups(), ids=[n for n, _ in _lookups()])
-def test_premature_message_points_at_on_mount(name, lookup) -> None:
-    with pytest.raises(RuntimeError, match="on_mount"):
+def test_premature_message_names_proxy_as_the_fix(name, lookup) -> None:
+    with pytest.raises(RuntimeError, match=rf"Use {name}\.proxy\(self\) there"):
         lookup(Widget())
 
 

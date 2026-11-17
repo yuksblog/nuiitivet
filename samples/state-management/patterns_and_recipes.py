@@ -2,6 +2,7 @@
 
 Demonstrates:
 - ViewModel pattern (state/logic separation from rendering)
+- A ViewModel that receives the overlay in its constructor
 - Derived state composition with map() and combine()
 - Memory management with Disposable
 - Typed values derived from a text field's text
@@ -26,7 +27,8 @@ class TodoViewModel:
     items: nv.State[list[str]] = nv.State([])
     selected_index: nv.State[int | None] = nv.State(None)
 
-    def __init__(self) -> None:
+    def __init__(self, overlay: nv.OverlayProtocol) -> None:
+        self._overlay = overlay
         self.item_count = self.items.map(lambda lst: len(lst))
         self.has_items = self.item_count.map(lambda c: c > 0)
         self.summary = self.item_count.map(lambda c: f"{c} item(s)" if c > 0 else "No items")
@@ -46,6 +48,10 @@ class TodoViewModel:
 
     def select(self, idx: int) -> None:
         self.selected_index.value = idx
+
+    async def sync(self) -> None:
+        await asyncio.sleep(1.0)  # stands in for the upload
+        self._overlay.snackbar("Synced")
 
 
 # ---------------------------------------------------------------------------
@@ -184,7 +190,7 @@ class SaveViewModel:
 class PatternsApp(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.vm = TodoViewModel()
+        self.vm = TodoViewModel(overlay=nv.Overlay.proxy(self))
         self.cart = ShoppingCart()
         self.form = OrderForm()
         self.save_vm = SaveViewModel()
@@ -224,6 +230,7 @@ class PatternsApp(nv.ComposableWidget):
                                 on_click=lambda: self._remove_first(),
                                 style=nv.ButtonStyle.outlined(),
                             ),
+                            nv.Button("Sync", on_click=vm.sync, style=nv.ButtonStyle.outlined()),
                         ],
                     ),
                     # --- Derived state composition ---

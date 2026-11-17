@@ -125,11 +125,15 @@ flowchart LR
     engine[TransitionEngine]
     composer[NavigationLayerComposer]
     proto[NavigatorProtocol]
+    nproxy[NavigatorProxy]
     routes[the intent table]
     screen[the outgoing screen]
     snapshot[dev/navigation_snapshot.py]
 
     navigator -- "Route(widget, transition)" --> route
+    navigator -- "proxy(context): NavigatorProxy(context)" --> nproxy
+    nproxy -- "Navigator.of(context), at each call" --> navigator
+    nproxy -. "implements" .-> proto
     navigator -- "push · mark_active · mark_exiting · complete_exit" --> stack
     navigator -- "start(progress, motion, on_complete)" --> engine
     navigator -- "paint_static · paint_transition" --> composer
@@ -141,12 +145,13 @@ flowchart LR
 
 | Module | Role |
 | --- | --- |
-| `Navigator` | `push` turns a widget or an intent into a route and starts the enter transition; `pop` and `request_back` take one route off, absorbing requests during a transition; `of` finds the navigator a widget drives; `paint` draws the top route or a transition frame; `_restore_log` keeps a descriptor per push |
+| `Navigator` | `push` turns a widget or an intent into a route and starts the enter transition; `pop` and `request_back` take one route off, absorbing requests during a transition; `of` finds the navigator a widget drives; `proxy` makes a stand-in for it; `paint` draws the top route or a transition frame; `_restore_log` keeps a descriptor per push |
 | `Route` | a screen and the transition it moves with; disposing it unmounts the screen |
 | `StackRuntime[Route]` | the stack from the kernel (The Kernel) |
 | `TransitionEngine` | drives the progress of a transition (The Kernel) |
 | `NavigationLayerComposer` | the paint of a static screen and of a transition frame |
 | `NavigatorProtocol` | the three methods a ViewModel is typed against |
+| `NavigatorProxy` | a stand-in made from one widget; forwards the three methods to the navigator that widget resolves |
 | the intent table | `Navigator.routes`: an intent type to the factory that builds its screen, or its screen and transition |
 | the outgoing screen | asked before a pop; the question is forwarded down its built tree to a `will_pop` modifier |
 | `dev/navigation_snapshot.py` | the reload's read and replay of the log ([HOT_RELOAD.md](HOT_RELOAD.md)) |
@@ -252,6 +257,11 @@ sequenceDiagram
 - No pop starts against the outgoing screen's refusal. A refusal discards
   the queue.
 - A refused pop still counts as handled.
+- A `NavigatorProxy` resolves `Navigator.of` at each call. It keeps no
+  navigator, and it holds its widget weakly.
+- A proxy call before the widget's first mount raises. While the widget is
+  unmounted `push` and `pop` reach no navigator, `can_pop` is `False`, and
+  one debug line per proxy records it.
 
 ## The Kernel
 

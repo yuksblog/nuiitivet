@@ -417,9 +417,10 @@ class ImportScreen(nv.ComposableWidget):           # the screen subscribes a met
 
 ## Run setup exactly once
 
-`State`s go in `__init__`. Setup that needs the widget **in the tree** —
-`X.of(self)`, async loading — goes in an `on_mount()` override, which runs once
-per instance: a rebuild replaces the built subtree, not the host.
+`State`s go in `__init__`. So does a provider that is kept: `nv.X.proxy(self)`,
+never `nv.X.of(self)`, which raises there. Setup that needs the widget **in the
+tree** — async loading — goes in an `on_mount()` override, which runs once per
+instance: a rebuild replaces the built subtree, not the host.
 
 ```python
 class DashboardScreen(nv.ComposableWidget):
@@ -451,6 +452,8 @@ nothing fires. Pause/resume from the caller side, or a `nv.Deck` index `State`.
 For non-trivial apps, separate state/logic into a ViewModel and keep `build()`
 purely declarative. The View holds `State`s (or the VM does) and the VM
 exposes methods for event handlers to call. A ViewModel does not import or
-create Widgets — for dialogs/navigation it issues **Intents** to an injected
-navigator/overlay, annotated with `nv.NavigatorProtocol` / `nv.OverlayProtocol` so the
-VM stays free of widget types. See [navigation.md](navigation.md).
+create Widgets — for dialogs/navigation it issues **Intents** to the
+navigator/overlay its constructor receives (`nv.Navigator.proxy(self)` /
+`nv.Overlay.proxy(self)` from the widget that owns it), annotated with
+`nv.NavigatorProtocol` / `nv.OverlayProtocol` so the VM stays free of widget
+types. See [navigation.md](navigation.md).

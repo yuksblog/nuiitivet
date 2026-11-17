@@ -15,11 +15,19 @@ mounted widget — there is no global accessor, and no `.root()`:
 - `nv.Navigator.of(self, root=True)` / `nv.Overlay.of(self, root=True)` — skip any
   nested one and target the app's.
 
-**Never in `__init__`.** The lookup walks up from `self`, and a widget has no
-parent until it is attached to the tree — the call raises `RuntimeError` with a
-message saying so. Resolve in `on_mount()`, `build()`, or the event handler,
-**every time**. This is also why a ViewModel takes the navigator / overlay per
-call rather than in its constructor.
+**In `__init__`, write `proxy`, never `of`.** `nv.Navigator.of(self)` walks up
+from `self`, and a widget has no parent until it is attached to the tree: in
+`__init__` it raises `RuntimeError`. `nv.Navigator.proxy(self)` and
+`nv.Overlay.proxy(self)` take the same arguments, are made in `__init__`, and
+look the provider up at each call.
+
+- **Used on the spot** (an event handler, `build()`): `nv.Overlay.of(self)`.
+- **Kept** (handed to a ViewModel's constructor, stored on `self`):
+  `nv.Overlay.proxy(self)`.
+
+A proxy carries the Protocol's methods only (**Type what the ViewModel
+receives**); for `show()` call `nv.Overlay.of(self)` in the handler. A proxy
+call before the widget is mounted raises `RuntimeError`.
 
 ## Navigate
 
@@ -98,19 +106,22 @@ class DetailsIntent:
     item_id: int
 
 class ItemViewModel:
-    # The navigator is passed per call, not stored: it cannot be resolved in
-    # __init__ (see "Resolve a navigator or an overlay").
-    def open(self, navigator: nv.NavigatorProtocol, item_id: int):
-        navigator.push(DetailsIntent(item_id=item_id))
+    # The navigator arrives in the constructor, typed as the Protocol.
+    def __init__(self, navigator: nv.NavigatorProtocol):
+        self._navigator = navigator
+
+    def open(self, item_id: int):
+        self._navigator.push(DetailsIntent(item_id=item_id))
 
 class HomeScreen(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
-        self.vm = ItemViewModel()
+        # The widget that owns the ViewModel makes the proxy: proxy, not of.
+        self.vm = ItemViewModel(nv.Navigator.proxy(self))
     def build(self):
         return nv.Button(
             "Open",
-            on_click=lambda: self.vm.open(nv.Navigator.of(self), item_id=42),
+            on_click=lambda: self.vm.open(item_id=42),
             style=nv.ButtonStyle.filled(),
         )
 
@@ -134,6 +145,14 @@ def main():
 The same Intent approach applies to dialogs from a ViewModel via `nv.Overlay` and
 an intent resolver.
 
+A ViewModel method that takes the navigator or the overlay as an argument is the
+retired shape: pass `nv.X.proxy(self)` to the constructor.
+
+A proxy call made after the screen left the tree does nothing. A snackbar does
+not appear, `push()` pushes nothing, and `await overlay.dialog(...)` returns at
+once with `result.value` `None`. `nv.Window.proxy(self)` and `nv.App.proxy(self)`
+still reach the window and the app.
+
 ### Type what the ViewModel receives
 
 Annotate what a ViewModel receives with the protocols, not the concrete objects:
@@ -144,10 +163,11 @@ Annotate what a ViewModel receives with the protocols, not the concrete objects:
 - `nv.WindowProtocol` — `close()`, `hide()`, `show()`, `minimize()`, `maximize()`,
   `restore()`, `full_screen()`, `center()`, `move_to()`, `resize()`, plus
   `is_open` / `is_visible` (`State`s) and the awaitable `closed`.
-- `nv.AppProtocol` — `exit()`, `set_theme()`, `register_themes()`. This is also
-  the declared return type of `nv.App.of(context)`.
+- `nv.AppProtocol` — `exit()`, `set_theme()`, `register_themes()`, plus `badge`
+  (a `State`). This is also the declared return type of `nv.App.of(context)`.
 
-The concrete objects satisfy them structurally, so call sites are unchanged;
+Each `nv.X.proxy(self)` returns its Protocol. The concrete objects satisfy them
+structurally, so call sites are unchanged;
 the VM becomes type-checkable and unit-testable against a hand-written fake with no
 widget tree and no `App`. There is no `INavigator` / `IOverlay` — those names do not
 exist.

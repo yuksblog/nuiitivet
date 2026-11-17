@@ -13,12 +13,15 @@ class AppProtocol(Protocol):
     """The application surface a ViewModel depends on.
 
     Annotate the app a ViewModel receives with this protocol so the ViewModel
-    stays independent of the runtime. Pass it per method call -- the View's
-    event handler resolves ``App.of(context)`` and hands it over::
+    stays independent of the runtime. The widget that builds the ViewModel
+    passes ``App.proxy(self)`` to its constructor::
 
         class SettingsViewModel:
-            def apply_dark_mode(self, app: AppProtocol) -> None:
-                app.set_theme("dark")
+            def __init__(self, app: AppProtocol) -> None:
+                self._app = app
+
+            def apply_dark_mode(self) -> None:
+                self._app.set_theme("dark")
 
     ``App.of(context)`` returns the running app typed as this protocol, and a
     hand-written fake needs only these members -- no widget tree and no
@@ -50,13 +53,15 @@ class WindowProtocol(Protocol):
 
     Annotate the window a ViewModel receives with this protocol so it can
     command its window -- close it, hide it, resize it -- without holding the
-    full :class:`~nuiitivet.runtime.window.Window`. Pass it per method call --
-    the View's event handler resolves ``Window.of(context)`` and hands it
-    over::
+    full :class:`~nuiitivet.runtime.window.Window`. The widget that builds the
+    ViewModel passes ``Window.proxy(self)`` to its constructor::
 
         class LauncherViewModel:
-            def send_to_background(self, window: WindowProtocol) -> None:
-                window.hide()
+            def __init__(self, window: WindowProtocol) -> None:
+                self._window = window
+
+            def send_to_background(self) -> None:
+                self._window.hide()
 
     ``Window.of(context)`` returns an object satisfying it, and a fake needs
     only these members. Every method is a no-op when the OS window does not

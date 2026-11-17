@@ -20,7 +20,7 @@ flowchart LR
     providers -- "queue_size_change · add_size_callback" --> queue
     frame -- "flush_size_change_callbacks()" --> queue
     frame -- "Geometry(content)" --> providers
-    app -- "Geometry.of(self).size · on_size_changed(callback)" --> providers
+    app -- "Geometry.of(self).size · Geometry.proxy(self).size · on_size_changed(callback)" --> providers
     queue -- "callback(size)" --> app
 ```
 
@@ -101,7 +101,8 @@ sequenceDiagram
 ## The Providers
 
 `Geometry` publishes its own measured size to its subtree as a
-`State[Size]`. `on_size_changed` reports a widget's size to the widget
+`State[Size]`. A `GeometryProxy` hands one widget that size before the
+widget is mounted. `on_size_changed` reports a widget's size to the widget
 that carries it.
 
 ### Structure
@@ -111,6 +112,7 @@ flowchart LR
     geometry[layout/geometry.py]
     modifier[modifiers/size_changed.py]
     lookup[widgeting/context_lookup.py]
+    lifecycle[widgeting/widget_lifecycle.py]
     kernel[widgeting/widget_kernel.py]
     sizechange[widgeting/widget_size_change.py]
     app[the app]
@@ -118,17 +120,20 @@ flowchart LR
     geometry -- "layout(cw, ch), the child at its own size" --> app
     geometry -- "queue_size_change(self, size)" --> sizechange
     geometry -- "add_size_callback(_publish_size)" --> kernel
-    app -- "Geometry.of(self).size" --> geometry
+    app -- "Geometry.of(self).size · Geometry.proxy(self).size" --> geometry
     geometry -- "find_provider(context, Geometry)" --> lookup
+    geometry -- "_add_pre_mount_hook(_follow) · add_unmount_callback(_release)" --> lifecycle
+    lifecycle -- "_follow(), at each mount · _release(), at each unmount" --> geometry
     app -- "on_size_changed(callback)" --> modifier
     modifier -- "add_size_callback(callback)" --> kernel
 ```
 
 | Module | Role |
 | --- | --- |
-| `layout/geometry.py` | `Geometry`, a widget around one child, publishing `size` |
+| `layout/geometry.py` | `Geometry`, a widget around one child, publishing `size`; `GeometryProxy`, a `State[Size]` of its own that copies the `size` of the `Geometry` nearest to one widget |
 | `modifiers/size_changed.py` | `on_size_changed`, the callback registered on the widget it is applied to |
 | `widgeting/context_lookup.py` | resolves a `.of()` lookup along the parent chain |
+| `widgeting/widget_lifecycle.py` | runs a proxy's hook at each mount and its callback at each unmount ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)) |
 | `widgeting/widget_kernel.py` | the size callbacks a widget holds (The Queue) |
 | `widgeting/widget_size_change.py` | the queue (The Queue) |
 | the app | the child a `Geometry` lays out, the descendants that read it, the widgets that carry a modifier |
@@ -138,6 +143,15 @@ flowchart LR
 - Constraints are not published.
 - `size` is one `State`, never a width and a height apart.
 - The nearest `Geometry` wins.
+- A `GeometryProxy` never hands out a provider's `State`. Its `size` holds
+  `Size(0, 0)` until the first mount, and in a tree with no `Geometry`.
+- A `GeometryProxy` holds the nearest `Geometry`'s size when its widget's
+  `on_mount` runs.
+- A `GeometryProxy` subscribes to no `Geometry` while its widget is
+  unmounted. Its `size` keeps the last value.
+- A widget mounted again is followed to the `Geometry` nearest to its new
+  place.
+- A `GeometryProxy` holds its widget weakly.
 - `on_size_changed` adds no node to the tree. It creates no scope.
 
 ## The Frame

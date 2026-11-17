@@ -1,15 +1,22 @@
 # Adaptive Layout
 
-## `on_size_changed` Modifier
-
 Some layouts need to change shape based on **how much space they have** — a
 toolbar that moves depending on a pane's orientation, a panel that switches
 arrangement once it gets narrow.
 
 A widget cannot read its own size in `build()` — the parent decides that size
-afterwards. So the size comes to you instead: attach `on_size_changed` to the
-widget whose size you want to know, and the callback is called with that widget's
-`(width, height)` whenever it changes.
+afterwards. So the size comes to you instead, as a `Size`: a `(width, height)`
+pair. Whose size the widget reacts to picks the tool.
+
+| The widget reacts to | Use |
+| --- | --- |
+| Its own size | `on_size_changed` |
+| An ancestor's size, any number of levels up | `Geometry` |
+
+## A widget's own size: `on_size_changed`
+
+Attach `on_size_changed` to the widget whose size you want to know. The
+callback is called with that widget's size whenever it changes.
 
 ```python
 Column([...], width="wt").modifier(
@@ -18,8 +25,7 @@ Column([...], width="wt").modifier(
 ```
 
 Assign the size to a `State` in the callback and the widgets bound to it
-update as usual. Those `State`s live in a plain `__init__` — nothing about
-this needs a lifecycle hook.
+update as usual. Those `State`s live in a plain `__init__`.
 
 > **Mind the initial value.** The callback also runs once when the widget is
 > first shown, not only when the size later changes — so whatever `State`
@@ -84,17 +90,86 @@ survives. The toolbars animate in and out as a bonus.
 > `width`, for example. The new size calls the callback again, which changes the
 > size again, and so on.
 
-## When a subtree needs the size instead
+## An ancestor's size: `Geometry`
 
-`on_size_changed` tells a widget about its *own* size. Sometimes the widget that
-needs the size is a different one — a control nested several levels down that has
-to react to the size of a pane above it. Threading the value through every widget
-in between is not practical, so `Geometry` publishes it to the whole subtree
-instead.
+Sometimes the widget that needs the size is not the one that has it — a control
+nested several levels down that has to react to the size of a pane above it.
+Threading the value through every widget in between is not practical. Wrap the
+pane in `Geometry` instead, and any widget below it reads the pane's size with
+`nv.Geometry.proxy(self).size`. The call works in `__init__`, before the widget
+is in the tree.
 
-| | Use it when |
-| --- | --- |
-| `on_size_changed` | A widget reacts to its own size. |
-| [`Geometry`](../advanced/geometry.md) | Widgets nested anywhere below need one ancestor's size. |
+The `size` is a `State[Size]`. Bind it: map it into a `Text`, or into the
+`opened` of a `Collapsible` as the toolbar example does. A `.value` read in
+`build()` is the size at that moment, and the widget never updates.
 
-See [Geometry: scoped measured size](../advanced/geometry.md).
+### Example: One box, many readers
+
+Three cards each hold a badge, and every badge shows the width of the pane
+around the cards.
+
+```python
+import nuiitivet.material as nv
+
+_WIDE = 600
+
+
+class SizeClassBadge(nv.ComposableWidget):
+    """A leaf, nested arbitrarily deep, that reads the pane it lives in."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        size = nv.Geometry.proxy(self).size      # the nearest Geometry above
+        self._label = size.map(lambda s: f"{'expanded' if s.width >= _WIDE else 'compact'} · {s.width}px")
+
+    def build(self) -> nv.Widget:
+        return nv.Text(self._label, width=150)
+
+
+class _Section(nv.ComposableWidget):
+    """An intermediate widget: it holds a badge but knows nothing about size."""
+
+    def __init__(self, title: str) -> None:
+        super().__init__(width="wt")
+        self._title = title
+
+    def build(self) -> nv.Widget:
+        return nv.Card(
+            nv.Row([nv.Text(self._title), nv.Spacer(width="wt"), SizeClassBadge()],
+                   gap=12, padding=16, width="wt", cross_alignment="center"),
+            width="wt",
+        )
+
+
+# One Geometry around the pane: every badge below it reads this size.
+nv.Geometry(
+    nv.Column([_Section("Library"), _Section("Downloads"), _Section("Settings")],
+              gap=16, width="wt", height="wt"),
+    width="wt",
+    height="wt",
+)
+```
+
+`_Section` passes nothing down — it does not know that a badge somewhere inside
+it cares about the pane's width. Move the badge elsewhere and it reads whatever
+pane it lands in. The whole sample is `samples/layout/adaptive/scoped_size.py`.
+
+![Geometry: one box, many readers](../../assets/layout_adaptive_scoped_size.png)
+
+The size starts as `Size(0, 0)`. Each badge reads `compact · 0px` when the
+window opens, and the pane's width a frame or two later. Write the `map` so
+that `Size(0, 0)` gives what the app should start with. After a resize the
+badges follow one frame later.
+
+### Keep in mind
+
+- **The nearest `Geometry` above wins.** A widget with no `Geometry` above it
+  reads the window's size.
+- **Size the `Geometry` to measure a pane.** `width="wt"` and `height="wt"`
+  make it take what its parent offers. With no size it wraps its child and
+  measures the child.
+- **In an event handler, `.value` is the size at that moment.**
+- **The size is read-only.** A value the user also changes, such as a
+  `NavigationRail`'s `expanded` that its menu button toggles, needs a `State`
+  of its own. Put `on_size_changed` on the widget that owns that `State` and
+  assign it there.

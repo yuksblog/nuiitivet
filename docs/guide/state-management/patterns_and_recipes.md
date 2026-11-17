@@ -51,6 +51,60 @@ class TodoView:
         )
 ```
 
+### Giving a ViewModel the navigator, the overlay, the window or the app
+
+A ViewModel that shows a snackbar, pushes a screen or closes the window needs
+the object that does it. The View makes a stand-in with `proxy(self)` in its
+`__init__` and passes it to the ViewModel's constructor.
+
+```python
+class TodoViewModel:
+    def __init__(self, overlay: nv.OverlayProtocol):
+        self._overlay = overlay
+        ...
+
+    async def sync(self):
+        await asyncio.sleep(1.0)                  # stand-in for the upload
+        self._overlay.snackbar("Synced")
+
+
+class TodoView(nv.ComposableWidget):
+    def __init__(self):
+        super().__init__()
+        self.vm = TodoViewModel(overlay=nv.Overlay.proxy(self))
+
+    def build(self):
+        return nv.Button("Sync", on_click=self.vm.sync, style=nv.ButtonStyle.outlined())
+```
+
+`nv.Overlay.of(self)` raises `RuntimeError` in `__init__`: the View is not in
+the tree yet. `proxy` takes the same arguments as `of`. Each of the four
+objects has one, and a protocol to annotate the parameter with.
+
+| The ViewModel | The View passes | Annotated as |
+| --- | --- | --- |
+| pushes or pops a screen | `nv.Navigator.proxy(self)` | `nv.NavigatorProtocol` |
+| shows a dialog, a snackbar or a sheet | `nv.Overlay.proxy(self)` | `nv.OverlayProtocol` |
+| closes, hides or resizes the window | `nv.Window.proxy(self)` | `nv.WindowProtocol` |
+| exits the app or changes the theme | `nv.App.proxy(self)` | `nv.AppProtocol` |
+
+A stand-in has the methods of its protocol. For any other, such as the
+overlay's `show()`, call `nv.Overlay.of(self)` in the View's event handler.
+
+What a call does depends on where the View is at that moment.
+
+| The View | Navigator, Overlay | Window, App |
+| --- | --- | --- |
+| is not mounted yet | raises `RuntimeError` | raises `RuntimeError` |
+| is mounted, on top or under a pushed screen | works | works |
+| has left the tree | nothing happens | reaches the window and the app the View was in |
+
+Press Back while `sync()` is uploading, and no snackbar appears over the
+previous screen. `await overlay.dialog(...)` returns at once with `value`
+`None` and the reason
+[`DISPOSED`](../overlay/primitives.md#overlayhandle-and-overlayresult).
+`can_pop()` returns `False`.
+
 ## Derived State Composition
 
 Use derived state composition when one value should be computed from other `State`s.

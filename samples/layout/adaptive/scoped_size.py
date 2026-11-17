@@ -5,7 +5,7 @@ measurer and the readers are different widgets, the size has to travel down the
 tree instead — that is what ``Geometry`` is for.
 
 Here a single ``Geometry`` wraps the content pane, and three widgets at three
-different depths read it with ``Geometry.of(self).size``. None of the widgets
+different depths read it with ``Geometry.proxy(self).size``. None of the widgets
 between them pass anything down: a card does not know its badge cares about the
 pane's width, and dropping the same badge somewhere else makes it read whatever
 pane it lands in.
@@ -19,13 +19,10 @@ _WIDE = 600
 class SizeClassBadge(nv.ComposableWidget):
     """A leaf, nested arbitrarily deep, that reads the pane it lives in."""
 
-    def on_mount(self) -> None:
-        # ``Geometry.of`` resolves through the ancestor chain, so it needs a
-        # mounted context — ``__init__`` is too early, the widget has no
-        # ancestors yet.
-        size = nv.Geometry.of(self).size
+    def __init__(self) -> None:
+        super().__init__()
+        size = nv.Geometry.proxy(self).size
         self._label = size.map(lambda s: f"{'expanded' if s.width >= _WIDE else 'compact'} · {s.width}px")
-        super().on_mount()
 
     def build(self) -> nv.Widget:
         # A fixed width so the label does not reflow as the text changes length.
@@ -70,7 +67,7 @@ class ContentPane(nv.ComposableWidget):
 
 def build_root() -> nv.Widget:
     """Factory root (uncalled), so `python -m nuiitivet.dev` can hot-reload it."""
-    # One filling Geometry defines the scope; every ``Geometry.of`` below it
+    # One filling Geometry defines the scope; every ``Geometry.proxy`` below it
     # resolves here, because the nearest ancestor provider wins.
     return nv.Container(
         nv.Geometry(ContentPane(), width="wt", height="wt"),
