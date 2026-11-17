@@ -23,7 +23,7 @@ Like the lifecycle modifiers it registers on the widget itself and adds no node 
 
 The callback is dispatched **between frames**, never inside the layout pass, so it may safely write `State`s, push routes, or replace children; the effect lands on the next frame. Two consequences: do not resize the measured widget from its own callback, or the report can feed back; and the first call arrives after the first paint, so give the `State` the value the initial size implies to avoid a one-frame transition on startup.
 
-See [Adaptive Layout](../layout/adaptive.md) for the full pattern, and [Geometry](../advanced/geometry.md) for the case where a *subtree* needs an ancestor's size.
+See [Adaptive Layout](../layout/adaptive.md) for the full pattern, and for the case where a *subtree* needs an ancestor's size.
 
 ## Will Pop
 

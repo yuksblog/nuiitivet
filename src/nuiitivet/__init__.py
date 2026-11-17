@@ -57,7 +57,7 @@ from nuiitivet.widgets.input_filter import (
 )
 
 # Geometry (container-scoped measured size)
-from nuiitivet.layout.geometry import Geometry
+from nuiitivet.layout.geometry import Geometry, GeometryProxy
 from nuiitivet.rendering.size import Size
 from nuiitivet.rendering.shadow import Shadow
 
@@ -223,6 +223,7 @@ __all__: list[str] = [
     "max_length",
     # Geometry
     "Geometry",
+    "GeometryProxy",
     "Size",
     # Navigation
     "Navigator",

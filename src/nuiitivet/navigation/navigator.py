@@ -22,6 +22,8 @@ from nuiitivet.transition.spec import (
 from nuiitivet.transition.stack import StackRuntime
 
 from .layer_composer import NavigationLayerComposer, NavigationLayerCompositionContext
+from .protocols import NavigatorProtocol
+from .proxy import NavigatorProxy
 from .route import Route
 
 _logger = logging.getLogger(__name__)
@@ -201,6 +203,25 @@ class Navigator(ComposableWidget):
                 f"Pass one as the Window's content=, or nest one in the subtree."
             )
         return window_navigator
+
+    @classmethod
+    def proxy(cls, context: Widget, root: bool = False) -> NavigatorProtocol:
+        """Return a stand-in for the ``Navigator`` that :meth:`of` resolves.
+
+        Unlike :meth:`of` it can be called in ``__init__``, to hand a navigator
+        to a ViewModel. Each call on it resolves the navigator at that moment.
+        Before ``context`` is mounted a call raises ``RuntimeError``. After it
+        is unmounted ``push`` and ``pop`` do nothing and ``can_pop`` returns
+        ``False``. It holds ``context`` weakly.
+
+        Args:
+            context: The widget to resolve from at each call.
+            root: Use the App's navigator, skipping ancestors.
+
+        Raises:
+            RuntimeError: If called before ``super().__init__()``.
+        """
+        return NavigatorProxy(f"{cls.__name__}.proxy", context, lambda widget: cls.of(widget, root=root))
 
     def can_pop(self) -> bool:
         return self._stack.can_pop(min_elements=1)

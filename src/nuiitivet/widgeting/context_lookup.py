@@ -16,17 +16,25 @@ reached through :class:`~nuiitivet.runtime.window.WindowScope`, which keeps
 the answer scoped to *this* window instead of a process-wide global.
 :func:`find_app` resolves the app-wide half through
 :class:`~nuiitivet.runtime.app.AppScope`.
+
+:class:`ContextProxy` is the base of what ``X.proxy(context)`` returns: a
+stand-in made in ``__init__`` that runs the lookup when it is used.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Final, Optional, Type, TypeVar
+import logging
+import weakref
+from typing import TYPE_CHECKING, Any, Callable, Final, Generic, Optional, Type, TypeVar
 
 if TYPE_CHECKING:
     from nuiitivet.runtime.app import App, AppScope
     from nuiitivet.runtime.window import Window
 
+logger = logging.getLogger(__name__)
+
 __all__ = [
+    "ContextProxy",
     "find_app",
     "find_app_scope",
     "find_provider",
@@ -36,6 +44,7 @@ __all__ = [
     "is_uninitialized_context",
     "premature_lookup_message",
     "raise_if_premature_lookup",
+    "raise_if_uninitialized_proxy",
 ]
 
 _MISSING: Final = object()
@@ -203,7 +212,8 @@ def premature_lookup_message(api: str, context: Any) -> str:
         context: The widget the lookup started from.
 
     Returns:
-        A message naming the cause (not mounted) and the fix (``on_mount``).
+        A message naming the cause (not mounted) and the fix (``proxy``, or
+        a later lookup).
     """
     uninitialized = getattr(context, "_parent", _MISSING) is _MISSING
     cause = (
@@ -211,10 +221,12 @@ def premature_lookup_message(api: str, context: Any) -> str:
         if uninitialized
         else "before it was mounted, so its ancestor chain does not exist yet"
     )
+    proxy = f"{api.rsplit('.', 1)[0]}.proxy"
     return (
         f"{api}() was called on {type(context).__name__} {cause}. "
         f"This usually means the call is in __init__; a widget only learns its "
-        f"parent when it is attached to the tree. Move the lookup to on_mount()."
+        f"parent when it is attached to the tree. Use {proxy}(self) there, or "
+        f"move the lookup to an event handler or on_mount()."
     )
 
 
@@ -234,3 +246,88 @@ def raise_if_premature_lookup(api: str, context: Any) -> None:
     """
     if is_premature_lookup(context):
         raise RuntimeError(premature_lookup_message(api, context))
+
+
+def raise_if_uninitialized_proxy(api: str, context: Any) -> None:
+    """Raise when ``X.proxy(context)`` ran before ``super().__init__()``.
+
+    Args:
+        api: The API being called, e.g. ``"Geometry.proxy"``.
+        context: The widget the proxy is made for.
+
+    Raises:
+        RuntimeError: If ``context`` has not run ``Widget.__init__`` yet.
+    """
+    if is_uninitialized_context(context):
+        raise RuntimeError(
+            f"{api}() was called on {type(context).__name__} before super().__init__() "
+            f"had run. Call super().__init__() first."
+        )
+
+
+P = TypeVar("P")
+
+
+class ContextProxy(Generic[P]):
+    """A stand-in for the provider an ``of()`` lookup resolves from one widget.
+
+    It holds the widget weakly and runs the lookup at each use. A use before
+    the widget is mounted raises. After the widget is unmounted, or collected,
+    there is no provider: the subclass drops the call.
+    """
+
+    def __init__(self, api: str, context: Any, lookup: Callable[[Any], P], *, keep: bool = False) -> None:
+        """Make the stand-in for ``lookup(context)``.
+
+        Args:
+            api: The API that made this proxy, e.g. ``"Overlay.proxy"``.
+            context: The widget to look up from.
+            lookup: The ``of()`` call, taking the widget.
+            keep: Remember the provider resolved at each mount, and answer
+                with it after the unmount. For a provider that outlives the
+                widget.
+
+        Raises:
+            RuntimeError: If ``context`` has not run ``Widget.__init__`` yet.
+        """
+        raise_if_uninitialized_proxy(api, context)
+        self._api = api
+        self._context = weakref.ref(context)
+        self._context_name = type(context).__name__
+        self._lookup = lookup
+        self._kept: Optional[weakref.ReferenceType[P]] = None
+        self._drop_logged = False
+        if keep:
+            context._add_pre_mount_hook(self._keep)
+
+    def _keep(self) -> None:
+        context = self._context()
+        if context is None:
+            return
+        try:
+            self._kept = weakref.ref(self._lookup(context))
+        except RuntimeError:
+            # A tree with no provider: the use reports it.
+            return
+
+    def _provider(self) -> Optional[P]:
+        """Return the provider to forward to, or ``None`` to drop the call.
+
+        Raises:
+            RuntimeError: If the widget is not mounted yet, or its tree has no
+                provider.
+        """
+        context = self._context()
+        if context is not None and not getattr(context, "_unmounted", False):
+            if is_premature_lookup(context):
+                raise RuntimeError(
+                    f"{self._api}({self._context_name}) was used before {self._context_name} "
+                    f"was mounted, so its ancestor chain does not exist yet. A proxy can be "
+                    f"made in __init__; use it once the widget is in the tree."
+                )
+            return self._lookup(context)
+        kept = self._kept() if self._kept is not None else None
+        if kept is None and not self._drop_logged:
+            self._drop_logged = True
+            logger.debug("%s: call dropped, %s is no longer mounted", self._api, self._context_name)
+        return kept

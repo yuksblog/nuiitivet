@@ -29,6 +29,9 @@ class LifecycleHostMixin(Listener):
     # ``super().__init__()``.
     _mounted: bool = False
 
+    # A class default: few widgets carry a hook.
+    _pre_mount_hooks: Tuple[Callable[[], None], ...] = ()
+
     _app: Any
     _mount_callbacks: List[VoidCallback]
     _unmount_callbacks: List[VoidCallback]
@@ -65,6 +68,8 @@ class LifecycleHostMixin(Listener):
         self._app = app
         # Entering a tree: whatever an earlier placement resolved is stale.
         forget_app_scope(self)
+        for hook in self._pre_mount_hooks:
+            self._safe_call(hook)
         if __debug__:
             # Per mount, not per instance: a re-mount is checked again.
             self._on_mount_chained = False
@@ -154,6 +159,17 @@ class LifecycleHostMixin(Listener):
             self._on_unmount_chained = True
 
     # --- Callback registration ---------------------------------------------
+    def _add_pre_mount_hook(self, hook: Callable[[], None]) -> None:
+        """Run ``hook`` at each mount, ahead of :meth:`on_mount`.
+
+        ``on_mount`` runs ``build()``, so what the hook resolves from the
+        ancestors is there for the first build. On a mounted widget the hook
+        also runs at once.
+        """
+        self._pre_mount_hooks = (*self._pre_mount_hooks, hook)
+        if self._mounted:
+            self._safe_call(hook)
+
     def add_mount_callback(self, callback: VoidCallback) -> None:
         """Register a callback to be invoked when this widget is mounted.
 

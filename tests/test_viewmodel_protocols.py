@@ -256,27 +256,6 @@ class ItemViewModel:
             pass
 
 
-class PerCallViewModel:
-    """The shape the guide recommends: the navigator arrives per call.
-
-    A widget cannot resolve a navigator in ``__init__`` (neither ``of()`` nor
-    ``root()`` works that early), so the View resolves one inside the event
-    handler. The protocol types the parameter just as well as a constructor
-    argument, and the ViewModel stays constructible anywhere.
-    """
-
-    def open(self, navigator: nv.NavigatorProtocol, item_id: int) -> None:
-        navigator.push(DetailsIntent(item_id=item_id))
-
-
-def test_per_call_injection_is_typed_by_the_same_protocol() -> None:
-    navigator = FakeNavigator()
-
-    PerCallViewModel().open(navigator, item_id=7)
-
-    assert isinstance(navigator.pushed[0], DetailsIntent)
-
-
 def test_view_model_navigates_without_a_widget_tree() -> None:
     navigator = FakeNavigator()
     vm = ItemViewModel(navigator, FakeOverlay())
@@ -432,30 +411,29 @@ def _conforms_fake_window(window: FakeWindow) -> nv.WindowProtocol:
 
 
 class ShellViewModel:
-    """Commands window and app through the protocols, received per call.
+    """Commands window and app through the protocols it was built with."""
 
-    Per-call injection is the standard shape: the widget builds its ViewModel
-    in ``__init__``, where ``.of(context)`` cannot resolve yet, so the event
-    handler resolves the object and hands it to the method.
-    """
+    def __init__(self, window: nv.WindowProtocol, app: nv.AppProtocol) -> None:
+        self._window = window
+        self._app = app
 
-    def send_to_background(self, window: nv.WindowProtocol) -> None:
-        window.hide()
+    def send_to_background(self) -> None:
+        self._window.hide()
 
-    def quit(self, app: nv.AppProtocol) -> None:
-        app.exit()
+    def quit(self) -> None:
+        self._app.exit()
 
-    def apply_dark_mode(self, app: nv.AppProtocol) -> None:
-        app.set_theme("dark")
+    def apply_dark_mode(self) -> None:
+        self._app.set_theme("dark")
 
-    def show_unread(self, app: nv.AppProtocol, count: int) -> None:
-        app.badge.value = count
+    def show_unread(self, count: int) -> None:
+        self._app.badge.value = count
 
 
 def test_view_model_commands_the_window_without_a_tree() -> None:
     window = FakeWindow()
 
-    ShellViewModel().send_to_background(window)
+    ShellViewModel(window, FakeApp()).send_to_background()
 
     assert window.calls == ["hide"]
     assert window.is_visible.value is False
@@ -463,11 +441,11 @@ def test_view_model_commands_the_window_without_a_tree() -> None:
 
 def test_view_model_commands_the_app_without_a_tree() -> None:
     app = FakeApp()
-    vm = ShellViewModel()
+    vm = ShellViewModel(FakeWindow(), app)
 
-    vm.apply_dark_mode(app)
-    vm.show_unread(app, 3)
-    vm.quit(app)
+    vm.apply_dark_mode()
+    vm.show_unread(3)
+    vm.quit()
 
     assert app.themes == ["dark"]
     assert app.badge.value == 3

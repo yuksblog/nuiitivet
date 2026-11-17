@@ -62,12 +62,13 @@ def create_counter_dialog(intent: CounterIntent) -> nv.Widget:
 
 
 class CustomIntentViewModel:
-    def __init__(self):
+    def __init__(self, overlay: nv.OverlayProtocol):
+        self._overlay = overlay
         self.message = nv.State("No result yet")
 
-    async def open_counter(self, overlay: nv.OverlayProtocol):
+    async def open_counter(self):
         # The ViewModel just emits an intent and waits for a result
-        result = await overlay.dialog(CounterIntent(initial_value=5))
+        result = await self._overlay.dialog(CounterIntent(initial_value=5))
 
         if result.value is not None:
             self.message.value = f"Final Count from Intent: {result.value}"
@@ -76,11 +77,7 @@ class CustomIntentViewModel:
 class CustomIntentDemo(nv.ComposableWidget):
     def __init__(self):
         super().__init__()
-        self.vm = CustomIntentViewModel()
-
-    async def _on_open_click(self):
-        # Resolve here, not in __init__: a widget has no ancestors until mounted.
-        await self.vm.open_counter(nv.Overlay.of(self))
+        self.vm = CustomIntentViewModel(nv.Overlay.proxy(self))
 
     def build(self) -> nv.Widget:
         return nv.Container(
@@ -91,7 +88,7 @@ class CustomIntentDemo(nv.ComposableWidget):
                     nv.Text(self.vm.message),
                     nv.Button(
                         "Open Counter (via Intent)",
-                        on_click=self._on_open_click,
+                        on_click=self.vm.open_counter,
                         style=nv.ButtonStyle.filled()),
                 ],
             ),

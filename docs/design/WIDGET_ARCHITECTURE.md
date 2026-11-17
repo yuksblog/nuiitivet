@@ -58,6 +58,7 @@ checks that an override chained to its base.
 flowchart LR
     lifecycle[widgeting/widget_lifecycle.py]
     lookup[widgeting/context_lookup.py]
+    geometry[layout/geometry.py]
     callbacks[widgeting/callbacks.py]
     binding[widgeting/widget_binding.py]
     builder[widgeting/widget_builder.py]
@@ -67,6 +68,8 @@ flowchart LR
 
     store -- "mount(app) · unmount()" --> lifecycle
     lifecycle -- "forget_app_scope(widget)" --> lookup
+    lookup -- "_add_pre_mount_hook(_keep)" --> lifecycle
+    geometry -- "_add_pre_mount_hook(_follow)" --> lifecycle
     lifecycle -- "report_contained(exc, owner, site) · invoke_event_handler(callback)" --> callbacks
     binding -- "on_unmount(): _dispose_bindings()" --> lifecycle
     builder -- "on_mount(): evaluate_build() · on_unmount(): _unmount_built()" --> lifecycle
@@ -76,8 +79,9 @@ flowchart LR
 
 | Module | Role |
 | --- | --- |
-| `widgeting/widget_lifecycle.py` | `LifecycleHostMixin`: the app link, the mounted flags, the mount and unmount callbacks, the dispose callbacks, the chain checks |
-| `widgeting/context_lookup.py` | the remembered `AppScope` a mount or unmount forgets ([THEME_CONSUMPTION.md](THEME_CONSUMPTION.md)) |
+| `widgeting/widget_lifecycle.py` | `LifecycleHostMixin`: the app link, the mounted flags, the pre-mount hooks, the mount and unmount callbacks, the dispose callbacks, the chain checks |
+| `widgeting/context_lookup.py` | the remembered `AppScope` a mount or unmount forgets ([THEME_CONSUMPTION.md](THEME_CONSUMPTION.md)); `ContextProxy`, the base of a service proxy, whose hook remembers the app or the window at each mount ([APP_WINDOW.md](APP_WINDOW.md)) |
+| `layout/geometry.py` | `GeometryProxy`, whose hook follows the nearest `Geometry` at each mount ([GEOMETRY.md](GEOMETRY.md)) |
 | `widgeting/callbacks.py` | contains a hook's exception and reports it ([ERROR_HANDLING.md](ERROR_HANDLING.md)) |
 | `widgeting/widget_binding.py` | its `on_unmount` (The Bindings) |
 | `widgeting/widget_builder.py` | its `on_mount` and `on_unmount` (The Builder) |
@@ -98,6 +102,7 @@ sequenceDiagram
 
     S->>L: mount(app)
     L->>L: _mounted = True, _app = app, forget_app_scope
+    L->>L: the pre-mount hooks
     L->>A: on_mount(), contained
     A->>B: super().on_mount()
     B->>L: super().on_mount(), down the MRO, sets _on_mount_chained
@@ -137,6 +142,8 @@ sequenceDiagram
 ### Promises
 
 - A second `mount(app)` on a widget mounted to the same app returns at once.
+- A pre-mount hook runs at each mount, ahead of `on_mount` and the first
+  build. One added to a mounted widget runs at once.
 - The base `on_mount` and `on_unmount` end the chains. An override that
   never reaches them is reported after the mount or the unmount, for
   `on_mount` on build hosts only.

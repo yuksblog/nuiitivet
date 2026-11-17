@@ -34,6 +34,8 @@ from .overlay_aware import OverlayAware
 from .overlay_entry import OverlayEntry
 from .overlay_handle import OverlayHandle
 from .overlay_position import OverlayPosition
+from .protocols import OverlayProtocol
+from .proxy import OverlayProxy
 from .result import OverlayDismissReason, OverlayResult
 from .layer_composer import OverlayLayerComposer, OverlayLayerCompositionContext, OverlayLayerPaint
 
@@ -907,3 +909,21 @@ class Overlay(ComposableWidget):
                 f"Pass overlay={cls.__name__} to the Window."
             )
         return window_overlay
+
+    @classmethod
+    def proxy(cls, context: Widget, root: bool = False) -> OverlayProtocol:
+        """Return a stand-in for the ``Overlay`` that :meth:`of` resolves.
+
+        Unlike :meth:`of` it can be called in ``__init__``, to hand an overlay
+        to a ViewModel. Each call on it resolves the overlay at that moment.
+        Before ``context`` is mounted a call raises ``RuntimeError``. After it
+        is unmounted a call does nothing. It holds ``context`` weakly.
+
+        Args:
+            context: The widget to resolve from at each call.
+            root: Skip the ancestor search and use the window's overlay.
+
+        Raises:
+            RuntimeError: If called before ``super().__init__()``.
+        """
+        return OverlayProxy(f"{cls.__name__}.proxy", context, lambda widget: cls.of(widget, root=root))

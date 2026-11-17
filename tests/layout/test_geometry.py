@@ -161,3 +161,148 @@ def test_filling_geometry_measures_available_space():
     flush_size_change_callbacks()
 
     assert pane.size.value.width == 300
+
+
+# -- Geometry.proxy ---------------------------------------------------------
+
+
+class _Badge(ComposableWidget):
+    """Derives from the proxy's size in ``__init__``, as the guide shows."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.size = Geometry.proxy(self).size
+        self.label = self.size.map(lambda s: f"{s.width}px")
+        self.built_with: list[Size] = []
+
+    def build(self) -> Widget:
+        self.built_with.append(self.size.value)
+        return Container()
+
+
+def _laid_out(geom: Geometry, width: int, height: int) -> Geometry:
+    geom.layout(width, height)
+    flush_size_change_callbacks()
+    return geom
+
+
+def test_proxy_derivation_is_built_before_mount():
+    badge = _Badge()
+
+    assert badge.size.value == Size(0, 0)
+    assert badge.label.value == "0px"
+
+
+def test_proxy_follows_the_provider_after_the_first_layout():
+    badge = _Badge()
+    geom = Geometry(Container(badge))
+    geom.mount(None)
+
+    _laid_out(geom, 300, 200)
+    assert badge.label.value == "300px"
+
+    _laid_out(geom, 640, 200)
+    assert badge.label.value == "640px"
+    geom.unmount()
+
+
+def test_proxy_nearest_provider_wins():
+    badge = _Badge()
+    inner = Geometry(badge, width=120)
+    outer = Geometry(Container(inner))
+    outer.mount(None)
+
+    _laid_out(outer, 500, 300)
+
+    assert inner.size.value.width == 120
+    assert badge.size.value == inner.size.value
+    outer.unmount()
+
+
+def test_proxy_size_is_there_for_the_first_build():
+    geom = _laid_out(Geometry(Container()), 300, 200)
+    badge = _Badge()
+    geom.add_child(Container(badge))
+
+    geom.mount(None)
+
+    assert badge.built_with == [Size(300, 200)]
+    geom.unmount()
+
+
+def test_proxy_made_on_a_mounted_widget_follows_at_once():
+    probe = Container()
+    geom = _laid_out(Geometry(probe), 300, 200)
+    geom.mount(None)
+
+    assert Geometry.proxy(probe).size.value == Size(300, 200)
+    geom.unmount()
+
+
+def test_proxy_unmount_releases_the_subscription_and_keeps_the_last_size():
+    badge = _Badge()
+    geom = Geometry(Container(badge))
+    geom.mount(None)
+    _laid_out(geom, 300, 200)
+
+    geom.unmount()
+    geom.size.value = Size(640, 480)
+
+    assert badge.size.value == Size(300, 200)
+
+
+def test_proxy_remounted_elsewhere_follows_the_new_provider():
+    badge = _Badge()
+    first = Geometry(badge)
+    first.mount(None)
+    _laid_out(first, 300, 200)
+    first.unmount()
+    first.remove_child(badge)
+
+    second = _laid_out(Geometry(badge), 800, 600)
+    second.mount(None)
+
+    assert badge.size.value == Size(800, 600)
+    _laid_out(first, 111, 111)
+    assert badge.size.value == Size(800, 600)
+    second.unmount()
+
+
+def test_proxy_keeps_the_placeholder_in_a_tree_with_no_provider():
+    badge = _Badge()
+    root = Container(badge)
+
+    root.mount(None)
+
+    assert badge.size.value == Size(0, 0)
+    root.unmount()
+
+
+def test_proxy_before_super_init_raises():
+    import pytest
+
+    class _Early(Widget):
+        def __init__(self) -> None:
+            Geometry.proxy(self)
+            super().__init__()
+
+    with pytest.raises(RuntimeError, match=r"Geometry\.proxy\(\) was called on _Early before super\(\).__init__\(\)"):
+        _Early()
+
+
+def test_proxy_does_not_keep_its_widget_alive():
+    import gc
+    import weakref
+
+    gc.collect()
+    gc.disable()
+    try:
+        probe = Container()
+        proxy = Geometry.proxy(probe)
+        ref = weakref.ref(probe)
+
+        del probe
+        assert ref() is None
+        assert proxy.size.value == Size(0, 0)
+    finally:
+        gc.enable()

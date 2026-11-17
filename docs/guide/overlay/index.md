@@ -44,8 +44,9 @@ Two `App` instances in one process each get their own.
 
 > [!NOTE]
 > `Overlay.of(self)` cannot be called from a widget's `__init__` — a widget has
-> no ancestors until it is mounted. Resolve it in `on_mount()`, in `build()`, or
-> in the event handler that needs it.
+> no ancestors until it is mounted. `Overlay.proxy(self)` can be made there, to
+> hand to a ViewModel, as in
+> [Architecting Dialogs in MVVM](dialogs.md#architecting-dialogs-in-mvvm).
 
 ## The primitive
 

@@ -38,30 +38,26 @@ class DetailsScreen(nv.ComposableWidget):
 
 
 class ItemViewModel:
-    def __init__(self, item_id: int) -> None:
+    def __init__(self, item_id: int, navigator: nv.NavigatorProtocol) -> None:
         self.item_id = item_id
+        self._navigator = navigator
 
-    # The navigator is passed in, so the ViewModel never touches a widget.
-    def on_item_selected(self, navigator: nv.NavigatorProtocol) -> None:
-        navigator.push(DetailsIntent(item_id=self.item_id))
+    def on_item_selected(self) -> None:
+        self._navigator.push(DetailsIntent(item_id=self.item_id))
 
 
 class HomeScreen(nv.ComposableWidget):
     def __init__(self) -> None:
         super().__init__()
-        self.view_model = ItemViewModel(item_id=42)
+        self.view_model = ItemViewModel(item_id=42, navigator=nv.Navigator.proxy(self))
 
     def build(self):
-        def go_to_details() -> None:
-            # Resolve the navigator here, not in __init__.
-            self.view_model.on_item_selected(nv.Navigator.of(self))
-
         return nv.Column(
             padding=16,
             gap=12,
             children=[
                 nv.Text("Home Screen"),
-                nv.Button("View Details", on_click=go_to_details, style=nv.ButtonStyle.filled()),
+                nv.Button("View Details", on_click=self.view_model.on_item_selected, style=nv.ButtonStyle.filled()),
             ],
         )
 

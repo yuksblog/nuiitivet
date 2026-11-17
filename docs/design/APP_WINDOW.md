@@ -6,8 +6,8 @@ overlay, navigator, focus state and menu bar.
 
 ## Overview
 
-Three modules take part, with the protocols, the dev session and the
-platform integrations at their edges.
+Three modules take part, with the protocols, the proxies, the dev session
+and the platform integrations at their edges.
 
 ### Structure
 
@@ -17,12 +17,17 @@ flowchart LR
     window[runtime/window.py]
     runner[backends/pyglet/runner.py]
     protocols[runtime/protocols.py]
+    proxy[runtime/proxy.py]
     session[dev/session.py]
     tray[platform/tray.py]
     code[the app's code]
 
     code -- "App(window, theme, exit_policy) · run() · App.of(context).exit()" --> app
     code -- "Window(content, title, width, chrome, menu, parent, modal, ...) · open() · close() · Window.of(context)" --> window
+    code -- "App.proxy(context) · Window.proxy(context), kept" --> proxy
+    proxy -- "App.of(context), at each mount and each call" --> app
+    proxy -- "Window.of(context), at each mount and each call" --> window
+    proxy -- "is a: AppProtocol · WindowProtocol" --> protocols
     window -- "_register_window(self) · _unregister_window(self) · current_app()" --> app
     app -- "close() · window.root · invalidate()" --> window
     app -- "run_app(app, draw_fps, renderer)" --> runner
@@ -40,9 +45,10 @@ flowchart LR
 | `runtime/window.py` | `Window`: the lifecycle, the tree with its navigator and overlay, the input dispatch, the frame; `WindowScope`, under the `AppScope` |
 | `backends/pyglet/runner.py` | the event loop and the OS window of each `Window` |
 | `runtime/protocols.py` | `AppProtocol` and `WindowProtocol`, what a ViewModel is typed against |
+| `runtime/proxy.py` | `AppProxy` and `WindowProxy`: stand-ins made from one widget, forwarding each call to the app or the window that widget resolves |
 | `dev/session.py` | takes the app over from `run()` under the dev runner ([HOT_RELOAD.md](HOT_RELOAD.md)) |
 | `platform/tray.py` | installed with the loop ([TRAY_ICON.md](TRAY_ICON.md)) |
-| the app's code | constructs the app and its windows, resolves them by `.of()` |
+| the app's code | constructs the app and its windows, resolves them by `.of()`, keeps a stand-in from `.proxy()` |
 
 ### Promises
 
@@ -50,6 +56,12 @@ flowchart LR
 - Nothing below `Window` knows which window hosts it.
 - `Window.of(context).close()` closes the context's own window. An operation
   addresses the object it was resolved through.
+- A proxy resolves `App.of` or `Window.of` at each call while its widget is
+  mounted. It holds the widget weakly.
+- A proxy call before the widget's first mount raises.
+- A proxy call while the widget is unmounted reaches the app or the window
+  the widget was last mounted in. The proxy holds that object weakly. Once
+  it is gone the call does nothing, and one debug line per proxy records it.
 
 ## The App
 

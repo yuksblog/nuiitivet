@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
-from nuiitivet.widgeting.paint_replay import replay_safe
+import weakref
 from typing import Optional, Tuple, Type, TypeVar
 
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
-from nuiitivet.observable import State
+from nuiitivet.observable import Disposable, State
 from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.rendering.size import Size
 from nuiitivet.rendering.sizing import SizingLike
-from nuiitivet.widgeting.context_lookup import find_provider, raise_if_premature_lookup
+from nuiitivet.widgeting.context_lookup import (
+    find_provider,
+    raise_if_premature_lookup,
+    raise_if_uninitialized_proxy,
+)
+from nuiitivet.widgeting.paint_replay import replay_safe
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgeting.widget_children import ChildContainerMixin
 from nuiitivet.widgeting.widget_size_change import queue_size_change
@@ -23,7 +28,8 @@ class Geometry(Widget):
 
     Transparent to layout: the single child receives this widget's own size.
     Each layout pass publishes that size as a ``State[Size]``, read by
-    descendants via :meth:`Geometry.of` — bind it (mapped); a ``.value`` read at
+    descendants via :meth:`Geometry.proxy` in ``__init__`` or :meth:`Geometry.of`
+    once mounted — bind it (mapped); a ``.value`` read at
     build time is a one-time snapshot. Map it into a value widget, or drive a
     ``Deck`` index for a structural switch::
 
@@ -105,6 +111,26 @@ class Geometry(Widget):
             raise RuntimeError("Geometry not found in ancestors")
         return geometry
 
+    @classmethod
+    def proxy(cls: Type[GeometryT], context: Widget) -> "GeometryProxy":
+        """Return a stand-in for the nearest ancestor :class:`Geometry`.
+
+        Unlike :meth:`of` it can be called in ``__init__``, so a widget
+        derives from the size where it builds its other state::
+
+            def __init__(self) -> None:
+                super().__init__()
+                size = Geometry.proxy(self).size
+                self._label = size.map(lambda s: "wide" if s.width >= 600 else "narrow")
+
+        Args:
+            context: The widget whose ancestors are searched once it is mounted.
+
+        Raises:
+            RuntimeError: If called before ``super().__init__()``.
+        """
+        return GeometryProxy(cls, context)
+
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         """Report preferred size: own fixed sizing wins, else the child's.
 
@@ -152,4 +178,56 @@ class Geometry(Widget):
         child.paint(canvas, x + rx, y + ry, rw, rh)
 
 
-__all__ = ["Geometry"]
+class GeometryProxy:
+    """The size of the :class:`Geometry` nearest to one widget.
+
+    Returned by :meth:`Geometry.proxy`. It holds the widget weakly.
+    """
+
+    def __init__(self, provider: Type[Geometry], context: Widget) -> None:
+        """Follow the ``provider`` nearest to ``context`` while it is mounted.
+
+        Args:
+            provider: The ``Geometry`` class to search the ancestors for.
+            context: The widget to search upward from.
+
+        Raises:
+            RuntimeError: If ``context`` has not run ``Widget.__init__`` yet.
+        """
+        raise_if_uninitialized_proxy(f"{provider.__name__}.proxy", context)
+        self._provider = provider
+        self._context = weakref.ref(context)
+        self._size: State[Size] = State(Size(0, 0))
+        self._subscription: Optional[Disposable] = None
+        context._add_pre_mount_hook(self._follow)
+        context.add_unmount_callback(self._release)
+
+    @property
+    def size(self) -> State[Size]:
+        """The provider's ``(width, height)``.
+
+        ``Size(0, 0)`` until the widget is mounted, and in a tree with no
+        provider. From the mount it is the size of the nearest provider,
+        there for the first ``build()``. After the unmount it keeps the last
+        size. A widget mounted again follows the provider nearest to its new
+        place.
+        """
+        return self._size
+
+    def _follow(self) -> None:
+        context = self._context()
+        geometry = find_provider(context, self._provider) if context is not None else None
+        if geometry is None:
+            return
+        self._release()
+        self._subscription = geometry.size.subscribe(self._size.set)
+        self._size.value = geometry.size.value
+
+    def _release(self) -> None:
+        subscription = self._subscription
+        self._subscription = None
+        if subscription is not None:
+            subscription.dispose()
+
+
+__all__ = ["Geometry", "GeometryProxy"]

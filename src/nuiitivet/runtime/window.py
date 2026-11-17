@@ -24,6 +24,7 @@ from ..widgeting.callbacks import drop_pending_tasks, spawn_task
 from ..widgeting.context_lookup import find_provider, raise_if_premature_lookup
 from ..widgeting.widget import ComposableWidget, Widget
 from .pointer import PointerCaptureManager
+from .proxy import WindowProxy
 from .renderer import RendererError
 from nuiitivet.input.cursor import MouseCursor
 from nuiitivet.input.pointer import PointerEvent, PointerEventType, PointerType
@@ -75,6 +76,7 @@ if TYPE_CHECKING:
     from nuiitivet.navigation.navigator import Navigator
     from nuiitivet.overlay.overlay import Overlay
     from nuiitivet.runtime.app import App
+    from nuiitivet.runtime.protocols import WindowProtocol
     from nuiitivet.theme.manager import ThemeManager
 
 
@@ -291,10 +293,8 @@ class Window:
     def of(context: Widget) -> "Window":
         """Return the Window whose tree contains ``context``.
 
-        The returned object is the same ``Window`` the opener holds — there is
-        no proxy type. A ViewModel should receive it typed as
-        :class:`~nuiitivet.runtime.protocols.WindowProtocol`. Valid from
-        ``on_mount``, not from ``__init__``, like every ``.of()`` lookup.
+        The returned object is the same ``Window`` the opener holds. For a
+        ViewModel, or in ``__init__``, use :meth:`proxy`.
 
         Args:
             context: The widget context.
@@ -313,6 +313,23 @@ class Window:
             raise_if_premature_lookup("Window.of", context)
             raise RuntimeError("WindowScope not found. Is the widget attached to a Window?")
         return window
+
+    @staticmethod
+    def proxy(context: Widget) -> "WindowProtocol":
+        """Return a stand-in for the Window that :meth:`of` resolves.
+
+        Unlike :meth:`of` it can be called in ``__init__``, to hand the window
+        to a ViewModel. Before ``context`` is mounted a call raises
+        ``RuntimeError``. After it is unmounted, calls go to the window it was
+        mounted in. It holds ``context`` weakly.
+
+        Args:
+            context: The widget to resolve from.
+
+        Raises:
+            RuntimeError: If called before ``super().__init__()``.
+        """
+        return WindowProxy("Window.proxy", context, Window.of, keep=True)
 
     @staticmethod
     def _build_root_navigation_stack(

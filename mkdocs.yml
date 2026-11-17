@@ -227,7 +227,6 @@ nav:
           - Testing outside the harness: guide/testing/clock.md
       - Advanced:
           - Interaction Region: guide/advanced/interaction_region.md
-          - Geometry: guide/advanced/geometry.md
       - Charts:
           - guide/charts/index.md
           - A matplotlib figure: guide/charts/matplotlib.md

@@ -182,6 +182,10 @@ class CounterDialog(nv.ComposableWidget, nv.OverlayAware[int]):
 
 When building larger applications with patterns like MVVM (Model-View-ViewModel), handling dialogs requires care regarding boundaries and testing. To illustrate the differences, we will use the same "Operation Complete" dialog in both coupled and decoupled patterns.
 
+In both, the widget makes `nv.Overlay.proxy(self)` in its `__init__` and passes it to the ViewModel's constructor.
+[Giving a ViewModel the overlay](../state-management/patterns_and_recipes.md#giving-a-viewmodel-the-navigator-the-overlay-the-window-or-the-app)
+covers why it is not `nv.Overlay.of(self)`, and what a call does once the widget has left the tree.
+
 ### Coupled ViewModels
 
 One approach is to have the ViewModel create Widgets directly. While simple to implement, this couples your business logic to the UI framework.
@@ -198,10 +202,11 @@ class CoupledViewModel:
     It imports widgets which ties it to the UI layer.
     """
     
-    def __init__(self):
+    def __init__(self, overlay: nv.OverlayProtocol):
+        self._overlay = overlay
         self.status = nv.State("Ready")
 
-    async def process_action(self, overlay: nv.Overlay):
+    async def process_action(self):
         self.status.value = "Processing..."
         
         # Logic creates UI components directly
@@ -209,16 +214,19 @@ class CoupledViewModel:
             title="Operation Complete",
             message="Process finished successfully.",
             icon="check_circle",
-            actions=[nv.Button("OK", on_click=lambda: overlay.close(True), style=nv.ButtonStyle.text())]
+            actions=[nv.Button("OK", on_click=lambda: self._overlay.close(True), style=nv.ButtonStyle.text())]
         )
         
-        await overlay.dialog(dialog)
+        await self._overlay.dialog(dialog)
         self.status.value = "Finished"
 
 class DirectViewModelDemo(nv.ComposableWidget):
-    async def _on_run_click(self):
-        overlay = nv.Overlay.of(self)
-        await self.vm.process_action(overlay)
+    def __init__(self):
+        super().__init__()
+        self.vm = CoupledViewModel(nv.Overlay.proxy(self))
+
+    def build(self) -> nv.Widget:
+        return nv.Button("Run Process", on_click=self.vm.process_action, style=nv.ButtonStyle.filled())
 ```
 
 ![Coupled ViewModel](../../assets/dialogs_view_model_direct.png)
@@ -240,10 +248,11 @@ class DecoupledViewModel:
     Easier to test: we just assert that proper Intent was emitted.
     """
     
-    def __init__(self):
+    def __init__(self, overlay: nv.OverlayProtocol):
+        self._overlay = overlay
         self.status = nv.State("Ready")
 
-    async def process_action(self, overlay: nv.OverlayProtocol):
+    async def process_action(self):
         self.status.value = "Processing..."
         
         # We just create a data description of what we want
@@ -254,20 +263,16 @@ class DecoupledViewModel:
         )
         
         # Dispatch the intent. The system handles the UI.
-        await overlay.dialog(intent)
+        await self._overlay.dialog(intent)
         self.status.value = "Finished"
+
+class IntentDemo(nv.ComposableWidget):
+    def __init__(self):
+        super().__init__()
+        self.vm = DecoupledViewModel(nv.Overlay.proxy(self))
 ```
 
 ![Decoupled Intent](../../assets/dialogs_view_model_intent.png)
-
-## Typing the Overlay: `nv.OverlayProtocol`
-
-Annotate the overlay a ViewModel receives as `nv.OverlayProtocol`, not the concrete
-`nv.Overlay`, as in the example above. A test can then pass a fake with no widget tree and
-no `App`.
-
-Pass it **per call**, resolved in the event handler: `nv.Overlay.of(self)` does not
-work from a widget's `__init__`, because a widget has no ancestors until it is mounted.
 
 ## Custom Intents
 
@@ -310,9 +315,13 @@ Below, we show how to implement the same "Counter Card" logic using Intents.
 
    ```python
    class MyViewModel:
-       async def open_counter(self, overlay: nv.OverlayProtocol):
+       def __init__(self, overlay: nv.OverlayProtocol):
+           self._overlay = overlay
+           self.message = nv.State("No result yet")
+
+       async def open_counter(self):
            # Pure logic, using our custom intent
-           result = await overlay.dialog(CounterIntent(initial_value=5))
+           result = await self._overlay.dialog(CounterIntent(initial_value=5))
            
            if result.value is not None:
               self.message.value = f"Final Count: {result.value}"
