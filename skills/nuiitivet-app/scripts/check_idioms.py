@@ -32,8 +32,9 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"\bStateless?Widget\b|\bStatefulWidget\b"), "Flutter",
      "Subclass nv.ComposableWidget and define build(self)."),
     (re.compile(r"\bcreateState\b|\binitState\b"), "Flutter",
-     "No state lifecycle overrides; create States in __init__, and put setup "
-     "that needs the tree (X.of(self), async loading) in an on_mount() override."),
+     "No state lifecycle overrides; create States in __init__ and keep a provider "
+     "there with nv.X.proxy(self), never nv.X.of(self). Put setup that needs the "
+     "tree (async loading) in an on_mount() override."),
     (re.compile(r"\bonAppear\b|\bonDisappear\b|\bon_appear\b|\bon_disappear\b"), "SwiftUI",
      "No on_appear/on_disappear exists. SwiftUI's onAppear is tree insertion, which is "
      "on_mount()/on_unmount(). Nothing fires when a route merely gets covered: pause and "
@@ -85,7 +86,8 @@ RULES: list[tuple[re.Pattern[str], str, str]] = [
     (re.compile(r"\bLayoutBuilder\s*\(|\bMediaQuery\b"), "Flutter",
      "Measure the widget itself: X.modifier(nv.on_size_changed(cb)) reports its "
      "nv.Size after layout. Use nv.Geometry(child, width=\"wt\") + "
-     "nv.Geometry.of(self).size only when a *subtree* must read an ancestor's box."),
+     "nv.Geometry.proxy(self).size in __init__ only when a *subtree* must read an "
+     "ancestor's box."),
     (re.compile(r"\bGeometryReader\b|\bBoxWithConstraints\b"), "SwiftUI/Compose",
      "Attach nv.on_size_changed(cb) to the filling widget you want measured; wrap "
      "in nv.Geometry only when descendants must read that box."),
@@ -310,8 +312,8 @@ def find_dead_chains(text: str) -> list[tuple[int, str]]:
 #
 # The base implementation is what runs `build()`, so skipping it mounts a widget
 # with no children: a blank screen, no exception, nothing in the log. The
-# references send authors into that override in the first place, since
-# `X.of(self)` cannot run in `__init__`. Scoped to ComposableWidget subclasses
+# references send authors into that override for run-once setup. Scoped to
+# ComposableWidget subclasses
 # because `Widget.on_mount` is a no-op: omitting `super()` there costs nothing.
 _COMPOSABLE_CLASS = re.compile(r"^([ \t]*)class\s+\w+\s*\([^)]*\bComposableWidget\b")
 _ON_MOUNT_DEF = re.compile(r"^([ \t]*)def\s+on_mount\s*\(")

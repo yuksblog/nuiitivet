@@ -46,7 +46,7 @@ nv.App(nv.Window(content=CounterApp(), title="Counter")).run()
 | Tempted to write (foreign) | In Nuiitivet write |
 | --- | --- |
 | `class X(StatelessWidget)` / `StatefulWidget` (Flutter) | `class X(nv.ComposableWidget)` |
-| `createState()` / `initState()` / `dispose()` lifecycle overrides | Plain `__init__` to create `State`s; override `on_mount()` for setup that needs the tree (an `X.of(self)` lookup, async loading) |
+| `createState()` / `initState()` / `dispose()` lifecycle overrides | Plain `__init__` to create `State`s and to keep a provider (`nv.Overlay.proxy(self)`, never `nv.Overlay.of(self)` there); override `on_mount()` for setup that needs the tree (async loading) |
 | `onAppear` / `onDisappear` (SwiftUI) | `on_mount()` / `on_unmount()` — SwiftUI's `onAppear` fires on *tree insertion*, which is exactly `on_mount`, despite the name |
 | `RouteAware` / `didPushNext` / `didPopNext` (Flutter) | No equivalent exists: a covered route stays mounted and nothing fires. Pause/resume from the side causing it — the code calling `push()`, or the `State` behind a `nv.Deck` index |
 | `LaunchedEffect(Unit)` / `DisposableEffect` (Compose) | An `on_mount()` override runs once per instance; from inside `build()` use `nv.on_mount(cb)` plus a flag owned outside the rebuilt subtree |
@@ -140,7 +140,7 @@ a widget, not widgets in their own right.** This kills Flutter's nesting hell.
 | `.map((e) => Widget(e)).toList()` for dynamic lists | `nv.Column.builder(items, lambda item, i: ...)` |
 | `ListView.builder(itemBuilder: ...)` | `nv.Column.builder(...)` / `Row.builder` / `Flow.builder` |
 | `LayoutBuilder(builder: (ctx, constraints) => ...)` (Flutter) | `X.modifier(nv.on_size_changed(self._on_size))` on the widget being measured |
-| `MediaQuery.of(context).size` (Flutter) | `nv.Geometry.of(self).size` — the root provider tracks the window |
+| `MediaQuery.of(context).size` (Flutter) | `nv.Geometry.proxy(self).size` in `__init__`, bound — the root provider tracks the window |
 | `GeometryReader { geo in ... }` (SwiftUI) | `nv.on_size_changed` on the region; `nv.Geometry(Panel(), width="wt")` only if a *subtree* must read it |
 | `BoxWithConstraints { maxWidth ... }` (Compose) | same — measure the filling widget with `nv.on_size_changed` |
 | overriding `set_layout_rect` to publish a size | never needed: `nv.on_size_changed` reports it, `Geometry` publishes it to a subtree |
@@ -181,7 +181,9 @@ nv.Button("OK").modifier(
 Reach `Navigator` / `Overlay` through an instance resolved from a mounted widget:
 `nv.Navigator.of(self)` / `nv.Overlay.of(self)`. Each returns the nearest enclosing
 one, falling back to the app's; add `root=True` to force the app's. They are **not**
-static `nv.Navigator.push(...)` calls, and there is no `.root()` accessor.
+static `nv.Navigator.push(...)` calls, and there is no `.root()` accessor. In
+`__init__`, where `of` raises, write `nv.Navigator.proxy(self)` /
+`nv.Overlay.proxy(self)`.
 
 | Tempted to write (foreign) | In Nuiitivet write |
 | --- | --- |
