@@ -127,7 +127,7 @@ they see.** Its place follows from when they meet it:
 | after the round, whoever they are: the app grows a second screen, or they write the call another way | a "Keep in mind" section after the round | the fact, the rule or the request as the heading ("A publish reaches the screens mounted at that moment", "Subscribe a method, not a lambda"); the fact under it, with a scene where one helps; no workaround for a behaviour that is correct |
 | only with a particular widget or setup | the way's section in the reference, or a case below it | a heading when it runs a few lines, a sentence in the way otherwise |
 | as a refusal, or as nothing happening | the page's last lists ("What it refuses", "What does nothing") | one line each; the reader searches backwards from the symptom |
-| as a loss they cannot see coming: no confirmation, an edit that silently stops applying | a callout in the step | one or two on a page, naming the loss |
+| while they write the step's code, as something to do or to avoid there: an initial value to match, a size not to set from its own callback, an action with no confirmation | a callout in the step | one or two on a page, naming what to do or avoid |
 | only in some setups, as a question, "why did nothing happen?" | an "If …" heading in the reference | the symptom in the heading; what they see without the fix, then the fix |
 
 **"Keep in mind" or "If …": who meets it decides.** What every reader meets
@@ -140,10 +140,13 @@ backwards from it, and the others skip it.
 short list after "Keep in mind", under a heading such as "When a State is
 the right tool".
 
-A callout stops the reader; it earns that only where missing it costs
-something with no symptom to search for. A refusal the badge explains is a
-list line. A page with three callouts has put list lines and "If …" sections
-into boxes. A sentence that opens with "Note that" has left the instruction:
+**A callout or "Keep in mind": where the reader acts on it decides.** A
+callout stops the reader at the line they are writing. It holds what they
+must do or avoid there, and it sits in that step. What they need to know
+without acting on it at that line goes under "Keep in mind". A refusal the
+badge explains is a list line. A page with three callouts has put "Keep in
+mind" facts, list lines and "If …" sections into boxes. A sentence that
+opens with "Note that" has left the instruction:
 write the symptom and the next action in the voice of the step, and never
 the rule behind it.
 
@@ -445,7 +448,7 @@ reviewed.
 - [ ] No design rationale, no doctrine headings — the reader is a user; the surprise or the limit a user meets is here even when a design rule produced it
 - [ ] Each surprise differs from what the OS or the browser does; a behaviour that matches them is deleted
 - [ ] The example needs the tool, in a scene every reader has met; nothing the section treats as optional is assumed
-- [ ] Each surprise sits where the reader meets it, as what they see: in the step, under "Keep in mind", in the way, in the last lists, or under an "If …" heading; a "Keep in mind" heading is the fact, the rule or the request, with no workaround for a correct behaviour; at most two callouts on the page, each naming a loss with no symptom
+- [ ] Each surprise sits where the reader meets it, as what they see: in the step, under "Keep in mind", in the way, in the last lists, or under an "If …" heading; a "Keep in mind" heading is the fact, the rule or the request, with no workaround for a correct behaviour; at most two callouts on the page, each in the step whose line it warns about, naming what to do or avoid there; what the reader needs to know without acting on it at that line is under "Keep in mind"
 - [ ] The outline was written in the reply before the edit, each level marked sequence or set; every heading in the diff is one of its nodes and names a task; `grep -n '^#' docs/guide/<page>.md`, read top to bottom: a sequence with no missing step, a set with no overlapping choice, on the whole page
 - [ ] Each step one action, one thing the reader sets out to do; its ways sit one level below while each is a few lines; ways that outgrew the step moved to a reference of ways after the round, its cases one level below, and the step shows one and names that section
 - [ ] Sequence headings are numbered, set headings are not
