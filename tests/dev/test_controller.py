@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import contextlib
 import types
+import weakref
 from pathlib import Path
 from typing import Any, Iterator, Optional
 from unittest import mock
@@ -66,7 +67,7 @@ def _patched_reload(
 ) -> Iterator[None]:
     """Patch the controller's reload collaborators for a single ``_do_reload``.
 
-    ``reload`` / ``reload_side_effect`` control ``reload_user_modules``;
+    ``reload`` / ``reload_side_effect`` control ``Reloader.reload``;
     ``restore`` / ``restore_side_effect`` control ``restore_states``. The
     error-overlay hooks are stubbed so the tree is never actually touched, and
     the navigation snapshot/restore glue is stubbed so it never reads the
@@ -78,12 +79,10 @@ def _patched_reload(
         stack.enter_context(mock.patch.object(controller_mod, "restore_navigation", return_value=0))
         stack.enter_context(mock.patch.object(controller_mod, "clear_reload_error"))
         stack.enter_context(mock.patch.object(controller_mod, "show_reload_error"))
-        # No real user modules to hash: change detection is exercised separately.
-        stack.enter_context(mock.patch.object(controller_mod, "identify_user_modules", return_value={}))
         stack.enter_context(
             mock.patch.object(
-                controller_mod,
-                "reload_user_modules",
+                controller_mod.Reloader,
+                "reload",
                 return_value=reload,
                 side_effect=reload_side_effect,
             )
@@ -151,8 +150,7 @@ def test_successful_reload_replays_navigation_snapshot() -> None:
         stack.enter_context(mock.patch.object(controller_mod, "snapshot_states", return_value={}))
         stack.enter_context(mock.patch.object(controller_mod, "clear_reload_error"))
         stack.enter_context(mock.patch.object(controller_mod, "show_reload_error"))
-        stack.enter_context(mock.patch.object(controller_mod, "identify_user_modules", return_value={}))
-        stack.enter_context(mock.patch.object(controller_mod, "reload_user_modules", return_value=result))
+        stack.enter_context(mock.patch.object(controller_mod.Reloader, "reload", return_value=result))
         stack.enter_context(mock.patch.object(controller_mod, "restore_states", return_value=0))
         stack.enter_context(mock.patch.object(controller_mod, "snapshot_navigation", return_value=sentinel))
         restore = stack.enter_context(mock.patch.object(controller_mod, "restore_navigation", return_value=2))
@@ -229,70 +227,77 @@ def test_no_journal_is_tolerated() -> None:
         controller._do_reload()
 
 
-def _fake_user_modules(*paths: Path) -> dict[str, Any]:
-    """Map ``<stem> -> fake module`` for change-detection tests."""
-    return {p.stem: types.SimpleNamespace(__file__=str(p)) for p in paths}
-
-
-def test_detect_changed_modules_reports_content_changes(tmp_path: Path) -> None:
-    file = tmp_path / "widgets.py"
-    file.write_text("x = 1\n", encoding="utf-8")
-    controller = _make_controller(ReloadJournal())
-
-    with mock.patch.object(
-        controller_mod, "identify_user_modules", return_value=_fake_user_modules(file)
-    ):
-        # First detection seeds the baseline: everything looks new.
-        assert controller._detect_changed_modules() == ["widgets"]
-        # No content change -> no-op even though we detect again.
-        assert controller._detect_changed_modules() == []
-        # Real content change -> reported.
-        file.write_text("x = 2\n", encoding="utf-8")
-        assert controller._detect_changed_modules() == ["widgets"]
-
-
-def test_detect_changed_modules_ignores_no_op_save(tmp_path: Path) -> None:
-    file = tmp_path / "app.py"
-    file.write_text("y = 0\n", encoding="utf-8")
-    controller = _make_controller(ReloadJournal())
-
-    with mock.patch.object(
-        controller_mod, "identify_user_modules", return_value=_fake_user_modules(file)
-    ):
-        controller._detect_changed_modules()  # seed
-        # Rewrite identical bytes (a no-op save bumps mtime but not content).
-        file.write_text("y = 0\n", encoding="utf-8")
-        assert controller._detect_changed_modules() == []
-
-
-def test_successful_reload_records_changed_subset(tmp_path: Path) -> None:
-    file = tmp_path / "hot.py"
-    file.write_text("v = 1\n", encoding="utf-8")
+def test_successful_reload_records_what_the_save_did() -> None:
     journal = ReloadJournal()
     controller = _make_controller(journal)
-    result = ReloadResult(reloaded=["hot", "helper"], new_factory=_fake_factory)
+    result = ReloadResult(changed=["hot", "view"], patched=["view"], reloaded=["hot", "helper"])
+
+    with _patched_reload(reload=result):
+        controller._do_reload()
+
+    event = journal.recent()[-1]
+    assert event.changed == ("hot", "view")
+    assert event.patched == ("view",)
+    assert event.modules == ("hot", "helper")
+    assert event.stale == ()
+
+
+class _Service:
+    """Stands in for an object the app made before the save."""
+
+
+def test_a_successful_reload_reports_the_instances_of_replaced_classes(capsys: Any) -> None:
+    journal = ReloadJournal()
+    controller = _make_controller(journal)
+    service = _Service()
+    result = ReloadResult(reloaded=["model"], edited=["model"], replaced={"model": [weakref.ref(_Service)]})
+
+    with _patched_reload(reload=result):
+        controller._do_reload()
+
+    name = f"{_Service.__module__}.{_Service.__qualname__}"
+    assert journal.recent()[-1].to_dict()["stale"] == {name: 1}
+    assert f"{name} x1" in capsys.readouterr().err
+    del service
+
+
+def test_a_failed_reload_names_the_instances_of_the_edited_modules() -> None:
+    """The old tree is still up, so only the edited modules' classes are named, as a hint."""
+    journal = ReloadJournal()
+    controller = _make_controller(journal)
+    service = _Service()
+    controller._reloader.last = ReloadResult(
+        changed=["model"],
+        reloaded=["model", "view"],
+        edited=["model"],
+        replaced={"model": [weakref.ref(_Service)], "view": [weakref.ref(_FakeEdits)]},
+    )
+    edits = _FakeEdits()
 
     with contextlib.ExitStack() as stack:
-        stack.enter_context(mock.patch.object(controller_mod, "snapshot_states", return_value={}))
-        stack.enter_context(mock.patch.object(controller_mod, "restore_states", return_value=0))
-        stack.enter_context(mock.patch.object(controller_mod, "clear_reload_error"))
-        stack.enter_context(
-            mock.patch.object(controller_mod, "reload_user_modules", return_value=result)
-        )
-        stack.enter_context(
-            mock.patch.object(
-                controller_mod, "identify_user_modules", return_value=_fake_user_modules(file)
-            )
-        )
-        controller._do_reload()  # first: seeds + reports "hot" changed
-        file.write_text("v = 2\n", encoding="utf-8")
-        controller._do_reload()  # second: "hot" changed again
+        stack.enter_context(_patched_reload(reload_side_effect=KeyError("old member")))
+        show = stack.enter_context(mock.patch.object(controller_mod, "show_reload_error"))
+        controller._do_reload()
 
-    events = journal.recent()
-    assert len(events) == 2
-    # All modules reloaded, but only the edited file is reported as changed.
-    assert events[-1].modules == ("hot", "helper")
-    assert events[-1].changed == ("hot",)
+    name = f"{_Service.__module__}.{_Service.__qualname__}"
+    event = journal.recent()[-1]
+    assert event.outcome == "error"
+    assert event.changed == ("model",)
+    assert event.to_dict()["stale"] == {name: 1}
+    hint = show.call_args.kwargs["hint"]
+    assert "model" in hint and f"{name} x1" in hint and "Restart the app" in hint
+    del service, edits
+
+
+def test_a_failed_reload_without_old_instances_has_no_hint() -> None:
+    controller = _make_controller(None)
+
+    with contextlib.ExitStack() as stack:
+        stack.enter_context(_patched_reload(reload_side_effect=SyntaxError("bad edit")))
+        show = stack.enter_context(mock.patch.object(controller_mod, "show_reload_error"))
+        controller._do_reload()
+
+    assert show.call_args.kwargs["hint"] is None
 
 
 # --- layout mode's edits --------------------------------------------------------

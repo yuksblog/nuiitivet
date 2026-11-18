@@ -63,10 +63,12 @@ class ReloadEvent:
             new reloads happened since its previous turn.
         timestamp: Unix time (seconds) when the event was recorded.
         outcome: ``"success"`` or ``"error"``.
-        modules: Names of the user modules reloaded (success only; empty on
-            error, since the reload did not complete). The reloader reloads *all*
-            user modules on any change, so this alone does not say which file the
-            human touched -- see ``changed``.
+        modules: Names of the user modules re-executed (success only; empty on
+            error, since the reload did not complete): the modules edited
+            outside def bodies, and the modules that import them.
+        patched: Names of the user modules whose living functions took new code
+            (success only): only def bodies were edited, and every object made
+            from the module is still current.
         changed: Names of the modules whose *source actually changed* since the
             previous reload, detected by content hash. An empty list means a
             no-op save (the file's mtime changed but its bytes did not, e.g. an
@@ -74,6 +76,10 @@ class ReloadEvent:
             re-reading. A non-empty list pinpoints exactly which file(s) the
             human edited, so a re-read can target them.
         error: The failure traceback (error only; ``None`` on success), capped.
+        stale: Per class a re-executed module defined before, the number of its
+            non-widget instances still alive. They run the old class, and only a
+            restart updates them. On an error they are the likely cause unless
+            the traceback points at the code just changed.
         inert_windows: Ids of open windows whose root is a widget instance, so
             no reload -- this one included -- can change their tree (success
             only). A window listed here needs its ``Window(content=...)``
@@ -87,12 +93,14 @@ class ReloadEvent:
     changed: tuple[str, ...]
     error: Optional[str]
     inert_windows: tuple[int, ...] = ()
+    patched: tuple[str, ...] = ()
+    stale: tuple[tuple[str, int], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to a JSON-friendly dict.
 
-        ``modules`` and ``error`` are omitted when empty (their absence is itself
-        the signal). ``changed`` is *always* present -- an empty ``changed`` is a
+        ``modules``, ``patched``, ``stale`` and ``error`` are omitted when empty
+        (their absence is itself the signal). ``changed`` is *always* present -- an empty ``changed`` is a
         positive signal (a no-op save), so it must be distinguishable from "not
         recorded".
         """
@@ -103,6 +111,10 @@ class ReloadEvent:
         }
         if self.modules:
             payload["modules"] = list(self.modules)
+        if self.patched:
+            payload["patched"] = list(self.patched)
+        if self.stale:
+            payload["stale"] = dict(self.stale)
         payload["changed"] = list(self.changed)
         if self.error is not None:
             payload["error"] = self.error
@@ -138,15 +150,19 @@ class ReloadJournal:
         self,
         modules: Iterable[str],
         *,
+        patched: Iterable[str] = (),
         changed: Iterable[str] = (),
+        stale: Optional[dict[str, int]] = None,
         inert_windows: Iterable[int] = (),
     ) -> ReloadEvent:
         """Record a successful reload and return the event.
 
         Args:
-            modules: All user modules reloaded.
-            changed: The subset whose source actually changed (empty for a no-op
+            modules: The user modules re-executed.
+            patched: The user modules whose living functions took new code.
+            changed: The modules whose source actually changed (empty for a no-op
                 save).
+            stale: Old classes with instances still alive, and how many.
             inert_windows: Ids of windows whose instance root kept this reload
                 from changing their tree.
         """
@@ -156,17 +172,30 @@ class ReloadJournal:
             changed=tuple(changed),
             error=None,
             inert_windows=tuple(inert_windows),
+            patched=tuple(patched),
+            stale=tuple(sorted((stale or {}).items())),
         )
 
     def record_error(
-        self, traceback_text: str, *, changed: Iterable[str] = ()
+        self,
+        traceback_text: str,
+        *,
+        changed: Iterable[str] = (),
+        stale: Optional[dict[str, int]] = None,
     ) -> ReloadEvent:
-        """Record a failed reload carrying ``traceback_text`` and return the event."""
+        """Record a failed reload and return the event.
+
+        Args:
+            traceback_text: The failure traceback.
+            changed: The modules whose source actually changed.
+            stale: Old classes with instances still alive, and how many.
+        """
         return self._record(
             "error",
             modules=(),
             changed=tuple(changed),
             error=_truncate_traceback(traceback_text),
+            stale=tuple(sorted((stale or {}).items())),
         )
 
     def _record(
@@ -177,6 +206,8 @@ class ReloadJournal:
         changed: tuple[str, ...],
         error: Optional[str],
         inert_windows: tuple[int, ...] = (),
+        patched: tuple[str, ...] = (),
+        stale: tuple[tuple[str, int], ...] = (),
     ) -> ReloadEvent:
         with self._lock:
             event = ReloadEvent(
@@ -187,6 +218,8 @@ class ReloadJournal:
                 changed=changed,
                 error=error,
                 inert_windows=inert_windows,
+                patched=patched,
+                stale=stale,
             )
             self._events.append(event)
             return event

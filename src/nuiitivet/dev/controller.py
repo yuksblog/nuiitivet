@@ -9,7 +9,7 @@ The reload sequence:
 
 1. snapshot ``State`` values and the declarative navigation stack from the
    live tree;
-2. reload user modules in dependency order and re-fetch the factory (§9.6/§9.1);
+2. apply the saved modules and re-fetch the factory;
 3. rebuild the content root (on commit: unmounts the old tree and hands the App
    its new navigator/overlay);
 4. restore snapshot state and replay the navigation stack into the new tree;
@@ -21,13 +21,14 @@ On any error during 2–3 the previous tree is kept and the error is surfaced
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import sys
 import threading
 import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Iterable, Optional, cast
+
+from nuiitivet.widgeting.widget import Widget
 
 from nuiitivet.remote.worker import retire_pool
 
@@ -36,7 +37,8 @@ from .journal import ReloadJournal
 from .navigation_snapshot import restore_navigation, snapshot_navigation
 from .overlay_snapshot import restore_overlay, snapshot_overlay
 from .comments import Comments
-from .reloader import identify_user_modules, reload_user_modules
+from .patcher import count_instances
+from .reloader import Reloader, ReloadResult
 from .snapshot import restore_states, snapshot_states
 from .source_edit import EditLog
 from .watcher import FileWatcher
@@ -78,12 +80,7 @@ class HotReloadController:
         # Layout edit mode's edits. Told after every reload whether its pending edit
         # landed, since a reload is how an edit takes effect at all.
         self._edits = edits
-        # Per-module source hashes from the last reload, so the next one can
-        # report which files' *content* actually changed vs. a no-op save (the
-        # watcher fires on mtime, which an editor autosave/formatter bumps even
-        # when the bytes are identical). Seeded at install() with the initial
-        # on-disk state.
-        self._source_hashes: dict[str, str] = {}
+        self._reloader = Reloader(self._project_root)
         # Coalesces bursts of saves into a single reload; set on the watcher
         # thread, consumed on the UI thread.
         self._pending = threading.Event()
@@ -94,12 +91,7 @@ class HotReloadController:
 
     def _watched_paths(self) -> Iterable[Path]:
         """Current set of user-module files to watch (re-queried each poll)."""
-        paths: set[Path] = set()
-        for module in identify_user_modules(self._project_root).values():
-            file = getattr(module, "__file__", None)
-            if file:
-                paths.add(Path(file))
-        return paths
+        return self._reloader.track()
 
     def _request_reload(self) -> None:
         """Signal a reload (called on the watcher thread — must stay cheap)."""
@@ -124,16 +116,13 @@ class HotReloadController:
 
     def _do_reload(self) -> None:
         app = self._app
-        # Determine which files' content actually changed before reloading, so
-        # every recorded event -- success or failure -- can carry it.
-        changed = self._detect_changed_modules()
         snapshot = snapshot_states(app.root)
         # Capture the declarative navigation stack before the rebuild replaces
         # the App's navigator with a fresh one at its initial route.
         nav_snapshot = snapshot_navigation(app)
 
         try:
-            result = reload_user_modules(self._project_root, old_factory=self._factory)
+            result = self._reloader.reload(old_factory=self._factory)
             # The next worker call runs the reloaded source, not a child's copy of the old one.
             retire_pool()
             new_factory: "RootFactory" = (
@@ -143,10 +132,7 @@ class HotReloadController:
             )
             new_content = app._rebuild_content_root(new_factory)
         except Exception:
-            tb = traceback.format_exc()
-            self._record_error(tb, changed)
-            show_reload_error(app, tb)
-            self._edit_failed(tb)
+            self._reload_failed(app, traceback.format_exc())
             return
 
         # Taken only once the rebuild succeeded: from here the old overlay hands its entries over.
@@ -161,29 +147,67 @@ class HotReloadController:
                 self._comments.restore(app.root)
         except Exception:
             # The new root is already committed; report but stay alive.
-            tb = traceback.format_exc()
-            self._record_error(tb, changed)
-            show_reload_error(app, tb)
-            self._edit_failed(tb)
+            self._reload_failed(app, traceback.format_exc())
             return
 
         self._factory = new_factory
         clear_reload_error(app)
         app.invalidate()
-        self._reload_secondary_windows(changed)
+        self._reload_secondary_windows(result.changed)
         self._edit_landed()
+        # The snapshots hold what the old tree held; counted, they would read as left behind.
+        del snapshot, nav_snapshot, overlay_snapshot
+        stale = self._stale_instances(result, result.reloaded)
         if self._journal is not None:
             self._journal.record_success(
                 result.reloaded,
-                changed=changed,
+                patched=result.patched,
+                changed=result.changed,
+                stale=stale,
                 inert_windows=self._inert_window_ids(),
             )
         print(
-            f"[nuiitivet.dev] reloaded {len(result.reloaded)} module(s), "
+            f"[nuiitivet.dev] patched {len(result.patched)} module(s), re-executed {len(result.reloaded)}, "
             f"restored {restored} value(s), {restored_routes} route(s), {restored_entries} overlay layer(s).",
             file=sys.stderr,
             flush=True,
         )
+        if stale:
+            print(
+                f"[nuiitivet.dev] {_stale_message(result.reloaded, stale)} Restart the app to update them.",
+                file=sys.stderr,
+                flush=True,
+            )
+
+    def _reload_failed(self, app: "Window", traceback_text: str) -> None:
+        """Report a reload that raised, with the old instances that may be its cause."""
+        result = self._reloader.last
+        stale = self._stale_instances(result, result.edited)
+        hint = (
+            f"{_stale_message(result.edited, stale)} "
+            "Restart the app unless the error below is in the code you just changed."
+            if stale
+            else None
+        )
+        if self._journal is not None:
+            self._journal.record_error(traceback_text, changed=result.changed, stale=stale)
+        show_reload_error(app, traceback_text, hint=hint)
+        self._edit_failed(traceback_text)
+
+    def _stale_instances(self, result: ReloadResult, modules: Iterable[str]) -> dict[str, int]:
+        """Living non-widget instances of the classes ``modules`` defined before they were re-executed.
+
+        A tree owns its widgets, so an old widget is the old tree's and not what the save left behind.
+        """
+        classes = [
+            ref
+            for name in modules
+            for ref in result.replaced.get(name, ())
+            if (cls := ref()) is not None and not issubclass(cls, Widget)
+        ]
+        result.replaced.clear()
+        counts = count_instances(classes)
+        return {f"{cls.__module__}.{cls.__qualname__}": count for cls, count in counts.items()}
 
     def _windows(self) -> list[Any]:
         """Every open window, the main one included."""
@@ -238,53 +262,19 @@ class HotReloadController:
                 restore_states(window.root, snapshot)
             except Exception:
                 tb = traceback.format_exc()
-                self._record_error(tb, changed)
+                if self._journal is not None:
+                    self._journal.record_error(tb, changed=changed)
                 show_reload_error(window, tb)
                 continue
             clear_reload_error(window)
             window.invalidate()
-
-    def _record_error(self, traceback_text: str, changed: list[str]) -> None:
-        """Record a failed reload into the journal, if one is attached."""
-        if self._journal is not None:
-            self._journal.record_error(traceback_text, changed=changed)
-
-    def _current_source_hashes(self) -> dict[str, str]:
-        """Content hash of every watched user module, keyed by module name."""
-        hashes: dict[str, str] = {}
-        for name, module in identify_user_modules(self._project_root).items():
-            file = getattr(module, "__file__", None)
-            if not file:
-                continue
-            try:
-                data = Path(file).read_bytes()
-            except OSError:
-                continue
-            hashes[name] = hashlib.sha256(data).hexdigest()
-        return hashes
-
-    def _detect_changed_modules(self) -> list[str]:
-        """Names of modules whose source changed since the last reload.
-
-        Compares current file-content hashes against the previous snapshot and
-        adopts the new snapshot as the baseline. An empty result means a no-op
-        save (mtime bumped, bytes unchanged).
-        """
-        current = self._current_source_hashes()
-        changed = sorted(
-            name for name, digest in current.items() if self._source_hashes.get(name) != digest
-        )
-        self._source_hashes = current
-        return changed
 
     def install(self) -> None:
         """Register the UI-thread drain and start the watcher thread."""
         if self._installed:
             return
         self._installed = True
-        # Seed the baseline from the initial on-disk state so the first reload
-        # reports only what actually changed, not "everything".
-        self._source_hashes = self._current_source_hashes()
+        self._reloader.track()
         import pyglet
 
         pyglet.clock.schedule_interval(self._drain, self._drain_interval)
@@ -299,3 +289,11 @@ class HotReloadController:
             pyglet.clock.unschedule(self._drain)
         except Exception:
             logger.debug("hot reload: failed to unschedule drain", exc_info=True)
+
+
+def _stale_message(modules: Iterable[str], stale: dict[str, int]) -> str:
+    listed = ", ".join(f"{name} x{count}" for name, count in sorted(stale.items()))
+    return (
+        f"This save re-executed {', '.join(modules)}. "
+        f"Objects made before it still use the old classes: {listed}."
+    )

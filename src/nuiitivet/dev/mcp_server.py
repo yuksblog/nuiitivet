@@ -254,6 +254,9 @@ def build_server() -> "FastMCP":
           running.
         - ``changed``: the modules whose source changed. Empty means a no-op save (an
           autosave or a formatter).
+        - ``stale``: classes whose module the save re-executed while instances made
+          before it are still alive, with the counts. Those objects run the old
+          class until the app is restarted.
         - ``inert_windows``: window ids whose root is a widget instance, not a factory.
           No edit reaches them until ``Window(content=...)`` takes a factory.
 

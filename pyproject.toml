@@ -108,7 +108,7 @@ module = ["playwright.*"]
 # does; mypy knows them only by their path under samples/.
 [[tool.mypy.overrides]]
 ignore_missing_imports = true
-module = ["jobs", "models"]
+module = ["catalog", "jobs", "models"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

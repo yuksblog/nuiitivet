@@ -162,7 +162,9 @@ Don't trust a green return or a single number; confirm against the live app.
 
 - **The edit landed.** `reload_log` shows a `success` outcome with your file in
   `changed`. An `error` outcome means the save didn't compile and the live UI is
-  stale — fix and re-save before reading anything else. `inert_windows` on a
+  stale — fix and re-save before reading anything else. A `stale` field means
+  objects made before the save still run the old classes it names: stop the
+  runner and launch the app again before reading anything else. `inert_windows` on a
   `success` means no edit can reach those windows: their root is a widget
   instance, which is rule 6 of the **nuiitivet-app** skill.
 - **No new error appeared — check `runtime_log`, not `error_count`.** `error_count`

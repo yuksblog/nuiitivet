@@ -110,41 +110,42 @@ as an absolute path.
 
 ## 4. Pass a root factory to the window
 
-```python
-import nuiitivet.material as nv
+`Window` takes a function that builds the root. The dev runner calls it
+again after every save.
 
-class Counter(nv.ComposableWidget):
-    def __init__(self) -> None:
-        super().__init__()
-        self.count = nv.State(0)
+Write the factory as a function at the top level of the file. Write it as a
+`lambda` in `main()` when the root needs an object made there.
 
-    def build(self) -> nv.Widget:
-        return nv.Column(
-            padding=16,
-            children=[
-                nv.Text(self.count.map(lambda n: f"Count: {n}")),
-                nv.Button("increment", on_click=lambda: self._inc()),
-            ],
-        )
+=== "At the top level"
 
-    def _inc(self) -> None:
-        self.count.value += 1
+    The sample is `samples/coding_agent/hot_reload_counter.py`.
 
-def build_root() -> nv.Widget:
-    return Counter()
+    ```python
+    def build_root() -> nv.Widget:
+        return nv.Container(alignment="center", child=Counter())
 
-def main() -> None:
-    nv.App(nv.Window(content=build_root)).run()
 
-if __name__ == "__main__":
-    main()
-```
+    def main() -> None:
+        nv.App(nv.Window(content=build_root)).run()
+    ```
 
-`Window` takes the factory itself, `build_root`, not a call to it. With
-`Window(content=build_root())` edits stop applying to that window. The dev
-runner warns about it. With a `lambda`, or a function defined inside
-`main()`, edits to the classes it builds still apply. Edits to its own body stop
-applying. No warning is logged.
+    Pass `build_root` without calling it. Called, edits stop applying to
+    that window. The dev runner warns about it.
+
+=== "In `main()`"
+
+    The `lambda` hands the object to the root. The sample is
+    `samples/coding_agent/keep_alive/app.py`.
+
+    ```python
+    def main() -> None:
+        catalog = Catalog()  # made once
+        nv.App(nv.Window(content=lambda: CatalogScreen(catalog))).run()
+    ```
+
+    A function defined inside `main()` works the same way.
+    [Keep an object alive across saves](hot_reload.md#keep-an-object-alive-across-saves)
+    goes through this way.
 
 ## 5. Launch under the dev runner
 

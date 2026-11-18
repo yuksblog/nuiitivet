@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 _active_banner: dict[int, tuple[Any, Any]] = {}
 
 
-def _build_banner(message: str) -> Any:
+def _build_banner(message: str, hint: Optional[str]) -> Any:
     import nuiitivet.material as nv
 
     # Keep it short; the full traceback is on stderr.
@@ -43,6 +43,7 @@ def _build_banner(message: str) -> Any:
             gap=4,
             children=[
                 nv.Text("⚠ Hot reload failed"),
+                *([nv.Text(hint)] if hint else []),
                 nv.Text(headline),
                 nv.Text(detail),
             ],
@@ -50,15 +51,23 @@ def _build_banner(message: str) -> Any:
     ).modifier(nv.background("#B3261E"))
 
 
-def show_reload_error(app: Any, message: str) -> None:
-    """Report a reload error to stderr and (best-effort) as an on-screen banner."""
+def show_reload_error(app: Any, message: str, *, hint: Optional[str] = None) -> None:
+    """Report a reload error to stderr and (best-effort) as an on-screen banner.
+
+    Args:
+        app: The window whose overlay shows the banner.
+        message: The traceback.
+        hint: What the developer should do about it, shown above the traceback.
+    """
     print("\n[nuiitivet.dev] hot reload failed — keeping the previous UI:\n", file=sys.stderr)
+    if hint:
+        print(hint + "\n", file=sys.stderr)
     print(message, file=sys.stderr, flush=True)
 
     try:
         overlay = app.overlay
         clear_reload_error(app)
-        banner = _build_banner(message)
+        banner = _build_banner(message, hint)
         overlay.show(banner, passthrough=True)
         _active_banner[id(app)] = (overlay, banner)
     except Exception:
