@@ -206,7 +206,7 @@ flowchart LR
     once[common/logging_once.py]
     bridge[dev/bridge.py]
 
-    controller -- "record_success(modules, changed) · record_error(traceback, changed)" --> reload
+    controller -- "record_success(modules, patched, changed, stale) · record_error(traceback, changed, stale)" --> reload
     backend -- "on_mouse_press(app, x, y) · on_mouse_scroll(handler, dx, dy) · on_key_press(name, mask) · on_text()" --> interaction
     window -- "_interaction_recorder" --> interaction
     capture -- "setLogRecordFactory · threading.excepthook · sys.excepthook, each chained to the previous" --> logging

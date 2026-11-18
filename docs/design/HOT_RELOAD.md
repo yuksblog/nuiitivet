@@ -7,9 +7,10 @@ layout edit that lands through a reload is in [DEV_MODES.md](DEV_MODES.md).
 
 ## Overview
 
-Three groups of modules take part: the runner that starts the app, the
-controller that turns a save into a reload, and the snapshots that carry
-state into the new tree.
+Four groups of modules take part: the runner that starts the app, the
+controller that turns a save into a reload, the reloader that applies the
+save to the user's modules, and the snapshots that carry state into the new
+tree.
 
 ### Structure
 
@@ -17,12 +18,14 @@ state into the new tree.
 flowchart LR
     runner[The Runner]
     controller[The Controller]
+    reloader[The Reloader]
     snapshots[The Snapshots]
     tree[the widget tree]
     comments[dev/comments.py]
     edits[dev/source_edit.py]
 
     runner -- "the app and the root factory" --> controller
+    controller -- "reload · count the old instances" --> reloader
     controller -- "snapshot · restore" --> snapshots
     controller -- "rebuild · commit" --> tree
     snapshots -- "read the old tree · write the new one" --> tree
@@ -33,7 +36,8 @@ flowchart LR
 | Module | Role |
 | --- | --- |
 | The Runner | starts the app under the dev session and keeps the root factory |
-| The Controller | turns a save into one reload: modules, rebuild, commit, the report |
+| The Controller | turns a save into one reload: the rebuild, the commit, the report |
+| The Reloader | applies a save to the user's modules; counts the instances of the classes it replaced |
 | The Snapshots | copy what the old tree held into the new one |
 | the widget tree | what is rebuilt and restored |
 | `dev/comments.py` | the comment marks, matched back after a rebuild ([DEV_MODES.md](DEV_MODES.md)) |
@@ -118,6 +122,7 @@ flowchart LR
     watcher[dev/watcher.py]
     ctrl[dev/controller.py]
     reloader[dev/reloader.py]
+    patcher[dev/patcher.py]
     pool[remote/worker.py]
     window[runtime/window.py]
     error[dev/error_overlay.py]
@@ -128,8 +133,9 @@ flowchart LR
     comments[dev/comments.py]
     edits[dev/source_edit.py]
 
-    watcher -- "_pending.set() from the poll thread" --> ctrl
-    ctrl -- "reload_user_modules(project_root, old_factory)" --> reloader
+    watcher -- "_watched_paths() on each poll · _pending.set()" --> ctrl
+    ctrl -- "track() · reload(old_factory) · last" --> reloader
+    ctrl -- "count_instances(the old classes)" --> patcher
     ctrl -- "retire_pool()" --> pool
     ctrl -- "_rebuild_content_root · _commit_content_root" --> window
     ctrl -- "snapshot_states · restore_states" --> snap
@@ -137,7 +143,7 @@ flowchart LR
     ctrl -- "snapshot_overlay · restore_overlay" --> ovsnap
     ctrl -- "restore(root)" --> comments
     ctrl -- "after_reload · reload_failed" --> edits
-    ctrl -- "show_reload_error · clear_reload_error" --> error
+    ctrl -- "show_reload_error(traceback, hint) · clear_reload_error" --> error
     ctrl -- "record_success · record_error" --> journal
 ```
 
@@ -145,7 +151,7 @@ flowchart LR
 | --- | --- |
 | `dev/watcher.py` | polls the user files' mtimes on a background thread; acknowledges a file the runner wrote |
 | `dev/controller.py` | holds the pending event, runs the reload on the UI tick in order |
-| `dev/reloader.py` | decides which modules are the user's, orders them, reloads them, re-fetches the factory |
+| `dev/reloader.py`, `dev/patcher.py` | apply the save to the user's modules and count the old instances (The Reloader) |
 | `remote/worker.py` | the worker pool the reload retires |
 | `runtime/window.py` | rebuilds the content root from the factory and commits it in place of the old one |
 | `dev/error_overlay.py` | the banner over the still-running UI |
@@ -163,6 +169,7 @@ sequenceDiagram
     participant F as watcher thread
     participant C as controller (UI tick)
     participant R as reloader
+    participant T as patcher
     participant P as worker pool
     participant W as Window
     participant Snap as the snapshot modules
@@ -173,35 +180,128 @@ sequenceDiagram
 
     F->>C: _pending.set()
     C->>Snap: snapshot States, snapshot navigation
-    C->>R: reload_user_modules(project_root, old_factory)
-    R-->>C: the reloaded modules, the re-fetched factory
+    C->>R: reload(old_factory)
+    R-->>C: the modules patched, the modules re-executed with their old classes, the re-fetched factory
     C->>P: retire_pool()
     C->>W: _rebuild_content_root(new_factory)
     alt the reload or the rebuild raised
-        C->>J: record the error
-        C->>E: show the banner, traceback to stderr
+        C->>R: last, as far as the reload got
+        C->>T: count_instances(the old classes of the edited modules)
+        C->>J: record the error, with the count
+        C->>E: show_reload_error(traceback, the count as a hint)
         C->>L: reload_failed(traceback)
     else built
         C->>Snap: snapshot overlay
         C->>W: _commit_content_root: unmount the old tree, clear interaction state, mount the new
         C->>Snap: restore overlay, restore States, restore navigation
         C->>Cm: restore(new root)
-        C->>E: clear the banner
-        C->>L: after_reload(roots)
-        C->>J: record success
+        alt the commit or a restore raised
+            C->>R: last
+            C->>T: count_instances(the old classes of the edited modules)
+            C->>J: record the error, with the count
+            C->>E: show_reload_error(traceback, the count as a hint)
+            C->>L: reload_failed(traceback)
+        else restored
+            C->>E: clear the banner
+            C->>L: after_reload(roots)
+            C->>C: drop the snapshots
+            C->>T: count_instances(the old classes of the re-executed modules)
+            C->>J: record success, with the count
+        end
     end
+```
+
+### Promises
+
+- Only the content tree is rebuilt.
+- A reload or a rebuild that raises leaves the previous tree on screen.
+- A commit or a restore that raises is reported like a reload that raised.
+  The new tree stays on screen.
+- No reference into the old tree survives the commit.
+- The count of old instances covers the classes a re-executed module
+  defined before its re-execution. A widget is not counted.
+- A successful reload's count holds no object that only the old tree or a
+  snapshot kept.
+- A failed reload's count covers only the re-executed modules whose own
+  source changed.
+- The watcher's thread changes no module and no tree.
+
+## The Reloader
+
+The reloader applies a save to the user's modules.
+
+### Structure
+
+```mermaid
+flowchart LR
+    ctrl[dev/controller.py]
+    reloader[dev/reloader.py]
+    patcher[dev/patcher.py]
+    importlib[importlib]
+    collector[gc]
+
+    ctrl -- "track() · reload(old_factory) · last" --> reloader
+    ctrl -- "count_instances(the old classes)" --> patcher
+    reloader -- "patch_bodies(module, old source, new source) · runs_source(module, source)" --> patcher
+    reloader -- "reload(module)" --> importlib
+    patcher -- "unfreeze() · collect() · get_objects() · freeze()" --> collector
+```
+
+| Module | Role |
+| --- | --- |
+| `dev/controller.py` | asks for the reload and for the count (The Controller) |
+| `dev/reloader.py` | decides which modules are the user's, keeps the source each one ran with, patches or re-executes the saved ones, re-fetches the factory |
+| `dev/patcher.py` | gives living functions the code of an edited source; counts the living instances of classes |
+| `importlib` | executes a module again in its namespace |
+| `gc` | the collector's heap, frozen while the app runs ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
+
+### Sequence
+
+#### A saved module is patched or re-executed
+
+```mermaid
+sequenceDiagram
+    participant C as controller
+    participant R as reloader
+    participant T as patcher
+    participant G as gc
+    participant I as importlib
+
+    C->>R: reload(old_factory)
+    R->>R: read each user module's file
+    R->>T: runs_source(module, its file), for a module with no source on record
+    loop each changed module that differs only inside def bodies and imports no module to re-execute
+        R->>T: patch_bodies(module, the source it ran with, the saved source)
+        T->>G: unfreeze(), get_objects(), freeze()
+        alt every living function fits its new code
+            T-->>R: the functions took the new code
+        else refused
+            T-->>R: Unpatchable, no function changed
+        end
+    end
+    loop the other changed modules, the refused ones, their importers, each after the modules it imports
+        R->>I: reload(module)
+    end
+    R-->>C: patched, re-executed, the classes each re-executed module defined before, the factory
 ```
 
 ### Promises
 
 - A user module lies under the project root, outside the install
   directories, under none of the blacklisted root packages.
-- Every user module is reloaded on every save.
-- The factory is re-fetched by name from its reloaded module.
-- Only the content tree is rebuilt.
-- A reload or a rebuild that raises leaves the previous tree on screen.
-- No reference into the old tree survives the commit.
-- The watcher only signals.
+- A save is compared against the source each user module last ran with.
+- A module imported after startup is on record by the watcher's next poll.
+- A saved module that differs from the source on record only inside def
+  bodies, and imports no re-executed module, is patched. Every living
+  function whose def is still in the file takes the new code.
+- Any other saved module is re-executed. Every user module that imports a
+  re-executed module is re-executed after it. No other module is re-executed.
+- A module the patcher refuses is re-executed, with its living functions
+  unchanged.
+- A module whose functions do not run the source on record is never patched.
+- The patcher walks the heap thawed. It refreezes a heap it found frozen.
+- The factory is re-fetched by name from its module. A lambda or a local
+  function is kept.
 
 ## The Snapshots
 
