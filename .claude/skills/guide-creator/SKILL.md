@@ -358,10 +358,11 @@ Every code example is backed by an executable file.
   ```
 
   - The dev runner re-fetches a module-level function or a widget class *by
-    name* from the reloaded module, so an edit anywhere in it applies.
+    name* from its module, so an edit anywhere in it applies.
   - A `lambda` or a function inside `main()` cannot be re-fetched, and the
-    old one runs again. An edit to a widget it builds applies; an edit to its
-    own line does not. Use one only where the root needs a value made in
+    old one runs again. An edit to a widget it builds applies. An edit to its
+    own line applies only while the saves to that file change nothing outside
+    function bodies. Use one only where the root needs a value made in
     `main()` (`content=lambda: Screen(state)`).
   - `content=build_root()` (with the call) passes an instance, and no edit
     reaches the window; `tests/test_samples_root_factory.py` catches it.
