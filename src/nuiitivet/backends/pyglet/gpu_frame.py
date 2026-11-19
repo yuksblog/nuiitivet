@@ -208,10 +208,13 @@ def _paint_dev_comment_overlay(app: Any, canvas: Any) -> None:
 
     Live frames only, like the action overlay: the human's comments must not
     reach ``screenshot``, or the agent would read them back as app content.
+    A no-op without the dev package, which a frozen app leaves out.
     """
     try:
         from nuiitivet.dev import layout_edit_overlay, comment_overlay
-
+    except ImportError:
+        return
+    try:
         comment_overlay.paint_comments(app, canvas, int(app.width), int(app.height))
         layout_edit_overlay.paint_layout_edit(app, canvas, int(app.width), int(app.height))
     except Exception:
@@ -227,7 +230,9 @@ def _paint_dev_action_overlay(app: Any, canvas: Any) -> None:
     """
     try:
         from nuiitivet.dev import action_overlay
-
+    except ImportError:
+        return
+    try:
         action_overlay.paint_markers(app, canvas, int(app.width), int(app.height))
     except Exception:
         exception_once(logger, "gpu_frame_dev_action_overlay_exc", "dev action overlay paint raised")
