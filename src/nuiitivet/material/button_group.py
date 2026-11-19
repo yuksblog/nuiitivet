@@ -939,12 +939,8 @@ class _ButtonGroupBase(InteractionHostMixin, Box):
         }
 
     def _item_focus_nodes(self) -> List[FocusNode]:
-        """Return the FocusNodes of the items the arrow keys can rove.
-
-        A disabled item has no FocusNode at all (see ``Clickable``), which is
-        exactly the set the keyboard should skip.
-        """
-        nodes = [item.get_node(FocusNode) for item in self._items]
+        """Return the FocusNodes of the enabled items, which the arrow keys rove."""
+        nodes = [item.get_node(FocusNode) for item in self._items if not item.disabled]
         return [node for node in nodes if isinstance(node, FocusNode)]
 
     def on_key_event(self, key: str, modifier_keys: int = 0) -> bool:

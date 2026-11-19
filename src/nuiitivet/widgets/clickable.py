@@ -86,7 +86,11 @@ class Clickable(InteractionHostMixin, FocusTraversalBlocker, Box):
         self._focusable = bool(focusable)
         self._traversable = bool(traversable)
 
-        if not initial_disabled and focusable:
+        # The node exists from construction, disabled or not, so a modifier that
+        # chains onto the widget's FocusNode finds this one. The disabled state
+        # blocks focus instead: Tab skips the subtree, a press is ignored, and
+        # ``FocusNode.request_focus`` refuses.
+        if focusable:
             self.add_node(self._create_focus_node())
 
         semantics_node = self._create_semantics_node()
@@ -120,11 +124,9 @@ class Clickable(InteractionHostMixin, FocusTraversalBlocker, Box):
             self._pointer_node._emit_click()
 
     def _create_focus_node(self) -> FocusNode:
-        """Build the FocusNode this widget holds while enabled.
+        """Build the FocusNode this widget holds from construction on.
 
-        The node is built here and only here: at construction for a widget born
-        enabled, and on the first enable for one born disabled. A subclass that
-        wires callbacks into the node overrides this, so both paths carry them.
+        A subclass that wires callbacks into the node overrides this.
         """
         return FocusNode(traversable=self._traversable)
 
@@ -133,8 +135,7 @@ class Clickable(InteractionHostMixin, FocusTraversalBlocker, Box):
 
         Membership of a focus traversal group is not always known when the widget
         is built — a RadioButton only meets its RadioGroup once it is mounted — so
-        the flag can be flipped afterwards. It is kept on the widget as well as on
-        the node because disabling and re-enabling rebuilds the FocusNode.
+        the flag can be flipped afterwards.
         """
         self._traversable = bool(traversable)
         node = self.get_node(FocusNode)
@@ -176,11 +177,6 @@ class Clickable(InteractionHostMixin, FocusTraversalBlocker, Box):
                 except Exception:
                     # Avoid hard failure on private API mismatch.
                     pass
-
-        else:
-            # Lazily add focus support when re-enabled.
-            if self._focusable and self.get_node(FocusNode) is None:
-                self.add_node(self._create_focus_node())
 
         self._mouse_cursor_changed()
         self.invalidate()

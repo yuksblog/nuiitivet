@@ -146,15 +146,17 @@ def test_filled_button_disabled_state_toggles_events():
         button.unmount()
 
 
-def test_filled_button_disabled_state_adds_focus_node_on_enable():
-    """FocusNode should be added when a disabled State becomes enabled."""
+def test_filled_button_keeps_one_focus_node_across_enable():
+    """A button built disabled holds its FocusNode from construction, and enabling keeps it."""
     disabled = _StateValue(True)
     button = Button("Test", disabled=disabled, style=ButtonStyle.filled())
     button.mount(MagicMock())
 
     try:
-        assert button.get_node(FocusNode) is None
+        node = button.get_node(FocusNode)
+        assert isinstance(node, FocusNode)
         disabled.value = False
-        assert button.get_node(FocusNode) is not None
+        assert button.get_node(FocusNode) is node
+        assert [n for n in button._nodes if isinstance(n, FocusNode)] == [node]
     finally:
         button.unmount()

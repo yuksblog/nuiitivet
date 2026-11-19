@@ -594,9 +594,7 @@ class RadioGroup(InteractionHostMixin, Container):
         """Return the radios the keyboard can rove, in tree order.
 
         Disabled radios are left out: they are not selectable, so the arrow keys
-        skip over them rather than roving onto a dead option. A disabled radio has
-        no FocusNode either (see :class:`~nuiitivet.widgets.clickable.Clickable`),
-        which keeps this list and :meth:`_radio_focus_nodes` index-aligned.
+        skip over them rather than roving onto a dead option.
         """
         found: list[RadioButton] = []
 
@@ -607,7 +605,7 @@ class RadioGroup(InteractionHostMixin, Container):
                 if isinstance(child, RadioGroup):
                     continue
                 if isinstance(child, RadioButton):
-                    if isinstance(child.get_node(FocusNode), FocusNode):
+                    if not child.disabled and isinstance(child.get_node(FocusNode), FocusNode):
                         found.append(child)
                 _walk(child)
 
