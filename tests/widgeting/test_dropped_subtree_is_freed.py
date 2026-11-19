@@ -5,13 +5,20 @@ import weakref
 
 import pytest
 
+from typing import Callable
+
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.scrollable import VerticalScrollable
+from nuiitivet.material.buttons import Button
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.selection_controls import Checkbox
 from nuiitivet.material.text import Text
+from nuiitivet.observable.value import State
 from nuiitivet.runtime.pointer import PointerCaptureManager
+from nuiitivet.testing import mount
+from nuiitivet.widgeting.widget import ComposableWidget, Widget
+from nuiitivet.widgeting.widget_builder import ScopeHandle, flush_scope_recompositions
 from nuiitivet.widgets.interaction import FocusNode, FocusSource, PointerInputNode
 
 
@@ -114,3 +121,78 @@ def test_rows_a_lazy_column_dropped_are_freed_at_once(collector_off):
 
     assert all(rows[item]() is None for item in (0, 1, 2, 3, 4)), "the rows that left the window are gone"
     assert all(rows[item]() is not None for item in (20, 21, 22, 23, 24)), "the rows in the window live"
+
+
+class _Screen(ComposableWidget):
+    def __init__(self, content: Callable[["_Screen"], Widget]) -> None:
+        super().__init__()
+        self.count = State(0)
+        self._content = content
+
+    def clicked(self) -> None:
+        self.count.value += 1
+
+    def build(self) -> Widget:
+        return self._content(self)
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        pytest.param(lambda screen: Text("import"), id="text"),
+        pytest.param(lambda screen: Button("Go", on_click=screen.clicked), id="button-method-handler"),
+        pytest.param(lambda screen: Button("Go", on_click=lambda: screen.clicked()), id="button-lambda-handler"),
+        pytest.param(lambda screen: Text(screen.count.map(lambda n: f"{n}")), id="text-derived-state"),
+    ],
+)
+def test_a_removed_composable_is_freed_after_the_next_layout(
+    collector_off, content: Callable[[_Screen], Widget]
+) -> None:
+    parent = Column(children=[])
+    with mount(parent, leak_check="off") as host:
+        host.layout(400, 300)
+        screen = _Screen(content)
+        parent.add_child(screen)
+        host.settle()
+        assert screen.built_child is not None
+        ref = weakref.ref(screen)
+
+        parent.remove_child(screen)
+        host.layout(400, 301)  # the frame that follows drops the laid-out list's hold
+        del screen
+        assert ref() is None, "the scope callbacks bound to the composable left no cycle behind"
+
+
+class _ScopedScreen(ComposableWidget):
+    def __init__(self) -> None:
+        super().__init__()
+        self.body_builds = 0
+        self.handle: ScopeHandle | None = None
+
+    def build(self) -> Widget:
+        with self.scope("body") as handle:
+            self.handle = handle
+            return self.render_scope_with_handle(handle, self._build_body)
+
+    def _build_body(self) -> Widget:
+        self.body_builds += 1
+        return Text(f"body {self.body_builds}")
+
+
+def test_a_remounted_composable_still_recomposes_its_scope(collector_off) -> None:
+    parent = Column(children=[])
+    with mount(parent, leak_check="off") as host:
+        host.layout(400, 300)
+        screen = _ScopedScreen()
+        parent.add_child(screen)
+        host.settle()
+        parent.remove_child(screen)
+        host.layout(400, 301)
+
+        parent.add_child(screen)
+        host.settle()
+        builds = screen.body_builds
+        assert screen.handle is not None
+        screen.handle.invalidate()
+        flush_scope_recompositions()
+        assert screen.body_builds == builds + 1

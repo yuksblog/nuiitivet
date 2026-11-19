@@ -492,20 +492,14 @@ class MaterialButtonBase(InteractiveWidget):
         except Exception:
             Icon = None  # type: ignore
 
-        def _walk(widget: Widget) -> None:
-            if isinstance(widget, TextBase):
+        # A loop, not a recursive closure: the closure would refer to itself and keep the button in a cycle.
+        pending: list[Widget] = [c for c in reversed(self.children_snapshot()) if isinstance(c, Widget)]
+        while pending:
+            widget = pending.pop()
+            if isinstance(widget, TextBase) or (Icon is not None and isinstance(widget, Icon)):
                 self._foreground_targets.append(widget)
-                return
-            if Icon is not None and isinstance(widget, Icon):
-                self._foreground_targets.append(widget)
-                return
-            for child in widget.children_snapshot():
-                if isinstance(child, Widget):
-                    _walk(child)
-
-        for child in self.children_snapshot():
-            if isinstance(child, Widget):
-                _walk(child)
+                continue
+            pending.extend(c for c in reversed(widget.children_snapshot()) if isinstance(c, Widget))
 
     def _apply_foreground_rgba(self, rgba: Tuple[int, int, int, int]) -> None:
         from nuiitivet.widgets.text import TextBase

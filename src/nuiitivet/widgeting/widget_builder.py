@@ -10,6 +10,7 @@ import weakref
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Protocol, Set, Tuple, TYPE_CHECKING, runtime_checkable
 
+from nuiitivet.common.back_reference import weak_method_call
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
 from .callbacks import report_contained
@@ -372,15 +373,19 @@ class BuilderHostMixin:
 
         self._scope_registry = {}
         self._active_scope_ids.clear()
+        # The scopes and the context live in this host's attributes, so their
+        # callbacks hold the host weakly; a host that left the tree is then
+        # freed by reference counting.
+        invalidate_cb = weak_method_call(self._invalidate_scope)
         root = self._scope_root
         if root is None:
-            root = RecomposeScope("root", invalidate_cb=self._invalidate_scope)
+            root = RecomposeScope("root", invalidate_cb=invalidate_cb)
             self._scope_root = root
         self._register_scope(root)
         ctx = BuildScopeContext(
             root,
-            invalidate_cb=self._invalidate_scope,
-            register_cb=self._register_scope,
+            invalidate_cb=invalidate_cb,
+            register_cb=weak_method_call(self._register_scope),
         )
         self._build_ctx = ctx
         return ctx  # type: ignore[return-value]
