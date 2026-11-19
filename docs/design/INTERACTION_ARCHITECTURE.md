@@ -337,6 +337,10 @@ flowchart LR
 - A modifier wraps the widget in one `InteractionRegion`. A second pointer
   modifier on the same widget reuses it.
 - A standard control adds its nodes in `__init__`. No wrapper enters the tree.
+- A focusable `Clickable` holds its own `FocusNode` from `__init__`, disabled
+  or not. A modifier that chains onto the host's `FocusNode` finds that node.
+- A disabled host takes no focus. Tab skips it, a press is ignored, and
+  `request_focus()` does nothing.
 - A primary-button press on a host with a `FocusNode` requests focus for it,
   with the pointer as the source.
 - A new capability is a new node on the same host.
@@ -436,7 +440,7 @@ flowchart LR
 ### Promises
 
 - A group has one external Tab stop, its owner's. A popup menu has none.
-- A disabled member has no `FocusNode`.
+- Roving skips a disabled member.
 - Whether roving wraps, and whether it moves the selection, are the policy's
   decisions.
 - A widget that takes focus on its own inherits the window's last input

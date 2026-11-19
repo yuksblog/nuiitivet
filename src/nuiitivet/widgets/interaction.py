@@ -980,6 +980,9 @@ class FocusNode(InteractionNode):
         self._parent: Optional["FocusNode"] = None
 
     def request_focus(self, source: FocusSource = FocusSource.KEYBOARD) -> None:
+        """Focus this node. Does nothing while the owner is disabled."""
+        if self.state.disabled:
+            return
         if self.region and hasattr(self.region, "_app") and self.region._app:
             self.region._app.request_focus(self, source)
         else:

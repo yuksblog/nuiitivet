@@ -746,6 +746,17 @@ def test_button_group_arrows_rove_and_stop_at_the_edges() -> None:
     assert app._focused_node is _focus_node(items[2])  # stops at the last item
 
 
+def test_button_group_arrows_skip_a_disabled_item() -> None:
+    """A disabled item keeps its FocusNode, yet roving passes over it."""
+    items = [GroupButton(label="One"), GroupButton(label="Two", disabled=True), GroupButton(label="Three")]
+    group = StandardButtonGroup(items=items)
+    app = _mounted_app(Column([group]))
+    app._dispatch_key_press("tab")
+
+    app._dispatch_key_press("right")
+    assert app._focused_node is _focus_node(items[2])
+
+
 def test_button_group_selection_does_not_follow_the_focus() -> None:
     """Unlike a radio group, roving a button group toggles nothing: Enter does."""
     toggled: list[tuple[str, bool]] = []
