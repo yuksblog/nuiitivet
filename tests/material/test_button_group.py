@@ -17,19 +17,12 @@ from nuiitivet.material.styles.button_group_style import (
     StandardButtonGroupStyle,
     ConnectedButtonGroupStyle,
 )
-from nuiitivet.observable import State
+from nuiitivet.observable import State, StateBase
 from tests.helpers.pointer import send_pointer_event_for_test
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _make_obs(initial: bool):
-    class _Tmp:
-        x = State(initial)
-
-    return _Tmp().x
 
 
 def _make_item(
@@ -833,3 +826,112 @@ def test_corner_animation_tick_invalidates_paint_cache() -> None:
     item._set_selected(False)
     item._on_corner_value_changed(item._corner_anim.target)
     assert item._paint_cache_snapshot is None  # type: ignore[attr-defined]
+
+
+# ===========================================================================
+# Selected State binding
+# ===========================================================================
+
+
+def _assert_agrees(item: GroupButton, state: StateBase[bool]) -> None:
+    assert item._selected is state.value
+    assert item.state.selected is state.value
+
+
+def test_click_writes_selection_to_state() -> None:
+    state = State(False)
+    item = GroupButton("A", selected=state)
+
+    item._handle_click()
+    _assert_agrees(item, state)
+    assert state.value is True
+
+    item._handle_click()
+    _assert_agrees(item, state)
+    assert state.value is False
+
+
+def test_state_set_from_code_changes_selected_look() -> None:
+    state = State(False)
+    item = GroupButton("A", selected=state)
+    group = StandardButtonGroup([item, _make_item("B")])
+    _mount_group(group)
+    unselected_bg = item.bgcolor
+
+    state.value = True
+    _assert_agrees(item, state)
+    assert item.bgcolor != unselected_bg
+
+    state.value = False
+    _assert_agrees(item, state)
+    assert item.bgcolor == unselected_bg
+
+
+def test_state_reset_after_click_unselects() -> None:
+    state = State(False)
+    item = GroupButton("A", selected=state)
+    _mount_group(StandardButtonGroup([item, _make_item("B")]))
+
+    _click(item)
+    state.value = False
+    _assert_agrees(item, state)
+
+
+def test_state_set_before_mount_applies_on_mount() -> None:
+    state = State(False)
+    item = GroupButton("A", selected=state)
+    group = StandardButtonGroup([item, _make_item("B")])
+
+    state.value = True
+    _mount_group(group)
+    _assert_agrees(item, state)
+
+
+def test_standard_group_items_write_their_states() -> None:
+    states = [State(False) for _ in range(3)]
+    items = [GroupButton(str(i), selected=s) for i, s in enumerate(states)]
+    _mount_group(StandardButtonGroup(items))
+
+    _click(items[0])
+    _click(items[2])
+    _click(items[0])
+    for item, state in zip(items, states):
+        _assert_agrees(item, state)
+    assert [s.value for s in states] == [False, False, True]
+
+
+@pytest.mark.parametrize("select_mode", ["single", "multi"])
+def test_connected_group_items_write_their_states(select_mode: str) -> None:
+    states = [State(False) for _ in range(3)]
+    items = [GroupButton(str(i), selected=s) for i, s in enumerate(states)]
+    _mount_group(ConnectedButtonGroup(items, select_mode=select_mode))  # type: ignore[arg-type]
+
+    _click(items[0])
+    _click(items[1])
+    for item, state in zip(items, states):
+        _assert_agrees(item, state)
+    expected = [False, True, False] if select_mode == "single" else [True, True, False]
+    assert [s.value for s in states] == expected
+
+    states[2].value = True
+    for item, state in zip(items, states):
+        _assert_agrees(item, state)
+
+
+def test_read_only_state_decides_look_and_click_only_reports() -> None:
+    source = State(0)
+    derived = source.map(lambda v: v > 0)
+    changes: List[bool] = []
+    item = GroupButton("A", selected=derived, on_change=changes.append)  # type: ignore[arg-type]
+    _mount_group(StandardButtonGroup([item, _make_item("B")]))
+
+    item._handle_click()
+    assert changes == [True]
+    assert derived.value is False
+    _assert_agrees(item, derived)
+
+    source.value = 1
+    _assert_agrees(item, derived)
+    item._handle_click()
+    assert changes == [True, False]
+    _assert_agrees(item, derived)

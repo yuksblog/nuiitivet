@@ -116,8 +116,10 @@ class GroupButton(InteractiveWidget):
         Args:
             label: Text label, or a State of it.
             icon: Icon symbol, string name, or a State of either.
-            selected: Initial selected state, or a writable ``State[bool]``
-                bound to external state.
+            selected: Selected state, or a ``State[bool]`` the button
+                follows. A click writes the new selection to a writable State.
+                A read-only State keeps the look; a click only calls
+                ``on_change``.
             on_change: Callback invoked with the new selected state after
                 each toggle. In a ``ConnectedButtonGroup`` it runs together
                 with the group's selection enforcement.
@@ -154,10 +156,10 @@ class GroupButton(InteractiveWidget):
         self._on_change: Optional[BoolCallback] = on_change
 
         # Selected state
-        self._selected_external: "Optional[MutableStateBase[bool]]" = None
-        if hasattr(selected, "subscribe") and hasattr(selected, "value"):
-            self._selected_external = cast("MutableStateBase[bool]", selected)
-            self._selected: bool = bool(self._selected_external.value)
+        self._selected_external: "Optional[StateBase[bool]]" = None
+        if isinstance(selected, StateBase):
+            self._selected_external = selected
+            self._selected: bool = bool(selected.value)
         else:
             self._selected = bool(selected)
 
@@ -382,6 +384,8 @@ class GroupButton(InteractiveWidget):
         if self._selected_external is not None:
             sub = self._selected_external.subscribe(lambda v: self._set_selected(bool(v)))
             self.bind(sub)
+            if bool(self._selected_external.value) != self._selected:
+                self._set_selected(bool(self._selected_external.value))
 
     # ------------------------------------------------------------------
     # Interaction handlers (pointer events)
@@ -430,16 +434,15 @@ class GroupButton(InteractiveWidget):
         Args:
             value: New selected state.
         """
+        ext = self._selected_external
+        if ext is not None and not isinstance(ext, MutableStateBase):
+            # A read-only State alone decides the look.
+            value = bool(ext.value)
         self._selected = bool(value)
 
-        # Write back to external State if mutable
-        if self._selected_external is not None:
-            ext = self._selected_external
-            if hasattr(ext, "value") and not isinstance(ext, StateBase):
-                try:
-                    ext.value = bool(value)  # type: ignore[assignment]
-                except AttributeError:
-                    pass
+        # The equality check stops the State's echo from writing back again.
+        if isinstance(ext, MutableStateBase) and bool(ext.value) != self._selected:
+            ext.value = self._selected
 
         bg, fg, bc, _bw = self._effective_colors()
         self.bgcolor = bg
