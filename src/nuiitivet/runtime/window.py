@@ -1561,15 +1561,15 @@ class Window:
         markers back as app content. A no-op without the dev package.
         """
         try:
-            from nuiitivet.dev import action_overlay
-
+            from nuiitivet.dev import action_overlay, comment_overlay, layout_edit_overlay
+        except ImportError:
+            return
+        try:
             action_overlay.paint_markers(canvas=canvas, app=self, width=self.width, height=self.height)
         except Exception:
             exception_once(logger, "app_snapshot_dev_action_overlay_exc", "dev action overlay paint raised")
 
         try:
-            from nuiitivet.dev import layout_edit_overlay, comment_overlay
-
             comment_overlay.paint_comments(self, canvas, self.width, self.height)
             layout_edit_overlay.paint_layout_edit(self, canvas, self.width, self.height)
         except Exception:
