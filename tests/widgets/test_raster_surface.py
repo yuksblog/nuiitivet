@@ -1,4 +1,4 @@
-"""The RasterSurface asks for pixels at its device size, between frames, and paints them."""
+"""The RasterSurface asks for pixels at its device size, at the next frame, and paints them."""
 
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ def test_draw_is_asked_for_the_content_rect_in_device_pixels(
     surface = RasterSurface(draw, width=220, height=120, padding=10)
     surface.layout(220, 120)
 
-    # Layout only queues; the pixels are made between frames.
+    # Layout only queues; the pixels are made at the next frame start.
     assert asked == []
     flush_size_change_callbacks()
     assert asked == [(400, 200)]
