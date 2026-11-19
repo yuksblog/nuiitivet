@@ -82,6 +82,14 @@ def test_window_vocabulary_is_public(module: object, name: str) -> None:
     assert hasattr(module, name), f"{module.__name__}.{name} is not exported"  # type: ignore[attr-defined]
 
 
+def test_material_root_binds_its_own_tooltip() -> None:
+    """`nv.tooltip("text")` takes a string, which only the Material root can wrap in `nv.Tooltip`."""
+    from nuiitivet.material.tooltip_widgets import tooltip as material_tooltip
+
+    assert md.tooltip is material_tooltip
+    assert core.tooltip is not material_tooltip
+
+
 @pytest.mark.parametrize("module", [core, md], ids=["nuiitivet", "nuiitivet.material"])
 def test_all_has_no_duplicates(module: object) -> None:
     names = list(module.__all__)  # type: ignore[attr-defined]

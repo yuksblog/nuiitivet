@@ -296,7 +296,8 @@ def tooltip(
     - No external open state API.
 
     Args:
-        content: Tooltip content widget.
+        content: Tooltip content widget. The Material root's ``tooltip`` also
+            takes a string.
         delay: Delay in seconds before opening.
         dismiss_delay: Delay in seconds before closing.
         target_anchor: Reference point on the anchor widget.
@@ -306,7 +307,12 @@ def tooltip(
 
     Returns:
         A ``TooltipModifier`` suitable for :meth:`Widget.modifier`.
+
+    Raises:
+        TypeError: ``content`` is not a ``Widget``.
     """
+    if not isinstance(content, Widget):
+        raise TypeError(f"tooltip() content must be a Widget, not {type(content).__name__}")
     return TooltipModifier(
         content=content,
         delay=delay,

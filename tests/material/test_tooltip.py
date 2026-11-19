@@ -463,3 +463,47 @@ def test_rich_tooltip_explicit_width_bypasses_auto_clamp() -> None:
     w, _h = widget.preferred_size()
     # Fixed width = 200, which is below min_width=500, but clamping does not apply.
     assert w == 200
+
+
+# ---------------------------------------------------------------------------
+# tooltip() with a string
+# ---------------------------------------------------------------------------
+
+
+def test_material_tooltip_wraps_a_string_in_a_plain_tooltip() -> None:
+    from nuiitivet.material.tooltip_widgets import tooltip as material_tooltip
+
+    modifier = material_tooltip("Add item", delay=0.2)
+
+    assert isinstance(modifier, TooltipModifier)
+    assert isinstance(modifier.content, Tooltip)
+    assert modifier.content.message == "Add item"
+    assert modifier.delay == 0.2
+
+
+def test_material_tooltip_passes_a_widget_through() -> None:
+    from nuiitivet.material.tooltip_widgets import tooltip as material_tooltip
+
+    content = RichTooltip("Body")
+
+    assert material_tooltip(content).content is content
+
+
+def test_core_tooltip_rejects_a_string_at_the_call() -> None:
+    import pytest
+
+    with pytest.raises(TypeError):
+        tooltip("Add item")  # type: ignore[arg-type]
+
+
+def test_material_tooltip_string_opens_on_keyboard_focus(nuiitivet_app) -> None:
+    from nuiitivet.material.buttons import IconButton
+    from nuiitivet.material.tooltip_widgets import tooltip as material_tooltip
+
+    button = IconButton("add", on_click=lambda: None).modifier(material_tooltip("Add item", delay=0.0))
+    app = nuiitivet_app(button, size=(200, 200))
+
+    app.key("tab")
+
+    assert [type(o) for o in app.open_overlays] == [Tooltip]
+    assert app.top_overlay.message == "Add item"
