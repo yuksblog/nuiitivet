@@ -18,7 +18,6 @@ delegate behavior.
 from __future__ import annotations
 
 import logging
-import time
 from typing import ClassVar, Optional, Tuple
 
 from nuiitivet.animation import Animatable, LinearMotion
@@ -106,10 +105,10 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
         self._thumb_hover = False
         self._hovering = False
         self._pressed = False
-        self._last_interaction = 0.0
         self._offset_unsubscribe = None
         self._hide_armed = False
-        initial_visibility = 1.0
+        # An auto-hide bar starts hidden and shows on scroll or hover.
+        initial_visibility = 0.0 if self.auto_hide else 1.0
         motion = LinearMotion(duration=self.fade_duration) if self.fade_duration > 0.0 else None
         self._visibility = Animatable(initial_visibility, motion=motion)
         self._visibility_unsubscribe = None
@@ -154,8 +153,6 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
 
     def _on_interaction(self, skip_invalidate: bool = False) -> None:
         try:
-            now = time.time()
-            self._last_interaction = now
             self._cancel_hide_timer()
 
             if self.auto_hide:
@@ -292,8 +289,8 @@ class _ScrollbarBase(InteractionHostMixin, Widget):
     def on_mount(self) -> None:
         super().on_mount()
         try:
-            if not self.auto_hide:
-                self._last_interaction = time.time()
+            # A remounted bar starts hidden too, even if it was showing at unmount.
+            self._visibility.snap_to(0.0 if self.auto_hide else 1.0)
 
             def _visibility_cb(_value: float) -> None:
                 try:

@@ -1,6 +1,11 @@
 """Unit tests for the standalone Scrollbar widget."""
 
 from __future__ import annotations
+
+from contextlib import contextmanager
+from typing import Callable, Generator
+
+from nuiitivet.observable import runtime as observable_runtime
 from nuiitivet.scrolling import ScrollbarBehavior, ScrollController, ScrollDirection
 from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.widgets.scrollbar import HorizontalScrollbar, VerticalScrollbar
@@ -18,6 +23,106 @@ class DummyApp:
         self.invalidate_calls += 1
 
 
+class _FakeClock:
+    """Clock whose time moves only on ``advance()``; fires one-shots when due."""
+
+    def __init__(self) -> None:
+        self._now = 0.0
+        self._once: list[tuple[float, Callable[[float], None]]] = []
+        self._intervals: list[Callable[[float], None]] = []
+
+    def schedule_once(self, fn: Callable[[float], None], delay: float) -> None:
+        self._once.append((self._now + delay, fn))
+
+    def schedule_interval(self, fn: Callable[[float], None], interval: float) -> None:
+        del interval
+        self._intervals.append(fn)
+
+    def unschedule(self, fn: Callable[[float], None]) -> None:
+        self._once = [(t, cb) for t, cb in self._once if cb != fn]
+        self._intervals = [cb for cb in self._intervals if cb != fn]
+
+    def advance(self, dt: float) -> None:
+        self._now += dt
+        due = [(t, cb) for t, cb in self._once if t <= self._now]
+        self._once = [(t, cb) for t, cb in self._once if t > self._now]
+        for _, cb in due:
+            cb(dt)
+        for cb in list(self._intervals):
+            cb(dt)
+
+
+@contextmanager
+def _fake_clock() -> Generator[_FakeClock, None, None]:
+    prev = observable_runtime.clock
+    fake = _FakeClock()
+    observable_runtime.set_clock(fake)
+    try:
+        yield fake
+    finally:
+        observable_runtime.set_clock(prev)
+
+
+def _overflowing_controller() -> ScrollController:
+    controller = ScrollController()
+    controller._update_metrics(max_extent=200.0, viewport_size=200, content_size=400)
+    return controller
+
+
+def test_auto_hide_scrollbar_starts_hidden_after_mount() -> None:
+    behavior = ScrollbarBehavior(auto_hide=True, hide_delay=1.0, fade_duration=0.0)
+    with _fake_clock() as clock:
+        scrollbar = VerticalScrollbar(_overflowing_controller(), behavior=behavior)
+        scrollbar.mount(DummyApp())
+        assert scrollbar._visibility.value == 0.0
+        assert clock._once == []
+        scrollbar.unmount()
+
+
+def test_scrollbar_without_auto_hide_is_visible_after_mount() -> None:
+    behavior = ScrollbarBehavior(auto_hide=False, hide_delay=1.0, fade_duration=0.0)
+    with _fake_clock() as clock:
+        scrollbar = VerticalScrollbar(_overflowing_controller(), behavior=behavior)
+        scrollbar.mount(DummyApp())
+        assert scrollbar._visibility.value == 1.0
+        clock.advance(5.0)
+        assert scrollbar._visibility.value == 1.0
+        scrollbar.unmount()
+
+
+def test_auto_hide_scrollbar_shows_on_scroll_then_hides_after_delay() -> None:
+    controller = _overflowing_controller()
+    behavior = ScrollbarBehavior(auto_hide=True, hide_delay=1.0, fade_duration=0.0)
+    with _fake_clock() as clock:
+        scrollbar = VerticalScrollbar(controller, behavior=behavior)
+        scrollbar.mount(DummyApp())
+        controller.axis_state(ScrollDirection.VERTICAL).offset.value = 10.0
+        assert scrollbar._visibility.value == 1.0
+
+        clock.advance(0.9)
+        assert scrollbar._visibility.value == 1.0
+
+        clock.advance(0.2)
+        assert scrollbar._visibility.value == 0.0
+        scrollbar.unmount()
+
+
+def test_remounted_auto_hide_scrollbar_starts_hidden() -> None:
+    controller = _overflowing_controller()
+    behavior = ScrollbarBehavior(auto_hide=True, hide_delay=1.0, fade_duration=0.0)
+    with _fake_clock() as clock:
+        scrollbar = VerticalScrollbar(controller, behavior=behavior)
+        scrollbar.mount(DummyApp())
+        controller.axis_state(ScrollDirection.VERTICAL).offset.value = 10.0
+        assert scrollbar._visibility.value == 1.0
+        scrollbar.unmount()
+        assert clock._once == []
+
+        scrollbar.mount(DummyApp())
+        assert scrollbar._visibility.value == 0.0
+        scrollbar.unmount()
+
+
 def test_scrollbar_mounts_and_listens_to_controller() -> None:
     controller = ScrollController()
     controller._update_metrics(max_extent=100.0, viewport_size=200, content_size=300)
@@ -25,9 +130,7 @@ def test_scrollbar_mounts_and_listens_to_controller() -> None:
     app = DummyApp()
     scrollbar.mount(app)
     assert scrollbar._offset_unsubscribe is not None
-    before = scrollbar._last_interaction
     controller.axis_state(ScrollDirection.VERTICAL).offset.value = 25.0
-    assert scrollbar._last_interaction >= before
     assert app.invalidate_calls >= 1
     scrollbar.unmount()
     assert scrollbar._offset_unsubscribe is None
@@ -41,7 +144,7 @@ def test_scrollbar_auto_hide_starts_animation_on_scroll() -> None:
     app = DummyApp()
     scrollbar.mount(app)
 
-    assert scrollbar._visibility.target == 1.0
+    assert scrollbar._visibility.target == 0.0
 
     controller.axis_state(ScrollDirection.VERTICAL).offset.value = 10.0
     assert scrollbar._hide_armed
