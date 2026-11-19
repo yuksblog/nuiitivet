@@ -296,8 +296,8 @@ def tooltip(
     - No external open state API.
 
     Args:
-        content: Tooltip content widget. The Material root's ``tooltip`` also
-            takes a string.
+        content: Tooltip content widget, such as a ``Tooltip`` or ``RichTooltip``
+            from the design system.
         delay: Delay in seconds before opening.
         dismiss_delay: Delay in seconds before closing.
         target_anchor: Reference point on the anchor widget.

@@ -466,41 +466,21 @@ def test_rich_tooltip_explicit_width_bypasses_auto_clamp() -> None:
 
 
 # ---------------------------------------------------------------------------
-# tooltip() with a string
+# tooltip() content type
 # ---------------------------------------------------------------------------
 
 
-def test_material_tooltip_wraps_a_string_in_a_plain_tooltip() -> None:
-    from nuiitivet.material.tooltip_widgets import tooltip as material_tooltip
-
-    modifier = material_tooltip("Add item", delay=0.2)
-
-    assert isinstance(modifier, TooltipModifier)
-    assert isinstance(modifier.content, Tooltip)
-    assert modifier.content.message == "Add item"
-    assert modifier.delay == 0.2
-
-
-def test_material_tooltip_passes_a_widget_through() -> None:
-    from nuiitivet.material.tooltip_widgets import tooltip as material_tooltip
-
-    content = RichTooltip("Body")
-
-    assert material_tooltip(content).content is content
-
-
-def test_core_tooltip_rejects_a_string_at_the_call() -> None:
+def test_tooltip_rejects_a_string_at_the_call() -> None:
     import pytest
 
     with pytest.raises(TypeError):
         tooltip("Add item")  # type: ignore[arg-type]
 
 
-def test_material_tooltip_string_opens_on_keyboard_focus(nuiitivet_app) -> None:
+def test_tooltip_widget_opens_on_keyboard_focus(nuiitivet_app) -> None:
     from nuiitivet.material.buttons import IconButton
-    from nuiitivet.material.tooltip_widgets import tooltip as material_tooltip
 
-    button = IconButton("add", on_click=lambda: None).modifier(material_tooltip("Add item", delay=0.0))
+    button = IconButton("add", on_click=lambda: None).modifier(tooltip(Tooltip("Add item"), delay=0.0))
     app = nuiitivet_app(button, size=(200, 200))
 
     app.key("tab")

@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 from nuiitivet.rendering.padding import PaddingLike
-from nuiitivet.layout.alignment import AlignmentLike
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
@@ -16,14 +15,9 @@ from nuiitivet.theme.type_scale import TypeScaleToken
 from nuiitivet.material.styles.tooltip_style import RichTooltipStyle, TooltipStyle
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.elevation import elevation_shadows
-from nuiitivet.modifiers.tooltip import TooltipModifier
-from nuiitivet.modifiers.tooltip import tooltip as _core_tooltip
 from nuiitivet.rendering.sizing import Sizing, SizingLike
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgets.box import Box
-
-if TYPE_CHECKING:
-    from nuiitivet.transition.spec import TransitionSpec
 
 
 class Tooltip(ComposableWidget):
@@ -240,42 +234,4 @@ class RichTooltip(ComposableWidget):
         )
 
 
-def tooltip(
-    content: Widget | str,
-    *,
-    delay: float = 0.5,
-    dismiss_delay: float = 1.5,
-    target_anchor: AlignmentLike = "top-center",
-    content_anchor: AlignmentLike = "bottom-center",
-    offset: tuple[float, float] = (0.0, -4.0),
-    transition: Optional["TransitionSpec"] = None,
-) -> TooltipModifier:
-    """Attach a tooltip that opens on hover, keyboard focus or long-press.
-
-    A string becomes a plain :class:`Tooltip`; any other widget is shown as is,
-    such as a :class:`RichTooltip`.
-
-    Args:
-        content: The tooltip text, or the widget to show.
-        delay: Delay in seconds before opening.
-        dismiss_delay: Delay in seconds before closing.
-        target_anchor: Reference point on the anchor widget.
-        content_anchor: Reference point on the tooltip content.
-        offset: Additional ``(dx, dy)`` offset in pixels.
-        transition: Optional overlay transition.
-
-    Returns:
-        A ``TooltipModifier`` suitable for :meth:`Widget.modifier`.
-    """
-    return _core_tooltip(
-        Tooltip(content) if isinstance(content, str) else content,
-        delay=delay,
-        dismiss_delay=dismiss_delay,
-        target_anchor=target_anchor,
-        content_anchor=content_anchor,
-        offset=offset,
-        transition=transition,
-    )
-
-
-__all__ = ["Tooltip", "RichTooltip", "tooltip"]
+__all__ = ["Tooltip", "RichTooltip"]

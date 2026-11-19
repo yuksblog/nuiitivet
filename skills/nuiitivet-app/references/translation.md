@@ -161,7 +161,7 @@ with `on_size_changed`.
 | --- | --- |
 | wrap `GestureDetector(onTap:, child: Button())` | `Button("OK").modifier(clickable(...))` |
 | wrap `DecoratedBox(decoration:, child:)` | `X.modifier(background(...) \| corner_radius(...))` |
-| `Tooltip(message:, child: X)` as a wrapper reflex | `X.modifier(tooltip("..."))` (tooltip is a modifier here) |
+| `Tooltip(message:, child: X)` as a wrapper reflex | `X.modifier(tooltip(Tooltip("...")))` (tooltip is a modifier here) |
 | `Semantics(label:, child: X)`, `contentDescription = "..."`, `aria-label` | `X.modifier(semantics(label="..."))`; a standard control with text needs none, an icon button or a bare checkbox does |
 | `.modifier(a).modifier(b)` (re-wrapping) | compose in one call: `.modifier(a \| b \| c)` |
 | Compose `Modifier.padding().background()` chain | `.modifier(...)` for decoration/behavior; padding is a widget **parameter** |
@@ -172,7 +172,7 @@ The set of modifiers is the **Modifier catalog** in `SKILL.md`. There is **no**
 ```python
 # Correct
 nv.Button("OK").modifier(
-    tooltip("Submit") | clickable(on_click) | background("#2196F3")
+    tooltip(nv.Tooltip("Submit")) | clickable(on_click) | background("#2196F3")
 )
 ```
 

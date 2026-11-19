@@ -33,7 +33,7 @@ skill front-loads the correct idioms and provides a linter to catch leaks.
    distinct single-child box, not merely to add padding or a size.)
 
 5. **Decoration and behavior attach via `.modifier(...)`, composed with `|`.**
-   `nv.Button("OK").modifier(tooltip("Submit") | background("#2196F3"))`. Do not
+   `nv.Button("OK").modifier(tooltip(nv.Tooltip("Submit")) | background("#2196F3"))`. Do not
    wrap a widget to decorate it. (See the **Modifier catalog** for the set.)
 
 6. **`App` takes its main `Window`; the root is a factory, not an instance.**
@@ -161,7 +161,7 @@ catalog below), not a job for `Container` — its box is layout-only.
 | Sheets | `BottomSheet` / `SideSheet` / `StandardSideSheet` | `nv.Overlay.of(self).bottom_sheet(...)` |
 | Dialog | `BasicDialog` via `Overlay` | `await nv.Overlay.of(self).dialog(nv.BasicDialog(...))` |
 | Transient message | `Snackbar` via `Overlay` | `nv.Overlay.of(self).snackbar("Saved")` |
-| Tooltip | `Tooltip` / `RichTooltip` (or the `tooltip` modifier) | `x.modifier(tooltip("..."))` |
+| Tooltip | `Tooltip` / `RichTooltip` (or the `tooltip` modifier) | `x.modifier(tooltip(Tooltip("...")))` |
 
 **Desktop integration** — outside the widget tree
 
@@ -205,7 +205,7 @@ and spacing stay widget *parameters*, not modifiers.
 | Focus + key handling | `focusable` | `focusable(on_key=handler)` |
 | Hover handling | `hoverable` | `hoverable(on_hover)` |
 | Mouse cursor shape while hovered | `cursor` | `cursor(MouseCursor.RESIZE_LEFT_RIGHT)` |
-| Tooltip on hover | `tooltip` | `tooltip("Submit")` |
+| Tooltip on hover | `tooltip` | `tooltip(Tooltip("Submit"))` |
 | Screen-reader label for a control with no words (an icon button, a bare checkbox) | `semantics` | `semantics(label="Close")` |
 | Receive OS file drops | `drop_target` | `drop_target(on_drop)` |
 | React to this widget's own measured size (adaptive placement, responsive reflow) | `on_size_changed` | `on_size_changed(self._on_size)` |

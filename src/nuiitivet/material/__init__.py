@@ -85,7 +85,7 @@ if TYPE_CHECKING:
     from .protocols import MaterialOverlayProtocol as OverlayProtocol
     from .theme.material_theme import MaterialThemeFactory as ThemeFactory
     from .toolbar import DockedToolbar, HorizontalFloatingToolbar, VerticalFloatingToolbar
-    from .tooltip_widgets import Tooltip, RichTooltip, tooltip
+    from .tooltip_widgets import Tooltip, RichTooltip
     from .styles.sheet_style import SideSheetStyle, BottomSheetStyle, StandardSideSheetStyle
     from .sheet import SideSheet, BottomSheet, StandardSideSheet
     from .button_group import (
@@ -215,7 +215,6 @@ __all__ = [
     "VerticalFloatingToolbar",
     "Tooltip",
     "RichTooltip",
-    "tooltip",
     "MaterialTransitions",
     "MaterialTransitionSpec",
     "SideSheetStyle",
@@ -346,7 +345,6 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "VerticalFloatingToolbar": ("toolbar", "VerticalFloatingToolbar"),
     "Tooltip": ("tooltip_widgets", "Tooltip"),
     "RichTooltip": ("tooltip_widgets", "RichTooltip"),
-    "tooltip": ("tooltip_widgets", "tooltip"),
     "MaterialTransitions": ("transition_spec", "MaterialTransitions"),
     "MaterialTransitionSpec": ("transition_spec", "MaterialTransitionSpec"),
     "SideSheetStyle": ("styles.sheet_style", "SideSheetStyle"),
