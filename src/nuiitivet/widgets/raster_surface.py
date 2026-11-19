@@ -36,9 +36,10 @@ class RasterSurface(Widget):
     changes. Any producer of RGBA bytes plugs in: Pillow, OpenCV, a hand-made
     ``bytearray``.
 
-    The pixels are produced between frames, never during layout or paint.
-    While a window is being resized the previous raster is stretched for one
-    frame and the crisp one follows. From a data source: :meth:`draw`.
+    ``draw`` runs at the start of a frame, before layout, never during layout
+    or paint. Its time is spent inside that frame. While a window is being
+    resized the previous raster is stretched for one frame and the crisp one
+    follows. From a data source: :meth:`draw`.
     """
 
     def __init__(
@@ -89,6 +90,7 @@ class RasterSurface(Widget):
             draw: Called as ``draw(value, width_px, height_px)`` with the
                 current value whenever it changes or the device size does;
                 returns the RGBA buffer, or ``None`` for an empty surface.
+                Runs inside the frame, before layout.
             width: Width sizing.
             height: Height sizing.
             padding: Insets from the allocated rect to the pixels.
@@ -110,7 +112,7 @@ class RasterSurface(Widget):
         return self._pixel_ratio
 
     def request_render(self) -> None:
-        """Ask for the pixels again at the current device size, between frames.
+        """Ask for the pixels again at the current device size, at the next frame.
 
         Several requests in one frame produce one render. Before the first
         layout there is no size to render at, and the request waits for it.

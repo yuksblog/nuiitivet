@@ -25,7 +25,8 @@ def make_raster_image(pixels: Any, width: int, height: int) -> Any:
     Args:
         pixels: Any object exposing the buffer protocol: ``bytes``, a
             ``memoryview``, a numpy array. Straight (unpremultiplied) alpha,
-            rows top to bottom, ``width * height * 4`` bytes.
+            rows top to bottom, ``width * height * 4`` bytes. A C-contiguous
+            buffer is read in place; any other is copied first.
         width: The image width in pixels.
         height: The image height in pixels.
 
@@ -40,7 +41,9 @@ def make_raster_image(pixels: Any, width: int, height: int) -> Any:
     expected = int(width) * int(height) * 4
     if view.nbytes != expected:
         raise ValueError(f"expected {expected} bytes of RGBA pixels for {width}x{height}, got {view.nbytes}")
-    if not view.c_contiguous or view.ndim != 1 or view.itemsize != 1:
+    if view.c_contiguous:
+        view = view.cast("B")
+    else:
         view = memoryview(view.tobytes())
     return skia.Image.frombytes(
         view,
