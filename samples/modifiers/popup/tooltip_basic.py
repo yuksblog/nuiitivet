@@ -5,7 +5,7 @@ target = nv.Container(
     height=40,
     child=nv.Text("Hover me"),
     alignment="center",
-).modifier(nv.tooltip(nv.Tooltip("This is a tooltip"), delay=0.0))
+).modifier(nv.tooltip("This is a tooltip", delay=0.0))
 
 
 def build_root() -> nv.Widget:

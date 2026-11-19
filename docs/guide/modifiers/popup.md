@@ -203,13 +203,13 @@ target = nv.Container(
     child=nv.Text("Hover me"),
     alignment="center",
 ).modifier(
-    nv.tooltip(nv.Tooltip("This is a tooltip"), delay=0.0)
+    nv.tooltip("This is a tooltip", delay=0.0)
 )
 ```
 
 ![tooltip Modifier](../../assets/modifier_popup_tooltip.png)
 
-The `content` widget is usually a `Tooltip` or `RichTooltip` from `nuiitivet.material`, but any widget is accepted.
+A string becomes a plain `Tooltip`. For anything else, pass the widget itself, such as a `RichTooltip`.
 
 `delay` (default `0.5`) is how long the pointer must rest before it opens, `dismiss_delay` (default `1.5`) how long it lingers after leaving. Placement works exactly as in [popup](#placement), with defaults that centre the tooltip above the widget (`target_anchor="top-center"`, `content_anchor="bottom-center"`, `offset=(0.0, -4.0)`).
 
