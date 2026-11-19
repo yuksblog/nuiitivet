@@ -1,18 +1,23 @@
 from __future__ import annotations
 
-from typing import Optional, Union, cast
+from typing import Optional, Union
 
 from nuiitivet.widgets.clickable import Clickable
 from nuiitivet.widgets.semantics import Semantics, SemanticsRole, ToggleState
-from nuiitivet.observable import ReadOnlyStateProtocol, State, StateProtocol
+from nuiitivet.observable import ReadOnlyStateProtocol, State
+from nuiitivet.observable.protocols import MutableStateBase, StateBase
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgeting.callbacks import invoke_event_handler, OptionalBoolCallback
 
 
 class Toggleable(Clickable):
-    """
-    A base class for toggleable widgets (Checkbox, Switch, Radio).
+    """A base class for toggleable widgets (Checkbox, Switch, Radio).
+
     Handles value state (checked/unchecked/indeterminate) and toggling logic.
+    A click writes the toggled value to a writable State. A read-only State,
+    such as one made by ``.map()`` or ``State.compute()``, is never written:
+    the click only calls ``on_change``, and the widget shows what the State
+    holds.
     """
 
     # Internal descriptor-backed State for simple usage
@@ -23,7 +28,7 @@ class Toggleable(Clickable):
 
     def __init__(
         self,
-        value: Union[bool, None, StateProtocol[Optional[bool]]] = False,
+        value: Union[bool, None, ReadOnlyStateProtocol[Optional[bool]]] = False,
         on_change: Optional[OptionalBoolCallback] = None,
         tristate: bool = False,
         disabled: bool | ReadOnlyStateProtocol[bool] = False,
@@ -42,10 +47,10 @@ class Toggleable(Clickable):
 
         self.tristate = tristate
         self.on_change = on_change
-        self._state_external: StateProtocol[Optional[bool]] | None = None
+        self._state_external: ReadOnlyStateProtocol[Optional[bool]] | None = None
 
-        if hasattr(value, "subscribe") and hasattr(value, "value"):
-            self._state_external = cast("StateProtocol[Optional[bool]]", value)
+        if isinstance(value, StateBase):
+            self._state_external = value
         else:
             # Initialize internal State
             # We allow None (indeterminate) even if tristate is False (e.g. initial state)
@@ -75,7 +80,7 @@ class Toggleable(Clickable):
         # The value may have moved while this widget was out of the tree.
         self._on_value_change(self.value)
 
-    def _get_state_obj(self) -> StateProtocol[Optional[bool]]:
+    def _get_state_obj(self) -> ReadOnlyStateProtocol[Optional[bool]]:
         if self._state_external is not None:
             return self._state_external
         return self._state_internal  # type: ignore
@@ -87,8 +92,9 @@ class Toggleable(Clickable):
     @value.setter
     def value(self, new_val: Optional[bool]):
         obj = self._get_state_obj()
-        if hasattr(obj, "value"):
-            setattr(obj, "value", new_val)
+        if not isinstance(obj, MutableStateBase):
+            raise TypeError(f"{type(self).__name__} was given a read-only State; change its source instead")
+        obj.value = new_val
 
     def _semantics(self) -> Optional[Semantics]:
         value = self.value
@@ -115,7 +121,8 @@ class Toggleable(Clickable):
         else:
             new_val = not current
 
-        self.value = new_val
+        if isinstance(self._get_state_obj(), MutableStateBase):
+            self.value = new_val
 
         if self.on_change:
             invoke_event_handler(
