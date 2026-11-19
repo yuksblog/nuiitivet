@@ -1047,21 +1047,25 @@ class Switch(Toggleable, InteractiveWidget):
         return max(box, int(math.ceil(self._track_width())))
 
     def paint_outsets(self) -> Tuple[int, int, int, int]:
-        """Extend the overflow allowance for the track's sideways overhang.
+        """Extend the overflow allowance to everything the switch paints outside its rect.
 
-        The track is wider than the touch target and the focus ring sits
-        outside the track, so the base ring-only allowance would clip the
-        ring's left and right edges.
+        The track can be wider than the switch. The thumb's state layer reaches
+        past the track's ends and edges, and the focus ring sits outside the
+        track.
         """
         base = super().paint_outsets()
-        try:
-            track_overflow = (self._track_width() - float(self._default_width())) / 2.0
-        except Exception:
-            track_overflow = 0.0
-        if track_overflow <= 0:
-            return base
-        extra = int(math.ceil(track_overflow))
-        return (base[0] + extra, base[1], base[2] + extra, base[3])
+        style = self.style
+        box = _box_size(style, self)
+        sizes = style.compute_sizes(_size_basis(style, self, box))
+        track_w = float(cast(float, sizes["track_width"]))
+        track_h = float(cast(float, sizes["track_height"]))
+        state_layer = float(cast(float, sizes["state_layer_size"]))
+        ring = 0.0 if self.disabled else self._FOCUS_RING_THICKNESS + max(0.0, self._FOCUS_RING_OFFSET)
+
+        beyond_track = max((state_layer - track_h) / 2.0, ring)
+        side = max(0, math.ceil((track_w - self._default_width()) / 2.0 + beyond_track))
+        vertical = max(0, math.ceil((max(state_layer, track_h + 2.0 * ring) - box) / 2.0))
+        return (max(base[0], side), max(base[1], vertical), max(base[2], side), max(base[3], vertical))
 
     def _resolve_look(self, touch_sz: int, disabled: bool, checked: bool) -> _SwitchLook:
         from nuiitivet.material.theme.color_role import ColorRole
@@ -1147,9 +1151,12 @@ class Switch(Toggleable, InteractiveWidget):
                 draw_round_rect(canvas, track_rect, track_radius, track_paint)
 
             if look.outline is not None:
+                # A stroke is centred on its path; inset by half its width to keep it inside the track.
+                half = look.outline_width / 2.0
                 outline_paint = shared_paint(look.outline, "stroke", look.outline_width)
-                if track_rect is not None and outline_paint is not None:
-                    draw_round_rect(canvas, track_rect, track_radius, outline_paint)
+                outline_rect = make_rect(track_x + half, track_y + half, track_w - 2 * half, track_h - 2 * half)
+                if outline_rect is not None and outline_paint is not None:
+                    draw_round_rect(canvas, outline_rect, track_radius - half, outline_paint)
 
             thumb_center_start = track_x + (track_h / 2.0)
             thumb_center_end = track_x + track_w - (track_h / 2.0)
