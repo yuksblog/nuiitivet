@@ -17,7 +17,8 @@ from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.animation import Animatable
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.container import Container
-from nuiitivet.observable import ReadOnlyStateProtocol, State, StateProtocol
+from nuiitivet.observable import ReadOnlyStateProtocol, State
+from nuiitivet.observable.protocols import MutableStateBase, StateBase
 from nuiitivet.rendering.skia import (
     draw_oval,
     draw_round_rect,
@@ -105,10 +106,10 @@ class Checkbox(Toggleable, InteractiveWidget):
 
     def __init__(
         self,
-        checked: bool | StateProtocol[bool] | StateProtocol[Optional[bool]] = False,
+        checked: bool | ReadOnlyStateProtocol[Optional[bool]] = False,
         *,
         on_toggle: Optional[Callable[[Optional[bool]], None]] = None,
-        indeterminate: bool | StateProtocol[bool] = False,
+        indeterminate: bool | ReadOnlyStateProtocol[bool] = False,
         disabled: bool | ReadOnlyStateProtocol[bool] = False,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["CheckboxStyle"] = None,
@@ -119,29 +120,30 @@ class Checkbox(Toggleable, InteractiveWidget):
         Args:
             checked: Checked state, or the State holding it. A State
                 of ``Optional[bool]`` carries the indeterminate state as ``None``.
+                A click writes a writable State. A read-only State is never
+                written; the checkbox shows what it holds.
             on_toggle: Callback invoked with the new state when toggled.
             indeterminate: Whether the checkbox shows the indeterminate mark, or
-                a State of it, kept apart from a two-state *checked*.
+                a State of it, kept apart from a two-state *checked*. A click
+                clears a writable State and leaves a read-only one as it is.
             disabled: Whether the checkbox ignores interaction, or a State
                 of it.
             padding: Insets from the allocated rect to the touch target.
             style: Visual style; the theme's checkbox style when omitted.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
-        self._checked_external_tri: StateProtocol[Optional[bool]] | None = None
-        self._checked_external_bool: StateProtocol[bool] | None = None
-        self._indeterminate_external: StateProtocol[bool] | None = None
+        self._checked_external_tri: ReadOnlyStateProtocol[Optional[bool]] | None = None
+        self._checked_external_bool: ReadOnlyStateProtocol[Optional[bool]] | None = None
+        self._indeterminate_external: ReadOnlyStateProtocol[bool] | None = None
 
-        checked_is_obs = hasattr(checked, "subscribe") and hasattr(checked, "value")
-        indeterminate_is_obs = hasattr(indeterminate, "subscribe") and hasattr(indeterminate, "value")
+        if isinstance(checked, StateBase):
+            if isinstance(indeterminate, StateBase) or bool(indeterminate):
+                self._checked_external_bool = checked
+            else:
+                self._checked_external_tri = checked
 
-        if checked_is_obs and not (indeterminate_is_obs or bool(indeterminate)):
-            self._checked_external_tri = cast("StateProtocol[Optional[bool]]", checked)
-        elif checked_is_obs:
-            self._checked_external_bool = cast("StateProtocol[bool]", checked)
-
-        if indeterminate_is_obs:
-            self._indeterminate_external = cast("StateProtocol[bool]", indeterminate)
+        if isinstance(indeterminate, StateBase):
+            self._indeterminate_external = indeterminate
 
         # Determine initial value for Toggleable (internal state is the render source-of-truth)
         value: Optional[bool]
@@ -266,48 +268,23 @@ class Checkbox(Toggleable, InteractiveWidget):
             else:
                 new_val = not bool(current)
 
-            try:
+            if isinstance(self._checked_external_tri, MutableStateBase):
                 self._checked_external_tri.value = new_val
-            except Exception:
-                pass
-
-            self.value = new_val
             if self.on_change:
                 self.on_change(new_val)
+            self._sync_from_external()
             return
 
         # Separate checked/indeterminate sources.
         if self._checked_external_bool is not None or self._indeterminate_external is not None:
-            is_indeterminate = current is None
-            if self._indeterminate_external is not None:
-                try:
-                    is_indeterminate = bool(self._indeterminate_external.value)
-                except Exception:
-                    pass
-
-            if is_indeterminate:
-                next_checked = True
-                next_indeterminate = False
-            else:
-                next_checked = not bool(current)
-                next_indeterminate = False
-
-            if self._indeterminate_external is not None:
-                try:
-                    self._indeterminate_external.value = next_indeterminate
-                except Exception:
-                    pass
-
-            if self._checked_external_bool is not None:
-                try:
-                    self._checked_external_bool.value = next_checked
-                except Exception:
-                    pass
-
-            new_val = None if next_indeterminate else bool(next_checked)
-            self.value = new_val
+            next_checked = True if current is None else not current
+            if isinstance(self._indeterminate_external, MutableStateBase):
+                self._indeterminate_external.value = False
+            if isinstance(self._checked_external_bool, MutableStateBase):
+                self._checked_external_bool.value = next_checked
             if self.on_change:
-                self.on_change(new_val)
+                self.on_change(next_checked)
+            self._sync_from_external()
             return
 
         # Local state.
@@ -556,7 +533,7 @@ class RadioGroup(InteractionHostMixin, Container):
         self,
         child: Widget,
         *,
-        value: object | StateProtocol[object | None] | None = None,
+        value: object | ReadOnlyStateProtocol[object | None] | None = None,
         on_change: Optional[Callable[[object | None], None]] = None,
         padding: PaddingLike = 0,
         key: Optional[str] = None,
@@ -565,8 +542,10 @@ class RadioGroup(InteractionHostMixin, Container):
 
         Args:
             child: Root child subtree that contains radio options.
-            value: Selected value, or an external State of it.
-            on_change: Callback invoked when selection changes.
+            value: Selected value, or an external State of it. A selection
+                writes a writable State. A read-only State is never written;
+                the group shows what it holds.
+            on_change: Callback invoked with the value the user selects.
             padding: Insets from the allocated rect to the group.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -574,9 +553,9 @@ class RadioGroup(InteractionHostMixin, Container):
             raise TypeError(f"child must be Widget, got {type(child)}")
         super().__init__(child=child, padding=padding, key=key)
 
-        self._value_external: StateProtocol[object | None] | None = None
-        if hasattr(value, "subscribe") and hasattr(value, "value"):
-            self._value_external = cast("StateProtocol[object | None]", value)
+        self._value_external: ReadOnlyStateProtocol[object | None] | None = None
+        if isinstance(value, StateBase):
+            self._value_external = value
             initial_value = self._value_external.value
         else:
             initial_value = value
@@ -602,6 +581,8 @@ class RadioGroup(InteractionHostMixin, Container):
 
     @value.setter
     def value(self, new_value: object | None) -> None:
+        if self._value_external is not None and not isinstance(self._value_external, MutableStateBase):
+            raise TypeError("RadioGroup was given a read-only State; change its source instead")
         self._set_value(new_value, emit=False)
 
     def on_mount(self) -> None:
@@ -668,10 +649,10 @@ class RadioGroup(InteractionHostMixin, Container):
         if self.value == new_value:
             return
 
-        if self._value_external is not None:
-            self._value_external.value = new_value
-        else:
+        if self._value_external is None:
             self._value_internal.value = new_value
+        elif isinstance(self._value_external, MutableStateBase):
+            self._value_external.value = new_value
 
         self._invalidate_descendant_radios()
 
@@ -934,7 +915,7 @@ class Switch(Toggleable, InteractiveWidget):
 
     def __init__(
         self,
-        checked: bool | StateProtocol[bool] = False,
+        checked: bool | ReadOnlyStateProtocol[bool] = False,
         *,
         on_change: Optional[Callable[[bool], None]] = None,
         disabled: bool | ReadOnlyStateProtocol[bool] = False,
@@ -945,8 +926,10 @@ class Switch(Toggleable, InteractiveWidget):
         """Initialize Switch.
 
         Args:
-            checked: Checked state source (a bool, or a State of one).
-            on_change: Callback invoked when checked state changes.
+            checked: Checked state, or the State holding it. A click writes a
+                writable State. A read-only State is never written; the switch
+                shows what it holds.
+            on_change: Callback invoked with the toggled state on a click.
             disabled: Disable interaction when True.
             padding: Insets from the allocated rect to the touch target.
             style: Style override. Uses theme style when omitted.
@@ -961,10 +944,8 @@ class Switch(Toggleable, InteractiveWidget):
             if self._on_change_bool is not None:
                 self._on_change_bool(bool(next_val))
 
-        toggleable_value = cast("bool | StateProtocol[Optional[bool]]", checked)
-
         super().__init__(
-            value=toggleable_value,
+            value=checked,
             on_change=_on_toggle,
             tristate=False,
             disabled=disabled,

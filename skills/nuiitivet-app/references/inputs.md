@@ -19,8 +19,10 @@ Use `on_change` only for a *side effect* of the change; anything you can derive
 (`query.debounce(0.3).switch_map(...)`) belongs on the `State`.
 
 A read-only source — anything from `.map(...)`, `.compute(...)`, `combine(...)` —
-has no setter, so an input widget can only display it. That is the correct way
-to show a derived value; add `disabled=True` so the field does not look editable.
+has no setter. A `TextField` or a slider can only display it; add `disabled=True`
+so it does not look editable. A `Checkbox`, `Switch` or `RadioGroup` given one
+writes nothing on a click: it calls `on_toggle` / `on_change` with the requested
+value and moves only when the owner changes the source.
 
 ## Act on Enter, and on blur
 
