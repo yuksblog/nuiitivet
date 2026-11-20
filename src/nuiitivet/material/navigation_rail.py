@@ -31,6 +31,7 @@ from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.material.badge import LargeBadge, SmallBadge
 from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_SPATIAL, EXPRESSIVE_DEFAULT_EFFECTS
 from nuiitivet.modifiers.transform import rotate
+from nuiitivet.widgeting.callbacks import ValueCallback, invoke_event_handler
 from nuiitivet.widgeting.paint_replay import replay_safe
 
 logger = logging.getLogger(__name__)
@@ -967,7 +968,7 @@ class NavigationRail(InteractionHostMixin, Widget):
         children: Sequence[RailItem],
         *,
         index: Union[int, MutableStateBase[int]] = 0,
-        on_select: Optional[Callable[[int], None]] = None,
+        on_select: Optional[ValueCallback[int]] = None,
         expanded: Union[bool, MutableStateBase[bool]] = False,
         show_menu_button: bool = True,
         width: Union[SizingLike, ReadOnlyStateProtocol] = None,
@@ -1257,7 +1258,13 @@ class NavigationRail(InteractionHostMixin, Widget):
 
         # Fire callback.
         if self.on_select is not None:
-            self.on_select(index)
+            invoke_event_handler(
+                self.on_select,
+                index,
+                error_key="navigation_rail_on_select",
+                error_msg="NavigationRail on_select raised",
+                owner_name=type(self).__name__,
+            )
 
     @property
     def style(self) -> Optional[NavigationRailStyle]:

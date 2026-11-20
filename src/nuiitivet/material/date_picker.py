@@ -51,6 +51,7 @@ from nuiitivet.observable import (
     ReadOnlyStateProtocol,
 )
 from nuiitivet.overlay import OverlayAware
+from nuiitivet.widgeting.callbacks import StrCallback, ValueCallback, invoke_event_handler
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgets.box import Box
 from nuiitivet.widgets.interaction import FocusChangeCallback, VoidCallback
@@ -1276,7 +1277,7 @@ class DatePicker(ComposableWidget):
         self,
         value: StateProtocol[Optional[_Date]],
         *,
-        on_change: Optional[Callable[[Optional[_Date]], None]] = None,
+        on_change: Optional[ValueCallback[Optional[_Date]]] = None,
         on_confirm: Optional[Callable[[Optional[_Date]], None]] = None,
         on_cancel: Optional[Callable[[], None]] = None,
         min_date: Optional[_Date] = None,
@@ -1442,7 +1443,13 @@ class DatePicker(ComposableWidget):
         except AttributeError:
             pass
         if self._on_change is not None:
-            self._on_change(d)
+            invoke_event_handler(
+                self._on_change,
+                d,
+                error_key="date_picker_on_change",
+                error_msg="DatePicker on_change raised",
+                owner_name=type(self).__name__,
+            )
 
     def _on_ok(self) -> None:
         if self._on_confirm is None:
@@ -1460,7 +1467,13 @@ class DatePicker(ComposableWidget):
         except AttributeError:
             pass
         if self._on_change is not None:
-            self._on_change(None)
+            invoke_event_handler(
+                self._on_change,
+                None,
+                error_key="date_picker_on_change",
+                error_msg="DatePicker on_change raised",
+                owner_name=type(self).__name__,
+            )
         self.rebuild()
 
     def build(self) -> Widget:
@@ -1608,7 +1621,7 @@ class DockedDatePicker(ComposableWidget):
         self,
         *,
         value: ReadOnlyStateProtocol[str],
-        on_change: Optional[Callable[[str], None]] = None,
+        on_change: Optional[StrCallback] = None,
         on_submit: Optional[Callable[[str], None]] = None,
         on_focus_change: Optional[FocusChangeCallback] = None,
         date_format: DateFormat = DEFAULT_DATE_FORMAT,

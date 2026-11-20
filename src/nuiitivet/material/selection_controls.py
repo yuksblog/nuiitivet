@@ -11,7 +11,7 @@ from __future__ import annotations
 from nuiitivet.widgeting.paint_replay import replay_safe
 import logging
 import math
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, NamedTuple, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Tuple, Union, cast
 
 from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.animation import Animatable
@@ -31,7 +31,7 @@ from nuiitivet.rendering.skia import (
     skcolor,
 )
 from nuiitivet.theme.dependency import ThemeKept
-from nuiitivet.widgeting.callbacks import BoolCallback, OptionalBoolCallback, invoke_event_handler
+from nuiitivet.widgeting.callbacks import BoolCallback, OptionalBoolCallback, ValueCallback, invoke_event_handler
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.interaction import FocusNode, FocusNodePolicy, FocusScope, InteractionHostMixin
 from nuiitivet.widgets.semantics import Semantics, SemanticsNode, SemanticsRole, attach_semantics
@@ -123,8 +123,7 @@ class Checkbox(Toggleable, InteractiveWidget):
                 of ``Optional[bool]`` carries the indeterminate state as ``None``.
                 A click writes a writable State. A read-only State is never
                 written; the checkbox shows what it holds.
-            on_toggle: Callback invoked with the new state when toggled; may be
-                async.
+            on_toggle: Callback invoked with the new state when toggled.
             indeterminate: Whether the checkbox shows the indeterminate mark, or
                 a State of it, kept apart from a two-state *checked*. A click
                 clears a writable State and leaves a read-only one as it is.
@@ -544,9 +543,7 @@ class RadioGroup(InteractionHostMixin, Container):
         child: Widget,
         *,
         value: object | ReadOnlyStateProtocol[object | None] | None = None,
-        on_change: Optional[
-            Union[Callable[[object | None], None], Callable[[object | None], Awaitable[None]]]
-        ] = None,
+        on_change: Optional[ValueCallback[object | None]] = None,
         padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
@@ -557,8 +554,7 @@ class RadioGroup(InteractionHostMixin, Container):
             value: Selected value, or an external State of it. A selection
                 writes a writable State. A read-only State is never written;
                 the group shows what it holds.
-            on_change: Callback invoked with the value the user selects; may be
-                async.
+            on_change: Callback invoked with the value the user selects.
             padding: Insets from the allocated rect to the group.
             key: Stable widget identity for dev-bridge targeting and hot reload.
         """
@@ -946,8 +942,7 @@ class Switch(Toggleable, InteractiveWidget):
             checked: Checked state, or the State holding it. A click writes a
                 writable State. A read-only State is never written; the switch
                 shows what it holds.
-            on_change: Callback invoked with the toggled state on a click; may
-                be async.
+            on_change: Callback invoked with the toggled state on a click.
             disabled: Disable interaction when True.
             padding: Insets from the allocated rect to the touch target.
             style: Style override. Uses theme style when omitted.

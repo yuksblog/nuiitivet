@@ -17,7 +17,7 @@ from nuiitivet.widgeting.widget import Widget
 from nuiitivet.observable import ReadOnlyStateProtocol
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgets.input_filter import InputFilterLike
-from nuiitivet.widgeting.callbacks import invoke_event_handler
+from nuiitivet.widgeting.callbacks import StrCallback, invoke_event_handler
 from nuiitivet.widgets.interaction import FocusChangeCallback, FocusNode, FocusSource
 from nuiitivet.widgets.semantics import SemanticsNode
 from nuiitivet.material.styles.text_field_style import TextFieldStyle
@@ -127,7 +127,7 @@ class TextField(InteractiveWidget):
         self,
         value: Union[str, ReadOnlyStateProtocol[str]] = "",
         *,
-        on_change: Optional[Callable[[str], None]] = None,
+        on_change: Optional[StrCallback] = None,
         on_submit: Optional[Callable[[str], None]] = None,
         on_focus_change: Optional[FocusChangeCallback] = None,
         input_filter: Optional[InputFilterLike] = None,
@@ -366,7 +366,7 @@ class TextField(InteractiveWidget):
         *,
         min_lines: int = 1,
         max_lines: Optional[int] = None,
-        on_change: Optional[Callable[[str], None]] = None,
+        on_change: Optional[StrCallback] = None,
         on_submit: Optional[Callable[[str], None]] = None,
         on_focus_change: Optional[FocusChangeCallback] = None,
         input_filter: Optional[InputFilterLike] = None,
