@@ -20,6 +20,7 @@ from nuiitivet.material.theme.color_role import ColorRole
 from nuiitivet.observable.protocols import MutableStateBase, StateBase
 from nuiitivet.overlay import OverlayAware
 from nuiitivet.rendering.sizing import Sizing, SizingLike
+from nuiitivet.widgeting.callbacks import VoidCallback, invoke_event_handler
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgets.box import Box
 
@@ -299,7 +300,7 @@ class StandardSideSheet(ComposableWidget):
         content: Widget,
         *,
         opened: Union[bool, MutableStateBase[bool]] = True,
-        on_close_click: Optional[Callable[[], None]] = None,
+        on_close_click: Optional[VoidCallback] = None,
         headline: Optional[Union[str, StateBase[str]]] = None,
         side: Literal["right", "left"] = "right",
         style: Optional[StandardSideSheetStyle] = None,
@@ -355,7 +356,12 @@ class StandardSideSheet(ComposableWidget):
     def _handle_close_click(self) -> None:
         """Close button handler: the callback replaces the default auto-close."""
         if self._on_close_click is not None:
-            self._on_close_click()
+            invoke_event_handler(
+                self._on_close_click,
+                error_key="sheet_on_close_click",
+                error_msg="Sheet on_close_click raised",
+                owner_name=type(self).__name__,
+            )
             return
         if isinstance(self._opened, MutableStateBase):
             self._opened.value = False

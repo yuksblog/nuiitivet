@@ -6,7 +6,7 @@ import logging
 import math
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, Optional, Sequence, Tuple, cast
+from typing import Optional, Sequence, Tuple, cast
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.input.codes import MOD_SHIFT
@@ -16,6 +16,7 @@ from nuiitivet.material.motion import EXPRESSIVE_DEFAULT_EFFECTS
 from nuiitivet.material.styles.slider_style import SliderStyle
 from nuiitivet.observable import ReadOnlyStateProtocol, StateProtocol
 from nuiitivet.rendering.sizing import Sizing, SizingLike, parse_sizing
+from nuiitivet.widgeting.callbacks import ValueCallback, invoke_event_handler
 from nuiitivet.widgeting.paint_replay import replay_safe
 from nuiitivet.widgets.interaction import DraggableNode, FocusScope, PointerInputNode, VirtualStopPolicy
 from nuiitivet.widgets.semantics import Semantics, SemanticsNode, SemanticsRole
@@ -742,7 +743,7 @@ class _Slider(_SliderBase):
         self,
         value: float | StateProtocol[float] = 0.0,
         *,
-        on_change: Optional[Callable[[float], None]] = None,
+        on_change: Optional[ValueCallback[float]] = None,
         min_value: float = 0.0,
         max_value: float = 1.0,
         stops: Optional[int] = None,
@@ -830,12 +831,24 @@ class _Slider(_SliderBase):
             return
         self.value = next_value
         if self._on_change is not None:
-            self._on_change(next_value)
+            invoke_event_handler(
+                self._on_change,
+                next_value,
+                error_key="slider_on_change",
+                error_msg="Slider on_change raised",
+                owner_name=type(self).__name__,
+            )
 
     def _step_active_handle(self, delta: float) -> None:
         self.value = self.value + delta
         if self._on_change is not None:
-            self._on_change(self.value)
+            invoke_event_handler(
+                self._on_change,
+                self.value,
+                error_key="slider_on_change",
+                error_msg="Slider on_change raised",
+                owner_name=type(self).__name__,
+            )
 
     def _semantics(self) -> Optional[Semantics]:
         return Semantics(
@@ -863,7 +876,7 @@ class _CenteredSlider(_Slider):
         self,
         value: float | StateProtocol[float] = 0.0,
         *,
-        on_change: Optional[Callable[[float], None]] = None,
+        on_change: Optional[ValueCallback[float]] = None,
         min_value: float = -1.0,
         max_value: float = 1.0,
         stops: Optional[int] = None,
@@ -924,7 +937,7 @@ class _RangeSlider(_SliderBase):
         value_start: float | StateProtocol[float] = 0.0,
         value_end: float | StateProtocol[float] = 1.0,
         *,
-        on_change: Optional[Callable[[Tuple[float, float]], None]] = None,
+        on_change: Optional[ValueCallback[Tuple[float, float]]] = None,
         min_value: float = 0.0,
         max_value: float = 1.0,
         stops: Optional[int] = None,
@@ -1083,7 +1096,13 @@ class _RangeSlider(_SliderBase):
             changed = abs(self.value_end - prev) > 1e-9
 
         if changed and self._on_change is not None:
-            self._on_change((self.value_start, self.value_end))
+            invoke_event_handler(
+                self._on_change,
+                (self.value_start, self.value_end),
+                error_key="range_slider_on_change",
+                error_msg="RangeSlider on_change raised",
+                owner_name=type(self).__name__,
+            )
 
     def _step_active_handle(self, delta: float) -> None:
         if self._active_handle_index == 0:
@@ -1091,7 +1110,13 @@ class _RangeSlider(_SliderBase):
         else:
             self.value_end = self.value_end + delta
         if self._on_change is not None:
-            self._on_change((self.value_start, self.value_end))
+            invoke_event_handler(
+                self._on_change,
+                (self.value_start, self.value_end),
+                error_key="range_slider_on_change",
+                error_msg="RangeSlider on_change raised",
+                owner_name=type(self).__name__,
+            )
 
     def _semantics(self) -> Optional[Semantics]:
         return Semantics(role=SemanticsRole.GROUP, disabled=self.disabled)
@@ -1140,7 +1165,7 @@ class HorizontalSlider(_Slider):
         self,
         value: float | StateProtocol[float] = 0.0,
         *,
-        on_change: Optional[Callable[[float], None]] = None,
+        on_change: Optional[ValueCallback[float]] = None,
         min_value: float = 0.0,
         max_value: float = 1.0,
         stops: Optional[int] = None,
@@ -1189,7 +1214,7 @@ class VerticalSlider(_Slider):
         self,
         value: float | StateProtocol[float] = 0.0,
         *,
-        on_change: Optional[Callable[[float], None]] = None,
+        on_change: Optional[ValueCallback[float]] = None,
         min_value: float = 0.0,
         max_value: float = 1.0,
         stops: Optional[int] = None,
@@ -1238,7 +1263,7 @@ class HorizontalCenteredSlider(_CenteredSlider):
         self,
         value: float | StateProtocol[float] = 0.0,
         *,
-        on_change: Optional[Callable[[float], None]] = None,
+        on_change: Optional[ValueCallback[float]] = None,
         min_value: float = -1.0,
         max_value: float = 1.0,
         stops: Optional[int] = None,
@@ -1287,7 +1312,7 @@ class VerticalCenteredSlider(_CenteredSlider):
         self,
         value: float | StateProtocol[float] = 0.0,
         *,
-        on_change: Optional[Callable[[float], None]] = None,
+        on_change: Optional[ValueCallback[float]] = None,
         min_value: float = -1.0,
         max_value: float = 1.0,
         stops: Optional[int] = None,
@@ -1337,7 +1362,7 @@ class HorizontalRangeSlider(_RangeSlider):
         value_start: float | StateProtocol[float] = 0.0,
         value_end: float | StateProtocol[float] = 1.0,
         *,
-        on_change: Optional[Callable[[Tuple[float, float]], None]] = None,
+        on_change: Optional[ValueCallback[Tuple[float, float]]] = None,
         min_value: float = 0.0,
         max_value: float = 1.0,
         stops: Optional[int] = None,
@@ -1389,7 +1414,7 @@ class VerticalRangeSlider(_RangeSlider):
         value_start: float | StateProtocol[float] = 0.0,
         value_end: float | StateProtocol[float] = 1.0,
         *,
-        on_change: Optional[Callable[[Tuple[float, float]], None]] = None,
+        on_change: Optional[ValueCallback[Tuple[float, float]]] = None,
         min_value: float = 0.0,
         max_value: float = 1.0,
         stops: Optional[int] = None,

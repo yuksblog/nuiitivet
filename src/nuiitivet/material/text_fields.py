@@ -17,7 +17,7 @@ from nuiitivet.widgeting.widget import Widget
 from nuiitivet.observable import ReadOnlyStateProtocol
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgets.input_filter import InputFilterLike
-from nuiitivet.widgeting.callbacks import invoke_event_handler
+from nuiitivet.widgeting.callbacks import StrCallback, invoke_event_handler
 from nuiitivet.widgets.interaction import FocusChangeCallback, FocusNode, FocusSource
 from nuiitivet.widgets.semantics import SemanticsNode
 from nuiitivet.material.styles.text_field_style import TextFieldStyle
@@ -127,8 +127,8 @@ class TextField(InteractiveWidget):
         self,
         value: Union[str, ReadOnlyStateProtocol[str]] = "",
         *,
-        on_change: Optional[Callable[[str], None]] = None,
-        on_submit: Optional[Callable[[str], None]] = None,
+        on_change: Optional[StrCallback] = None,
+        on_submit: Optional[StrCallback] = None,
         on_focus_change: Optional[FocusChangeCallback] = None,
         input_filter: Optional[InputFilterLike] = None,
         label: str | ReadOnlyStateProtocol[str] | None = None,
@@ -366,8 +366,8 @@ class TextField(InteractiveWidget):
         *,
         min_lines: int = 1,
         max_lines: Optional[int] = None,
-        on_change: Optional[Callable[[str], None]] = None,
-        on_submit: Optional[Callable[[str], None]] = None,
+        on_change: Optional[StrCallback] = None,
+        on_submit: Optional[StrCallback] = None,
         on_focus_change: Optional[FocusChangeCallback] = None,
         input_filter: Optional[InputFilterLike] = None,
         label: str | ReadOnlyStateProtocol[str] | None = None,
@@ -696,10 +696,13 @@ class TextField(InteractiveWidget):
 
     def _handle_editable_submit(self, value: str) -> None:
         if self._on_submit:
-            try:
-                self._on_submit(value)
-            except Exception:
-                exception_once(_logger, "text_field_on_submit_exc", "TextField on_submit raised")
+            invoke_event_handler(
+                self._on_submit,
+                value,
+                error_key="text_field_on_submit",
+                error_msg="TextField on_submit raised",
+                owner_name=type(self).__name__,
+            )
 
     def _on_editable_focus_change(self, focused: bool, source: FocusSource) -> None:
         self._update_label_state()

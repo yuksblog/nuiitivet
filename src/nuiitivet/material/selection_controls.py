@@ -11,7 +11,7 @@ from __future__ import annotations
 from nuiitivet.widgeting.paint_replay import replay_safe
 import logging
 import math
-from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, NamedTuple, Optional, Tuple, Union, cast
 
 from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.animation import Animatable
@@ -31,6 +31,7 @@ from nuiitivet.rendering.skia import (
     skcolor,
 )
 from nuiitivet.theme.dependency import ThemeKept
+from nuiitivet.widgeting.callbacks import BoolCallback, OptionalBoolCallback, ValueCallback, invoke_event_handler
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.interaction import FocusNode, FocusNodePolicy, FocusScope, InteractionHostMixin
 from nuiitivet.widgets.semantics import Semantics, SemanticsNode, SemanticsRole, attach_semantics
@@ -108,7 +109,7 @@ class Checkbox(Toggleable, InteractiveWidget):
         self,
         checked: bool | ReadOnlyStateProtocol[Optional[bool]] = False,
         *,
-        on_toggle: Optional[Callable[[Optional[bool]], None]] = None,
+        on_toggle: Optional[OptionalBoolCallback] = None,
         indeterminate: bool | ReadOnlyStateProtocol[bool] = False,
         disabled: bool | ReadOnlyStateProtocol[bool] = False,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
@@ -270,8 +271,7 @@ class Checkbox(Toggleable, InteractiveWidget):
 
             if isinstance(self._checked_external_tri, MutableStateBase):
                 self._checked_external_tri.value = new_val
-            if self.on_change:
-                self.on_change(new_val)
+            self._notify_toggle(new_val)
             self._sync_from_external()
             return
 
@@ -282,13 +282,22 @@ class Checkbox(Toggleable, InteractiveWidget):
                 self._indeterminate_external.value = False
             if isinstance(self._checked_external_bool, MutableStateBase):
                 self._checked_external_bool.value = next_checked
-            if self.on_change:
-                self.on_change(next_checked)
+            self._notify_toggle(next_checked)
             self._sync_from_external()
             return
 
         # Local state.
         super()._handle_click()
+
+    def _notify_toggle(self, new_val: Optional[bool]) -> None:
+        if self.on_change:
+            invoke_event_handler(
+                self.on_change,
+                new_val,
+                error_key="checkbox_on_toggle",
+                error_msg="Checkbox on_toggle raised",
+                owner_name=type(self).__name__,
+            )
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         """Return preferred size including padding (M3準拠)."""
@@ -534,7 +543,7 @@ class RadioGroup(InteractionHostMixin, Container):
         child: Widget,
         *,
         value: object | ReadOnlyStateProtocol[object | None] | None = None,
-        on_change: Optional[Callable[[object | None], None]] = None,
+        on_change: Optional[ValueCallback[object | None]] = None,
         padding: PaddingLike = 0,
         key: Optional[str] = None,
     ) -> None:
@@ -655,7 +664,13 @@ class RadioGroup(InteractionHostMixin, Container):
         self._invalidate_descendant_radios()
 
         if emit and self._on_change is not None:
-            self._on_change(new_value)
+            invoke_event_handler(
+                self._on_change,
+                new_value,
+                error_key="radio_group_on_change",
+                error_msg="RadioGroup on_change raised",
+                owner_name=type(self).__name__,
+            )
 
     def _invalidate_descendant_radios(self) -> None:
         self.invalidate()
@@ -915,7 +930,7 @@ class Switch(Toggleable, InteractiveWidget):
         self,
         checked: bool | ReadOnlyStateProtocol[bool] = False,
         *,
-        on_change: Optional[Callable[[bool], None]] = None,
+        on_change: Optional[BoolCallback] = None,
         disabled: bool | ReadOnlyStateProtocol[bool] = False,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
         style: Optional["SwitchStyle"] = None,
@@ -938,9 +953,11 @@ class Switch(Toggleable, InteractiveWidget):
 
         final_padding = padding if padding is not None else 0
 
-        def _on_toggle(next_val: Optional[bool]) -> None:
-            if self._on_change_bool is not None:
-                self._on_change_bool(bool(next_val))
+        # Returns the handler's result so Toggleable can schedule an awaitable.
+        def _on_toggle(next_val: Optional[bool]) -> Any:
+            if self._on_change_bool is None:
+                return None
+            return self._on_change_bool(bool(next_val))
 
         super().__init__(
             value=checked,

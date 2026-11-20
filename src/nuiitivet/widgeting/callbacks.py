@@ -5,7 +5,7 @@ import dataclasses
 import inspect
 import logging
 from collections.abc import Awaitable, Coroutine
-from typing import Any, Callable, Optional, Set, Union
+from typing import Any, Callable, Optional, Set, TypeVar, Union
 
 from nuiitivet.common.logging_once import exception_once_per_exc, warning_once
 from nuiitivet.observable import detach_batch
@@ -268,6 +268,9 @@ OptionalBoolCallback = Union[
 ]
 #: Single ``str`` argument callback (e.g. on_change for text inputs).
 StrCallback = Union[Callable[[str], None], Callable[[str], Awaitable[None]]]
+_T = TypeVar("_T")
+#: Single-value callback of any type, as ``ValueCallback[float]`` (e.g. on_change for a slider).
+ValueCallback = Union[Callable[[_T], None], Callable[[_T], Awaitable[None]]]
 #: Back-navigation guard callback — returns ``True`` to allow pop, ``False`` to cancel.
 WillPopCallback = Union[Callable[[], bool], Callable[[], Awaitable[bool]]]
 
