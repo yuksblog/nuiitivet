@@ -174,3 +174,47 @@ def test_pending_records_scheduling_site():
     clock.schedule_once(lambda dt: None, 0)
     (cb,) = clock.pending()
     assert "test_harness_clock.py" in cb.site
+
+
+class _CallsClockWhenCollected:
+    """A callback held only by the clock; its finalizer calls back into the clock.
+
+    Equal to its tag, so a test can unschedule it without holding it.
+    """
+
+    def __init__(self, clock: HarnessClock, tag: str) -> None:
+        self.clock = clock
+        self.tag = tag
+
+    def __call__(self, dt: float) -> None:
+        pass
+
+    def __eq__(self, other: object) -> bool:
+        return other == self.tag
+
+    def __hash__(self) -> int:
+        return hash(self.tag)
+
+    def __del__(self) -> None:
+        self.clock.unschedule(lambda dt: None)
+
+
+def _finishes(action) -> bool:
+    worker = threading.Thread(target=action, daemon=True)
+    worker.start()
+    worker.join(timeout=2.0)
+    return not worker.is_alive()
+
+
+def test_an_entry_fired_by_pump_is_released_outside_the_lock():
+    clock = HarnessClock()
+    clock.schedule_once(_CallsClockWhenCollected(clock, "probe"), 0)
+
+    assert _finishes(clock.pump), "the finalizer deadlocked on the clock's lock"
+
+
+def test_an_entry_dropped_by_unschedule_is_released_outside_the_lock():
+    clock = HarnessClock()
+    clock.schedule_once(_CallsClockWhenCollected(clock, "probe"), 60.0)
+
+    assert _finishes(lambda: clock.unschedule("probe")), "the finalizer deadlocked on the clock's lock"
