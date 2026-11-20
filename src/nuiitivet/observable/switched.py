@@ -267,12 +267,10 @@ class SwitchMappedState(SourceSubscribingState[TIn, TOut]):
 
     # -- lifetime ----------------------------------------------------------
 
-    def dispose(self) -> None:
-        if self._disposed:
-            return
+    def _release(self) -> None:
         # Base first: it sets ``_disposed`` and drops the source subscription,
         # so no further run can start while this is finishing.
-        super().dispose()
+        super()._release()
         with self._lock:
             token = self._current_token
             self._current_token = None

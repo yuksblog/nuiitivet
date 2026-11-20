@@ -90,6 +90,10 @@ class HarnessClock:
     Callbacks fire outside the lock, on the pumping thread, and may schedule or
     unschedule freely while a pump is in progress; a callback that schedules
     another already-due callback has it fire in the same pump.
+
+    A dropped entry is released after the lock is: it may hold the last
+    reference to an object whose finalizer calls back into this clock, and the
+    lock is not re-entrant.
     """
 
     def __init__(self) -> None:
@@ -122,7 +126,8 @@ class HarnessClock:
     def unschedule(self, fn: ClockCallback) -> None:
         """Cancel every pending firing of ``fn``, matched by equality."""
         with self._lock:
-            self._entries = [e for e in self._entries if not _same_callback(e.fn, fn)]
+            dropped = self._entries  # released on return, outside the lock
+            self._entries = [e for e in dropped if not _same_callback(e.fn, fn)]
 
     # -- pumping -----------------------------------------------------------
 
@@ -174,6 +179,7 @@ class HarnessClock:
                 )
             entry.fn(entry.delay)
             fired += 1
+            del entry  # released here, not when the next pass rebinds it under the lock
 
     def _next_due(
         self, now: float, immediate_only: bool, skip: set[int]
@@ -224,9 +230,9 @@ class HarnessClock:
         """
         now = time.monotonic()
         with self._lock:
-            dropped = [self._snapshot(e, now) for e in sorted(self._entries, key=lambda e: e.seq)]
-            self._entries.clear()
-            return dropped
+            entries, self._entries = self._entries, []  # released on return, outside the lock
+            dropped = [self._snapshot(e, now) for e in sorted(entries, key=lambda e: e.seq)]
+        return dropped
 
     @staticmethod
     def _snapshot(entry: _Entry, now: float) -> PendingCallback:
