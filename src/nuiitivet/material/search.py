@@ -44,13 +44,11 @@ not reflow its siblings.
 
 from __future__ import annotations
 
-import logging
 from typing import Callable, Optional, Tuple, TYPE_CHECKING, Union
 
 from nuiitivet.input.cursor import MouseCursor
 from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.animation import Animatable
-from nuiitivet.common.logging_once import exception_once
 from nuiitivet.material.interactive_widget import InteractiveWidget
 from nuiitivet.material.styles.search_bar_style import (
     SEARCH_BAR_FOCUS_MARGIN,
@@ -91,8 +89,6 @@ if TYPE_CHECKING:
     from nuiitivet.widgeting.widget_kernel import WidgetKernel
 
 
-_logger = logging.getLogger(__name__)
-
 _DENSITY_FLOOR = -4
 
 IconLike = Union["Symbol", str, ReadOnlyStateProtocol["Symbol"], ReadOnlyStateProtocol[str], None]
@@ -118,7 +114,7 @@ class _SearchBarCore(InteractiveWidget):
         on_tap_trailing_icon: Optional[Callable[[], None]] = None,
         on_change: Optional[StrCallback] = None,
         on_user_edit: Optional[Callable[[str], None]] = None,
-        on_submit: Optional[Callable[[str], None]] = None,
+        on_submit: Optional[StrCallback] = None,
         on_focus_change: Optional[FocusChangeCallback] = None,
         input_filter: Optional[InputFilterLike] = None,
         style: Optional[SearchBarStyle] = None,
@@ -290,10 +286,13 @@ class _SearchBarCore(InteractiveWidget):
     def _handle_editable_submit(self, value: str) -> None:
         if self._on_submit is None:
             return
-        try:
-            self._on_submit(value)
-        except Exception:
-            exception_once(_logger, "search_bar_on_submit_exc", "SearchBar on_submit raised")
+        invoke_event_handler(
+            self._on_submit,
+            value,
+            error_key="search_bar_on_submit",
+            error_msg="SearchBar on_submit raised",
+            owner_name=type(self).__name__,
+        )
 
     def _handle_editable_focus_change(self, focused: bool, source: FocusSource) -> None:
         self.focused.value = bool(focused)
@@ -681,7 +680,7 @@ class SearchBar(ComposableWidget):
         trailing_icon: IconLike = None,
         on_tap_trailing_icon: Optional[Callable[[], None]] = None,
         on_change: Optional[StrCallback] = None,
-        on_submit: Optional[Callable[[str], None]] = None,
+        on_submit: Optional[StrCallback] = None,
         on_focus_change: Optional[FocusChangeCallback] = None,
         input_filter: Optional[InputFilterLike] = None,
         width: SizingLike = None,
@@ -816,7 +815,7 @@ class DockedSearchBar(ComposableWidget):
         trailing_icon: IconLike = None,
         on_tap_trailing_icon: Optional[Callable[[], None]] = None,
         on_change: Optional[StrCallback] = None,
-        on_submit: Optional[Callable[[str], None]] = None,
+        on_submit: Optional[StrCallback] = None,
         on_focus_change: Optional[FocusChangeCallback] = None,
         input_filter: Optional[InputFilterLike] = None,
         width: SizingLike = None,
@@ -975,7 +974,13 @@ class DockedSearchBar(ComposableWidget):
         if self._close_on_enter:
             self._is_open.value = False
         if self._on_submit is not None:
-            self._on_submit(text)
+            invoke_event_handler(
+                self._on_submit,
+                text,
+                error_key="docked_search_bar_on_submit",
+                error_msg="DockedSearchBar on_submit raised",
+                owner_name=type(self).__name__,
+            )
 
     def build(self) -> Widget:
         """Return the pane, with a popup anchored to the inset bar.

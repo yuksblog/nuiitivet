@@ -1278,8 +1278,8 @@ class DatePicker(ComposableWidget):
         value: StateProtocol[Optional[_Date]],
         *,
         on_change: Optional[ValueCallback[Optional[_Date]]] = None,
-        on_confirm: Optional[Callable[[Optional[_Date]], None]] = None,
-        on_cancel: Optional[Callable[[], None]] = None,
+        on_confirm: Optional[ValueCallback[Optional[_Date]]] = None,
+        on_cancel: Optional[VoidCallback] = None,
         min_date: Optional[_Date] = None,
         max_date: Optional[_Date] = None,
         labels: CalendarLabels = DEFAULT_CALENDAR_LABELS,
@@ -1455,11 +1455,22 @@ class DatePicker(ComposableWidget):
         if self._on_confirm is None:
             return
         selected = getattr(self._value_obs, "value", None)
-        self._on_confirm(selected if isinstance(selected, _Date) else None)
+        invoke_event_handler(
+            self._on_confirm,
+            selected if isinstance(selected, _Date) else None,
+            error_key="date_picker_on_confirm",
+            error_msg="DatePicker on_confirm raised",
+            owner_name=type(self).__name__,
+        )
 
     def _on_cancel(self) -> None:
         if self._on_cancel_cb is not None:
-            self._on_cancel_cb()
+            invoke_event_handler(
+                self._on_cancel_cb,
+                error_key="date_picker_on_cancel",
+                error_msg="DatePicker on_cancel raised",
+                owner_name=type(self).__name__,
+            )
             return
 
         try:
@@ -1622,7 +1633,7 @@ class DockedDatePicker(ComposableWidget):
         *,
         value: ReadOnlyStateProtocol[str],
         on_change: Optional[StrCallback] = None,
-        on_submit: Optional[Callable[[str], None]] = None,
+        on_submit: Optional[StrCallback] = None,
         on_focus_change: Optional[FocusChangeCallback] = None,
         date_format: DateFormat = DEFAULT_DATE_FORMAT,
         min_date: Optional[_Date] = None,
