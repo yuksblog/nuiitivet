@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, Optional, Tuple, TypeVar
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.observable.protocols import StateBase
@@ -121,6 +121,15 @@ class RasterSurface(Widget):
             return
         self._requested_px = self._wanted_px
         queue_deferred_publish(self, self._render, widget=self)
+
+    def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
+        """Return the fixed width and height; an axis that is not fixed has no intrinsic size beyond the padding."""
+        left, top, right, bottom = self.padding
+        w_dim = self.width_sizing
+        h_dim = self.height_sizing
+        width = int(w_dim.value) if w_dim.kind == "fixed" else int(left) + int(right)
+        height = int(h_dim.value) if h_dim.kind == "fixed" else int(top) + int(bottom)
+        return (width, height)
 
     def layout(self, width: int, height: int) -> None:
         """Measure the content rect in device pixels; queue a render when it changed."""

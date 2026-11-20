@@ -308,6 +308,24 @@ class ComposableWidget(BuilderHostMixin, Widget):
         self._height_declared = value is not None
         WidgetKernel.height_sizing.fset(self, value)  # type: ignore[attr-defined]
 
+    def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
+        """Return the built child's measure, with a fixed width or height declared here winning.
+
+        The built child is measured within a declared fixed size.
+        """
+        fixed_w = self._width_sizing if self._width_declared and self._width_sizing.kind == "fixed" else None
+        fixed_h = self._height_sizing if self._height_declared and self._height_sizing.kind == "fixed" else None
+        if fixed_w is not None:
+            max_width = int(fixed_w.value)
+        if fixed_h is not None:
+            max_height = int(fixed_h.value)
+        width, height = super().preferred_size(max_width=max_width, max_height=max_height)
+        if fixed_w is not None:
+            width = int(fixed_w.value)
+        if fixed_h is not None:
+            height = int(fixed_h.value)
+        return (width, height)
+
     @property
     def layout_align(self) -> Optional[Union[str, Tuple[str, str]]]:
         own = self._layout_align
