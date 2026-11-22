@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Optional, Tuple, Union, cast
+from typing import TYPE_CHECKING, Optional, Tuple, Union, cast
 
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
@@ -14,6 +14,7 @@ from nuiitivet.material.styles.text_style import TextStyle
 from nuiitivet.material.text import Text
 from nuiitivet.material.theme.form_factor import min_extent
 from nuiitivet.observable import ReadOnlyStateProtocol, StateProtocol
+from nuiitivet.widgeting.callbacks import BoolCallback, VoidCallback, invoke_event_handler
 from nuiitivet.rendering.padding import parse_padding
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.theme.theme import Theme
@@ -91,7 +92,7 @@ class MaterialChipBase(InteractiveWidget):
     def __init__(
         self,
         *,
-        on_click: Optional[Callable[[], None]] = None,
+        on_click: Optional[VoidCallback] = None,
         disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
@@ -253,7 +254,7 @@ class AssistChip(MaterialChipBase):
         leading_icon: (
             "Symbol" | str | ReadOnlyStateProtocol["Symbol"] | ReadOnlyStateProtocol[str] | None
         ) = None,
-        on_click: Optional[Callable[[], None]] = None,
+        on_click: Optional[VoidCallback] = None,
         disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
@@ -308,11 +309,11 @@ class FilterChip(MaterialChipBase):
         label: str | ReadOnlyStateProtocol[str],
         *,
         selected: bool | StateProtocol[bool] = False,
-        on_selected_change: Optional[Callable[[bool], None]] = None,
+        on_selected_change: Optional[BoolCallback] = None,
         leading_icon: (
             "Symbol" | str | ReadOnlyStateProtocol["Symbol"] | ReadOnlyStateProtocol[str] | None
         ) = None,
-        on_click: Optional[Callable[[], None]] = None,
+        on_click: Optional[VoidCallback] = None,
         disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
@@ -394,9 +395,20 @@ class FilterChip(MaterialChipBase):
         self._refresh_chip_style()
 
         if self._on_selected_change is not None:
-            self._on_selected_change(next_value)
+            invoke_event_handler(
+                self._on_selected_change,
+                next_value,
+                error_key="filter_chip_on_selected_change",
+                error_msg="FilterChip on_selected_change raised",
+                owner_name=type(self).__name__,
+            )
         if self._base_on_click is not None:
-            self._base_on_click()
+            invoke_event_handler(
+                self._base_on_click,
+                error_key="filter_chip_on_click",
+                error_msg="FilterChip on_click raised",
+                owner_name=type(self).__name__,
+            )
 
     def _build_content(self, style: "ChipStyle") -> Container:
         children: list[Widget] = []
@@ -433,8 +445,8 @@ class InputChip(MaterialChipBase):
         leading_icon: (
             "Symbol" | str | ReadOnlyStateProtocol["Symbol"] | ReadOnlyStateProtocol[str] | None
         ) = None,
-        on_trailing_icon_click: Optional[Callable[[], None]] = None,
-        on_click: Optional[Callable[[], None]] = None,
+        on_trailing_icon_click: Optional[VoidCallback] = None,
+        on_click: Optional[VoidCallback] = None,
         disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,
@@ -509,7 +521,7 @@ class SuggestionChip(MaterialChipBase):
         leading_icon: (
             "Symbol" | str | ReadOnlyStateProtocol["Symbol"] | ReadOnlyStateProtocol[str] | None
         ) = None,
-        on_click: Optional[Callable[[], None]] = None,
+        on_click: Optional[VoidCallback] = None,
         disabled: bool | ReadOnlyStateProtocol[bool] = False,
         width: SizingLike = None,
         padding: Optional[Union[int, Tuple[int, int], Tuple[int, int, int, int]]] = None,

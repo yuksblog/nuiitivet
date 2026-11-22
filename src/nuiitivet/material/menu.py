@@ -30,6 +30,7 @@ from nuiitivet.theme.theme import Theme
 from nuiitivet.theme.types import ColorBase, ColorSpec
 from nuiitivet.widgets.interaction import FocusNode, FocusScope, FocusSource, FocusTraversalPolicy
 from nuiitivet.widgets.semantics import Semantics, SemanticsNode, SemanticsRole
+from nuiitivet.widgeting.callbacks import VoidCallback, invoke_event_handler
 from nuiitivet.widgeting.widget import Widget
 
 if TYPE_CHECKING:
@@ -372,7 +373,7 @@ class SubMenuItem(MenuItem):
         self._submenu_handle: OverlayHandle[object] | None = None
         self._submenu_tick: Callable[[float], None] | None = None
         self._submenu: Menu | None = None
-        self._parent_dismiss: Callable[[], None] | None = None
+        self._parent_dismiss: VoidCallback | None = None
         self._submenu_pinned = False
         self._suppress_reopen = False
 
@@ -415,7 +416,7 @@ class SubMenuItem(MenuItem):
                 return True
         return False
 
-    def _bind_parent_dismiss(self, on_dismiss: Callable[[], None] | None) -> None:
+    def _bind_parent_dismiss(self, on_dismiss: VoidCallback | None) -> None:
         self._parent_dismiss = on_dismiss
         if self._submenu is not None:
             self._submenu.on_dismiss = self._chained_dismiss
@@ -563,7 +564,12 @@ class SubMenuItem(MenuItem):
     def _chained_dismiss(self) -> None:
         self._close_submenu(suppress_reopen=True)
         if self._parent_dismiss is not None:
-            self._parent_dismiss()
+            invoke_event_handler(
+                self._parent_dismiss,
+                error_key="sub_menu_item_on_dismiss",
+                error_msg="Menu on_dismiss raised",
+                owner_name=type(self).__name__,
+            )
 
 
 class Menu(InteractiveWidget):
@@ -590,7 +596,7 @@ class Menu(InteractiveWidget):
         self,
         items: list[MenuItem | SubMenuItem | MenuDivider],
         *,
-        on_dismiss: Callable[[], None] | None = None,
+        on_dismiss: VoidCallback | None = None,
         style: MenuStyle | None = None,
         autofocus: bool = True,
         parent_item: "SubMenuItem | None" = None,
@@ -943,7 +949,12 @@ class Menu(InteractiveWidget):
     def _dismiss(self) -> None:
         """Dismiss the menu (Escape, or Tab leaving the scope)."""
         if self.on_dismiss is not None:
-            self.on_dismiss()
+            invoke_event_handler(
+                self.on_dismiss,
+                error_key="menu_on_dismiss",
+                error_msg="Menu on_dismiss raised",
+                owner_name=type(self).__name__,
+            )
 
     def _move_focus(self, direction: int) -> bool:
         """Rove one enabled item up (-1) or down (+1), wrapping at the ends."""
