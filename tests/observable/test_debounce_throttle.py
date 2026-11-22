@@ -525,3 +525,34 @@ class TestBindingDirectlyIntoAWidget:
         app.settle()
 
         assert app.get(key="readout").text == "second"
+
+
+def test_a_collected_wrapper_leaves_the_clock_alone(nuiitivet_clock, monkeypatch):
+    """Collection can run inside the clock's own work, so the finalizer must not call it."""
+    import gc
+    import weakref
+
+    unscheduled: list[object] = []
+    monkeypatch.setattr(nuiitivet_clock, "unschedule", lambda fn: unscheduled.append(fn))
+
+    source = State(0)
+    throttled = source.throttle(0.1)
+    collected = weakref.ref(throttled)
+    del throttled
+    gc.collect()
+
+    assert unscheduled == []
+    assert collected() is None
+
+
+def test_dispose_still_disarms_the_clock(nuiitivet_clock):
+    source = State(0)
+    throttled = source.throttle(60.0)
+    throttled.subscribe(lambda _: None)
+    source.value = 1  # leading edge emitted
+    source.value = 2  # trailing emit armed
+    assert nuiitivet_clock.pending()
+
+    throttled.dispose()
+
+    assert nuiitivet_clock.pending() == []

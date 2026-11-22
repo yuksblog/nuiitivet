@@ -205,20 +205,29 @@ class SourceSubscribingState(StateBase[TOut], Generic[TIn, TOut]):
         """
         if self._disposed:
             return
-        self._disposed = True
         for callback in self._clock_callbacks():
             runtime.clock.unschedule(callback)
+        self._release()
+
+    def _release(self) -> None:
+        """Release the source subscription and drop subscribers, leaving the clock alone."""
+        self._disposed = True
         if self._source_subscription is not None:
             self._source_subscription.dispose()
             self._source_subscription = None
         self._subscribers.clear()
 
     def __del__(self) -> None:
-        # Interpreter shutdown can clear module globals out from under this, and
-        # an exception in __del__ is printed and swallowed rather than raised —
-        # noise on a path whose work no longer matters by then.
+        # The clock is not touched. An armed callback holds this wrapper, so
+        # nothing is armed by the time it is collected; and the collection can
+        # run inside the clock's own work, where a call back into it deadlocks
+        # HarnessClock and corrupts pyglet's heap. Interpreter shutdown can
+        # clear module globals out from under this, and an exception in __del__
+        # is printed and swallowed rather than raised.
+        if self._disposed:
+            return
         try:
-            self.dispose()
+            self._release()
         except Exception:  # pragma: no cover - shutdown ordering
             pass
 
