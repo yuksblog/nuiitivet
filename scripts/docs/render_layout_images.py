@@ -64,6 +64,11 @@ SAMPLES = [
     ("samples/layout/adaptive/scoped_size.py", "layout_adaptive_scoped_size.png"),
     ("samples/charts/raster_surface.py", "charts_raster_surface.png"),
     ("samples/charts/matplotlib_figure.py", "charts_matplotlib_figure.png"),
+    # These three need seaborn, pandas, plotly and kaleido, which no dependency
+    # group installs; without them the render fails and the image stays as it is.
+    ("samples/charts/seaborn_chart.py", "charts_seaborn.png"),
+    ("samples/charts/pandas_chart.py", "charts_pandas.png"),
+    ("samples/charts/plotly_chart.py", "charts_plotly.png"),
     # Dialogs
     ("samples/overlay/dialogs/basic_usage.py", "dialogs_basic_usage.png"),
     ("samples/overlay/dialogs/custom_dialog.py", "dialogs_custom_dialog.png"),

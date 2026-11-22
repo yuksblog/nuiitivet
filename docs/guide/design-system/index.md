@@ -25,3 +25,9 @@ import nuiitivet.material as nv
 - [Material Navigator](material_navigator.md)
 - [Material Theme](material_theme.md)
 - [Material Widgets](material_widgets.md)
+
+## Common Widgets
+
+Widgets that are not Material components work under any design system.
+
+- [Common Widgets](common_widgets.md)

@@ -104,6 +104,11 @@ module = ["js", "pyodide.*"]
 ignore_missing_imports = true
 module = ["playwright.*"]
 
+# The samples for other chart libraries import them; no dependency group does.
+[[tool.mypy.overrides]]
+ignore_missing_imports = true
+module = ["pandas.*", "plotly.*", "seaborn.*"]
+
 # A sample of several files imports its siblings by bare name, as a script
 # does; mypy knows them only by their path under samples/.
 [[tool.mypy.overrides]]

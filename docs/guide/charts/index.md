@@ -1,9 +1,8 @@
 # Charts
 
-Only matplotlib is shown as a figure. A chart from any other library is
-drawn into pixels or an image first, and shown as that.
+A widget shows the chart. Which widget depends on the library that draws it.
 
-| You have | Guide |
+| You draw the chart with | Guide |
 | --- | --- |
-| matplotlib | [A matplotlib figure](matplotlib.md) |
-| Any other library | [Pixels or an image](pixels_or_image.md) |
+| matplotlib itself | [A matplotlib figure](matplotlib.md) |
+| seaborn, pandas, plotly, or any other library | [A chart from another library](others.md) |

@@ -1,6 +1,6 @@
-# Primitives
+# Common Widgets
 
-Low-level widget implementations (Foundation layer).
+Widgets that work the same under any design system.
 
 ::: nuiitivet.widgets
     options:

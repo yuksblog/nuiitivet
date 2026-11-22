@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import gc
+import sys
 from typing import Any
 
 import pytest
@@ -58,3 +60,34 @@ def test_a_wider_dtype_is_read_as_its_bytes() -> None:
 def test_a_buffer_of_the_wrong_size_is_rejected() -> None:
     with pytest.raises(ValueError):
         make_raster_image(_pixels()[:, :-1], W, H)
+
+
+@pytest.mark.parametrize("size", [(5, 3), (64, 64), (640, 480)])
+def test_the_image_keeps_its_pixels_when_the_buffer_is_written_and_dropped(size: tuple[int, int]) -> None:
+    width, height = size
+    pixels = (np.arange(width * height * 4) % 251).astype(np.uint8)
+    expected = pixels.tobytes()
+    info = skia.ImageInfo.Make(
+        width, height, skia.ColorType.kRGBA_8888_ColorType, skia.AlphaType.kUnpremul_AlphaType
+    )
+
+    image = make_raster_image(pixels, width, height)
+    pixels[:] = 0
+    del pixels
+    gc.collect()
+    # Freed memory is handed out again, so pixels the image did not keep would read as zeros.
+    churn = [bytes(len(expected)) for _ in range(64)]
+
+    out = bytearray(len(expected))
+    assert image.readPixels(info, out, width * 4)
+    assert bytes(out) == expected
+    del churn
+
+
+def test_an_app_that_never_imported_numpy_gets_the_same_image(monkeypatch: pytest.MonkeyPatch) -> None:
+    raw = _pixels().tobytes()
+    monkeypatch.delitem(sys.modules, "numpy")
+
+    image = make_raster_image(raw, W, H)
+
+    assert _read(image) == raw
