@@ -145,4 +145,5 @@ does not parse: `style`, `call`, `interpolate`, `end`, `class`, `click`,
 - [ ] No link into `docs/guide/`, no issue number: `uv run pytest tests/test_design_docs_stand_alone.py`
 - [ ] Structure drawn as `mermaid`; every new diagram rendered once
 - [ ] One fact per sentence; no two that stand alone joined by "and" or a colon
+- [ ] Lines wrap by the rendered width, a link counted as its text: `uv run python scripts/docs/check_wrap.py docs/design/<page>.md` prints nothing
 - [ ] `uv run --group docs mkdocs build --strict` passes

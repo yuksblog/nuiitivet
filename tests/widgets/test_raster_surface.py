@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+import asyncio
+import threading
 from types import SimpleNamespace
+from typing import Any, Callable
 from unittest.mock import MagicMock
 
 import pytest
 
 import nuiitivet.widgets.raster_surface as raster_mod
-from nuiitivet.observable import State
+from nuiitivet.observable import State, runtime
 from nuiitivet.widgeting.widget_size_change import flush_size_change_callbacks
 from nuiitivet.widgets.raster_surface import RasterSurface
+
+_TIMEOUT = 5.0
 
 
 class _FakeImage:
@@ -43,17 +48,40 @@ def _pixels(width: int, height: int) -> bytes:
     return bytes(width * height * 4)
 
 
+class _Drawn(RasterSurface):
+    """A surface that draws itself, as a widget author writes one."""
+
+    def __init__(self, draw: Callable[[int, int], Any], **layout: Any) -> None:
+        super().__init__(**layout)
+        self._draw_fn = draw
+
+    def draw_pixels(self, width_px: int, height_px: int) -> Any:
+        return self._draw_fn(width_px, height_px)
+
+
+def _painted(surface: RasterSurface, width: int, height: int) -> Any:
+    """The image the surface paints into a rect of that size, or ``None``."""
+    canvas = MagicMock()
+    surface.paint(canvas, 0, 0, width, height)
+    if not canvas.drawImageRect.called:
+        return None
+    return canvas.drawImageRect.call_args[0][0]
+
+
+# --- The size asked for, and when ------------------------------------------------
+
+
 def test_draw_is_asked_for_the_content_rect_in_device_pixels(
     fake_skia: list[tuple[int, int]], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _on_display(monkeypatch, 2.0)
     asked: list[tuple[int, int]] = []
 
-    def draw(w: int, h: int) -> bytes:
+    def draw(_value: int, w: int, h: int) -> bytes:
         asked.append((w, h))
         return _pixels(w, h)
 
-    surface = RasterSurface(draw, width=220, height=120, padding=10)
+    surface = RasterSurface.draw(State(0), draw, width=220, height=120, padding=10)
     surface.layout(220, 120)
 
     # Layout only queues; the pixels are made at the next frame start.
@@ -69,7 +97,7 @@ def test_a_layout_at_the_same_size_asks_nothing(
 ) -> None:
     _on_display(monkeypatch, 1.0)
     draw = MagicMock(side_effect=lambda w, h: _pixels(w, h))
-    surface = RasterSurface(draw, width=100, height=50)
+    surface = _Drawn(draw, width=100, height=50)
 
     surface.layout(100, 50)
     flush_size_change_callbacks()
@@ -84,7 +112,7 @@ def test_a_resize_asks_again_and_the_old_raster_is_stretched_meanwhile(
 ) -> None:
     _on_display(monkeypatch, 1.0)
     draw = MagicMock(side_effect=lambda w, h: _pixels(w, h))
-    surface = RasterSurface(draw, width="wt", height="wt")
+    surface = _Drawn(draw, width="wt", height="wt")
     surface.layout(100, 50)
     flush_size_change_callbacks()
 
@@ -103,7 +131,7 @@ def test_a_resize_asks_again_and_the_old_raster_is_stretched_meanwhile(
 
 def test_without_a_window_the_ratio_is_one(fake_skia: list[tuple[int, int]]) -> None:
     draw = MagicMock(side_effect=lambda w, h: _pixels(w, h))
-    surface = RasterSurface(draw, width=80, height=40)
+    surface = _Drawn(draw, width=80, height=40)
 
     surface.layout(80, 40)
     flush_size_change_callbacks()
@@ -114,7 +142,7 @@ def test_without_a_window_the_ratio_is_one(fake_skia: list[tuple[int, int]]) -> 
 
 def test_a_request_before_layout_waits_for_the_size(fake_skia: list[tuple[int, int]]) -> None:
     draw = MagicMock(side_effect=lambda w, h: _pixels(w, h))
-    surface = RasterSurface(draw, width=80, height=40)
+    surface = _Drawn(draw, width=80, height=40)
 
     surface.request_render()
     flush_size_change_callbacks()
@@ -127,7 +155,7 @@ def test_a_request_before_layout_waits_for_the_size(fake_skia: list[tuple[int, i
 
 def test_requests_in_one_frame_make_one_raster(fake_skia: list[tuple[int, int]]) -> None:
     draw = MagicMock(side_effect=lambda w, h: _pixels(w, h))
-    surface = RasterSurface(draw, width=80, height=40)
+    surface = _Drawn(draw, width=80, height=40)
     surface.layout(80, 40)
     flush_size_change_callbacks()
 
@@ -137,6 +165,18 @@ def test_requests_in_one_frame_make_one_raster(fake_skia: list[tuple[int, int]])
     flush_size_change_callbacks()
 
     assert draw.call_count == 2
+
+
+# --- What is shown -----------------------------------------------------------------
+
+
+def test_a_surface_made_directly_shows_nothing(fake_skia: list[tuple[int, int]]) -> None:
+    surface = RasterSurface(width=80, height=40)
+    surface.layout(80, 40)
+    flush_size_change_callbacks()
+
+    assert fake_skia == []
+    assert _painted(surface, 80, 40) is None
 
 
 def test_draw_from_data_passes_the_value_and_follows_changes(fake_skia: list[tuple[int, int]]) -> None:
@@ -157,18 +197,16 @@ def test_draw_from_data_passes_the_value_and_follows_changes(fake_skia: list[tup
 
 
 def test_a_buffer_of_the_wrong_size_leaves_the_surface_as_it_was(fake_skia: list[tuple[int, int]]) -> None:
-    surface = RasterSurface(lambda w, h: bytes(7), width=80, height=40)
+    surface = _Drawn(lambda w, h: bytes(7), width=80, height=40)
     surface.layout(80, 40)
     flush_size_change_callbacks()
 
-    canvas = MagicMock()
-    surface.paint(canvas, 0, 0, 80, 40)
-    canvas.drawImageRect.assert_not_called()
+    assert _painted(surface, 80, 40) is None
 
 
 def test_none_empties_the_surface(fake_skia: list[tuple[int, int]]) -> None:
     pixels: list[bytes | None] = [_pixels(80, 40)]
-    surface = RasterSurface(lambda w, h: pixels[0], width=80, height=40)
+    surface = _Drawn(lambda w, h: pixels[0], width=80, height=40)
     surface.layout(80, 40)
     flush_size_change_callbacks()
 
@@ -176,16 +214,14 @@ def test_none_empties_the_surface(fake_skia: list[tuple[int, int]]) -> None:
     surface.request_render()
     flush_size_change_callbacks()
 
-    canvas = MagicMock()
-    surface.paint(canvas, 0, 0, 80, 40)
-    canvas.drawImageRect.assert_not_called()
+    assert _painted(surface, 80, 40) is None
 
 
 def test_the_raster_is_painted_into_the_content_rect(
     fake_skia: list[tuple[int, int]], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _on_display(monkeypatch, 2.0)
-    surface = RasterSurface(lambda w, h: _pixels(w, h), width=100, height=60, padding=(10, 5))
+    surface = _Drawn(lambda w, h: _pixels(w, h), width=100, height=60, padding=(10, 5))
     surface.layout(100, 60)
     flush_size_change_callbacks()
 
@@ -195,3 +231,465 @@ def test_the_raster_is_painted_into_the_content_rect(
     _image, src, dst = canvas.drawImageRect.call_args[0]
     assert src == (0, 0, 160, 100)
     assert dst == (30, 35, 80, 50)
+
+
+# --- draw with a coroutine function ----------------------------------------------
+
+
+class _ManualClock:
+    """Holds what a thread scheduled until the test ticks; safe to schedule from two threads."""
+
+    def __init__(self) -> None:
+        self._scheduled: list[Callable[[float], None]] = []
+        self._lock = threading.Lock()
+
+    def schedule_once(self, fn: Callable[[float], None], delay: float) -> None:
+        with self._lock:
+            self._scheduled.append(fn)
+
+    def schedule_interval(self, fn: Callable[[float], None], interval: float) -> None:
+        raise NotImplementedError
+
+    def unschedule(self, fn: Callable[[float], None]) -> None:
+        with self._lock:
+            self._scheduled = [each for each in self._scheduled if each != fn]
+
+    def tick(self) -> None:
+        with self._lock:
+            due, self._scheduled = self._scheduled, []
+        for fn in due:
+            fn(0.0)
+
+
+@pytest.fixture
+def clock(monkeypatch: pytest.MonkeyPatch) -> _ManualClock:
+    manual = _ManualClock()
+    monkeypatch.setattr(runtime, "clock", manual)
+    return manual
+
+
+async def _settle() -> None:
+    for _ in range(5):
+        await asyncio.sleep(0)
+
+
+class _GatedTasks:
+    """A coroutine draw function whose calls return when the test releases them."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[int, int, int]] = []
+        self._gates: dict[int, asyncio.Event] = {}
+
+    async def __call__(self, value: int, w: int, h: int) -> bytes:
+        self.calls.append((value, w, h))
+        await self._gates.setdefault(value, asyncio.Event()).wait()
+        return _pixels(w, h)
+
+    def finish(self, value: int) -> None:
+        self._gates.setdefault(value, asyncio.Event()).set()
+
+
+async def test_a_coroutine_draw_function_is_awaited_and_no_frame_waits(fake_skia: list[tuple[int, int]]) -> None:
+    runs = _GatedTasks()
+    surface = RasterSurface.draw(State(1), runs, width=80, height=40)
+    surface.layout(80, 40)
+
+    flush_size_change_callbacks()
+    await _settle()
+
+    # The frame start returned with the call still running.
+    assert runs.calls == [(1, 80, 40)]
+    assert _painted(surface, 80, 40) is None
+    runs.finish(1)
+    await _settle()
+    assert _painted(surface, 80, 40).size == (80, 40)
+
+
+async def test_changes_during_a_coroutine_call_are_drawn_once_with_the_newest(
+    fake_skia: list[tuple[int, int]],
+) -> None:
+    data: State[int] = State(1)
+    runs = _GatedTasks()
+    surface = RasterSurface.draw(data, runs, width="wt", height="wt")
+    surface.layout(80, 40)
+    flush_size_change_callbacks()
+    await _settle()
+
+    data.value = 2
+    flush_size_change_callbacks()
+    data.value = 3
+    surface.layout(160, 80)
+    flush_size_change_callbacks()
+    await _settle()
+    assert runs.calls == [(1, 80, 40)]
+
+    runs.finish(1)
+    await _settle()
+    flush_size_change_callbacks()
+    await _settle()
+
+    # Value 2 was never drawn; the next call took the newest value and size.
+    assert runs.calls == [(1, 80, 40), (3, 160, 80)]
+    assert _painted(surface, 160, 80).size == (80, 40)
+    runs.finish(3)
+    await _settle()
+    assert _painted(surface, 160, 80).size == (160, 80)
+
+
+async def test_a_coroutine_call_that_raises_keeps_the_raster(fake_skia: list[tuple[int, int]]) -> None:
+    data: State[int] = State(1)
+
+    async def draw(value: int, w: int, h: int) -> bytes:
+        if value == 2:
+            raise RuntimeError("boom")
+        return _pixels(w, h)
+
+    surface = RasterSurface.draw(data, draw, width=80, height=40)
+    surface.layout(80, 40)
+    flush_size_change_callbacks()
+    await _settle()
+
+    data.value = 2
+    flush_size_change_callbacks()
+    await _settle()
+    assert _painted(surface, 80, 40).size == (80, 40)
+
+    data.value = 3
+    flush_size_change_callbacks()
+    await _settle()
+    assert fake_skia == [(80, 40), (80, 40)]
+
+
+# --- draw_in_thread ------------------------------------------------------------------
+
+
+class _GatedThreads:
+    """A draw function whose calls return when the test releases them, and say which thread ran them."""
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[int, int, int]] = []
+        self.threads: list[str] = []
+        self.fail: set[int] = set()
+        self._gates: dict[int, threading.Event] = {}
+        self._lock = threading.Lock()
+
+    def _gate(self, value: int) -> threading.Event:
+        with self._lock:
+            return self._gates.setdefault(value, threading.Event())
+
+    def __call__(self, value: int, w: int, h: int) -> bytes:
+        self.calls.append((value, w, h))
+        self.threads.append(threading.current_thread().name)
+        assert self._gate(value).wait(_TIMEOUT)
+        if value in self.fail:
+            raise RuntimeError("boom")
+        return _pixels(w, h)
+
+    def finish(self, value: int) -> None:
+        """Release the call for ``value`` and wait until its thread has handed the result over."""
+        self._gate(value).set()
+        for thread in threading.enumerate():
+            if thread.name == "RasterSurface.draw_in_thread":
+                thread.join(_TIMEOUT)
+
+
+def _started(runs: _GatedThreads, count: int) -> None:
+    """Wait until ``count`` calls have begun."""
+    deadline = threading.Event()
+    for _ in range(int(_TIMEOUT / 0.001)):
+        if len(runs.calls) >= count:
+            return
+        deadline.wait(0.001)
+    raise AssertionError(f"{count} calls expected, {len(runs.calls)} began")
+
+
+def test_draw_in_thread_calls_the_function_off_the_ui_thread(
+    fake_skia: list[tuple[int, int]], clock: _ManualClock
+) -> None:
+    runs = _GatedThreads()
+    surface = RasterSurface.draw_in_thread(State(1), runs, width=80, height=40)
+    surface.layout(80, 40)
+
+    flush_size_change_callbacks()
+    _started(runs, 1)
+
+    assert runs.calls == [(1, 80, 40)]
+    assert runs.threads == ["RasterSurface.draw_in_thread"]
+    # Nothing is shown until the call returns and the UI thread takes the result.
+    assert _painted(surface, 80, 40) is None
+    runs.finish(1)
+    assert _painted(surface, 80, 40) is None
+    clock.tick()
+    assert _painted(surface, 80, 40).size == (80, 40)
+
+
+def test_changes_during_a_thread_call_are_drawn_once_with_the_newest(
+    fake_skia: list[tuple[int, int]], clock: _ManualClock
+) -> None:
+    data: State[int] = State(1)
+    runs = _GatedThreads()
+    surface = RasterSurface.draw_in_thread(data, runs, width="wt", height="wt")
+    surface.layout(80, 40)
+    flush_size_change_callbacks()
+    _started(runs, 1)
+
+    data.value = 2
+    flush_size_change_callbacks()
+    data.value = 3
+    surface.layout(160, 80)
+    flush_size_change_callbacks()
+    # One call at a time: neither change started a second one.
+    assert runs.calls == [(1, 80, 40)]
+
+    runs.finish(1)
+    clock.tick()
+    # The first result is shown, stretched over the new rect, while the next call runs.
+    assert _painted(surface, 160, 80).size == (80, 40)
+    flush_size_change_callbacks()
+    _started(runs, 2)
+    assert runs.calls == [(1, 80, 40), (3, 160, 80)]
+
+    runs.finish(3)
+    clock.tick()
+    assert _painted(surface, 160, 80).size == (160, 80)
+    flush_size_change_callbacks()
+    assert len(runs.calls) == 2
+
+
+def test_a_thread_call_that_raises_keeps_the_raster_and_the_next_change_draws(
+    fake_skia: list[tuple[int, int]], clock: _ManualClock
+) -> None:
+    data: State[int] = State(1)
+    runs = _GatedThreads()
+    runs.fail.add(2)
+    surface = RasterSurface.draw_in_thread(data, runs, width=80, height=40)
+    surface.layout(80, 40)
+    flush_size_change_callbacks()
+    _started(runs, 1)
+    runs.finish(1)
+    clock.tick()
+
+    data.value = 2
+    flush_size_change_callbacks()
+    _started(runs, 2)
+    runs.finish(2)
+    clock.tick()
+    assert _painted(surface, 80, 40).size == (80, 40)
+
+    data.value = 3
+    flush_size_change_callbacks()
+    _started(runs, 3)
+    runs.finish(3)
+    clock.tick()
+    assert fake_skia == [(80, 40), (80, 40)]
+
+
+def test_draw_in_thread_reads_the_value_on_the_ui_thread(fake_skia: list[tuple[int, int]], clock: _ManualClock) -> None:
+    readers: list[str] = []
+
+    class _Watched(State[int]):
+        @property
+        def value(self) -> int:
+            readers.append(threading.current_thread().name)
+            return 7
+
+        @value.setter
+        def value(self, new: int) -> None:
+            raise AssertionError("the surface never writes its data")
+
+    runs = _GatedThreads()
+    surface = RasterSurface.draw_in_thread(_Watched(7), runs, width=80, height=40)
+    surface.layout(80, 40)
+    readers.clear()
+    flush_size_change_callbacks()
+    _started(runs, 1)
+    runs.finish(7)
+
+    assert runs.calls == [(7, 80, 40)]
+    assert readers and set(readers) == {threading.current_thread().name}
+
+
+def test_draw_in_thread_refuses_a_coroutine_function() -> None:
+    async def draw(value: int, w: int, h: int) -> bytes:
+        return _pixels(w, h)
+
+    with pytest.raises(TypeError):
+        RasterSurface.draw_in_thread(State(1), draw, width=80, height=40)
+
+
+def test_where_no_thread_starts_the_surface_stays_empty_and_asks_again(
+    fake_skia: list[tuple[int, int]], clock: _ManualClock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def refuse(self: threading.Thread) -> None:
+        raise RuntimeError("can't start new thread")
+
+    data: State[int] = State(1)
+    draw = MagicMock(side_effect=lambda value, w, h: _pixels(w, h))
+    surface = RasterSurface.draw_in_thread(data, draw, width=80, height=40)
+    surface.layout(80, 40)
+    with monkeypatch.context() as patched:
+        patched.setattr(threading.Thread, "start", refuse)
+        flush_size_change_callbacks()
+    assert draw.call_count == 0
+    assert _painted(surface, 80, 40) is None
+
+    # The failed start did not leave the surface waiting for a call that never ran.
+    data.value = 2
+    flush_size_change_callbacks()
+    for thread in threading.enumerate():
+        if thread.name == "RasterSurface.draw_in_thread":
+            thread.join(_TIMEOUT)
+    clock.tick()
+    assert _painted(surface, 80, 40).size == (80, 40)
+
+
+def test_a_thread_function_that_returns_an_awaitable_is_refused_and_closed(
+    fake_skia: list[tuple[int, int]], clock: _ManualClock, recwarn: pytest.WarningsRecorder
+) -> None:
+    async def worker(value: int, w: int, h: int) -> bytes:
+        return _pixels(w, h)
+
+    surface = RasterSurface.draw_in_thread(State(1), lambda v, w, h: worker(v, w, h), width=80, height=40)
+    surface.layout(80, 40)
+    flush_size_change_callbacks()
+    for thread in threading.enumerate():
+        if thread.name == "RasterSurface.draw_in_thread":
+            thread.join(_TIMEOUT)
+    clock.tick()
+
+    assert fake_skia == []
+    assert _painted(surface, 80, 40) is None
+    # The coroutine was closed, so Python has no "never awaited" to report.
+    assert not [w for w in recwarn.list if "never awaited" in str(w.message)]
+
+
+def test_a_result_that_cannot_be_handed_over_does_not_stop_the_surface(
+    fake_skia: list[tuple[int, int]], clock: _ManualClock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def refuse(fn: Callable[[float], None], delay: float) -> None:
+        raise RuntimeError("the clock is gone")
+
+    data: State[int] = State(1)
+    draw = MagicMock(side_effect=lambda value, w, h: _pixels(w, h))
+    surface = RasterSurface.draw_in_thread(data, draw, width=80, height=40)
+    surface.layout(80, 40)
+    with monkeypatch.context() as patched:
+        patched.setattr(clock, "schedule_once", refuse)
+        flush_size_change_callbacks()
+        for thread in threading.enumerate():
+            if thread.name == "RasterSurface.draw_in_thread":
+                thread.join(_TIMEOUT)
+
+    data.value = 2
+    flush_size_change_callbacks()
+    for thread in threading.enumerate():
+        if thread.name == "RasterSurface.draw_in_thread":
+            thread.join(_TIMEOUT)
+    clock.tick()
+    assert draw.call_args.args == (2, 80, 40)
+    assert _painted(surface, 80, 40).size == (80, 40)
+
+
+# --- Edges every way of drawing shares -------------------------------------------
+
+
+def test_data_that_raises_when_read_is_a_failed_draw(fake_skia: list[tuple[int, int]]) -> None:
+    broken = [False]
+
+    class _Flaky(State[int]):
+        @property
+        def value(self) -> int:
+            if broken[0]:
+                raise RuntimeError("boom")
+            return 1
+
+        @value.setter
+        def value(self, new: int) -> None:
+            raise AssertionError("the surface never writes its data")
+
+    surface = RasterSurface.draw(_Flaky(1), lambda value, w, h: _pixels(w, h), width=80, height=40)
+    surface.layout(80, 40)
+    flush_size_change_callbacks()
+
+    broken[0] = True
+    surface.request_render()
+    # The failure stays inside the surface: the frame-start queue sees no exception.
+    surface._render()
+
+    assert _painted(surface, 80, 40).size == (80, 40)
+
+
+def test_a_request_made_at_no_size_is_drawn_when_the_size_comes_back(fake_skia: list[tuple[int, int]]) -> None:
+    data: State[int] = State(1)
+    seen: list[int] = []
+
+    def draw(value: int, w: int, h: int) -> bytes:
+        seen.append(value)
+        return _pixels(w, h)
+
+    surface = RasterSurface.draw(data, draw, width="wt", height="wt")
+    surface.layout(80, 40)
+    flush_size_change_callbacks()
+
+    surface.layout(0, 0)
+    data.value = 2
+    flush_size_change_callbacks()
+    assert seen == [1]
+
+    surface.layout(80, 40)
+    flush_size_change_callbacks()
+    assert seen == [1, 2]
+
+
+async def test_unmounting_cancels_the_call_being_awaited(fake_skia: list[tuple[int, int]]) -> None:
+    data: State[int] = State(1)
+    cancelled: list[int] = []
+    calls: list[int] = []
+
+    async def draw(value: int, w: int, h: int) -> bytes:
+        calls.append(value)
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            cancelled.append(value)
+            raise
+        return _pixels(w, h)
+
+    surface = RasterSurface.draw(data, draw, width=80, height=40)
+    surface.mount(None)
+    surface.layout(80, 40)
+    flush_size_change_callbacks()
+    await _settle()
+    data.value = 2
+    flush_size_change_callbacks()
+
+    surface.unmount()
+    await _settle()
+    flush_size_change_callbacks()
+    await _settle()
+
+    assert cancelled == [1]
+    # The change that waited for the call is not drawn for a surface nobody shows.
+    assert calls == [1]
+
+
+def test_a_thread_result_that_lands_after_unmount_is_not_shown_and_starts_nothing(
+    fake_skia: list[tuple[int, int]], clock: _ManualClock
+) -> None:
+    data: State[int] = State(1)
+    runs = _GatedThreads()
+    surface = RasterSurface.draw_in_thread(data, runs, width=80, height=40)
+    surface.mount(None)
+    surface.layout(80, 40)
+    flush_size_change_callbacks()
+    _started(runs, 1)
+    data.value = 2
+    flush_size_change_callbacks()
+
+    surface.unmount()
+    runs.finish(1)
+    clock.tick()
+    flush_size_change_callbacks()
+
+    assert _painted(surface, 80, 40) is None
+    assert runs.calls == [(1, 80, 40)]

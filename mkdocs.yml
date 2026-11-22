@@ -208,6 +208,7 @@ nav:
           - Material Theme: guide/design-system/material_theme.md
           - Material Navigator: guide/design-system/material_navigator.md
           - Material Widgets: guide/design-system/material_widgets.md
+          - Common Widgets: guide/design-system/common_widgets.md
           - Theme Extensions: guide/design-system/theme_extensions.md
           - Font Configuration: guide/design-system/font_configuration.md
       - With a coding agent:
@@ -230,7 +231,7 @@ nav:
       - Charts:
           - guide/charts/index.md
           - A matplotlib figure: guide/charts/matplotlib.md
-          - Pixels or an image: guide/charts/pixels_or_image.md
+          - A chart from another library: guide/charts/others.md
       - Packaging:
           - guide/packaging/index.md
       - Web:
@@ -243,5 +244,5 @@ nav:
       - Core: api/nuiitivet.md
       - Material Components: api/material.md
       - Modifiers: api/modifiers.md
-      - Primitives: api/widgets.md
+      - Common Widgets: api/widgets.md
   - Changelog: https://github.com/yuksblog/nuiitivet/releases

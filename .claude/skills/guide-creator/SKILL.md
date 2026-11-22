@@ -425,10 +425,22 @@ three actions, an opening that summarises the page, a key the reader presses
 only in another case. Before the draft reaches the user, hand it to a
 subagent that has no other context.
 
-Name the files it may read: this skill file, the page, and the docs pages a
-reader has passed before it. Say that every other path is off limits. With
-`src/` or `samples/` open, it fills each gap from the code and stops finding
-what a user stumbles on.
+Name the files it may read: this skill file, the page, the docs pages a
+reader has passed before it, and the reference of the symbols the page names.
+The reference is the docstrings as the API pages show them. Write it to a
+file first:
+
+```bash
+uv run python scripts/docs/print_reference.py RasterSurface Image > <file>
+```
+
+Say that every other path is off limits. With `src/` or `samples/` open, it
+fills each gap from the code and stops finding what a user stumbles on.
+
+Tell it what the reference is for. A reader has it one click away, so a fact
+it carries is not missing from the page. A sentence of the page that says
+what the reference says is a miss. Without the reference the reviewer asks
+the page for every fact a docstring holds, and the page fills up with them.
 
 Tell it to hold every item of the checklist below against the page, to sort
 every sentence into the author's view or the framework's view, and to report
@@ -463,6 +475,7 @@ reviewed.
 - [ ] Short sentences, one fact each, dense throughout; a fact repeated only where two places are far apart
 - [ ] Each sentence checked against `docs/design/` and the docstrings, both open beside the draft; what either already says is deleted
 - [ ] Each paragraph opens with the thing and its verb; one fact per sentence, no two that stand alone joined by "and" or a colon
+- [ ] Lines wrap by the rendered width, a link counted as its text: `uv run python scripts/docs/check_wrap.py docs/guide/<page>.md` prints nothing
 - [ ] Sample exists and runs; guide code blocks match it
 - [ ] Root is a factory passed uncalled, never an instance; a new sample uses a module-level `build_root`
 - [ ] Every new or changed sample verified end-to-end under `python -m nuiitivet.dev run`: an edit to the UI hot-reloads into the live tree
@@ -473,4 +486,4 @@ reviewed.
 - [ ] Next Steps carries only the next page plus the overview; no back-link, no see-also callout
 - [ ] One entrance to a concept page; many only to a lookup page
 - [ ] `uv run mkdocs build --strict` passes
-- [ ] A fresh-context subagent, given only this skill, the page and the docs pages before it, held the checklist against it; its findings inside the agreed edit are fixed, the others reported
+- [ ] A fresh-context subagent, given only this skill, the page, the docs pages before it and the reference of the symbols the page names, held the checklist against it; its findings inside the agreed edit are fixed, the others reported

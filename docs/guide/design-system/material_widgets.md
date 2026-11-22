@@ -1,6 +1,6 @@
 # Material Widgets
 
-`nuiitivet.material` implements Material Design 3 widgets, with more on the way. This page showcases the available widgets — each with a screenshot and a link to the API reference. Overlay-based widgets (Dialog, BottomSheet, SideSheet, Loading) are covered in [Material Overlay](material_overlay.md).
+`nuiitivet.material` implements Material Design 3 widgets, with more on the way. This page showcases the available widgets — each with a screenshot and a link to the API reference. Overlay-based widgets (Dialog, BottomSheet, SideSheet, Loading) are covered in [Material Overlay](material_overlay.md). `Image`, `RasterSurface` and `MatplotlibFigure` work the same under any design system and are in [Common Widgets](common_widgets.md).
 
 !!! note "Import convention"
     All widgets shown below are exported from `nuiitivet.material`:
@@ -375,33 +375,3 @@ nv.DockedDatePicker(
 ![DockedDatePicker](../../assets/material_widgets_docked_date_picker.png)
 
 [API Reference](../../api/material.md#nuiitivet.material.DockedDatePicker)
-
----
-
-## Image
-
-`Image` is a primitive widget that is not part of Material Design. Displays a raster image from in-memory bytes. Supports `contain`, `cover`, `fill`, and `none` fit modes.
-
-![Image](../../assets/material_widgets_image.png)
-
-[API Reference](../../api/widgets.md#nuiitivet.widgets.image.Image)
-
----
-
-## RasterSurface
-
-`RasterSurface` is a primitive widget that is not part of Material Design. Shows pixels the app draws itself, asked for at the widget's device size so they stay crisp on any display. The buffer must hold exactly `width_px * height_px * 4` RGBA bytes.
-
-![RasterSurface](../../assets/charts_raster_surface.png)
-
-[Charts guide](../charts/pixels_or_image.md) · [API Reference](../../api/widgets.md#nuiitivet.widgets.RasterSurface)
-
----
-
-## MatplotlibFigure
-
-Shows a matplotlib `Figure`, drawn at the widget's size in the theme's colors, replotted from a `State` with `MatplotlibFigure.plot`. The pointer and the keyboard reach the figure as matplotlib events, so `mpl_connect` handlers and `picker` artists work; `MatplotlibController`, made beside the figure, is matplotlib's pan, zoom and view history for the app's own buttons. Needs `pip install nuiitivet[matplotlib]`; the widget sets the figure's size and dpi itself.
-
-![MatplotlibFigure](../../assets/charts_matplotlib_figure.png)
-
-[Charts guide](../charts/matplotlib.md) · [API Reference](../../api/material.md#nuiitivet.material.MatplotlibFigure)

@@ -126,6 +126,11 @@ def test_samples_use_only_the_single_root() -> None:
     )
 
 
+# Chart libraries a sample shows the glue for. No dependency group installs
+# them, so a sample that needs one is checked only where it is present.
+_OPTIONAL_CHART_LIBRARIES = {"pandas", "plotly", "seaborn"}
+
+
 def test_samples_import_cleanly() -> None:
     """Every sample module imports (module-level symbols resolve against the root).
 
@@ -155,6 +160,9 @@ def test_samples_import_cleanly() -> None:
                 spec.loader.exec_module(mod)
             else:
                 importlib.import_module(".".join(f.relative_to(root).with_suffix("").parts))
+        except ModuleNotFoundError as exc:
+            if (exc.name or "").split(".")[0] not in _OPTIONAL_CHART_LIBRARIES:
+                failures.append(f"{f.relative_to(_ROOT)}: {type(exc).__name__}: {exc}")
         except Exception as exc:  # noqa: BLE001 — report all, fail once
             failures.append(f"{f.relative_to(_ROOT)}: {type(exc).__name__}: {exc}")
         finally:

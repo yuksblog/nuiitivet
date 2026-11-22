@@ -139,7 +139,7 @@ class MatplotlibFigure(InteractionHostMixin, RasterSurface):
             raise ImportError(
                 "MatplotlibFigure needs matplotlib: install the extra with `pip install nuiitivet[matplotlib]`"
             ) from error
-        super().__init__(self._render_figure, width=width, height=height, padding=padding, key=key)
+        super().__init__(width=width, height=height, padding=padding, key=key)
         self._figure = figure
         self._canvas = _canvas_class()(figure)
         self._canvas.on_draw_idle = self._on_draw_idle
@@ -217,7 +217,13 @@ class MatplotlibFigure(InteractionHostMixin, RasterSurface):
         self._plot_pending = True
         self.request_render()
 
-    def _render_figure(self, width_px: int, height_px: int) -> Any:
+    def draw_pixels(self, width_px: int, height_px: int) -> Any:
+        """Draw the figure with Agg at the given device size and return its RGBA buffer.
+
+        Args:
+            width_px: The width of the content rect in device pixels.
+            height_px: The height of the content rect in device pixels.
+        """
         self._drawing = True
         try:
             return self._draw_figure(width_px, height_px)

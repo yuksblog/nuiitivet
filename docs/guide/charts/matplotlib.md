@@ -154,5 +154,5 @@ The complete app is [`samples/charts/matplotlib_figure.py`](https://github.com/y
 
 ## Next Steps
 
-- [Pixels or an image](pixels_or_image.md)
+- [A chart from another library](others.md)
 - [Charts overview](index.md)
