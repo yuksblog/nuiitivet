@@ -39,6 +39,7 @@ from .overlay_snapshot import restore_overlay, snapshot_overlay
 from .comments import Comments
 from .patcher import count_instances
 from .reloader import Reloader, ReloadResult
+from .slow_calls import SlowCallReporter
 from .snapshot import restore_states, snapshot_states
 from .source_edit import EditLog
 from .watcher import FileWatcher
@@ -63,6 +64,7 @@ class HotReloadController:
         journal: Optional[ReloadJournal] = None,
         comments: Optional[Comments] = None,
         edits: Optional[EditLog] = None,
+        slow_calls: Optional[SlowCallReporter] = None,
     ) -> None:
         self._app = app
         self._project_root = project_root.resolve()
@@ -80,6 +82,8 @@ class HotReloadController:
         # Layout edit mode's edits. Told after every reload whether its pending edit
         # landed, since a reload is how an edit takes effect at all.
         self._edits = edits
+        # Forgets its reports once a save is applied: a function still slow after the edit is reported again.
+        self._slow_calls = slow_calls
         self._reloader = Reloader(self._project_root)
         # Coalesces bursts of saves into a single reload; set on the watcher
         # thread, consumed on the UI thread.
@@ -115,6 +119,14 @@ class HotReloadController:
         self._do_reload()
 
     def _do_reload(self) -> None:
+        if self._slow_calls is None:
+            self._reload()
+            return
+        # The rebuild runs every build at once and holds no frame up.
+        with self._slow_calls.paused():
+            self._reload()
+
+    def _reload(self) -> None:
         app = self._app
         snapshot = snapshot_states(app.root)
         # Capture the declarative navigation stack before the rebuild replaces
@@ -123,6 +135,8 @@ class HotReloadController:
 
         try:
             result = self._reloader.reload(old_factory=self._factory)
+            if self._slow_calls is not None:
+                self._slow_calls.reset()
             # The next worker call runs the reloaded source, not a child's copy of the old one.
             retire_pool()
             new_factory: "RootFactory" = (

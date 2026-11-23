@@ -7,6 +7,7 @@ import logging
 from collections.abc import Awaitable, Coroutine
 from typing import Any, Callable, Optional, Set, TypeVar, Union
 
+from nuiitivet.common.call_probe import CallKind, call_probe, probed_steps
 from nuiitivet.common.logging_once import exception_once_per_exc, warning_once
 from nuiitivet.observable import detach_batch
 
@@ -281,6 +282,7 @@ def invoke_event_handler(
     error_key: str,
     error_msg: str,
     owner_name: str = "<unknown>",
+    kind: CallKind = "event handler",
 ) -> "asyncio.Task[None] | PendingTask | None":
     """Invoke an event handler, scheduling it as a task if it is async.
 
@@ -289,6 +291,14 @@ def invoke_event_handler(
     2. Asynchronous execution (scheduling as task).
     3. Detaching from the current batch context for async tasks.
     4. Error logging.
+
+    Args:
+        cb: The handler.
+        *args: Its arguments.
+        error_key: The log key of a failure, and the site a test harness is told.
+        error_msg: The log message of a failure.
+        owner_name: Who owns the handler, for the log.
+        kind: What a dev session calls the handler when it reports it as slow.
 
     Returns:
         The scheduled task when *cb* is async, a :class:`PendingTask` when it
@@ -304,8 +314,9 @@ def invoke_event_handler(
     # it below would turn it into a single log line -- once per process, since
     # exception_once_per_exc de-duplicates -- which is exactly the silence it
     # exists to break.
+    probe = call_probe()
     try:
-        result = cb(*args)
+        result = cb(*args) if probe is None else probe.call(kind, cb, *args)
     except Exception as exc:
         exception_once_per_exc(
             logger,
@@ -324,7 +335,7 @@ def invoke_event_handler(
         return None
 
     wrapper = _run_handler(
-        result, error_key=error_key, error_msg=error_msg, owner_name=owner_name
+        probed_steps(kind, cb, result), error_key=error_key, error_msg=error_msg, owner_name=owner_name
     )
     try:
         task = spawn_task(wrapper, owner_name=owner_name)

@@ -50,6 +50,7 @@ from nuiitivet.platform.ime import IMEManager
 from .semantics_tree import SemanticsTree, build_semantics_tree, perform_semantics_action
 from ..widgets.semantics import SemanticsAction
 from .shortcut_dispatch import is_foreground
+from nuiitivet.common.call_probe import run_frame_start
 from nuiitivet.common.logging_once import debug_once, exception_once, warning_once
 from .app_events import (
     dispatch_file_drop as _dispatch_file_drop_fn,
@@ -2391,6 +2392,9 @@ class Window:
 
     def _flush_frame_queues(self) -> None:
         """Run what is queued for the start of a frame: size callbacks, then builds."""
+        run_frame_start(self._run_frame_queues)
+
+    def _run_frame_queues(self) -> None:
         # Size callbacks queued by the previous frame's layout run first, so the
         # States they write are picked up by the build flush below and land
         # in this frame. Between frames is the only safe point for them: they are

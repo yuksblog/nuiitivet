@@ -23,7 +23,8 @@ class Clocks:
         Read the clock through this call every time instead of keeping a
         reference: the backend installs its own clock during ``App.run()``,
         so a saved reference goes stale. Save and restore around a test with
-        this.
+        this. Under the dev runner it is a wrapper around the clock that was
+        set.
         """
         return get_clock()
 

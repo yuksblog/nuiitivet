@@ -19,6 +19,7 @@ from nuiitivet.dev import controller as controller_mod
 from nuiitivet.dev.controller import HotReloadController
 from nuiitivet.dev.journal import ReloadJournal
 from nuiitivet.dev.reloader import ReloadResult
+from nuiitivet.dev.slow_calls import SlowCallReporter
 
 
 def _fake_factory() -> Any:
@@ -110,6 +111,76 @@ def test_successful_reload_records_modules() -> None:
     assert len(events) == 1
     assert events[0].outcome == "success"
     assert events[0].modules == ("pkg.a", "pkg.b")
+
+
+class _SlowCalls:
+    """A reporter past its first frame, and a handler that takes 20 ms on its clock."""
+
+    def __init__(self) -> None:
+        self._now = 0.0
+        self.reporter = SlowCallReporter(limit=0.008, timer=lambda: self._now)
+        self.reporter.begin_frame_start()
+        self.reporter.end_frame_start()
+
+    def on_click(self) -> None:
+        self._now += 0.020
+
+    def click(self) -> None:
+        self.reporter.call("event handler", self.on_click)
+
+
+def _slow_call_reports(caplog: Any) -> int:
+    return sum(1 for record in caplog.records if record.name == "nuiitivet.dev.slow_calls")
+
+
+def test_a_reload_lets_a_function_still_slow_be_reported_again(caplog: Any) -> None:
+    slow = _SlowCalls()
+    controller = HotReloadController(
+        _FakeApp(), Path("."), _fake_factory, slow_calls=slow.reporter  # type: ignore[arg-type]
+    )
+    slow.click()
+    slow.click()
+    assert _slow_call_reports(caplog) == 1
+
+    with _patched_reload(reload=ReloadResult(reloaded=["pkg.a"], new_factory=_fake_factory)):
+        controller._do_reload()
+    slow.click()
+
+    assert _slow_call_reports(caplog) == 2
+
+
+def test_a_save_that_did_not_load_keeps_what_was_reported(caplog: Any) -> None:
+    slow = _SlowCalls()
+    controller = HotReloadController(
+        _FakeApp(), Path("."), _fake_factory, slow_calls=slow.reporter  # type: ignore[arg-type]
+    )
+    slow.click()
+
+    with _patched_reload(reload_side_effect=SyntaxError("bad save")):
+        controller._do_reload()
+    slow.click()
+
+    assert _slow_call_reports(caplog) == 1
+
+
+def test_the_rebuild_of_a_reload_is_not_timed(caplog: Any) -> None:
+    slow = _SlowCalls()
+
+    class _RebuildingApp(_FakeApp):
+        def _rebuild_content_root(self, factory: Any) -> Any:
+            slow.click()
+            return object()
+
+    controller = HotReloadController(
+        _RebuildingApp(), Path("."), _fake_factory, slow_calls=slow.reporter  # type: ignore[arg-type]
+    )
+
+    with _patched_reload(reload=ReloadResult(reloaded=["pkg.a"], new_factory=_fake_factory)):
+        controller._do_reload()
+    assert _slow_call_reports(caplog) == 0
+
+    slow.click()
+    assert _slow_call_reports(caplog) == 1
 
 
 def _fake_window(win_id: int, *, inert: bool) -> Any:

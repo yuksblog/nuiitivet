@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from nuiitivet.widgeting.paint_replay import replay_safe
+import functools
 import inspect
 import itertools
 import logging
@@ -11,6 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Protocol, Set, Tuple, TYPE_CHECKING, runtime_checkable
 
 from nuiitivet.common.back_reference import weak_method_call
+from nuiitivet.common.call_probe import call_probe
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
 from .callbacks import report_contained
@@ -47,6 +49,9 @@ def _get_scoped_fragment_class():
         def build(self) -> "Widget":
             widget = self._factory()
             return _require_widget_instance(widget)
+
+        def _build_function(self) -> Callable[[], "Widget"]:
+            return self._factory
 
         def update_factory(self, factory: Callable[[], "Widget"]) -> None:
             self._factory = factory
@@ -92,6 +97,7 @@ def _get_scoped_fragment_class():
 
 
 def _normalize_scope_factory(factory: Callable[[], "Widget"]) -> Callable[[], "Widget"]:
+    @functools.wraps(factory)
     def _wrapped() -> "Widget":
         widget = factory()
         return _require_widget_instance(widget)
@@ -394,6 +400,10 @@ class BuilderHostMixin:
     def build(self) -> "Widget":  # pragma: no cover - override in builder-style widgets
         raise NotImplementedError("ComposableWidget.build() must be implemented and must return a Widget")
 
+    def _build_function(self) -> Callable[[], "Widget"]:
+        """The function that builds this host: the one a slow build is reported under."""
+        return self.build
+
     def evaluate_build(self) -> "Widget":
         from nuiitivet.theme.dependency import pop_theme_reader, push_theme_reader
 
@@ -403,8 +413,10 @@ class BuilderHostMixin:
         # whichever widget was passed as the context: a change to it has to
         # rebuild what the build produced. See nuiitivet/theme/dependency.py.
         push_theme_reader(self)
+        build = self._build_function()
+        probe = call_probe()
         try:
-            result = self.build()
+            result = build() if probe is None else probe.call("build", build)
         except NotImplementedError:
             raise
         except Exception:

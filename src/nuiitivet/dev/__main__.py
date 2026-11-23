@@ -58,6 +58,7 @@ from .runtime_journal import RuntimeJournal
 from .comment_mode import CommentMode
 from .comments import Comments
 from .session import DevSession, set_dev_session
+from .slow_calls import SlowCallReporter
 from .source_edit import EditLog
 from .source_jump import SourceJump
 from . import editor, source
@@ -458,6 +459,8 @@ def _run(args: argparse.Namespace) -> int:
     runtime_journal = RuntimeJournal()
     runtime_capture = RuntimeLogCapture(runtime_journal)
     runtime_capture.install()
+    slow_calls = SlowCallReporter()
+    slow_calls.install()
 
     # The app must see its own argv, not this process's -- an entry that parses
     # arguments otherwise dies on the runner's command line. Set before the
@@ -509,6 +512,7 @@ def _run(args: argparse.Namespace) -> int:
             journal=journal,
             comments=comments,
             edits=edits,
+            slow_calls=slow_calls,
         )
         # The complementary surface: the recorder captures the human's
         # coarse UI actions from the real input path, and the bridge serves them
@@ -576,6 +580,7 @@ def _run(args: argparse.Namespace) -> int:
             controller.shutdown()
         return 0
     finally:
+        slow_calls.shutdown()
         runtime_capture.shutdown()
         set_dev_session(None)
 
