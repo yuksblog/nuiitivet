@@ -43,6 +43,7 @@ from typing import Callable, List, Optional
 import nuiitivet.material as nv
 from nuiitivet.runtime.gc_pacing import GcPacer
 from nuiitivet.runtime.pointer import PointerCaptureManager
+from nuiitivet.layout.layout_utils import layout_frame
 from nuiitivet.widgeting.frame_clock import begin_frame, end_frame, set_frame_interval
 from nuiitivet.widgeting.idle_work import run_idle_work
 
@@ -176,7 +177,7 @@ def run(
             if pacer is not None:
                 pacer.before_frame()
             controller.scroll_to(offset)
-            scroller.layout(compare.TABLE_WIDTH, compare.TABLE_HEIGHT)
+            layout_frame(scroller, compare.TABLE_WIDTH, compare.TABLE_HEIGHT, root_pass=True)
             end_frame()
             allocated.append(gc.get_count()[0] - before)
             if pacer is not None:

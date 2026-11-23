@@ -4,17 +4,16 @@ A 4000x3000 picture is scaled to the surface on every change of its size or of
 its value. One scaling takes tens of milliseconds, more than a frame, and
 "Work" repeats it to stand in for heavier processing.
 
-* With ``draw`` the scaling runs at the start of the frame. Layout starts past
-  its deadline, leaves the panel of cells and the picture unlaid, and both are
-  painted as nothing: the window goes blank. While the picture is live, every
-  frame is such a frame, and the window stays blank.
-* With ``draw_in_thread`` the frame only starts a thread or swaps an image, and
-  layout has its time.
+* With ``draw`` the scaling runs at the start of the frame, on the UI thread:
+  every frame is that much longer, and the loop comes round fewer times a
+  second. The switches and the slider answer late.
+* With ``draw_in_thread`` the frame only starts a thread or swaps an image.
 
 To see it, turn "Live picture" and "Animate the panel" on, or drag the window's
 edge, and flip "Draw on a thread". The line under the switches says, for each
-way, how long the window had a blank subtree out of the time it was kept busy,
-and how many times a second the loop came round.
+way, how many times a second the loop came round, and how long the window had
+a blank subtree out of the time it was kept busy. A subtree is blank while the
+layout that missed its deadline has not reached it.
 
 The blank time is read from the framework's own layout code, so this is an
 investigation script, not a sample.

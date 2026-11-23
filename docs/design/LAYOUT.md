@@ -136,12 +136,12 @@ flowchart LR
 | `layout/grid.py` | rows, columns and areas; allocates each cell's rect |
 | `layout/stack.py` | children over one another, each the sole claimant of both axes |
 | `layout/container.py` | one child, placed by `alignment` |
-| `layout/deck.py` | one page of several shown; every page laid out at the whole content box |
+| `layout/deck.py` | one page of several shown; every page laid out at the whole content box, the selected one first |
 | `layout/flow.py · uniform_flow.py` | children wrapped into lines |
 | `layout/alignment.py` | the nine-point vocabulary and its point in a rect |
 | `layout/layout_engine.py` | the padding, border and placement arithmetic, cached ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
 | `layout/measure.py` | the measurement cache ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
-| `layout/layout_utils.py` | lays a child out, or leaves it pending past the frame's deadline; paints the children ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
+| `layout/layout_utils.py` | lays a child out, or leaves it pending past the layout's deadline; paints the children ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
 | the children | measured and placed |
 
 ### Promises
@@ -153,8 +153,10 @@ flowchart LR
   without being measured.
 - A pass short of time stops only at a child whose rect its parent decided:
   one sized by its parent on both axes, a `Deck` page, a `Grid` item in fixed
-  tracks. The child keeps the rect and waits for idle time
+  tracks. The child keeps the rect and waits for the next frame's layout
   ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)).
+- A `Deck` lays its hidden pages out too, after the selected one. A hidden
+  page past the deadline is left pending like any other child.
 
 ## The Providers
 

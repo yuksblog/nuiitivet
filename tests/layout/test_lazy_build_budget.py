@@ -13,6 +13,7 @@ import pytest
 
 from nuiitivet.layout import layout_utils
 from nuiitivet.layout.column import Column
+from nuiitivet.layout.layout_utils import layout_frame
 from nuiitivet.layout.scrollable import VerticalScrollable
 from nuiitivet.layout.spacer import Spacer
 from nuiitivet.rendering.sizing import Sizing
@@ -72,7 +73,7 @@ def _frame(scroller, offset: float | None = None) -> None:
         scroller._controller.scroll_to(offset)
     begin_frame(perf_counter())
     try:
-        scroller.layout(200, 100)
+        layout_frame(scroller, 200, 100, root_pass=True)
     finally:
         end_frame()
 

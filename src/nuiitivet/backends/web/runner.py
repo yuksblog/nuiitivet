@@ -17,6 +17,7 @@ from nuiitivet.backends.web.clock import BrowserClock
 from nuiitivet.backends.web.input import button_code, buttons_mask, cursor_css, key_name, wheel_steps
 from nuiitivet.common.logging_once import exception_once, warning_once
 from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT, text_motion_for_key
+from nuiitivet.layout.layout_utils import layout_frame
 from nuiitivet.observable.runtime import set_clock
 from nuiitivet.platform.clipboard import BrowserClipboard, get_system_clipboard
 from nuiitivet.rendering.skia.color import rgba_to_skia_color
@@ -226,16 +227,16 @@ class _Loop:
         canvas.clear(rgba_to_skia_color(win._background_clear_color()))
         root = win.root
         if root is not None:
-            if root.needs_layout or win._last_layout_size != (width, height):
-                root.layout(width, height)
-                win._last_layout_size = (width, height)
-                root.clear_needs_layout()
+            resized = win._last_layout_size != (width, height)
+            layout_frame(root, width, height, root_pass=root.needs_layout or resized)
+            win._last_layout_size = (width, height)
             root.paint(canvas, 0, 0, width, height)
         canvas.restore()
         self._surface.flush()
         self._place_input(win)
         win._dirty = False
         win._paint_dirty = False
+        win._request_frame_for_pending_layout()
 
 
 _loop: Optional[_Loop] = None

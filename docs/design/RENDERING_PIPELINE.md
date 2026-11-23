@@ -22,9 +22,11 @@ flowchart LR
     loop -- "_render_frame(dt), each open window" --> frame
     loop -- "the tick" --> clock
     clock -- "the tick" --> widget
-    frame -- "root.layout(w, h) · root.paint(canvas, 0, 0, w, h)" --> measure
+    frame -- "layout_frame(root, w, h, root_pass) · has_pending_layout(window)" --> painter
+    painter -- "root.layout(w, h)" --> measure
+    frame -- "root.paint(canvas, 0, 0, w, h)" --> measure
     measure -- "layout_child_if_needed · paint_laid_out_children" --> painter
-    painter -- "frame_deadline(share) · request_idle_work(task)" --> loop
+    painter -- "frame_started_at() · frame_interval()" --> loop
 ```
 
 | Module | Role |
@@ -32,7 +34,7 @@ flowchart LR
 | The Loop | decides each iteration whether a frame is drawn |
 | The Frame | one window's frame, from the queues to the flip |
 | The Measure | the caches a layout pass reads |
-| The Child Painter | lays a container's children out and paints them; stops at the frame's deadline and finishes in idle time |
+| The Child Painter | runs a frame's layout until its deadline and finishes it in the frames after; lays a container's children out and paints them |
 | `widgeting/widget.py` | `invalidate`, the one request for a frame ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)) |
 | `observable/runtime.py` | the clock animations tick on ([ANIMATION_SYSTEM.md](ANIMATION_SYSTEM.md)) |
 
@@ -84,8 +86,8 @@ flowchart LR
 | `runtime/window.py` | requests a frame, draws one (The Frame) |
 | `observable/runtime.py` | the clock the loop ticks ([OBSERVABLE.md](OBSERVABLE.md)) |
 | `runtime/gc_pacing.py` | `GcPacer`: holds the collector while the loop runs; picks the generation collected at a wait, before a frame past the backstop, and in a quiet stretch |
-| `widgeting/idle_work.py` | the tasks the loop runs before it waits, each until the deadline (The Child Painter; [LAYOUT.md](LAYOUT.md)) |
-| `widgeting/frame_clock.py` | whether a frame is under way, when it began and how long a frame is, for work inside a frame that stops at a deadline (The Child Painter; [LAYOUT.md](LAYOUT.md)) |
+| `widgeting/idle_work.py` | the tasks the loop runs before it waits, each until the deadline ([LAYOUT.md](LAYOUT.md)) |
+| `widgeting/frame_clock.py` | whether a frame is under way, when it began and how long a frame is (The Child Painter) |
 | `pyglet` | the platform event loop; the screen's refresh rate |
 | the collector | CPython's cyclic garbage collector |
 
@@ -178,13 +180,16 @@ flowchart LR
     runner[backends/pyglet/runner.py]
     gpu[backends/pyglet/gpu_frame.py]
     kernel[widgeting/widget_kernel.py]
+    utils[layout/layout_utils.py]
     pyglet[pyglet]
 
     window -- "switch_to() · dispatch_event(on_draw) · flip()" --> pyglet
     pyglet -- "on_draw" --> runner
     runner -- "draw_gpu_frame(win, gr_context, GL, skia)" --> gpu
     runner -- "_render_display_frame(scale), the raster path" --> window
-    gpu & window -- "root.layout(w, h) · clear_needs_layout() · root.paint(canvas, 0, 0, w, h)" --> kernel
+    gpu & window -- "layout_frame(root, w, h, root_pass)" --> utils
+    gpu & window -- "root.paint(canvas, 0, 0, w, h)" --> kernel
+    window -- "has_pending_layout(window)" --> utils
 ```
 
 | Module | Role |
@@ -192,7 +197,8 @@ flowchart LR
 | `runtime/window.py` | draws a window's frame; renders the raster path's image |
 | `backends/pyglet/runner.py` | `on_draw`: the GPU path, falling back to the raster path |
 | `backends/pyglet/gpu_frame.py` | paints the tree into the GL framebuffer, or re-blits the cached frame ([PAINT_CACHE.md](PAINT_CACHE.md)) |
-| `widgeting/widget_kernel.py` | the root's `layout` and `paint` |
+| `widgeting/widget_kernel.py` | the root's `paint` |
+| `layout/layout_utils.py` | the frame's layout; whether a subtree is pending (The Child Painter) |
 | `pyglet` | the window and its back buffer |
 
 ### Sequence
@@ -205,6 +211,7 @@ sequenceDiagram
     participant P as pyglet
     participant R as backends/pyglet/runner.py
     participant G as backends/pyglet/gpu_frame.py
+    participant U as layout/layout_utils.py
     participant K as widget_kernel.py
 
     W->>W: _render_frame(dt)
@@ -215,10 +222,12 @@ sequenceDiagram
     alt the tree is clean and the cache fits
         G->>G: re-blit the cached frame
     else
-        G->>K: root.layout(w, h), when needs_layout or the size changed
+        G->>U: layout_frame(root, w, h, root_pass), root_pass when needs_layout or the size changed
         G->>K: root.paint(canvas, 0, 0, w, h)
     end
     W->>P: flip()
+    W->>U: has_pending_layout(window)
+    W->>W: invalidate(), while a subtree of the window is pending
 ```
 
 ### Promises
@@ -226,6 +235,9 @@ sequenceDiagram
 - Layout runs to its end before the first draw command. A pass short of time
   stops at the deadline. Work it stopped leaves a blank of the rect its parent
   decided, never an unfinished tree (The Child Painter).
+- While a subtree of a window is pending, each frame the window draws asks
+  for the one after it. That frame lays out and paints the tree. It is never
+  the cached frame.
 - The GPU path and the raster path lay out and paint the same tree with the
   same calls.
 
@@ -268,9 +280,9 @@ flowchart LR
 
 ## The Child Painter
 
-`layout_utils` lays a container's children out and paints them at their
-rects. Inside a frame a pass stops descending at the deadline; idle time
-finishes it.
+`layout_utils` runs a frame's layout, lays a container's children out and
+paints them at their rects. Inside a frame the layout stops descending at its
+deadline. The frames after finish it.
 
 ### Structure
 
@@ -281,44 +293,45 @@ flowchart LR
     containers[the containers]
     skia[rendering/skia/geometry.py]
     frame[widgeting/frame_clock.py]
-    idle[widgeting/idle_work.py]
+    painters[runtime/window.py · backends/pyglet/gpu_frame.py]
 
+    painters -- "layout_frame(root, w, h, root_pass) · has_pending_layout(window)" --> utils
     containers -- "layout_child_if_needed(child, w, h, sized_by_parent) · paint_laid_out_children(container, canvas, x, y, w, h)" --> utils
     utils -- "needs_layout · layout_rect · layout(w, h) · paint(canvas, x, y, w, h)" --> kernel
     utils -- "paint_outsets() · set_last_rect(x, y, w, h) · _paint_inside_clip · _layout_pending" --> kernel
-    utils -- "layout(w, h) · invalidate(), in idle time" --> kernel
+    utils -- "clear_needs_layout(), the root's · _mark_replay_dirty(), a pending child laid out · mark_needs_layout(), a pending child that left the tree" --> kernel
     utils -- "local_clip_bounds(canvas)" --> skia
-    utils -- "frame_deadline(share)" --> frame
-    utils -- "request_idle_work(task)" --> idle
-    idle -- "task(deadline)" --> utils
+    utils -- "frame_started_at() · frame_interval()" --> frame
 ```
 
 | Module | Role |
 | --- | --- |
-| `layout/layout_utils.py` | lays a child out unless it is clean at the same size, or the deadline has passed and the child's rect is its parent's; lays the pending children out in idle time; paints the children, skipping the pending ones and those beyond the clip and its slack band; tells a child inside the clip so |
+| `layout/layout_utils.py` | runs a frame's layout: the root's pass, then the pending children, until the deadline; lays a child out unless it is clean at the same size, or the deadline has passed and the child's rect is its parent's; paints the children, skipping the pending ones and those beyond the clip and its slack band; tells a child inside the clip so |
 | `widgeting/widget_kernel.py` | `layout`, `paint`, `last_rect`; the pending flag; the paint hints a parent sets for the paint that follows |
 | the containers | the multi-child containers, `Container` and `Deck` ([LAYOUT.md](LAYOUT.md)) |
 | `rendering/skia/geometry.py` | reads the canvas clip |
-| `widgeting/frame_clock.py` | the deadline of the frame under way (The Loop) |
-| `widgeting/idle_work.py` | runs the pending layout before the loop waits (The Loop) |
+| `widgeting/frame_clock.py` | whether a frame is under way and how long a frame is (The Loop) |
+| `runtime/window.py · backends/pyglet/gpu_frame.py` | start a frame's layout; ask whether a subtree is pending (The Frame) |
 
 ### Sequence
 
-#### A pass past the deadline leaves a child pending
+#### A layout past its deadline leaves a child pending
 
 ```mermaid
 sequenceDiagram
+    participant W as runtime/window.py · backends/pyglet/gpu_frame.py
     participant C as the containers
     participant U as layout/layout_utils.py
     participant F as widgeting/frame_clock.py
     participant K as widget_kernel.py
-    participant I as widgeting/idle_work.py
 
+    W->>U: layout_frame(root, w, h, root_pass), after the frame's queues are flushed
+    U->>F: frame_started_at(), whether a frame is under way · frame_interval()
+    U->>U: the deadline: now plus a share of a frame, when a frame is under way
+    U->>K: root.layout(w, h), when root_pass
     C->>U: layout_child_if_needed(child, w, h, sized_by_parent)
-    U->>F: frame_deadline(share)
     alt the deadline has passed and the rect is the parent's
         U->>K: _layout_pending: nothing below the child runs
-        U->>I: request_idle_work(the pending layout)
     else
         U->>K: layout(w, h)
     end
@@ -327,37 +340,40 @@ sequenceDiagram
     U->>K: set_last_rect(x, y, w, h), and no paint for a pending child
 ```
 
-#### Idle time lays the pending children out
+#### The next frame lays the pending children out
 
 ```mermaid
 sequenceDiagram
-    participant E as backends/pyglet/event_loop.py
-    participant I as widgeting/idle_work.py
+    participant W as runtime/window.py · backends/pyglet/gpu_frame.py
     participant U as layout/layout_utils.py
     participant K as widget_kernel.py
 
-    E->>I: run_idle_work(budget), before a wait
-    I->>U: the pending layout(deadline)
-    loop the pending children, top-down, until the deadline
+    W->>U: has_pending_layout(window), after the flip
+    W->>W: invalidate(), a subtree of the window being pending
+    W->>U: layout_frame(root, w, h, root_pass), in the frame that follows
+    U->>K: root.layout(w, h), when root_pass: a pending child it reaches before the deadline is laid out
+    loop the children still pending, top-down, until the deadline
         U->>K: layout(w, h), at the rect the parent decided, the deadline cutting inside it too
-        U->>K: invalidate(): the next frame paints it
+        U->>K: _mark_replay_dirty()
     end
-    U-->>I: whether a pending child remains
-    I-->>E: whether work remains
 ```
 
 ### Promises
 
 - A clean child laid out again at the same size is skipped.
+- The deadline of a frame's layout is a share of a frame after the layout
+  starts, whatever the frame ran before it.
 - Past the deadline a child whose rect its parent decided is left pending: it
   keeps the rect, nothing below it runs. A child sized by its content is laid
   out whatever the time.
 - A pending child is painted as nothing. It still receives its `last_rect`.
   Nothing below it is hit.
-- Idle time lays the pending children out top-down, each at its rect, a
-  subtree whole before the siblings after it. A child laid out asks for a
-  frame and moves nothing.
-- Outside a frame, where no loop runs, a pass leaves nothing pending.
+- The layout of the next frame lays the pending children out. The root's pass
+  comes first. The pending children share its deadline.
+- The pending children are laid out top-down, each at its rect, a subtree
+  whole before the siblings after it. A child laid out moves nothing.
+- Where no frame is under way a pass leaves nothing pending. A frame's layout
+  run there lays out every pending child.
 - A child whose rect plus outsets lies outside the clip and its slack band is
   not painted. It still receives its `last_rect`.
 - Without a readable clip every child is painted.

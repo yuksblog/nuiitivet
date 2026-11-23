@@ -70,6 +70,7 @@ from .window_sizing import (
 )
 from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
+from nuiitivet.layout.layout_utils import has_pending_layout, layout_frame
 
 if TYPE_CHECKING:
     from nuiitivet.menubar.model import MenuBar
@@ -1386,13 +1387,8 @@ class Window:
             last_size = getattr(self, "_last_layout_size", None)
             current_size = (w, h)
 
-            if needs_layout or last_size != current_size:
-                self.root.layout(w, h)
-                self._last_layout_size = current_size
-                try:
-                    self.root.clear_needs_layout()
-                except Exception as e:
-                    warnings.warn(f"root.clear_needs_layout() failed: {e}", RuntimeWarning, stacklevel=2)
+            layout_frame(self.root, w, h, root_pass=needs_layout or last_size != current_size)
+            self._last_layout_size = current_size
             if settle:
                 self._settle_pending_size_changes(w, h)
         except Exception as e:
@@ -2377,10 +2373,21 @@ class Window:
             window.switch_to()
             window.dispatch_event("on_draw")
             window.flip()
+            # Not after a draw that raised: one that raises every frame would ask for frames without end.
+            self._request_frame_for_pending_layout()
         except RendererError:
             raise
         except Exception:
             exception_once(logger, "app_window_draw_flip_exc", "Window draw/flip raised")
+
+    def _request_frame_for_pending_layout(self) -> None:
+        """Ask for the next frame while a subtree of this window waits to be laid out; a frame's last step.
+
+        The frame just drawn cleared the dirty flags, so a request made
+        earlier in it would re-blit the frame with the blank in it.
+        """
+        if has_pending_layout(self):
+            self.invalidate()
 
     def _flush_frame_queues(self) -> None:
         """Run what is queued for the start of a frame: size callbacks, then builds."""
