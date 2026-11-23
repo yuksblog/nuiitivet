@@ -3,8 +3,9 @@ from __future__ import annotations
 import logging
 import threading
 import time
-from typing import Callable, List, Optional, Protocol
+from typing import Any, Callable, List, Optional, Protocol
 
+from nuiitivet.common.call_probe import call_probe
 from nuiitivet.common.logging_once import exception_once
 
 
@@ -209,6 +210,63 @@ class _ThreadClock:
                 exception_once(_logger, "thread_clock_migrate_exc", "Handing a scheduled callback over failed")
 
 
+class _ProbedCallback:
+    """A scheduled callback that runs through the call probe.
+
+    Equal to the callback it wraps and to another that wraps an equal one, so
+    ``unschedule`` finds what ``schedule_once`` armed, on this clock and on
+    the wrapped one.
+    """
+
+    __slots__ = ("fn",)
+
+    def __init__(self, fn: ClockCallback) -> None:
+        self.fn = fn
+
+    def __call__(self, dt: float) -> None:
+        probe = call_probe()
+        if probe is None:
+            self.fn(dt)
+        else:
+            probe.call("clock callback", self.fn, dt)
+
+    def __eq__(self, other: object) -> bool:
+        wrapped = other.fn if isinstance(other, _ProbedCallback) else other
+        return callable(wrapped) and _same_callback(self.fn, wrapped)
+
+    def __hash__(self) -> int:
+        return hash(self.fn)
+
+
+class _ProbedClock:
+    """A clock whose callbacks run through the call probe; everything else is the wrapped clock's."""
+
+    def __init__(self, inner: Clock) -> None:
+        self._inner = inner
+
+    @property
+    def inner(self) -> Clock:
+        """The wrapped clock."""
+        return self._inner
+
+    def schedule_once(self, fn: ClockCallback, delay: float) -> None:
+        self._inner.schedule_once(_probed(fn), delay)
+
+    def schedule_interval(self, fn: ClockCallback, interval: float) -> None:
+        self._inner.schedule_interval(_probed(fn), interval)
+
+    def unschedule(self, fn: ClockCallback) -> None:
+        self._inner.unschedule(_probed(fn))
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._inner, name)
+
+
+def _probed(fn: ClockCallback) -> _ProbedCallback:
+    """``fn`` wrapped once: a callback handed over from another probed clock is already wrapped."""
+    return fn if isinstance(fn, _ProbedCallback) else _ProbedCallback(fn)
+
+
 clock: Clock = _ThreadClock()
 
 
@@ -232,11 +290,31 @@ def set_clock(new_clock: Clock) -> None:
     thread instead of the UI thread. Handing over from any other clock
     is not possible -- the :class:`Clock` protocol cannot enumerate a schedule --
     and not needed, since those callbacks already run on the UI thread.
+
+    With a call probe installed, :func:`get_clock` returns a wrapper around
+    ``new_clock`` that runs each callback through the probe.
     """
     global clock
+    if call_probe() is not None and not isinstance(new_clock, _ProbedClock):
+        new_clock = _ProbedClock(new_clock)
     previous = clock
     clock = new_clock
     if new_clock is previous:
         return
-    if isinstance(previous, _ThreadClock):
-        previous.migrate_to(new_clock)
+    fallback = previous.inner if isinstance(previous, _ProbedClock) else previous
+    if isinstance(fallback, _ThreadClock):
+        fallback.migrate_to(new_clock)
+
+
+def probe_clock() -> None:
+    """Wrap the installed clock so that each of its callbacks runs through the call probe."""
+    global clock
+    if not isinstance(clock, _ProbedClock):
+        clock = _ProbedClock(clock)
+
+
+def unprobe_clock() -> None:
+    """Put the clock :func:`probe_clock` wrapped back in place."""
+    global clock
+    if isinstance(clock, _ProbedClock):
+        clock = clock.inner

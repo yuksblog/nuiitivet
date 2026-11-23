@@ -25,6 +25,14 @@ and keys in the app, the reloads and the app's errors are logs it reads too.
 - **A handler that raises leaves the screen unchanged.** The agent finds the
   traceback in the app's error log, and so can you:
   `python -m nuiitivet.dev runtime-log`.
+- **A function of yours that holds a frame up gets a warning in the terminal.**
+  The warning names the function, its file and line, and the time it took.
+  It goes to an event handler, an `on_size_changed` callback, a `build`, a
+  `RasterSurface` draw function or a clock callback that runs longer than
+  half a frame, 8 ms at 60 Hz. The agent reads it in the same log as the
+  tracebacks. A function gets one warning, and another after the next save
+  if it is still slow. For a handler, [Concurrency: choosing a tool](../concurrency.md) lists the
+  ways off the UI thread. For a draw function it is [`draw_in_thread`](../design-system/common_widgets.md#draw-on-a-thread).
 - **Its screenshot is not a capture of your window.** Your screen can be
   visibly garbled while its image comes back clean. For a problem *you* are
   seeing, send it your own screenshot.

@@ -9,6 +9,7 @@ import threading
 from functools import partial
 from typing import Any, Awaitable, Callable, Optional, Tuple, TypeVar
 
+from nuiitivet.common.call_probe import call_probe, probed_steps
 from nuiitivet.common.logging_once import exception_once, warning_once
 from nuiitivet.observable import runtime
 from nuiitivet.observable.protocols import StateBase
@@ -229,9 +230,10 @@ class RasterSurface(Widget):
         if self._in_thread:
             self._start_thread(job, size)
             return
-        pixels = _call(job)
+        probe = call_probe()
+        pixels = _call(job if probe is None else partial(probe.call, "draw function", job))
         if inspect.isawaitable(pixels):
-            self._start_task(pixels, size)
+            self._start_task(job, pixels, size)
             return
         self._show(_raster(pixels, size), size)
 
@@ -266,10 +268,11 @@ class RasterSurface(Widget):
                 "RasterSurface.draw_in_thread could not start a thread; pass a worker function to draw",
             )
 
-    def _start_task(self, pixels: Awaitable[Any], size: tuple[int, int]) -> None:
+    def _start_task(self, job: Callable[[], Any], pixels: Awaitable[Any], size: tuple[int, int]) -> None:
         self._running = True
+        awaited = probed_steps("draw function", job, pixels)
         try:
-            self._task = spawn_task(self._await(pixels, size), owner_name=type(self).__name__)
+            self._task = spawn_task(self._await(awaited, size), owner_name=type(self).__name__)
         except BaseException:
             # spawn_task closed the wrapper; the coroutine inside it never started.
             self._running = False

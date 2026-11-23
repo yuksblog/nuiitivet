@@ -79,7 +79,7 @@ top to bottom. What each tool returns is in its own description.
 | The human says `see_comments`, "this is wrong", or "look at this part" without naming a widget? | `see_comments` — before guessing from a screenshot |
 | `status` reports a `comments` whose `sent` you haven't seen? | `see_comments` |
 | A **human reported** a visual problem AND tree + state don't explain it? | first re-check `describe_tree`, then `describe_state`; **only if the cause still isn't clear**, `screenshot` — scoped to the widget they named; the whole frame only when the problem has no widget to name |
-| A **human reported** jank or slowness ("this screen stutters", "typing feels heavy")? | `profile_start` → reproduce the interaction (drive it, or ask the human to) → `profile_stop`. Stop it when done: recording slows the frames |
+| A **human reported** jank or slowness ("this screen stutters", "typing feels heavy")? | first `runtime_log`: a `Slow …` WARNING names the app function that held the frame. Move that function's work off the UI thread: a draw function goes to `nv.RasterSurface.draw_in_thread`, a handler becomes an `async` handler that awaits `asyncio.to_thread(...)`. No `Slow …` entry → `profile_start` → reproduce the interaction (drive it, or ask the human to) → `profile_stop`. Stop it when done: recording slows the frames |
 
 ### Read the output
 
@@ -173,6 +173,9 @@ Don't trust a green return or a single number; confirm against the live app.
   note the newest `runtime_log` seq before you edit; after the reload, check whether
   any ERROR with a *higher* seq appeared. (`runtime_log` and `reload_log` seqs are
   separate counters — don't compare across them.)
+- **A slow function is fixed — repeat the interaction after the reload.** A
+  `Slow …` WARNING is logged once per function per reload. No `Slow …` entry
+  with a seq above the one you noted means the function is under the limit.
 - **The effect happened, not just the return.** A `{"clicked": …}` return is not
   proof the handler fired (a `{"scrolled": …}` with `handled: false` is not even
   proof anything moved). Re-observe `describe_tree` / `describe_state` (after

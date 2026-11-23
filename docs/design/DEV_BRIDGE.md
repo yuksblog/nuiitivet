@@ -6,7 +6,7 @@ same session is [DEV_MODES.md](DEV_MODES.md).
 
 ## Overview
 
-Four groups of modules take part, with the dev runner, the hot reload
+Five groups of modules take part, with the dev runner, the hot reload
 controller and the backend's input handlers at their edges.
 
 ### Structure
@@ -17,6 +17,7 @@ flowchart LR
     bridge[The Bridge]
     perception[The Perception and the Actions]
     journals[The Journals]
+    reporter[The Slow-Call Reporter]
     runner[dev/__main__.py]
     controller[dev/controller.py]
     backend[backends/pyglet/runner.py]
@@ -30,6 +31,10 @@ flowchart LR
     runner -- "the journals · InteractionRecorder · RuntimeLogCapture" --> journals
     controller -- "record_success · record_error" --> journals
     backend -- "on_mouse_press · on_mouse_scroll · on_key_press · on_text" --> journals
+    runner -- "SlowCallReporter() · install()" --> reporter
+    controller -- "paused() · reset()" --> reporter
+    perception -- "run_frame_start(run)" --> reporter
+    reporter -- "a WARNING for slow app code" --> journals
 ```
 
 | Module | Role |
@@ -38,6 +43,7 @@ flowchart LR
 | The Bridge | the HTTP server the clients talk to |
 | The Perception and the Actions | what a tool reads, and the input it synthesises |
 | The Journals | what happened while the agent was not looking |
+| The Slow-Call Reporter | names the app code that held the UI thread |
 | `dev/__main__.py` | the dev runner ([HOT_RELOAD.md](HOT_RELOAD.md)) |
 | `dev/controller.py` | the reloader ([HOT_RELOAD.md](HOT_RELOAD.md)) |
 | `backends/pyglet/runner.py` | the real input path ([APP_WINDOW.md](APP_WINDOW.md)) |
@@ -204,6 +210,7 @@ flowchart LR
     window[runtime/window.py]
     logging[logging · threading · sys]
     once[common/logging_once.py]
+    slow[dev/slow_calls.py]
     bridge[dev/bridge.py]
 
     controller -- "record_success(modules, patched, changed, stale) · record_error(traceback, changed, stale)" --> reload
@@ -211,6 +218,7 @@ flowchart LR
     window -- "_interaction_recorder" --> interaction
     capture -- "setLogRecordFactory · threading.excepthook · sys.excepthook, each chained to the previous" --> logging
     once -- "one record per distinct failure" --> logging
+    slow -- "a WARNING for a slow call or a slow frame start" --> logging
     capture -- "record(level, message, traceback)" --> runtime
     bridge -- "recent(limit) · set_verbose(enabled)" --> reload & interaction & runtime & capture
 ```
@@ -226,6 +234,7 @@ flowchart LR
 | `runtime/window.py` | the slot the dev runner puts a recorder in, `None` in production |
 | `logging · threading · sys` | the standard library's record factory and exception hooks |
 | `common/logging_once.py` | logs each distinct failure once at its emit site ([ERROR_HANDLING.md](ERROR_HANDLING.md)) |
+| `dev/slow_calls.py` | logs app code that held the UI thread (The Slow-Call Reporter) |
 | `dev/bridge.py` | serves the journals (The Bridge) |
 
 ### Promises
@@ -245,6 +254,64 @@ flowchart LR
   root logger.
 - The journal de-duplicates nothing. The verbose switch makes the emit sites
   record every occurrence.
+
+## The Slow-Call Reporter
+
+A dev session times the app code the framework calls on the UI thread. A
+call that takes more than half a frame is logged as a WARNING.
+
+### Structure
+
+```mermaid
+flowchart LR
+    runner[dev/__main__.py]
+    slow[dev/slow_calls.py]
+    probe[common/call_probe.py]
+    clock[observable/runtime.py]
+    callers[widgeting/callbacks.py · widgeting/widget_builder.py · widgets/raster_surface.py]
+    window[runtime/window.py]
+    action[_interaction/action.py]
+    controller[dev/controller.py]
+    once[common/logging_once.py]
+    logging[logging]
+
+    runner -- "SlowCallReporter() · install() · shutdown()" --> slow
+    slow -- "set_call_probe(reporter)" --> probe
+    slow -- "probe_clock() · unprobe_clock()" --> clock
+    callers & clock -- "call_probe()" --> probe
+    callers -- "probed_steps(kind, fn, awaitable)" --> probe
+    window & action -- "run_frame_start(run)" --> probe
+    callers & clock -- "call(kind, fn, *args)" --> slow
+    probe -- "begin_frame_start() · end_frame_start() · call(kind, step, resume, value)" --> slow
+    controller -- "paused() · reset()" --> slow
+    slow -- "is_log_once_enabled()" --> once
+    slow -- "a WARNING for a slow call or a slow frame start" --> logging
+```
+
+| Module | Role |
+| --- | --- |
+| `dev/__main__.py` | creates and installs the reporter; shuts it down after the loop |
+| `dev/slow_calls.py` | `SlowCallReporter`: times each call, holds it against half a frame, logs the WARNING |
+| `common/call_probe.py` | the slot the reporter sits in, `None` in production; tells the reporter of a frame start and of each step of an awaited function |
+| `observable/runtime.py` | the clock, wrapped while the reporter is installed; calls each scheduled callback |
+| `widgeting/callbacks.py · widgeting/widget_builder.py · widgets/raster_surface.py` | where the framework calls an event handler or a size-change callback, a `build`, a draw function |
+| `runtime/window.py` | runs the queued size callbacks and builds at the start of each frame |
+| `_interaction/action.py` | `settle`, whose passes each stand in for the start of a frame (The Perception and the Actions) |
+| `dev/controller.py` | pauses the reporter around a reload; resets it once the save is loaded ([HOT_RELOAD.md](HOT_RELOAD.md)) |
+| `common/logging_once.py` | holds the once-per-failure flag the verbose switch clears ([ERROR_HANDLING.md](ERROR_HANDLING.md)) |
+| `logging` | the standard library's logging, tapped by the runtime capture (The Journals) |
+
+### Promises
+
+- A call site with an empty slot calls the app's function directly.
+- The reporter returns the function's result and lets its exception through.
+- The clock runs each callback through the reporter while it is installed.
+- App code that runs off the UI thread is not timed.
+- The steps of an awaited handler or draw function are timed. The wait
+  between them is not.
+- Nothing is timed before the first frame start. Nothing is timed during a
+  reload.
+- The reporter reports a function once, until a reload loads a save.
 
 ## The Clients
 

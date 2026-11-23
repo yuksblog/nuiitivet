@@ -136,6 +136,7 @@ def invoke_size_callback(callback: SizeCallback, size: Size, *, owner_name: str)
         error_key="widget_size_change_callback",
         error_msg="Exception in size change callback",
         owner_name=owner_name,
+        kind="size-change callback",
     )
 
 

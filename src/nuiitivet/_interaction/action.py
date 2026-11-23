@@ -36,6 +36,7 @@ import logging
 from typing import Any, Callable, Optional, Protocol, Sequence
 
 from .perception import ancestors, find_obstruction, find_target, global_visual_rect
+from nuiitivet.common.call_probe import run_frame_start
 from nuiitivet.input.codes import (
     MOD_ACCEL,
     MOD_ALT,
@@ -460,7 +461,15 @@ def settle(
         except Exception:
             logger.debug("settle: layout pass failed", exc_info=True)
 
-    _flush_reactive()
+    def _flush_measured() -> None:
+        try:
+            flush_size_change_callbacks()
+        except Exception:
+            logger.debug("settle: flush_size_change_callbacks failed", exc_info=True)
+        _flush_reactive()
+
+    # Each pass stands in for the start of a frame, and a dev session's probe is told so.
+    run_frame_start(_flush_reactive)
 
     root = getattr(app, "root", None)
     if root is None:
@@ -470,11 +479,7 @@ def settle(
     # A size callback fires only after layout has measured its widget, so the
     # state it drives is one pass behind. Run that pass here too, otherwise the
     # following describe_tree observes the pre-callback tree.
-    try:
-        flush_size_change_callbacks()
-    except Exception:
-        logger.debug("settle: flush_size_change_callbacks failed", exc_info=True)
-    _flush_reactive()
+    run_frame_start(_flush_measured)
     root = getattr(app, "root", None)
     if root is not None:
         _layout(root)

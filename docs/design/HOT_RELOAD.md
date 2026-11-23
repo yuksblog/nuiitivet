@@ -132,8 +132,10 @@ flowchart LR
     ovsnap[dev/overlay_snapshot.py]
     comments[dev/comments.py]
     edits[dev/source_edit.py]
+    slow[dev/slow_calls.py]
 
     watcher -- "_watched_paths() on each poll · _pending.set()" --> ctrl
+    ctrl -- "paused() · reset()" --> slow
     ctrl -- "track() · reload(old_factory) · last" --> reloader
     ctrl -- "count_instances(the old classes)" --> patcher
     ctrl -- "retire_pool()" --> pool
@@ -159,6 +161,7 @@ flowchart LR
 | `dev/snapshot.py`, `dev/navigation_snapshot.py`, `dev/overlay_snapshot.py` | the three snapshots and their restores (The Snapshots) |
 | `dev/comments.py` | the comment marks matched back onto the new tree |
 | `dev/source_edit.py` | the pending layout edit checked after the reload |
+| `dev/slow_calls.py` | the slow-call reporter, paused for the reload, which then forgets what it reported ([DEV_BRIDGE.md](DEV_BRIDGE.md)) |
 
 ### Sequence
 
@@ -177,11 +180,14 @@ sequenceDiagram
     participant L as EditLog
     participant E as error overlay
     participant J as journal
+    participant S as slow-call reporter
 
     F->>C: _pending.set()
+    C->>S: paused(), until the reload ends
     C->>Snap: snapshot States, snapshot navigation
     C->>R: reload(old_factory)
     R-->>C: the modules patched, the modules re-executed with their old classes, the re-fetched factory
+    C->>S: reset()
     C->>P: retire_pool()
     C->>W: _rebuild_content_root(new_factory)
     alt the reload or the rebuild raised

@@ -78,7 +78,8 @@ _SERVER_INSTRUCTIONS = (
     "the app -- `interaction_log`; why did an action do nothing -- `runtime_log` "
     "(`set_runtime_log_verbose` records every occurrence of a repeated error); a "
     "human reported a visual discrepancy that tree and state cannot explain -- "
-    "`screenshot`; a human reported jank -- `profile_start`, then `profile_stop`. "
+    "`screenshot`; a human reported jank -- `runtime_log` for a slow app function, "
+    "then `profile_start` and `profile_stop`. "
     "Act with `click`, `type`, `key` and `scroll`; `scroll_into_view` when a "
     "target is not visible; `wait_for` before reading the tree after an action "
     "that starts async work."
@@ -296,6 +297,14 @@ def build_server() -> "FastMCP":
         with the last one you saw. Repeated identical failures collapse to one entry;
         `set_runtime_log_verbose(True)` records every occurrence. ``limit`` caps the
         result to the newest N events.
+
+        A ``Slow <kind> on the UI thread`` WARNING names app code that ran longer
+        than half a frame: an event handler, a size-change callback, a clock
+        callback, a draw function or a build, with its file and line. ``Slow frame
+        start`` names the calls of one frame start that were slow only in total. A
+        function is named once per reload. The builds that mount the app or follow
+        a reload are not timed. A clock callback inside ``nuiitivet`` is the
+        framework delivering to app code, such as a State subscriber.
         """
         return {"events": _client().runtime_log(limit=limit)}
 
