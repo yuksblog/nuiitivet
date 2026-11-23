@@ -186,7 +186,7 @@ class Deck(Widget):
         return (width, height)
 
     def layout(self, width: int, height: int) -> None:
-        """Layout all children (to preserve state), position selected child."""
+        """Lay every page out, the selected one first, and position the selected one."""
         super().layout(width, height)
         children = expand_layout_children(self.children_snapshot())
         if not children:
@@ -196,15 +196,16 @@ class Deck(Widget):
         available_w = max(0, width - pad_left - pad_right)
         available_h = max(0, height - pad_top - pad_bottom)
 
-        # Layout ALL children so they maintain state. A page's rect is the whole
-        # content box, whatever its sizing.
-        for child in children:
+        # Every page is laid out, so a switch shows a page that is ready. A
+        # page's rect is the whole content box, whatever its sizing. The
+        # selected page goes first: the hidden ones take the time left.
+        selected_child = children[self._current_index] if 0 <= self._current_index < len(children) else None
+        ordered = [child for child in children if child is selected_child]
+        ordered += [child for child in children if child is not selected_child]
+        for child in ordered:
             layout_child_if_needed(child, available_w, available_h, sized_by_parent=True)
-
-        # Position selected child (others will not be painted)
-        if 0 <= self._current_index < len(children):
-            selected_child = children[self._current_index]
-            selected_child.set_layout_rect(pad_left, pad_top, available_w, available_h)
+            # A page left pending needs its rect to be laid out by a later frame.
+            child.set_layout_rect(pad_left, pad_top, available_w, available_h)
 
     @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:

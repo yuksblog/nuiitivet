@@ -1,9 +1,10 @@
-"""Inside a frame a layout pass stops at the deadline, at a child whose rect its parent decided.
+"""Inside a frame the layout stops at its limit, at a child whose rect its parent decided.
 
-Such a child is left pending: it keeps its rect, nothing below it runs, paint
-draws nothing for it, and idle time lays it out and asks for a frame. A child
-sized by its content is measured and laid out whatever the time. Outside a
-frame, where no loop runs, a pass leaves nothing pending.
+The limit is a share of a frame, counted from the start of the layout. A child
+past it is left pending: it keeps its rect, nothing below it runs, paint draws
+nothing for it, and the layout of the next frame lays it out. A child sized by
+its content is measured and laid out whatever the time. Outside a frame, where
+no loop runs, the layout runs to its end.
 """
 
 from __future__ import annotations
@@ -18,14 +19,14 @@ from nuiitivet.layout.column import Column
 from nuiitivet.layout.container import Container
 from nuiitivet.layout.deck import Deck
 from nuiitivet.layout.grid import Grid, GridItem
-from nuiitivet.layout.layout_utils import has_pending_layout
+from nuiitivet.layout.layout_utils import has_pending_layout, layout_frame
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.stack import Stack
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.runtime.pointer import PointerCaptureManager
 from nuiitivet.widgeting import frame_clock, idle_work
 from nuiitivet.widgeting.frame_clock import begin_frame, end_frame
-from nuiitivet.widgeting.idle_work import has_idle_work, run_idle_work
+from nuiitivet.widgeting.idle_work import has_idle_work
 from nuiitivet.widgets.box import Box
 
 
@@ -74,14 +75,20 @@ def no_leftover_state():
 
 @pytest.fixture
 def no_time_left(monkeypatch):
-    """The deadline is spent as the frame begins: a pass inside a frame descends into no parent-sized child."""
+    """The limit is spent as the layout begins: inside a frame it descends into no parent-sized child."""
     monkeypatch.setattr(layout_utils, "LAYOUT_SHARE", 0.0)
 
 
-def _frame(root, width: int, height: int) -> None:
+def _give_time(monkeypatch) -> None:
+    """The frames from here on have more time than any layout in this file takes."""
+    monkeypatch.setattr(layout_utils, "LAYOUT_SHARE", 1000.0)
+
+
+def _frame(root, width: int, height: int, *, root_pass: bool = True) -> None:
+    """One frame's layout. No idle time runs before or after it."""
     begin_frame(perf_counter())
     try:
-        root.layout(width, height)
+        layout_frame(root, width, height, root_pass=root_pass)
     finally:
         end_frame()
 
@@ -153,7 +160,7 @@ def test_a_grid_does_not_measure_a_child_in_fixed_tracks() -> None:
 
 
 # ---- The cut ------------------------------------------------------------------
-def test_past_the_deadline_a_child_sized_by_the_parent_is_left_pending(no_time_left) -> None:
+def test_past_the_limit_a_child_sized_by_the_parent_is_left_pending(no_time_left) -> None:
     app = _App()
     fixed = _fixed()
     auto = _Probe(width=Sizing.auto(), height=Sizing.auto())
@@ -165,7 +172,8 @@ def test_past_the_deadline_a_child_sized_by_the_parent_is_left_pending(no_time_l
     assert fixed.layout_rect == (0, 0, 50, 20), "it keeps the rect its parent decided"
     assert fixed._layout_pending
     assert auto.laid_out == [(0, 0)], "a child sized by its content is laid out whatever the time"
-    assert has_pending_layout() and has_idle_work()
+    assert has_pending_layout()
+    assert not has_idle_work(), "a pending subtree is not idle work"
 
 
 def test_a_pending_child_is_painted_as_nothing(no_time_left) -> None:
@@ -188,26 +196,43 @@ def test_a_pending_child_is_painted_as_nothing(no_time_left) -> None:
         assert child.painted == 0, type(parent).__name__
 
 
-def test_idle_time_lays_a_pending_child_out_and_asks_for_a_frame(no_time_left) -> None:
-    app = _App()
+def test_the_limit_counts_from_the_start_of_the_layout() -> None:
+    boxes = [_fixed() for _ in range(5)]
+    column = Column(boxes)
+    column.mount(_App())
+
+    # The frame began a second ago: what ran before the layout took that long.
+    begin_frame(perf_counter() - 1.0)
+    try:
+        layout_frame(column, 200, 100, root_pass=True)
+    finally:
+        end_frame()
+
+    assert all(box.laid_out == [(50, 20)] for box in boxes)
+    assert not has_pending_layout()
+
+
+# ---- The frames after ---------------------------------------------------------
+def test_the_next_frame_lays_a_pending_child_out_with_no_idle_time_between(no_time_left, monkeypatch) -> None:
     fixed = _fixed()
     column = Column([fixed])
-    column.mount(app)
+    column.mount(_App())
     _frame(column, 200, 100)
-    drawn_before = app.invalidations
+    assert fixed._layout_pending and not column.needs_layout
 
-    assert run_idle_work(1.0) is False
+    _give_time(monkeypatch)
+    _frame(column, 200, 100, root_pass=False)
+
     assert fixed.laid_out == [(50, 20)], "at the rect its parent decided"
     assert fixed.layout_rect == (0, 0, 50, 20), "nothing moved"
     assert not fixed._layout_pending and not has_pending_layout()
-    assert app.invalidations == drawn_before + 1, "the frame that shows it"
     assert not column.needs_layout, "the parent's pass stands"
 
     column.paint(None, 0, 0, 200, 100)
     assert fixed.painted == 1
 
 
-def test_idle_time_fills_the_tree_top_down_and_within_its_slice(no_time_left, monkeypatch) -> None:
+def test_the_frames_after_fill_the_tree_top_down_and_each_within_the_limit(no_time_left, monkeypatch) -> None:
     inner = [_fixed() for _ in range(3)]
     rows = [Row([box], width=Sizing.weight(), height=Sizing.fixed(20)) for box in inner]
     column = Column(rows, width=Sizing.fixed(200), height=Sizing.fixed(100))
@@ -215,36 +240,125 @@ def test_idle_time_fills_the_tree_top_down_and_within_its_slice(no_time_left, mo
     _frame(column, 200, 100)
     assert all(row._layout_pending for row in rows)
 
-    # The slice runs out while the first row is laid out: the row's own child
-    # is left pending in turn, and the other rows wait for the next slice.
-    clock = [0.0]
+    # The limit runs out while the first row is laid out: the row's own child
+    # is left pending in turn, and the other rows wait for the frame after.
+    monkeypatch.setattr(layout_utils, "LAYOUT_SHARE", 0.5)
+    clock = [0.0, 0.0]
     monkeypatch.setattr(layout_utils, "perf_counter", lambda: clock.pop(0) if clock else float("inf"))
-    assert run_idle_work(1.0) is True
+    _frame(column, 200, 100, root_pass=False)
     assert not rows[0]._layout_pending and rows[1]._layout_pending
-    assert inner[0]._layout_pending, "the slice's deadline cuts inside the row too"
+    assert inner[0]._layout_pending, "the limit cuts inside the row too"
 
-    # The next slice finishes that row before it starts the rows after it.
-    clock[:] = [0.0]
-    assert run_idle_work(1.0) is True
+    # The next frame finishes that row before it starts the rows after it.
+    clock[:] = [0.0, 0.0]
+    _frame(column, 200, 100, root_pass=False)
     assert not inner[0]._layout_pending and rows[1]._layout_pending
 
     monkeypatch.setattr(layout_utils, "perf_counter", perf_counter)
-    assert run_idle_work(1.0) is False
+    _give_time(monkeypatch)
+    _frame(column, 200, 100, root_pass=False)
     assert not has_pending_layout()
     assert [box.layout_rect for box in inner] == [(0, 0, 50, 20)] * 3
 
 
-def test_outside_a_frame_a_pass_leaves_nothing_pending(no_time_left) -> None:
-    fixed = _fixed()
-    column = Column([fixed])
+def test_a_clean_child_left_pending_at_a_new_size_is_laid_out_by_the_next_frame(no_time_left, monkeypatch) -> None:
+    weighted = _Probe(width=Sizing.weight(), height=Sizing.weight())
+    column = Column([weighted])
     column.mount(_App())
-    column.layout(200, 100)
+    column.layout(200, 100)  # outside a frame: the child is clean at 200x100
 
+    _frame(column, 300, 100)
+    assert weighted._layout_pending and weighted.layout_rect == (0, 0, 300, 100)
+    assert not weighted.needs_layout, "nothing below it changed"
+
+    _give_time(monkeypatch)
+    _frame(column, 300, 100)
+    assert weighted.laid_out == [(200, 100), (300, 100)], "the rect did not change again, and it is still laid out"
+    assert not has_pending_layout()
+
+
+def test_a_pass_with_time_lays_a_pending_child_out_though_it_is_clean_at_that_size(no_time_left, monkeypatch) -> None:
+    first = _Probe(width=Sizing.weight(), height=Sizing.weight())
+    second = _Probe(width=Sizing.weight(), height=Sizing.weight())
+    column = Column([first, second])
+    column.mount(_App())
+    column.layout(200, 100)  # outside a frame: both clean
+    _frame(column, 300, 100)
+    assert first._layout_pending and not first.needs_layout
+
+    # The pass has time for one child, and the child after it is dirty:
+    # nothing is left for the pending subtrees after the pass.
+    monkeypatch.setattr(layout_utils, "LAYOUT_SHARE", 0.5)
+    clock = [0.0, 0.0]
+    monkeypatch.setattr(layout_utils, "perf_counter", lambda: clock.pop(0) if clock else float("inf"))
+    second.mark_needs_layout()
+    _frame(column, 300, 100)
+    assert not first._layout_pending, "the pass reached it in time"
+    assert first.laid_out == [(200, 50), (300, 50)]
+
+
+def test_a_pending_child_taken_out_of_the_tree_stays_dirty(no_time_left, monkeypatch) -> None:
+    weighted = _Probe(width=Sizing.weight(), height=Sizing.weight())
+    column = Column([weighted])
+    column.mount(_App())
+    column.layout(200, 100)  # outside a frame: clean at 200x100
+    _frame(column, 300, 100)
+    assert weighted._layout_pending and not weighted.needs_layout
+
+    column.remove_child(weighted)
+    _give_time(monkeypatch)
+    _frame(column, 300, 100, root_pass=False)
+    assert not has_pending_layout()
+    assert weighted.laid_out == [(200, 100)], "no frame shows it: it is not laid out"
+    assert weighted.needs_layout, "the pass that takes it back lays it out"
+
+
+def test_a_root_whose_layout_raises_does_not_keep_the_pending_children_waiting(no_time_left, monkeypatch) -> None:
+    class Raising(Column):
+        fail = False
+
+        def layout(self, width: int, height: int) -> None:
+            if self.fail:
+                raise RuntimeError("the root's layout failed")
+            super().layout(width, height)
+
+    fixed = _fixed()
+    root = Raising([fixed])
+    root.mount(_App())
+    _frame(root, 200, 100)
+    assert fixed._layout_pending
+
+    _give_time(monkeypatch)
+    root.fail = True
+    with pytest.raises(RuntimeError):
+        _frame(root, 200, 100)
     assert fixed.laid_out == [(50, 20)]
-    assert not has_pending_layout() and not has_idle_work()
+    assert not has_pending_layout()
 
 
-def test_a_pending_child_laid_out_by_a_later_pass_is_not_laid_out_again_in_idle(no_time_left) -> None:
+def test_a_pass_clears_the_pending_mark_of_a_child_with_its_own_layout(no_time_left, monkeypatch) -> None:
+    class OwnLayout(Box):
+        """A widget whose ``layout`` does not reach the kernel's."""
+
+        def layout(self, width: int, height: int) -> None:
+            self.set_layout_rect(0, 0, width, height)
+
+    child = OwnLayout(width=Sizing.fixed(50), height=Sizing.fixed(20))
+    column = Column([child])
+    column.mount(_App())
+    _frame(column, 200, 100)
+    assert child._layout_pending
+
+    # The pass has time for the child; nothing is left for the pending subtrees after it.
+    monkeypatch.setattr(layout_utils, "LAYOUT_SHARE", 0.5)
+    clock = [0.0, 0.0]
+    monkeypatch.setattr(layout_utils, "perf_counter", lambda: clock.pop(0) if clock else float("inf"))
+    column.mark_needs_layout()
+    _frame(column, 200, 100)
+    assert not child._layout_pending, "the pass laid it out"
+
+
+def test_a_pending_child_laid_out_by_a_later_pass_is_not_laid_out_again(no_time_left, monkeypatch) -> None:
     fixed = _fixed()
     column = Column([fixed])
     column.mount(_App())
@@ -252,11 +366,12 @@ def test_a_pending_child_laid_out_by_a_later_pass_is_not_laid_out_again_in_idle(
 
     column.layout(200, 100)  # outside a frame: the pass descends
     assert fixed.laid_out == [(50, 20)]
-    run_idle_work(1.0)
-    assert fixed.laid_out == [(50, 20)], "idle time found nothing left to do"
+    _give_time(monkeypatch)
+    _frame(column, 200, 100, root_pass=False)
+    assert fixed.laid_out == [(50, 20)], "the frame found nothing left to do"
 
 
-def test_a_pending_subtree_is_not_hit(no_time_left) -> None:
+def test_a_pending_subtree_is_not_hit(no_time_left, monkeypatch) -> None:
     # A painted box catches a hit on its own surface.
     fixed = _Probe(width=Sizing.fixed(50), height=Sizing.fixed(20), background_color=(200, 0, 0, 255))
     row = Row([fixed], width=Sizing.fixed(50), height=Sizing.fixed(20))
@@ -265,15 +380,62 @@ def test_a_pending_subtree_is_not_hit(no_time_left) -> None:
     _frame(column, 200, 100)
 
     assert column.hit_test(10, 10) is not fixed, "nothing below a pending child has a rect of this pass"
-    run_idle_work(1.0)
+    _give_time(monkeypatch)
+    _frame(column, 200, 100, root_pass=False)
     assert column.hit_test(10, 10) is fixed
 
 
-def test_light_children_are_laid_out_within_the_budget() -> None:
+# ---- Outside a frame ----------------------------------------------------------
+def test_outside_a_frame_a_pass_leaves_nothing_pending(no_time_left) -> None:
+    fixed = _fixed()
+    column = Column([fixed])
+    column.mount(_App())
+    column.layout(200, 100)
+
+    assert fixed.laid_out == [(50, 20)]
+    assert not has_pending_layout()
+
+
+def test_outside_a_frame_the_layout_finishes_what_a_frame_left_pending(no_time_left) -> None:
+    inner = _fixed()
+    row = Row([inner], width=Sizing.weight(), height=Sizing.fixed(20))
+    column = Column([row], width=Sizing.fixed(200), height=Sizing.fixed(100))
+    column.mount(_App())
+    _frame(column, 200, 100)
+    assert row._layout_pending
+
+    layout_frame(column, 200, 100, root_pass=False)  # a headless render: no frame is under way
+    assert inner.laid_out == [(50, 20)]
+    assert not has_pending_layout()
+
+
+# ---- The budget ---------------------------------------------------------------
+def test_light_children_are_laid_out_within_the_limit() -> None:
     boxes = [_fixed() for _ in range(5)]
     column = Column(boxes)
     column.mount(_App())
     _frame(column, 200, 100)
 
     assert all(box.laid_out == [(50, 20)] for box in boxes)
+    assert not has_pending_layout()
+
+
+# ---- The pages of a Deck ------------------------------------------------------
+def test_a_deck_lays_the_selected_page_out_first(monkeypatch) -> None:
+    hidden = _Probe(width=Sizing.weight(), height=Sizing.weight())
+    selected = _Probe(width=Sizing.weight(), height=Sizing.weight())
+    deck = Deck([hidden, selected], index=1)
+    deck.mount(_App())
+
+    # The limit runs out after one page.
+    clock = [0.0, 0.0]
+    monkeypatch.setattr(layout_utils, "perf_counter", lambda: clock.pop(0) if clock else float("inf"))
+    _frame(deck, 200, 100)
+    assert selected.laid_out == [(200, 100)] and not selected._layout_pending
+    assert hidden.laid_out == [] and hidden._layout_pending
+    assert hidden.layout_rect == (0, 0, 200, 100), "the hidden page keeps the rect a later frame lays it out at"
+
+    monkeypatch.setattr(layout_utils, "perf_counter", perf_counter)
+    _frame(deck, 200, 100, root_pass=False)
+    assert hidden.laid_out == [(200, 100)], "a switch shows a page that is ready"
     assert not has_pending_layout()

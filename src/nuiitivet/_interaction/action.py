@@ -437,6 +437,7 @@ def settle(
         _settle_strict(app, max_passes=max_passes, before_pass=before_pass)
         return
 
+    from nuiitivet.layout.layout_utils import layout_frame
     from nuiitivet.widgeting.widget_binding import flush_binding_invalidations
     from nuiitivet.widgeting.widget_builder import flush_scope_recompositions
     from nuiitivet.widgeting.widget_size_change import flush_size_change_callbacks
@@ -455,8 +456,7 @@ def settle(
 
     def _layout(root: Any) -> None:
         try:
-            root.layout(int(app.width), int(app.height))
-            root.clear_needs_layout()
+            layout_frame(root, int(app.width), int(app.height), root_pass=True)
         except Exception:
             logger.debug("settle: layout pass failed", exc_info=True)
 
@@ -497,6 +497,7 @@ def _settle_strict(
     there is no frame to request, and a caller counting repaints must not count
     settle's own.
     """
+    from nuiitivet.layout.layout_utils import layout_frame
     from nuiitivet.widgeting.widget_binding import flush_binding_invalidations
     from nuiitivet.widgeting.widget_builder import flush_scope_recompositions
     from nuiitivet.widgeting.widget_size_change import flush_size_change_callbacks
@@ -510,8 +511,7 @@ def _settle_strict(
             before_pass()
         flush_binding_invalidations()
         flush_scope_recompositions()
-        root.layout(int(app.width), int(app.height))
-        root.clear_needs_layout()
+        layout_frame(root, int(app.width), int(app.height), root_pass=True)
 
     root = getattr(app, "root", None)
     if root is None:

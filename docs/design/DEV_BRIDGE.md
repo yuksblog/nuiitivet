@@ -138,7 +138,7 @@ flowchart LR
     devaction -- "the same verb, on_action=OVERLAY_OBSERVER" --> action
     action -- "find_target(root, key, label) · find_obstruction · visible_rect" --> perception
     action -- "_dispatch_mouse_press · _dispatch_mouse_release · _dispatch_mouse_scroll · _dispatch_text · _dispatch_key_press · _modal_blocked()" --> window
-    action -- "flush bindings and recompositions · root.layout(w, h)" --> tree
+    action -- "flush bindings and recompositions · layout_frame(root, w, h, root_pass)" --> tree
     bridge -- "_render_snapshot(scale)" --> window
     devaction -- "on_click · on_scroll · on_key" --> observer
     perception -- "key · label · text · title · global rect · published state · State values" --> tree
@@ -173,7 +173,7 @@ sequenceDiagram
     else
         A->>W: _dispatch_mouse_press(x, y) · _dispatch_mouse_release(x, y)
         A->>T: flush_binding_invalidations() · flush_scope_recompositions()
-        A->>T: root.layout(w, h)
+        A->>T: layout_frame(root, w, h, root_pass)
         A->>W: invalidate()
     end
 ```

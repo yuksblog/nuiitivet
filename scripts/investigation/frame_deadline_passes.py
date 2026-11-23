@@ -1,4 +1,4 @@
-"""A screen of heavy cards laid out as a page's first frame: the pass stops at the deadline, idle time fills the blanks.
+"""A screen of heavy cards as a page's first frame: the layout stops at its deadline, later frames fill the blanks.
 
 The screen is ``--rows`` rows of ``--columns`` cards, each sized fixed on
 both axes, so the layout engine knows a card's rect before it measures the
@@ -8,13 +8,12 @@ card. ``--container column`` nests a ``Row`` per card row in a ``Column``;
 ``--container grid`` places the cards in a ``Grid`` of fixed tracks.
 
 One run mounts the screen fresh and lays it out inside a frame, as the first
-frame after a navigation does. Frames then follow as the loop runs them: the
-time the frame left over goes to idle work, which lays the pending cards out;
-a frame is drawn when a card asked for one. The run reports the first pass's
-time, the cards left pending by it, the frames until no card is pending, and
-whether every rect the first pass set is the same at the end. ``--no-budget``
-lays the screen out outside a frame: the whole screen in one pass, as before
-the deadline existed.
+frame after a navigation does. Frames then follow as the loop runs them: each
+lays the pending cards out until its deadline. The run reports the first
+pass's time, the cards left pending by it, the frames until no card is
+pending, and whether every rect the first pass set is the same at the end.
+``--no-budget`` lays the screen out outside a frame: the whole screen in one
+pass.
 
 Run::
 
@@ -35,10 +34,9 @@ from time import perf_counter
 from typing import Any, Dict, List, Tuple
 
 import nuiitivet.material as nv
-from nuiitivet.layout.layout_utils import has_pending_layout
+from nuiitivet.layout.layout_utils import has_pending_layout, layout_frame
 from nuiitivet.runtime.pointer import PointerCaptureManager
 from nuiitivet.widgeting.frame_clock import begin_frame, end_frame, set_frame_interval
-from nuiitivet.widgeting.idle_work import run_idle_work
 
 FRAME_SECONDS = 1.0 / 60.0
 CARD_WIDTH = 220
@@ -194,7 +192,7 @@ def run(container: str, rows: int, columns: int, *, budget: bool, repeat: int) -
     first_pass_ms: List[float] = []
     pending_after: List[int] = []
     frames_to_fill: List[int] = []
-    idle_ms: List[float] = []
+    later_ms: List[float] = []
     moved = 0
     # The fonts and the theme load on the first screen; that screen is not counted.
     warmup = screen(container, rows, columns)
@@ -208,29 +206,23 @@ def run(container: str, rows: int, columns: int, *, budget: bool, repeat: int) -
         started = perf_counter()
         if budget:
             begin_frame(started)
-        root.layout(width, height)
+        layout_frame(root, width, height, root_pass=True)
         end_frame()
         first_pass_ms.append((perf_counter() - started) * 1000)
         pending_after.append(_count_pending(root))
         before = _rects(root)
-        # The frames that follow: the time the pass left over goes to idle work,
-        # then the loop draws a frame when one was asked for.
+        # The frames that follow: a frame that left a card pending asks for the next one.
         frames = 0
         spent = 0.0
-        left = max(0.0, FRAME_SECONDS - (perf_counter() - started))
         while has_pending_layout():
-            idle_started = perf_counter()
-            run_idle_work(left)
-            spent += perf_counter() - idle_started
             frames += 1
             frame_started = perf_counter()
             begin_frame(frame_started)
-            if root.needs_layout:
-                root.layout(width, height)
+            layout_frame(root, width, height, root_pass=root.needs_layout)
             end_frame()
-            left = max(0.0, FRAME_SECONDS - (perf_counter() - frame_started))
+            spent += perf_counter() - frame_started
         frames_to_fill.append(frames)
-        idle_ms.append(spent * 1000)
+        later_ms.append(spent * 1000)
         after = _rects(root)
         moved += sum(1 for key, rect in before.items() if after.get(key) != rect)
         root.unmount()
@@ -243,7 +235,7 @@ def run(container: str, rows: int, columns: int, *, budget: bool, repeat: int) -
     print(
         f"{'':>{len(label)}} | cards pending after the pass: mean {statistics.fmean(pending_after):5.1f}"
         f" of {rows * columns}; frames until none: max {max(frames_to_fill)},"
-        f" idle time used {statistics.fmean(idle_ms):5.1f} ms"
+        f" their layouts took {statistics.fmean(later_ms):5.1f} ms in all"
     )
     print(f"{'':>{len(label)}} | rects moved while filling: {moved}")
 

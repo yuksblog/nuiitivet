@@ -7,6 +7,7 @@ import time
 from typing import Any
 
 from nuiitivet.common.logging_once import debug_once, exception_once
+from nuiitivet.layout.layout_utils import layout_frame
 
 logger = logging.getLogger(__name__)
 
@@ -111,17 +112,12 @@ def draw_gpu_frame(app: Any, gr_context: Any, GL: Any, skia: Any) -> bool:
         content_height = max(0, app.height)
         w = app.width
 
-        layout_fn = getattr(app.root, "layout", None)
-        clear_needs_layout_fn = getattr(app.root, "clear_needs_layout", None)
-        if callable(layout_fn):
+        if callable(getattr(app.root, "layout", None)):
             needs_layout = getattr(app.root, "needs_layout", True)
-            last_size = getattr(app, "_last_layout_size", None)
             current_size = (w, content_height)
-            if needs_layout or last_size != current_size:
-                layout_fn(w, content_height)
-                app._last_layout_size = current_size
-                if callable(clear_needs_layout_fn):
-                    clear_needs_layout_fn()
+            resized = getattr(app, "_last_layout_size", None) != current_size
+            layout_frame(app.root, w, content_height, root_pass=needs_layout or resized)
+            app._last_layout_size = current_size
 
         if chrome_corner_radius > 0:
             rrect = skia.RRect.MakeRectXY(

@@ -1,7 +1,4 @@
-"""Layout-related utility helpers.
-
-Moved out from `utils.py` to separate layout concerns.
-"""
+"""What the containers share: a frame's layout and its deadline, a provider's children, painting at layout rects."""
 
 import logging
 import math
@@ -12,11 +9,10 @@ from typing import Any, Deque, List, Optional, Sequence, Tuple, TYPE_CHECKING
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.rendering.skia import get_skia, local_clip_bounds
-from nuiitivet.widgeting.frame_clock import frame_deadline
-from nuiitivet.widgeting.idle_work import request_idle_work
+from nuiitivet.widgeting.frame_clock import frame_interval, frame_started_at
 from nuiitivet.widgeting.paint_replay import REPLAY_HOOKS
 
-if TYPE_CHECKING:  # pragma: no cover - only for type checking
+if TYPE_CHECKING:  # pragma: no cover
     from ..widgeting.widget import Widget
 
 
@@ -39,8 +35,7 @@ def expand_layout_children(children: Sequence["Widget"]) -> List["Widget"]:
                 materialized.extend(provider())
             except Exception:
                 exception_once(_logger, "layout_utils_provide_layout_children_exc", "provide_layout_children failed")
-            # The provider itself is not laid out, so we must clear its dirty flag
-            # to ensure future invalidations propagate correctly.
+            # Nothing lays the provider out, so nothing else clears its flag.
             try:
                 child.clear_needs_layout()
             except Exception:
@@ -50,27 +45,52 @@ def expand_layout_children(children: Sequence["Widget"]) -> List["Widget"]:
     return materialized
 
 
-# The share of the frame a layout pass may spend descending; a child sized by
-# its parent that the pass reaches later is left pending for idle time.
+# The share of a frame its layout may spend. The rest is left to paint.
 LAYOUT_SHARE = 0.5
 
-# The end of the idle slice under way, while the pending subtrees are laid out.
-_idle_deadline: Optional[float] = None
+# The end of the frame's layout under way; ``None`` outside one.
+_deadline: Optional[float] = None
 
-# The children left pending, in the order the passes reached them: a parent
-# before anything below it, so idle time fills the tree top-down.
+# In the order the passes reached them: a parent before anything below it.
 _pending: Deque["weakref.ref[Widget]"] = deque()
 
 
 def layout_deadline() -> Optional[float]:
     """The moment the layout under way stops descending into children sized by their parent.
 
-    A share of the frame inside one; the end of the slice inside idle work;
-    ``None`` where no loop runs: a test, a headless render.
+    ``None`` outside a frame's layout: a test, a headless render, a pass a
+    widget runs on its own.
     """
-    if _idle_deadline is not None:
-        return _idle_deadline
-    return frame_deadline(LAYOUT_SHARE)
+    return _deadline
+
+
+def layout_frame(root: "Widget", width: int, height: int, *, root_pass: bool) -> None:
+    """Run a frame's layout: the root's pass, then the subtrees the frames before left pending.
+
+    Inside a frame the two together stop after :data:`LAYOUT_SHARE` of a
+    frame, counted from this call. Where no frame is under way, a test or a
+    headless render, they run to the end.
+
+    Args:
+        root: The root of the tree.
+        width: The width the root is laid out at.
+        height: The height the root is laid out at.
+        root_pass: Whether the root is laid out: it is dirty, or its size
+            changed.
+    """
+    global _deadline
+    outer = _deadline
+    _deadline = perf_counter() + frame_interval() * LAYOUT_SHARE if frame_started_at() is not None else None
+    try:
+        try:
+            if root_pass:
+                root.layout(width, height)
+                root.clear_needs_layout()
+        finally:
+            # A root whose layout raises on every frame must not keep them waiting.
+            _layout_pending_subtrees()
+    finally:
+        _deadline = outer
 
 
 def sized_by_parent(child: "Widget") -> bool:
@@ -79,13 +99,9 @@ def sized_by_parent(child: "Widget") -> bool:
 
 
 def layout_child_if_needed(child: "Widget", width: int, height: int, *, sized_by_parent: bool = False) -> None:
-    """Run ``child.layout`` unless it would recompute an unchanged result, or the frame has no time left.
+    """Lay ``child`` out, unless it is clean at this size or the layout has no time left.
 
-    A clean child, nothing in its subtree having called ``mark_needs_layout``
-    since its last pass, laid out again at the same size produces the same
-    subtree geometry: ``layout()`` is a pure function of the widget's state and
-    its allocated size. The caller still positions the child with
-    ``set_layout_rect``; position is not an input to ``layout``.
+    The caller positions the child with ``set_layout_rect`` in every case.
 
     Args:
         child: The child to lay out.
@@ -94,12 +110,13 @@ def layout_child_if_needed(child: "Widget", width: int, height: int, *, sized_by
         sized_by_parent: The rect came from the parent, not from measuring the
             child. Past :func:`layout_deadline` such a child is left pending:
             it keeps the rect, nothing below it runs, it is painted as nothing,
-            and idle time lays it out.
+            and the next frame lays it out.
     """
 
     rect = getattr(child, "layout_rect", None)
     if (
         rect is not None
+        and not child._layout_pending
         and not getattr(child, "needs_layout", True)
         and rect[2] == int(width)
         and rect[3] == int(height)
@@ -110,47 +127,59 @@ def layout_child_if_needed(child: "Widget", width: int, height: int, *, sized_by
         if deadline is not None and perf_counter() >= deadline:
             _leave_pending(child)
             return
+    if child._layout_pending:
+        # Not left to ``layout()``: an override may not reach the kernel's.
+        _end_pending(child)
     child.layout(width, height)
 
 
 def _leave_pending(child: "Widget") -> None:
+    if child._layout_pending:
+        return
     child._layout_pending = True
     _pending.append(weakref.ref(child))
-    request_idle_work(_layout_pending_subtrees)
 
 
-def has_pending_layout() -> bool:
-    """Whether a child left pending by a pass waits for idle time."""
-    return any(child is not None and child._layout_pending for child in (ref() for ref in _pending))
+def _end_pending(child: "Widget") -> None:
+    child._layout_pending = False
+    # The pictures recorded while it was blank are stale.
+    child._mark_replay_dirty()
 
 
-def _layout_pending_subtrees(deadline: float) -> bool:
-    """Lay the pending subtrees out, top-down, until ``deadline``; each asks for a frame."""
-    global _idle_deadline
-    _idle_deadline = deadline
-    try:
-        while _pending and perf_counter() < deadline:
-            child = _pending.popleft()()
-            if child is None or not child._layout_pending:
-                continue
-            child._layout_pending = False
-            rect = child.layout_rect
-            # A subtree that left the tree meanwhile has no frame to show in.
-            if rect is None or child.parent is None:
-                continue
-            mark = len(_pending)
-            try:
-                child.layout(rect[2], rect[3])
-            except Exception:
-                exception_once(_logger, "layout_utils_pending_layout_exc", "A pending child's layout failed")
-                continue
-            # The children this layout left pending come before the siblings
-            # after it: a subtree fills whole before the next one starts.
-            _pending.extendleft([_pending.pop() for _ in range(len(_pending) - mark)])
-            child.invalidate()
-    finally:
-        _idle_deadline = None
-    return bool(_pending)
+def has_pending_layout(app: Any = None) -> bool:
+    """Whether a child left pending by a frame's layout waits for the next frame.
+
+    Args:
+        app: The window to ask about: only the children mounted in it count.
+            ``None`` counts every pending child.
+    """
+    for ref in _pending:
+        child = ref()
+        if child is not None and child._layout_pending and (app is None or child._app is app):
+            return True
+    return False
+
+
+def _layout_pending_subtrees() -> None:
+    """Lay the pending subtrees out, top-down, until the deadline of the layout under way."""
+    while _pending and (_deadline is None or perf_counter() < _deadline):
+        child = _pending.popleft()()
+        if child is None or not child._layout_pending:
+            continue
+        _end_pending(child)
+        rect = child.layout_rect
+        if rect is None or child.parent is None:
+            # It left the tree and no frame shows it. Dirty, so the pass that takes it back lays it out.
+            child.mark_needs_layout()
+            continue
+        mark = len(_pending)
+        try:
+            child.layout(rect[2], rect[3])
+        except Exception:
+            exception_once(_logger, "layout_utils_pending_layout_exc", "A pending child's layout failed")
+            continue
+        # What this layout left pending goes first: a subtree fills whole before the next one starts.
+        _pending.extendleft([_pending.pop() for _ in range(len(_pending) - mark)])
 
 
 # How far outside the clip a child may sit and still be painted. Outsets are
@@ -335,25 +364,23 @@ def paint_children_at_layout_rects(
 ) -> None:
     """Paint each laid-out child at ``(x, y)`` plus its layout rect.
 
-    A child left pending by the layout pass is painted as nothing. A child
-    whose visual bounds (layout rect plus ``paint_outsets``) end more
-    than a small slack outside the canvas clip is not painted: the clip would
-    discard every pixel, but only after the whole subtree had run its paint
-    code. Its ``last_rect`` is still recorded so paint state stays consistent
-    with what the parent placed. A child that draws outside its allocated rect
-    must therefore report that through ``paint_outsets``. With no readable
-    clip -- no canvas, or a stand-in -- every child is painted.
+    A child left pending by the layout is painted as nothing. A child whose
+    layout rect plus ``paint_outsets`` ends beyond the canvas clip and a small
+    slack is not painted. Both still get their ``last_rect``. A child that
+    draws outside its rect must report that through ``paint_outsets``. With no
+    readable clip, no canvas or a stand-in, every child is painted.
 
-    A child that lies wholly inside the clip is told so, and a container that
-    is told passes ``inside_clip``: nothing below it can be culled, so the clip
-    is not read and no child is tested. Painting a child that the clip would
-    have discarded is slower and never wrong, so a hint that is missing or out
-    of date costs time and no pixel.
-
-    With ``scroll_content`` the children are the rows of a scroll viewport's
-    content. A row is recorded when it enters the clip and replayed, shifted,
-    while nothing at or below it has invalidated; a row that leaves the clip
-    gives its recording up.
+    Args:
+        children: The children to paint.
+        canvas: The canvas to paint on.
+        x: The left edge of the parent on the canvas.
+        y: The top edge of the parent on the canvas.
+        inside_clip: The parent lies wholly inside the clip. The clip is not
+            read and no child is tested against it.
+        scroll_content: The children are the rows of a scroll viewport's
+            content. A row is recorded when it enters the clip and replayed,
+            shifted, while nothing at or below it has invalidated. A row that
+            leaves the clip gives its recording up.
     """
 
     if inside_clip and not scroll_content:

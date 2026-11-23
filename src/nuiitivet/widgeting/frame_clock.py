@@ -44,26 +44,14 @@ def end_frame() -> None:
 
 
 def frame_started_at() -> Optional[float]:
-    """When the frame under way began; ``None`` between frames."""
+    """When the frame under way began; ``None`` between frames, and wherever no loop runs."""
     return _started_at
-
-
-def frame_deadline(share: float) -> Optional[float]:
-    """The moment ``share`` of the frame under way has passed, as a ``perf_counter()`` value.
-
-    ``None`` between frames, and wherever no loop runs: a test, a headless
-    render.
-    """
-    if _started_at is None:
-        return None
-    return _started_at + _interval * max(0.0, float(share))
 
 
 __all__ = [
     "DEFAULT_FRAME_INTERVAL",
     "begin_frame",
     "end_frame",
-    "frame_deadline",
     "frame_interval",
     "frame_started_at",
     "set_frame_interval",
