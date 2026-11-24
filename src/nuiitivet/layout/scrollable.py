@@ -22,6 +22,7 @@ from typing import ClassVar, Optional, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.observable.protocols import StateBase
+from nuiitivet.widgeting.unlaid_child import warn_child_without_rect
 
 from ..widgeting.widget import Widget
 from ..scrolling import (
@@ -324,6 +325,8 @@ class _ScrollableBase(Widget):
         # Record the painted rect (for hit-testing)
         self.set_last_rect(x, y, width, height)
         if self._viewport.layout_rect is None:
+            if __debug__:
+                warn_child_without_rect(self._viewport)
             return
 
         x, y, width, height = self.content_rect(x, y, width, height)

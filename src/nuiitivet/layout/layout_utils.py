@@ -11,6 +11,7 @@ from nuiitivet.common.logging_once import exception_once
 from nuiitivet.rendering.skia import clip_rect, get_skia, local_clip_bounds
 from nuiitivet.widgeting.frame_clock import frame_interval, frame_started_at
 from nuiitivet.widgeting.paint_replay import REPLAY_HOOKS
+from nuiitivet.widgeting.unlaid_child import warn_child_without_rect
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..widgeting.widget import Widget
@@ -514,6 +515,8 @@ def paint_children_at_layout_rects(
         for child in children:
             rect = child.layout_rect
             if rect is None:
+                if __debug__:
+                    warn_child_without_rect(child)
                 continue
             rel_x, rel_y, w, h = rect
             abs_x = x + rel_x
@@ -559,6 +562,8 @@ def paint_children_at_layout_rects(
     for child in children:
         rect = child.layout_rect
         if rect is None:
+            if __debug__:
+                warn_child_without_rect(child)
             continue
 
         rel_x, rel_y, w, h = rect

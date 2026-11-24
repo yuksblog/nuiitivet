@@ -16,6 +16,7 @@ from nuiitivet.widgeting.context_lookup import (
     raise_if_uninitialized_proxy,
 )
 from nuiitivet.widgeting.paint_replay import replay_safe
+from nuiitivet.widgeting.unlaid_child import warn_child_without_rect
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgeting.widget_children import ChildContainerMixin
 from nuiitivet.widgeting.widget_size_change import queue_size_change
@@ -172,6 +173,8 @@ class Geometry(Widget):
         child = self.children[0]
         rect = child.layout_rect
         if rect is None:
+            if __debug__:
+                warn_child_without_rect(child)
             self._take_paint_hints()
             return
         rx, ry, rw, rh = rect

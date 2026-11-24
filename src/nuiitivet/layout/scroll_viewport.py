@@ -12,6 +12,7 @@ from nuiitivet.layout.metrics import normalize_padding
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia import clip_rect, make_rect
+from nuiitivet.widgeting.unlaid_child import warn_child_without_rect
 
 
 _logger = logging.getLogger(__name__)
@@ -242,6 +243,8 @@ class ScrollViewport(Widget):
 
         rect = content.layout_rect
         if rect is None:
+            if __debug__:
+                warn_child_without_rect(content)
             return
         rel_x, rel_y, content_w, content_h = rect
 

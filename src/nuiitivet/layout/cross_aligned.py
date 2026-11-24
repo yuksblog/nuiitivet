@@ -6,6 +6,7 @@ from typing import Optional, Tuple
 
 from nuiitivet.rendering.padding import PaddingLike
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.widgeting.unlaid_child import warn_child_without_rect
 
 from ..widgeting.widget import Widget
 from ..widgeting.widget_children import ChildContainerMixin
@@ -81,6 +82,8 @@ class CrossAligned(Widget):
         child = self.children[0]
         rect = child.layout_rect
         if rect is None:
+            if __debug__:
+                warn_child_without_rect(child)
             self._take_paint_hints()
             return
         rel_x, rel_y, child_w, child_h = rect

@@ -5,6 +5,7 @@ import logging
 from typing import Optional, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.widgeting.unlaid_child import warn_child_without_rect
 from ..rendering.skia.paint_cache import CachedPaintMixin
 from ..widgeting.widget import Widget
 from ..theme.types import ColorSpec
@@ -280,6 +281,8 @@ class Box(CachedPaintMixin, Widget):
             child = self.children[0]
             rect = child.layout_rect
             if rect is None:
+                if __debug__:
+                    warn_child_without_rect(child)
                 return
             # A box that clips its content narrows the clip; the child must cull against it.
             if hints and not self.clip_content:

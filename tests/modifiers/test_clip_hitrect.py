@@ -25,6 +25,7 @@ def test_column_clamps_child_last_rect():
         canvas = surface.getCanvas()
     except Exception:
         canvas = None
+    col.layout(w, h)
     col.paint(canvas, x, y, w, h)
     for child in col.children_snapshot():
         rect = getattr(child, "_last_rect", None)
@@ -50,6 +51,7 @@ def test_row_clamps_child_last_rect():
         canvas = surface.getCanvas()
     except Exception:
         canvas = None
+    row.layout(w, h)
     row.paint(canvas, x, y, w, h)
     for child in row.children_snapshot():
         rect = getattr(child, "_last_rect", None)

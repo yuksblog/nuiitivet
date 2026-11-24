@@ -1,6 +1,7 @@
 """Deck layout: display only one child at a time."""
 
 from nuiitivet.widgeting.paint_replay import replay_safe
+from nuiitivet.widgeting.unlaid_child import warn_child_without_rect
 from typing import List, Optional, Sequence, Tuple, Union
 
 from ..widgeting.widget import Widget
@@ -218,6 +219,8 @@ class Deck(Widget):
         selected_child = children[self._current_index]
         rect = selected_child.layout_rect
         if rect is None:
+            if __debug__:
+                warn_child_without_rect(selected_child)
             self._take_paint_hints()
             return
 

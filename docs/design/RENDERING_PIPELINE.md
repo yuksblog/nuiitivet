@@ -296,6 +296,7 @@ flowchart LR
     skia[rendering/skia/geometry.py]
     frame[widgeting/frame_clock.py]
     painters[runtime/window.py · backends/pyglet/gpu_frame.py]
+    unlaid[widgeting/unlaid_child.py]
 
     painters -- "layout_frame(root, w, h, root_pass) · has_pending_layout(window)" --> utils
     containers -- "layout_child_if_needed(child, w, h, sized_by_parent) · paint_laid_out_children(container, canvas, x, y) · paint_children_at_layout_rects(children, canvas, x, y) · paint_pending_child(child, canvas, x, y, w, h)" --> utils
@@ -304,6 +305,7 @@ flowchart LR
     utils -- "clear_needs_layout(), the root's · _mark_replay_dirty(), a pending child laid out · mark_needs_layout(), a pending child that left the tree" --> kernel
     utils -- "local_clip_bounds(canvas) · clip_rect(canvas, rect)" --> skia
     utils -- "frame_started_at() · frame_interval()" --> frame
+    utils & containers -- "warn_child_without_rect(child)" --> unlaid
 ```
 
 | Module | Role |
@@ -314,6 +316,7 @@ flowchart LR
 | `rendering/skia/geometry.py` | reads the canvas clip and narrows it |
 | `widgeting/frame_clock.py` | whether a frame is under way and how long a frame is (The Loop) |
 | `runtime/window.py · backends/pyglet/gpu_frame.py` | start a frame's layout; ask whether a subtree is pending (The Frame) |
+| `widgeting/unlaid_child.py` | warns of a child painted with no rect, naming the parent that never laid it out; called by every paint that skips such a child, the single-child widgets' included |
 
 ### Sequence
 
@@ -398,7 +401,9 @@ sequenceDiagram
 - Hit testing descends a pending child through its last layout. Nothing below
   a pending child never laid out is hit.
 - No count of frames ends a child's pending state. Only its layout does.
-- A child with no rect is not painted.
+- A child with no rect is not painted. A warning names it and its parent,
+  once for each pair of classes, or the child alone when it has no parent. A
+  parent whose layout is still to come is not named.
 - The layout of the next frame lays the pending children out. The root's pass
   comes first. The pending children share its deadline.
 - The pending children are laid out top-down, each at its rect, a subtree

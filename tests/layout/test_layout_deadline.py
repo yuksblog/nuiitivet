@@ -9,6 +9,7 @@ no loop runs, the layout runs to its end.
 
 from __future__ import annotations
 
+import logging
 from time import perf_counter
 from typing import Callable, List, Optional, Tuple
 
@@ -574,7 +575,7 @@ def test_a_pending_child_is_not_recorded(no_time_left) -> None:
     assert page._replay_picture is None
 
 
-def test_a_widget_added_below_a_pending_child_is_not_painted(no_time_left) -> None:
+def test_a_widget_added_below_a_pending_child_is_not_painted(no_time_left, caplog) -> None:
     first = _fixed()
     inner = Column([first], width=Sizing.weight(), height=Sizing.weight())
     column = Column([inner])
@@ -585,9 +586,11 @@ def test_a_widget_added_below_a_pending_child_is_not_painted(no_time_left) -> No
     inner.add_child(late)
     _frame(column, 300, 100)
     assert inner._layout_pending and inner.layout_rect == (0, 0, 300, 100)
-    column.paint(None, 0, 0, 300, 100)
+    with caplog.at_level(logging.WARNING):
+        column.paint(None, 0, 0, 300, 100)
 
     assert first.painted == 1 and late.painted == 0
+    assert caplog.records == [], "its rect comes with the next layout: nothing is reported"
     assert late.laid_out == [], "a paint lays nothing out"
     assert inner._layout_pending and inner.layout_rect == (0, 0, 300, 100), "the next frame still lays it out"
 
