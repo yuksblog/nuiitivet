@@ -45,6 +45,7 @@ def test_container_paint_respects_padding_and_align():
 
     # Paint at 100x100
     # Inner size 80x80. Child is small (e.g. 20x20). Center means offset.
+    c.layout(100, 100)
     c.paint(None, 0, 0, 100, 100)
 
     # Currently Container.paint just passes 0,0,100,100 to child.
@@ -62,6 +63,7 @@ def test_container_paint_respects_padding_and_align():
 
     f = Fixed()
     c = Container(f, padding=10, alignment="center")
+    c.layout(100, 100)
     c.paint(None, 0, 0, 100, 100)
 
     # Expected:
@@ -90,6 +92,7 @@ def test_container_child_stretch():
     c = Container(f, padding=0)
 
     # Paint at 100x100
+    c.layout(100, 100)
     c.paint(None, 0, 0, 100, 100)
 
     # Should fill container
@@ -115,20 +118,24 @@ def test_container_alignment_nine_points():
 
     f = Fixed()
     c = Container(f, padding=10, alignment="top-left")
+    c.layout(100, 100)
     c.paint(None, 0, 0, 100, 100)
     assert f.last_rect == (inner_x, inner_y, 10, 10)
 
     f = Fixed()
     c = Container(f, padding=10, alignment="top-center")
+    c.layout(100, 100)
     c.paint(None, 0, 0, 100, 100)
     assert f.last_rect == (center_x, inner_y, 10, 10)
 
     f = Fixed()
     c = Container(f, padding=10, alignment="bottom-right")
+    c.layout(100, 100)
     c.paint(None, 0, 0, 100, 100)
     assert f.last_rect == (end_x, end_y, 10, 10)
 
     f = Fixed()
     c = Container(f, padding=10, alignment="center")
+    c.layout(100, 100)
     c.paint(None, 0, 0, 100, 100)
     assert f.last_rect == (center_x, center_y, 10, 10)

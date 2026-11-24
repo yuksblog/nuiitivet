@@ -110,7 +110,8 @@ class WillPopScope(Widget):
             return
 
         if child.layout_rect is None:
-            self.layout(width, height)
+            self._take_paint_hints()
+            return
         try:
             child.set_last_rect(x, y, width, height)
             self._pass_paint_hints(child)

@@ -141,21 +141,13 @@ class Container(Widget):
 
         child = self.children[0]
 
-        # Auto-layout fallback for tests or direct paint calls
-        if child.layout_rect is None:
-            self.layout(width, height)
-        if child._layout_pending:
-            return
-
         rect = child.layout_rect
-        if rect:
-            rel_x, rel_y, child_w, child_h = rect
-            cx = x + rel_x
-            cy = y + rel_y
-        else:
-            # Fallback if layout failed
-            ix, iy, iw, ih = self._layout.compute_inner_rect(x, y, width, height)
-            cx, cy, child_w, child_h = self._layout.resolve_child_geometry(child, ix, iy, iw, ih)
+        if rect is None or child._layout_pending:
+            self._take_paint_hints()
+            return
+        rel_x, rel_y, child_w, child_h = rect
+        cx = x + rel_x
+        cy = y + rel_y
 
         # Container does not clip; child is painted as-is.
         try:

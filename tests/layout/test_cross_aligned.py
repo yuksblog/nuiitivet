@@ -30,6 +30,7 @@ def test_column_cross_aligned():
         cross_alignment="start",
     )
 
+    col.layout(100, 100)
     col.paint(None, 0, 0, 100, 100)
 
     assert c1.last_rect is not None
@@ -57,6 +58,7 @@ def test_row_cross_aligned():
         cross_alignment="start",
     )
 
+    row.layout(100, 100)
     row.paint(None, 0, 0, 100, 100)
 
     assert c1.last_rect is not None

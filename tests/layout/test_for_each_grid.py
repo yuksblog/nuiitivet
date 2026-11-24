@@ -29,6 +29,7 @@ def test_row_builder_spreads_children():
     pref_w, pref_h = row.preferred_size()
     assert pref_w == 10 + 20 + 30 + 2 * (len(items) - 1)
     assert pref_h == 8
+    row.layout(200, 50)
     row.paint(None, 0, 0, 200, 50)
     xs = []
     for child in fe.children:
@@ -47,6 +48,7 @@ def test_uniform_flow_builder_wraps_children():
     grid = UniformFlow.builder(items, builder, columns=2, cross_gap=4)
     fe = grid.children[0]
     fe.evaluate_build()
+    grid.layout(200, 200)
     grid.paint(None, 0, 0, 200, 200)
     rows = {}
     for idx, child in enumerate(fe.children):
@@ -76,6 +78,7 @@ def test_column_builder_stacks_children():
     assert pref_w == 10  # widest child width (idx=2)
     assert pref_h == (10 + 20 + 30) + column.gap * (len(items) - 1)
 
+    column.layout(50, 200)
     column.paint(None, 0, 0, 50, 200)
     ys = []
     for child in fe.children:

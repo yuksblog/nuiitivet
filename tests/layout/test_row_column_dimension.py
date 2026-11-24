@@ -21,6 +21,7 @@ def test_row_fixed_width_respected():
     child_fixed = DummyWidget(10, 5, width=40)
     child_auto = DummyWidget(30, 5)
     row = Row([child_fixed, child_auto], gap=0)
+    row.layout(120, 40)
     row.paint(None, 0, 0, 120, 40)
     fixed_rect = child_fixed.last_rect
     auto_rect = child_auto.last_rect
@@ -34,6 +35,7 @@ def test_row_weight_stretch_distribution():
     left = DummyWidget(10, 5, width="wt")
     right = DummyWidget(15, 5, width="wt")
     row = Row([left, right], gap=0)
+    row.layout(200, 40)
     row.paint(None, 0, 0, 200, 40)
     left_rect = left.last_rect
     right_rect = right.last_rect
@@ -46,6 +48,7 @@ def test_row_weight_stretch_distribution():
 def test_column_height_stretch():
     top = DummyWidget(10, 5, height="wt")
     col = Column([top])
+    col.layout(40, 150)
     col.paint(None, 0, 0, 40, 150)
     top_rect = top.last_rect
     assert top_rect is not None
@@ -56,6 +59,7 @@ def test_column_auto_and_fixed_mix():
     fixed = DummyWidget(10, 5, height=60)
     auto = DummyWidget(10, 20)
     col = Column([fixed, auto], gap=0)
+    col.layout(40, 200)
     col.paint(None, 0, 0, 40, 200)
     fixed_rect = fixed.last_rect
     auto_rect = auto.last_rect

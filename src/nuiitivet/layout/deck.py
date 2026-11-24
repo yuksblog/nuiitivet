@@ -214,14 +214,11 @@ class Deck(Widget):
         if not children or self._current_index >= len(children):
             return
 
-        # Auto-layout fallback for Tests or direct paint calls
-        if any(c.layout_rect is None for c in children):
-            self.layout(width, height)
-
         # Only paint the selected child
         selected_child = children[self._current_index]
         rect = selected_child.layout_rect
         if rect is None or selected_child._layout_pending:
+            self._take_paint_hints()
             return
 
         rel_x, rel_y, w, h = rect

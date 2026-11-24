@@ -240,23 +240,10 @@ class ScrollViewport(Widget):
 
         self._viewport_rect = (vp_x, vp_y, vp_w, vp_h)
 
-        # Auto-layout fallback for tests or direct paint calls
-        if content.layout_rect is None:
-            self.layout(width, height)
-
-        # Get content geometry from layout
         rect = content.layout_rect
-        if rect:
-            rel_x, rel_y, content_w, content_h = rect
-        else:
-            # Fallback if layout not called
-            if self.direction is ScrollDirection.VERTICAL:
-                content_w, content_h = measure_preferred_size(content, max_width=vp_w)
-            elif self.direction is ScrollDirection.HORIZONTAL:
-                content_w, content_h = measure_preferred_size(content, max_height=vp_h)
-            else:
-                content_w, content_h = measure_preferred_size(content, max_width=vp_w, max_height=vp_h)
-            rel_x, rel_y = pad_l, pad_t
+        if rect is None:
+            return
+        rel_x, rel_y, content_w, content_h = rect
 
         offset = self._controller.get_offset(self.direction)
 

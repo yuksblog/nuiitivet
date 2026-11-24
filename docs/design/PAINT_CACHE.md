@@ -159,7 +159,7 @@ flowchart LR
     tree[the widget tree]
     skia[rendering/skia/skia_module.py]
 
-    containers -- "paint_laid_out_children(container, canvas, x, y, w, h) · paint_children_at_layout_rects(children, canvas, x, y)" --> utils
+    containers -- "paint_laid_out_children(container, canvas, x, y) · paint_children_at_layout_rects(children, canvas, x, y)" --> utils
     viewport -- "content.paint(canvas, x, y, w, h), the scroll offset subtracted" --> tree
     utils -- "_replay_dirty · _replay_picture · _replay_origin · _replay_key · _replay_skip" --> kernel
     utils -- "_replay_safe on paint and the draw_* hooks" --> replay
@@ -190,7 +190,7 @@ sequenceDiagram
     participant K as widget_kernel.py
     participant T as the widget tree
 
-    C->>U: paint_laid_out_children(container, canvas, x, y, w, h), or a Stack's paint_children_at_layout_rects(children, canvas, x, y)
+    C->>U: paint_laid_out_children(container, canvas, x, y), or a Stack's paint_children_at_layout_rects(children, canvas, x, y)
     loop each child
         alt culled, outside the clip
             U->>K: _replay_picture = None, _replay_key = None, the child and every widget below it

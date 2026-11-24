@@ -79,16 +79,13 @@ class CrossAligned(Widget):
             return
 
         child = self.children[0]
-        if child.layout_rect is None:
-            self.layout(width, height)
-
         rect = child.layout_rect
         if rect is None:
-            abs_x, abs_y, child_w, child_h = x, y, width, height
-        else:
-            rel_x, rel_y, child_w, child_h = rect
-            abs_x = x + int(rel_x)
-            abs_y = y + int(rel_y)
+            self._take_paint_hints()
+            return
+        rel_x, rel_y, child_w, child_h = rect
+        abs_x = x + int(rel_x)
+        abs_y = y + int(rel_y)
 
         try:
             child.set_last_rect(abs_x, abs_y, child_w, child_h)

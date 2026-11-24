@@ -232,9 +232,10 @@ sequenceDiagram
 
 ### Promises
 
-- Layout runs to its end before the first draw command. A pass short of time
-  stops at the deadline. Work it stopped leaves a blank of the rect its parent
-  decided, never an unfinished tree (The Child Painter).
+- Layout runs to its end before the first draw command. No paint lays a
+  widget out. A pass short of time stops at the deadline. Work it stopped
+  leaves a blank of the rect its parent decided, never an unfinished tree
+  (The Child Painter).
 - While a subtree of a window is pending, each frame the window draws asks
   for the one after it. That frame lays out and paints the tree. It is never
   the cached frame.
@@ -296,7 +297,7 @@ flowchart LR
     painters[runtime/window.py · backends/pyglet/gpu_frame.py]
 
     painters -- "layout_frame(root, w, h, root_pass) · has_pending_layout(window)" --> utils
-    containers -- "layout_child_if_needed(child, w, h, sized_by_parent) · paint_laid_out_children(container, canvas, x, y, w, h)" --> utils
+    containers -- "layout_child_if_needed(child, w, h, sized_by_parent) · paint_laid_out_children(container, canvas, x, y)" --> utils
     utils -- "needs_layout · layout_rect · layout(w, h) · paint(canvas, x, y, w, h)" --> kernel
     utils -- "paint_outsets() · set_last_rect(x, y, w, h) · _paint_inside_clip · _layout_pending" --> kernel
     utils -- "clear_needs_layout(), the root's · _mark_replay_dirty(), a pending child laid out · mark_needs_layout(), a pending child that left the tree" --> kernel
@@ -368,6 +369,7 @@ sequenceDiagram
   out whatever the time.
 - A pending child is painted as nothing. It still receives its `last_rect`.
   Nothing below it is hit.
+- A child with no rect is not painted.
 - The layout of the next frame lays the pending children out. The root's pass
   comes first. The pending children share its deadline.
 - The pending children are laid out top-down, each at its rect, a subtree

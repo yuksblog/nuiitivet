@@ -321,15 +321,10 @@ class _ScrollableBase(Widget):
         3. Apply the scroll offset and paint the child.
         4. Paint the scrollbar.
         """
-        # Auto-layout fallback for tests or direct paint calls.
-        try:
-            if self._viewport.layout_rect is None:
-                self.layout(width, height)
-        except Exception:
-            exception_once(logger, "scrollable_auto_layout_exc", "Auto layout failed in paint")
-
         # Record the painted rect (for hit-testing)
         self.set_last_rect(x, y, width, height)
+        if self._viewport.layout_rect is None:
+            return
 
         x, y, width, height = self.content_rect(x, y, width, height)
         viewport_width = width

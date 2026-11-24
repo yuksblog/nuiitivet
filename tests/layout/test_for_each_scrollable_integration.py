@@ -65,6 +65,7 @@ def test_scroller_reports_extent_with_transient_foreach_items():
     scroller.mount(app)
     try:
         canvas = DummyCanvas()
+        scroller.layout(200, 80)
         scroller.paint(canvas, 0, 0, 200, 80)
         # The State publish is deferred to the between-frames flush.
         flush_size_change_callbacks()

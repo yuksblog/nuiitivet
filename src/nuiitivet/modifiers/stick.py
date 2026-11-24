@@ -59,9 +59,6 @@ class StickBox(Widget):
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
 
-        if self._main_child.layout_rect is None or self._sticker_child.layout_rect is None:
-            self.layout(width, height)
-
         main_rect = self._main_child.layout_rect
         sticker_rect = self._sticker_child.layout_rect
         if main_rect is None or sticker_rect is None:

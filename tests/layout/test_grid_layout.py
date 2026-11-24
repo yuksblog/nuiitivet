@@ -33,6 +33,7 @@ def test_grid_places_items_in_fixed_tracks():
         padding=8,
         children=[GridItem(child, row=0, column=0)],
     )
+    grid.layout(400, 200)
     grid.paint(None, 0, 0, 400, 200)
     assert child.last_rect == (8, 8, 20, 15)
 
@@ -59,6 +60,7 @@ def test_grid_area_mapping_creates_spans():
     )
     w, h = grid.preferred_size()
     assert w > 0 and h > 0
+    grid.layout(w + 50, h + 50)
     grid.paint(None, 0, 0, w + 50, h + 50)
     # Sidebar should start at column 0 and span two rows, header should span both columns
     header_rect = header.last_rect
@@ -85,6 +87,7 @@ def test_grid_auto_tracks_expand_to_fit_content():
     w, h = grid.preferred_size()
     # Preferred width should be both items + spacing
     assert w >= 60 + 60 + 10
+    grid.layout(w, h)
     grid.paint(None, 0, 0, w, h)
     left_rect = left.last_rect
     right_rect = right.last_rect

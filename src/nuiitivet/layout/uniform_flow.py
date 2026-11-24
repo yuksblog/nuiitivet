@@ -412,7 +412,7 @@ class UniformFlow(Widget):
 
     @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
-        paint_laid_out_children(self, canvas, x, y, width, height)
+        paint_laid_out_children(self, canvas, x, y)
 
     def _lazy_preferred_size(
         self, lazy: LazyItems, max_width: Optional[int], max_height: Optional[int]

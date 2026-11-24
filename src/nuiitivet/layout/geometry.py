@@ -170,9 +170,11 @@ class Geometry(Widget):
         if not self.children:
             return
         child = self.children[0]
-        if child.layout_rect is None:
-            self.layout(width, height)
-        rx, ry, rw, rh = child.layout_rect or self.content_rect(0, 0, width, height)
+        rect = child.layout_rect
+        if rect is None:
+            self._take_paint_hints()
+            return
+        rx, ry, rw, rh = rect
         child.set_last_rect(x + rx, y + ry, rw, rh)
         self._pass_paint_hints(child)
         child.paint(canvas, x + rx, y + ry, rw, rh)

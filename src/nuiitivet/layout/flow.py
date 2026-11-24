@@ -222,7 +222,7 @@ class Flow(Widget):
 
     @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
-        paint_laid_out_children(self, canvas, x, y, width, height)
+        paint_laid_out_children(self, canvas, x, y)
 
     def _layout_flow(self, children: List[Widget], x: int, y: int, w: int, h: int) -> None:
         # Simple flow layout implementation

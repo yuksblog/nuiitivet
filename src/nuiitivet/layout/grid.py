@@ -309,7 +309,7 @@ class Grid(Widget):
     def paint(self, canvas, x: int, y: int, width: int, height: int):
         self.set_last_rect(x, y, width, height)
 
-        paint_laid_out_children(self, canvas, x, y, width, height)
+        paint_laid_out_children(self, canvas, x, y)
 
     # --- helpers -------------------------------------------------
     def _prepare_layout(

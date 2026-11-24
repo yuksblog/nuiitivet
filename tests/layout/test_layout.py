@@ -29,6 +29,7 @@ def test_row_allocation_and_hit_test():
     c = DummyWidget(80, 40)
     row = Row([a, b, c], gap=10, cross_alignment="center")
     canvas = object()
+    row.layout(320, 120)
     row.paint(canvas, 0, 0, 320, 120)
     a_rect = a.last_rect
     b_rect = b.last_rect
@@ -55,6 +56,7 @@ def test_column_allocation_and_alignment():
     b = DummyWidget(60, 20)
     col = Column([a, b], gap=5, cross_alignment="center")
     canvas = object()
+    col.layout(200, 200)
     col.paint(canvas, 0, 0, 200, 200)
     a_rect = a.last_rect
     b_rect = b.last_rect

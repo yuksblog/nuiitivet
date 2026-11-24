@@ -188,13 +188,13 @@ def _layout_pending_subtrees() -> None:
 _CULL_SLACK = 32
 
 
-def paint_laid_out_children(container: Any, canvas: Any, x: int, y: int, width: int, height: int) -> None:
+def paint_laid_out_children(container: Any, canvas: Any, x: int, y: int) -> None:
     """Paint a container's children at their layout rects.
 
     The child list is the one the container's last ``layout()`` kept, for as
     long as the container needs no layout: every change to its children marks
-    it. A container painted without a layout builds the list here and lays
-    itself out first.
+    it. A container that needs a layout builds the list here. A child with no
+    rect is not painted.
     """
 
     # A hint covers the paint it was set for and no later one.
@@ -205,8 +205,6 @@ def paint_laid_out_children(container: Any, canvas: Any, x: int, y: int, width: 
     children = getattr(container, "_laid_out_children", None)
     if children is None or container.needs_layout:
         children = expand_layout_children(container.children_snapshot())
-        if any(c.layout_rect is None for c in children):
-            container.layout(width, height)
 
     if children:
         paint_children_at_layout_rects(children, canvas, x, y, inside_clip=inside_clip)

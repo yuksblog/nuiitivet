@@ -250,7 +250,7 @@ class TransformBox(Widget):
             return
 
         if child.layout_rect is None:
-            self.layout(width, height)
+            return
 
         # Fast path: no transforms
         if canvas is None or not self._has_transforms():
