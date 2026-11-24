@@ -589,7 +589,9 @@ class BuilderHostMixin:
     def _hit_test_built(self, x: int, y: int):
         """Descend into the built subtree, in its own (content rect) coordinates."""
         built = self._built
-        if not built or self._layout_pending:  # type: ignore[attr-defined]
+        if not built:
+            return None
+        if self._layout_pending and self._laid_out_size is None:  # type: ignore[attr-defined]
             return None
         rect = built.layout_rect
         if rect and rect[2] > 0 and rect[3] > 0:

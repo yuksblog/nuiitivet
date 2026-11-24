@@ -108,6 +108,11 @@ class WidgetKernel:
     # its rect and nothing below it has run. Cleared by ``layout``.
     _layout_pending: bool = False
 
+    # The size of this widget's last layout; ``None`` before the first. A pending
+    # child is painted and hit at it. ``layout_utils`` writes it too: an override
+    # of ``layout`` may not reach the kernel's.
+    _laid_out_size: Optional[Tuple[int, int]] = None
+
     # What the parent container keeps to replay this widget.
     # ``_replay_dirty``: something at or below it invalidated since its last paint.
     # ``_replay_key``: the size and scale of that paint, ``None`` before the first.
@@ -395,6 +400,7 @@ class WidgetKernel:
             assert_ui_thread()
         self.clear_needs_layout()
         self._layout_pending = False
+        self._laid_out_size = (int(width), int(height))
         # Preserve the widget's position in its parent.
         # `layout_rect` is defined in parent coordinate space.
         current = self._layout_rect
@@ -431,8 +437,8 @@ class WidgetKernel:
         Z-order hit testing.
         """
 
-        # Nothing below a pending widget has a rect of this pass.
-        if self._layout_pending:
+        # A pending widget shows its last layout; one never laid out shows nothing.
+        if self._layout_pending and self._laid_out_size is None:
             return None
         children: Tuple = getattr(self, "children", tuple())
         for child in reversed(children):

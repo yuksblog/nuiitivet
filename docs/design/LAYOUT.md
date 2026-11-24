@@ -128,6 +128,7 @@ flowchart LR
     container -- "preferred_size · compute_inner_rect · compute_child_placement · resolve_child_geometry" --> engine
     row & grid & stack & container -- "normalize_alignment(value) · alignment_to_point(alignment, w, h)" --> alignment
     row & grid & stack & flow & container & deck -- "layout_child_if_needed(child, w, h, sized_by_parent) · paint_laid_out_children(...)" --> utils
+    container & deck -- "paint_pending_child(child, canvas, x, y, w, h)" --> utils
 ```
 
 | Module | Role |
@@ -148,13 +149,15 @@ flowchart LR
 
 - Alignment positions a child. It never stretches one.
 - Whether a child fills its `Grid` cell is the child's own sizing.
-- Nothing clips a child larger than its rect.
+- Nothing clips a child larger than its rect, a pending child painted from
+  its last layout excepted ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)).
 - A child sized by its parent on both axes, each fixed or weighted, is placed
   without being measured.
 - A pass short of time stops only at a child whose rect its parent decided:
   one sized by its parent on both axes, a `Deck` page, a `Grid` item in fixed
-  tracks. The child keeps the rect and waits for the next frame's layout
-  ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)).
+  tracks. The child keeps the rect and waits for the next frame's layout.
+  Until then it is painted from its last layout, or as nothing when it has
+  none ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)).
 - A `Deck` lays its hidden pages out too, after the selected one. A hidden
   page past the deadline is left pending like any other child.
 

@@ -233,9 +233,9 @@ sequenceDiagram
 ### Promises
 
 - Layout runs to its end before the first draw command. No paint lays a
-  widget out. A pass short of time stops at the deadline. Work it stopped
-  leaves a blank of the rect its parent decided, never an unfinished tree
-  (The Child Painter).
+  widget out. A pass short of time stops at the deadline. The child a pass
+  stopped at is painted from its last layout, never from an unfinished one. A
+  child with no last layout is painted as nothing (The Child Painter).
 - While a subtree of a window is pending, each frame the window draws asks
   for the one after it. That frame lays out and paints the tree. It is never
   the cached frame.
@@ -283,7 +283,8 @@ flowchart LR
 
 `layout_utils` runs a frame's layout, lays a container's children out and
 paints them at their rects. Inside a frame the layout stops descending at its
-deadline. The frames after finish it.
+deadline. The frames after finish it. Until then a child it stopped at is
+painted from its last layout, the one that last ran on it.
 
 ### Structure
 
@@ -297,20 +298,20 @@ flowchart LR
     painters[runtime/window.py · backends/pyglet/gpu_frame.py]
 
     painters -- "layout_frame(root, w, h, root_pass) · has_pending_layout(window)" --> utils
-    containers -- "layout_child_if_needed(child, w, h, sized_by_parent) · paint_laid_out_children(container, canvas, x, y)" --> utils
+    containers -- "layout_child_if_needed(child, w, h, sized_by_parent) · paint_laid_out_children(container, canvas, x, y) · paint_children_at_layout_rects(children, canvas, x, y) · paint_pending_child(child, canvas, x, y, w, h)" --> utils
     utils -- "needs_layout · layout_rect · layout(w, h) · paint(canvas, x, y, w, h)" --> kernel
-    utils -- "paint_outsets() · set_last_rect(x, y, w, h) · _paint_inside_clip · _layout_pending" --> kernel
+    utils -- "paint_outsets() · set_last_rect(x, y, w, h) · _paint_inside_clip · _layout_pending · _laid_out_size" --> kernel
     utils -- "clear_needs_layout(), the root's · _mark_replay_dirty(), a pending child laid out · mark_needs_layout(), a pending child that left the tree" --> kernel
-    utils -- "local_clip_bounds(canvas)" --> skia
+    utils -- "local_clip_bounds(canvas) · clip_rect(canvas, rect)" --> skia
     utils -- "frame_started_at() · frame_interval()" --> frame
 ```
 
 | Module | Role |
 | --- | --- |
-| `layout/layout_utils.py` | runs a frame's layout: the root's pass, then the pending children, until the deadline; lays a child out unless it is clean at the same size, or the deadline has passed and the child's rect is its parent's; paints the children, skipping the pending ones and those beyond the clip and its slack band; tells a child inside the clip so |
-| `widgeting/widget_kernel.py` | `layout`, `paint`, `last_rect`; the pending flag; the inside-clip hint a parent sets for the paint that follows |
+| `layout/layout_utils.py` | runs a frame's layout: the root's pass, then the pending children, until the deadline; lays a child out unless it is clean at the same size, or the deadline has passed and the child's rect is its parent's; paints the children, a pending one from its last layout, skipping those beyond the clip and its slack band; tells a child inside the clip so |
+| `widgeting/widget_kernel.py` | `layout`, `paint`, `hit_test`, `last_rect`; the pending flag and the size of the last layout; the inside-clip hint a parent sets for the paint that follows |
 | the containers | the multi-child containers, `Container` and `Deck` ([LAYOUT.md](LAYOUT.md)) |
-| `rendering/skia/geometry.py` | reads the canvas clip |
+| `rendering/skia/geometry.py` | reads the canvas clip and narrows it |
 | `widgeting/frame_clock.py` | whether a frame is under way and how long a frame is (The Loop) |
 | `runtime/window.py · backends/pyglet/gpu_frame.py` | start a frame's layout; ask whether a subtree is pending (The Frame) |
 
@@ -334,11 +335,31 @@ sequenceDiagram
     alt the deadline has passed and the rect is the parent's
         U->>K: _layout_pending: nothing below the child runs
     else
-        U->>K: layout(w, h)
+        U->>K: layout(w, h), then _laid_out_size = (w, h)
     end
     C->>K: set_layout_rect(x, y, w, h)
-    C->>U: paint_laid_out_children(...), later in the frame
-    U->>K: set_last_rect(x, y, w, h), and no paint for a pending child
+```
+
+#### A pending child is painted
+
+```mermaid
+sequenceDiagram
+    participant C as the containers
+    participant U as layout/layout_utils.py
+    participant K as widget_kernel.py
+    participant S as rendering/skia/geometry.py
+
+    C->>U: paint_laid_out_children(container, canvas, x, y), a Stack's paint_children_at_layout_rects(children, canvas, x, y), or a Container's or a Deck's paint_pending_child(child, canvas, x, y, w, h)
+    U->>K: _laid_out_size
+    alt never laid out
+        Note over U: nothing is painted
+    else
+        opt the last layout is wider or taller than the rect
+            U->>S: clip_rect(canvas, bounds), closed at the rect's right or bottom edge plus the child's outset there, open elsewhere
+        end
+        U->>K: paint(canvas, x, y, last_w, last_h), the size of the last layout
+    end
+    U->>K: set_last_rect(x, y, w, h), the rect the child has now
 ```
 
 #### The next frame lays the pending children out
@@ -367,8 +388,16 @@ sequenceDiagram
 - Past the deadline a child whose rect its parent decided is left pending: it
   keeps the rect, nothing below it runs. A child sized by its content is laid
   out whatever the time.
-- A pending child is painted as nothing. It still receives its `last_rect`.
-  Nothing below it is hit.
+- A pending child is painted at the size of its last layout, from the top
+  left corner of its rect. A pending child never laid out is painted as
+  nothing. In both cases its `last_rect` is its rect.
+- Where a pending child's rect is narrower than its last layout, the paint is
+  cut at the rect's right edge plus the child's right outset, what it reports
+  through `paint_outsets`. Where the rect is shorter, the paint is cut at the
+  bottom edge plus the bottom outset. No other side is cut.
+- Hit testing descends a pending child through its last layout. Nothing below
+  a pending child never laid out is hit.
+- No count of frames ends a child's pending state. Only its layout does.
 - A child with no rect is not painted.
 - The layout of the next frame lays the pending children out. The root's pass
   comes first. The pending children share its deadline.
