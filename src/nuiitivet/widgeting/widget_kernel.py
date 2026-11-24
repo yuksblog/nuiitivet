@@ -108,18 +108,14 @@ class WidgetKernel:
     # its rect and nothing below it has run. Cleared by ``layout``.
     _layout_pending: bool = False
 
-    # Set by a scroll viewport on its content for the paint that follows; the
-    # first container below records one picture per child and replays it.
-    _paint_scroll_content: bool = False
-
-    # The recording a scroll content container keeps for this widget as one of
-    # its rows. ``_replay_dirty`` is set by every invalidation at or below the
-    # widget and cleared when the row is recorded.
+    # What the parent container keeps to replay this widget.
+    # ``_replay_dirty``: something at or below it invalidated since its last paint.
+    # ``_replay_key``: the size and scale of that paint, ``None`` before the first.
+    # ``_replay_skip``: not recorded until a layout mark at or below it.
     _replay_dirty: bool = True
     _replay_picture: Any = None
     _replay_origin: Optional[Tuple[float, float]] = None
     _replay_key: Optional[tuple] = None
-    _replay_misses: int = 0
     _replay_skip: bool = False
 
     def _take_inside_clip(self) -> bool:
@@ -139,17 +135,12 @@ class WidgetKernel:
         if self._paint_inside_clip:
             self._paint_inside_clip = False
             hints = 1
-        if self._paint_scroll_content:
-            self._paint_scroll_content = False
-            hints |= 2
         return hints
 
     def _give_paint_hints(self, hints: int) -> None:
         """Receive the hints a parent took for the paint that follows."""
         if hints & 1:
             self._paint_inside_clip = True
-        if hints & 2:
-            self._paint_scroll_content = True
 
     def _pass_paint_hints(self, child: Any) -> None:
         """Hand this paint's hints to ``child``, which is about to be painted in place."""
@@ -383,6 +374,7 @@ class WidgetKernel:
         """Mark this widget as needing layout and propagate up the tree."""
         self._needs_layout = True
         self._replay_dirty = True
+        self._replay_skip = False
         self._measure_cache = None
         if self._parent:
             marker = getattr(self._parent, "mark_needs_layout", None)

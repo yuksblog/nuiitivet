@@ -89,6 +89,7 @@ class Widget(
         already_dirty = self._needs_layout
         self._needs_layout = True
         self._replay_dirty = True
+        self._replay_skip = False
         self._measure_cache = None
         parent = getattr(self, "_parent", None)
         if isinstance(parent, Widget):

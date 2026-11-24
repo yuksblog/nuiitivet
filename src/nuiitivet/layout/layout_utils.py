@@ -201,9 +201,6 @@ def paint_laid_out_children(container: Any, canvas: Any, x: int, y: int, width: 
     inside_clip = container._paint_inside_clip
     if inside_clip:
         container._paint_inside_clip = False
-    scroll_content = container._paint_scroll_content
-    if scroll_content:
-        container._paint_scroll_content = False
 
     children = getattr(container, "_laid_out_children", None)
     if children is None or container.needs_layout:
@@ -212,22 +209,26 @@ def paint_laid_out_children(container: Any, canvas: Any, x: int, y: int, width: 
             container.layout(width, height)
 
     if children:
-        paint_children_at_layout_rects(
-            children, canvas, x, y, inside_clip=inside_clip, scroll_content=scroll_content
-        )
+        paint_children_at_layout_rects(children, canvas, x, y, inside_clip=inside_clip)
 
 
 # Tests turn this off to compare a replayed frame against a direct paint.
-_ROW_REPLAY = True
+_REPLAY = True
 
-# A row that changed on more consecutive paints than this is painted directly:
-# recording a row every frame costs more than not recording it.
-_CHURN_LIMIT = 2
+# The device bounds of the recording under way, or ``None``. No recording
+# starts inside one: it would hold the same widgets a second time.
+_recording: Optional[Tuple[float, float, float, float]] = None
+
+# Whether the recording under way left a widget out.
+_recording_cut = False
+
+# A recording's canvas bounds: far enough that its clip is only what the widgets below set.
+_FAR = 1.0e8
 
 _replay_safe_types: dict[type, bool] = {}
 
-# (matrix, scale_x, scale_y, translate_x, translate_y, clip_width, clip_height)
-_Rows = Tuple[Any, float, float, float, float, float, float]
+# (matrix, scale_x, scale_y, translate_x, translate_y)
+_Replay = Tuple[Any, float, float, float, float]
 
 
 def _type_replay_safe(cls: type) -> bool:
@@ -254,9 +255,9 @@ def _subtree_replay_safe(root: Any) -> bool:
     return True
 
 
-def _rows_of(canvas: Any, clip: Optional[Tuple[float, float, float, float]]) -> Optional[_Rows]:
-    """Read what replaying rows on ``canvas`` needs, or ``None`` when it cannot replay."""
-    if not _ROW_REPLAY or clip is None:
+def _replay_of(canvas: Any) -> Optional[_Replay]:
+    """Read what replaying children on ``canvas`` needs, or ``None`` when it cannot replay."""
+    if not _REPLAY:
         return None
     read = getattr(canvas, "getTotalMatrix", None)
     if read is None or getattr(canvas, "drawPicture", None) is None:
@@ -267,89 +268,159 @@ def _rows_of(canvas: Any, clip: Optional[Tuple[float, float, float, float]]) -> 
         # A stand-in canvas answers with something that is not a matrix of floats.
         if type(scale_x) is not float or matrix.getSkewX() != 0.0 or matrix.getSkewY() != 0.0:
             return None
-        return (
-            matrix,
-            scale_x,
-            matrix.getScaleY(),
-            matrix.getTranslateX(),
-            matrix.getTranslateY(),
-            clip[2] - clip[0],
-            clip[3] - clip[1],
-        )
+        scale_y = matrix.getScaleY()
+        if scale_x == 0.0 or scale_y == 0.0:
+            return None
+        return (matrix, scale_x, scale_y, matrix.getTranslateX(), matrix.getTranslateY())
     except Exception:
         return None
 
 
-def _paint_row(child: Any, canvas: Any, x: int, y: int, w: int, h: int, rows: _Rows) -> bool:
-    """Draw a scroll row from its recording, recording it first when it changed.
+def _forget_pictures(root: Any) -> None:
+    """Give up the recordings in ``root``'s subtree: it left the clip."""
+    stack = [root]
+    while stack:
+        node = stack.pop()
+        node._replay_picture = None
+        # As before any paint: it is recorded when it comes back.
+        node._replay_key = None
+        stack.extend(node.children_snapshot())
+        built = getattr(node, "built_child", None)
+        if built is not None:
+            stack.append(built)
 
-    The canvas is not moved by a scroll viewport, so a row is recorded at the
-    device position it had and replayed shifted by how far it has moved since.
+
+def _outsets(child: Any) -> Tuple[int, int, int, int]:
+    try:
+        return child.paint_outsets()
+    except Exception:
+        exception_once(_logger, "layout_utils_paint_outsets_exc", "paint_outsets failed")
+        return (0, 0, 0, 0)
+
+
+def _outsets_outside(
+    child: Any, x: int, y: int, w: int, h: int, left: float, top: float, right: float, bottom: float
+) -> bool:
+    """Whether what ``child`` draws beyond its rect stays outside the bounds as its rect does."""
+    out_l, out_t, out_r, out_b = _outsets(child)
+    return x - out_l >= right or y - out_t >= bottom or x + w + out_r <= left or y + h + out_b <= top
+
+
+def _replay_child(
+    child: Any,
+    canvas: Any,
+    x: int,
+    y: int,
+    w: int,
+    h: int,
+    replay: _Replay,
+    clip: Optional[Tuple[float, float, float, float]],
+) -> bool:
+    """Draw a child from its recording, recording it first when it has none.
+
+    ``clip`` is the canvas clip in local coordinates, ``None`` when the caller
+    has not read it.
 
     Returns:
-        ``False`` when the row has to be painted directly: it holds a widget
-        that is not declared safe to replay, it is larger than the viewport, or
-        it changes on every frame.
+        ``False`` when the child has to be painted directly.
     """
-    matrix, scale_x, scale_y, translate_x, translate_y, clip_w, clip_h = rows
+    _, scale_x, scale_y, translate_x, translate_y = replay
     device_x = scale_x * x + translate_x
     device_y = scale_y * y + translate_y
     key = (w, h, scale_x, scale_y)
 
-    picture = child._replay_picture
-    if child._replay_dirty:
-        child._replay_misses += 1
-        # Anything the paint below invalidates marks the row again.
+    last = child._replay_key
+    if last is not None and (child._replay_dirty or last != key):
+        # Not recorded now: a child that changes every frame would be recorded every frame.
+        # Anything the paint below invalidates marks the child again.
         child._replay_dirty = False
-        child._replay_skip = False
-        picture = None
-        if child._replay_misses > _CHURN_LIMIT:
-            child._replay_picture = None
-            return False
-    else:
-        child._replay_misses = 0
-        if child._replay_skip:
-            return False
-        if picture is not None and child._replay_key == key:
-            origin_x, origin_y = child._replay_origin
-            canvas.save()
-            canvas.resetMatrix()
-            canvas.translate(device_x - origin_x, device_y - origin_y)
-            canvas.drawPicture(picture)
-            canvas.restore()
-            return True
+        child._replay_key = key
+        child._replay_picture = None
+        return False
+    picture = child._replay_picture
+    if picture is not None:
+        origin_x, origin_y = child._replay_origin
+        canvas.save()
+        canvas.resetMatrix()
+        canvas.translate(device_x - origin_x, device_y - origin_y)
+        canvas.drawPicture(picture)
+        canvas.restore()
+        return True
 
-    child._replay_picture = None
+    child._replay_dirty = False
+    child._replay_key = key
+    if _recording is not None or child._replay_skip:
+        return False
+    return _record_child(child, canvas, x, y, w, h, replay, clip)
+
+
+def _record_child(
+    child: Any,
+    canvas: Any,
+    x: int,
+    y: int,
+    w: int,
+    h: int,
+    replay: _Replay,
+    clip: Optional[Tuple[float, float, float, float]],
+) -> bool:
+    """Record a child and draw the recording, keeping it when it holds all the child draws.
+
+    Returns:
+        ``False`` when the child is not recorded.
+    """
+    global _recording, _recording_cut
+    matrix, scale_x, scale_y, translate_x, translate_y = replay
+    if clip is None:
+        clip = local_clip_bounds(canvas)
+        if clip is None:
+            return False
+    clip_l, clip_t, clip_r, clip_b = clip
+    out_l, out_t, out_r, out_b = _outsets(child)
+    left = x - out_l - _CULL_SLACK
+    top = y - out_t - _CULL_SLACK
+    right = x + w + out_r + _CULL_SLACK
+    bottom = y + h + out_b + _CULL_SLACK
+    if left >= clip_r or top >= clip_b or right <= clip_l or bottom <= clip_t:
+        # A child that overflows a parent inside the clip was not culled.
+        return False
+    if w > clip_r - clip_l or h > clip_b - clip_t:
+        # Recorded whole, it would paint what the clip hides.
+        return False
     skia = get_skia(raise_if_missing=False)
-    if skia is None or w > clip_w or h > clip_h or not _subtree_replay_safe(child):
+    if skia is None or not _subtree_replay_safe(child):
         child._replay_skip = True
         return False
 
-    try:
-        out_l, out_t, out_r, out_b = child.paint_outsets()
-    except Exception:
-        exception_once(_logger, "layout_utils_paint_outsets_exc", "paint_outsets failed")
-        out_l = out_t = out_r = out_b = 0
-    x0 = scale_x * (x - out_l - _CULL_SLACK) + translate_x
-    x1 = scale_x * (x + w + out_r + _CULL_SLACK) + translate_x
-    y0 = scale_y * (y - out_t - _CULL_SLACK) + translate_y
-    y1 = scale_y * (y + h + out_b + _CULL_SLACK) + translate_y
+    # Out to the clip: a descendant may draw beyond the child's rect.
+    x0 = scale_x * min(left, clip_l) + translate_x
+    x1 = scale_x * max(right, clip_r) + translate_x
+    y0 = scale_y * min(top, clip_t) + translate_y
+    y1 = scale_y * max(bottom, clip_b) + translate_y
     recorder = skia.PictureRecorder()
-    target = recorder.beginRecording(skia.Rect.MakeLTRB(min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1)))
+    target = recorder.beginRecording(skia.Rect.MakeLTRB(-_FAR, -_FAR, _FAR, _FAR))
     # The recording carries the canvas matrix, so a widget that rasterises its
     # own cache at the device scale sees the scale it will be shown at.
     target.setMatrix(matrix)
     child._paint_inside_clip = True
-    child.paint(target, x, y, w, h)
+    _recording = (min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
+    _recording_cut = False
+    try:
+        child.paint(target, x, y, w, h)
+    finally:
+        _recording = None
     picture = recorder.finishRecordingAsPicture()
 
-    child._replay_picture = picture
-    child._replay_origin = (device_x, device_y)
-    child._replay_key = key
     canvas.save()
     canvas.resetMatrix()
     canvas.drawPicture(picture)
     canvas.restore()
+    if _recording_cut:
+        # Replayed elsewhere it would lack the widget left out. Its children are recorded instead.
+        child._replay_skip = True
+    else:
+        child._replay_picture = picture
+        child._replay_origin = (scale_x * x + translate_x, scale_y * y + translate_y)
     return True
 
 
@@ -360,7 +431,6 @@ def paint_children_at_layout_rects(
     y: int,
     *,
     inside_clip: bool = False,
-    scroll_content: bool = False,
 ) -> None:
     """Paint each laid-out child at ``(x, y)`` plus its layout rect.
 
@@ -370,20 +440,22 @@ def paint_children_at_layout_rects(
     draws outside its rect must report that through ``paint_outsets``. With no
     readable clip, no canvas or a stand-in, every child is painted.
 
+    A child whose subtree declares its drawing ``replay_safe`` is drawn from a
+    recording, not painted, while nothing at or below it has invalidated.
+
     Args:
         children: The children to paint.
         canvas: The canvas to paint on.
         x: The left edge of the parent on the canvas.
         y: The top edge of the parent on the canvas.
-        inside_clip: The parent lies wholly inside the clip. The clip is not
-            read and no child is tested against it.
-        scroll_content: The children are the rows of a scroll viewport's
-            content. A row is recorded when it enters the clip and replayed,
-            shifted, while nothing at or below it has invalidated. A row that
-            leaves the clip gives its recording up.
+        inside_clip: The parent lies wholly inside the clip, so no child is
+            culled.
     """
+    global _recording_cut
 
-    if inside_clip and not scroll_content:
+    replay = _replay_of(canvas)
+
+    if inside_clip:
         for child in children:
             rect = child.layout_rect
             if rect is None:
@@ -393,6 +465,8 @@ def paint_children_at_layout_rects(
             abs_y = y + rel_y
             child.set_last_rect(abs_x, abs_y, w, h)
             if child._layout_pending:
+                continue
+            if replay is not None and _replay_child(child, canvas, abs_x, abs_y, w, h, replay, None):
                 continue
             child._paint_inside_clip = True
             child.paint(canvas, abs_x, abs_y, w, h)
@@ -412,7 +486,19 @@ def paint_children_at_layout_rects(
         clip_right = in_right + _CULL_SLACK
         clip_bottom = in_bottom + _CULL_SLACK
 
-    rows = _rows_of(canvas, clip) if scroll_content else None
+    # With no matrix to map its bounds through, the recording leaves nothing out here.
+    held = _recording if replay is not None else None
+    if held is not None and replay is not None:
+        _, scale_x, scale_y, translate_x, translate_y = replay
+        x0 = (held[0] - translate_x) / scale_x
+        x1 = (held[2] - translate_x) / scale_x
+        y0 = (held[1] - translate_y) / scale_y
+        y1 = (held[3] - translate_y) / scale_y
+        held_left, held_right = min(x0, x1), max(x0, x1)
+        held_top, held_bottom = min(y0, y1), max(y0, y1)
+    else:
+        held_left = held_top = -math.inf
+        held_right = held_bottom = math.inf
 
     for child in children:
         rect = child.layout_rect
@@ -427,24 +513,30 @@ def paint_children_at_layout_rects(
         if child._layout_pending:
             continue
 
+        outsets_only = False
         if abs_x >= clip_right or abs_y >= clip_bottom or abs_x + w <= clip_left or abs_y + h <= clip_top:
-            try:
-                out_l, out_t, out_r, out_b = child.paint_outsets()
-            except Exception:
-                exception_once(_logger, "layout_utils_paint_outsets_exc", "paint_outsets failed")
-                out_l = out_t = out_r = out_b = 0
-            if (
-                abs_x - out_l >= clip_right
-                or abs_y - out_t >= clip_bottom
-                or abs_x + w + out_r <= clip_left
-                or abs_y + h + out_b <= clip_top
-            ):
-                if rows is not None and child._replay_picture is not None:
-                    child._replay_picture = None
+            if _outsets_outside(child, abs_x, abs_y, w, h, clip_left, clip_top, clip_right, clip_bottom):
+                if child._replay_key is not None:
+                    _forget_pictures(child)
                 continue
-        elif rows is not None:
-            if _paint_row(child, canvas, abs_x, abs_y, w, h, rows):
-                continue
+            outsets_only = True
+        if (
+            held is not None
+            and (abs_x >= held_right or abs_y >= held_bottom or abs_x + w <= held_left or abs_y + h <= held_top)
+            and _outsets_outside(child, abs_x, abs_y, w, h, held_left, held_top, held_right, held_bottom)
+        ):
+            _recording_cut = True
+            if child._replay_key is not None:
+                _forget_pictures(child)
+            continue
+
+        if outsets_only:
+            if replay is not None:
+                # Painted, so that leaving the clip gives up what is recorded below it.
+                child._replay_dirty = False
+                child._replay_key = (w, h, replay[1], replay[2])
+        elif replay is not None and _replay_child(child, canvas, abs_x, abs_y, w, h, replay, clip):
+            continue
         elif abs_x >= in_left and abs_y >= in_top and abs_x + w <= in_right and abs_y + h <= in_bottom:
             child._paint_inside_clip = True
 

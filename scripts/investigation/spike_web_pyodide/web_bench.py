@@ -38,7 +38,7 @@ import_ms = (time.perf_counter() - import_start) * 1000.0
 rows = int(js.SPIKE.rows)
 frames = int(js.SPIKE.frames)
 scroll = int(getattr(js.SPIKE, "scroll", 0) or 0)
-layout_utils._ROW_REPLAY = bool(getattr(js.SPIKE, "replay", True))
+layout_utils._REPLAY = bool(getattr(js.SPIKE, "replay", True))
 
 
 class _SurfaceRecorder:

@@ -60,7 +60,6 @@ PASSING: dict[str, Callable[[Widget], Widget]] = {
     "composable": _composable,
     "container": lambda child: Container(child),
     "box": lambda child: Box(child),
-    "stack": lambda child: Stack([child]),
     "deck": lambda child: Deck([child]),
     "geometry": lambda child: Geometry(child),
     "cross_aligned": lambda child: CrossAligned(child, "start"),
@@ -82,6 +81,8 @@ def test_a_container_under_a_passing_wrapper_does_not_read_the_clip(wrap) -> Non
     with mount(outer, leak_check="off") as host:
         host.layout(SIZE, SIZE)
         canvas = _canvas()
+        # A first paint reads the clip for each child it might record.
+        outer.paint(canvas, 0, 0, SIZE, SIZE)
 
         with _clip_reads() as reads:
             outer.paint(canvas, 0, 0, SIZE, SIZE)
@@ -102,6 +103,25 @@ def test_a_passing_wrapper_that_crosses_the_clip_passes_nothing(wrap) -> None:
         with _clip_reads() as reads:
             outer.paint(_canvas(100, 100), 0, 0, 100, 500)
 
+    assert reads.call_count == 2
+    assert _painted(leaves) == [0, 1, 2]
+
+
+def test_a_stack_reads_the_clip_for_its_own_children() -> None:
+    # A Stack child may lie outside the Stack, so the Stack inside the clip does not vouch for it.
+    leaves: List[Widget] = [_Leaf() for _ in range(3)]
+    inner = Column(children=leaves)
+    outer = Column(children=[Stack([inner])])
+    with mount(outer, leak_check="off") as host:
+        host.layout(SIZE, SIZE)
+        canvas = _canvas()
+        # A first paint reads the clip for each child it might record.
+        outer.paint(canvas, 0, 0, SIZE, SIZE)
+
+        with _clip_reads() as reads:
+            outer.paint(canvas, 0, 0, SIZE, SIZE)
+
+    # The outer column and the Stack read it; the column inside the Stack is told it lies inside.
     assert reads.call_count == 2
     assert _painted(leaves) == [0, 1, 2]
 

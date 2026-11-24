@@ -19,8 +19,8 @@ path. Measured on a 1000-row full-repaint stress app, an active session
 inflates frame time by roughly 10%.
 
 Limitations: widget classes imported *after* :func:`start` are not wrapped
-and their paints go uncounted; every painted frame walks the whole tree, so
-paint counts are per painted frame, not per damaged region.
+and their paints go uncounted. A widget a container draws from its picture is
+not painted, so it is not counted either.
 """
 
 from __future__ import annotations
@@ -214,6 +214,9 @@ def _make_paint_wrapper(orig: Any) -> Any:
 
     paint.__wrapped__ = orig  # type: ignore[attr-defined]
     setattr(paint, _PAINT_WRAPPER_ATTR, True)
+    if getattr(orig, "_replay_safe", False):
+        # Undeclared, the wrapper would turn replay off for the whole session.
+        setattr(paint, "_replay_safe", True)
     return paint
 
 
