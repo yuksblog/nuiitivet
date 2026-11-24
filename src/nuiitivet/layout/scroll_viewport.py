@@ -12,6 +12,7 @@ from nuiitivet.layout.metrics import normalize_padding
 from nuiitivet.layout.measure import preferred_size as measure_preferred_size
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia import clip_rect, make_rect
+from nuiitivet.widgeting.unlaid_child import warn_child_without_rect
 
 
 _logger = logging.getLogger(__name__)
@@ -240,23 +241,12 @@ class ScrollViewport(Widget):
 
         self._viewport_rect = (vp_x, vp_y, vp_w, vp_h)
 
-        # Auto-layout fallback for tests or direct paint calls
-        if content.layout_rect is None:
-            self.layout(width, height)
-
-        # Get content geometry from layout
         rect = content.layout_rect
-        if rect:
-            rel_x, rel_y, content_w, content_h = rect
-        else:
-            # Fallback if layout not called
-            if self.direction is ScrollDirection.VERTICAL:
-                content_w, content_h = measure_preferred_size(content, max_width=vp_w)
-            elif self.direction is ScrollDirection.HORIZONTAL:
-                content_w, content_h = measure_preferred_size(content, max_height=vp_h)
-            else:
-                content_w, content_h = measure_preferred_size(content, max_width=vp_w, max_height=vp_h)
-            rel_x, rel_y = pad_l, pad_t
+        if rect is None:
+            if __debug__:
+                warn_child_without_rect(content)
+            return
+        rel_x, rel_y, content_w, content_h = rect
 
         offset = self._controller.get_offset(self.direction)
 

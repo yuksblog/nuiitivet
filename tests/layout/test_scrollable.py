@@ -219,6 +219,7 @@ def test_scrollable_updates_metrics_without_explicit_height():
 
     scrollable = VerticalScrollable(child=TallWidget())
     canvas = DummyCanvas()
+    scrollable.layout(120, 150)
     scrollable.paint(canvas, 0, 0, 120, 150)
     # The State publish is deferred to the between-frames flush.
     flush_size_change_callbacks()
@@ -240,6 +241,7 @@ def test_scrollable_updates_horizontal_metrics_without_explicit_width():
 
     scrollable = HorizontalScrollable(child=WideWidget())
     canvas = DummyCanvas()
+    scrollable.layout(180, 80)
     scrollable.paint(canvas, 0, 0, 180, 80)
     flush_size_change_callbacks()
     axis_state = scrollable._controller.axis_state(ScrollDirection.HORIZONTAL)

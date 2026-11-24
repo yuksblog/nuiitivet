@@ -8,9 +8,10 @@ from time import perf_counter
 from typing import Any, Deque, List, Optional, Sequence, Tuple, TYPE_CHECKING
 
 from nuiitivet.common.logging_once import exception_once
-from nuiitivet.rendering.skia import get_skia, local_clip_bounds
+from nuiitivet.rendering.skia import clip_rect, get_skia, local_clip_bounds
 from nuiitivet.widgeting.frame_clock import frame_interval, frame_started_at
 from nuiitivet.widgeting.paint_replay import REPLAY_HOOKS
+from nuiitivet.widgeting.unlaid_child import warn_child_without_rect
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..widgeting.widget import Widget
@@ -109,8 +110,8 @@ def layout_child_if_needed(child: "Widget", width: int, height: int, *, sized_by
         height: The height the parent allocated.
         sized_by_parent: The rect came from the parent, not from measuring the
             child. Past :func:`layout_deadline` such a child is left pending:
-            it keeps the rect, nothing below it runs, it is painted as nothing,
-            and the next frame lays it out.
+            it keeps the rect, nothing below it runs, it is painted from its
+            last layout, and the next frame lays it out.
     """
 
     rect = getattr(child, "layout_rect", None)
@@ -130,7 +131,12 @@ def layout_child_if_needed(child: "Widget", width: int, height: int, *, sized_by
     if child._layout_pending:
         # Not left to ``layout()``: an override may not reach the kernel's.
         _end_pending(child)
+    _lay_out(child, width, height)
+
+
+def _lay_out(child: "Widget", width: int, height: int) -> None:
     child.layout(width, height)
+    child._laid_out_size = (int(width), int(height))
 
 
 def _leave_pending(child: "Widget") -> None:
@@ -142,7 +148,7 @@ def _leave_pending(child: "Widget") -> None:
 
 def _end_pending(child: "Widget") -> None:
     child._layout_pending = False
-    # The pictures recorded while it was blank are stale.
+    # The pictures recorded while it showed its last layout are stale.
     child._mark_replay_dirty()
 
 
@@ -174,7 +180,7 @@ def _layout_pending_subtrees() -> None:
             continue
         mark = len(_pending)
         try:
-            child.layout(rect[2], rect[3])
+            _lay_out(child, rect[2], rect[3])
         except Exception:
             exception_once(_logger, "layout_utils_pending_layout_exc", "A pending child's layout failed")
             continue
@@ -188,13 +194,13 @@ def _layout_pending_subtrees() -> None:
 _CULL_SLACK = 32
 
 
-def paint_laid_out_children(container: Any, canvas: Any, x: int, y: int, width: int, height: int) -> None:
+def paint_laid_out_children(container: Any, canvas: Any, x: int, y: int) -> None:
     """Paint a container's children at their layout rects.
 
     The child list is the one the container's last ``layout()`` kept, for as
     long as the container needs no layout: every change to its children marks
-    it. A container painted without a layout builds the list here and lays
-    itself out first.
+    it. A container that needs a layout builds the list here. A child with no
+    rect is not painted.
     """
 
     # A hint covers the paint it was set for and no later one.
@@ -205,8 +211,6 @@ def paint_laid_out_children(container: Any, canvas: Any, x: int, y: int, width: 
     children = getattr(container, "_laid_out_children", None)
     if children is None or container.needs_layout:
         children = expand_layout_children(container.children_snapshot())
-        if any(c.layout_rect is None for c in children):
-            container.layout(width, height)
 
     if children:
         paint_children_at_layout_rects(children, canvas, x, y, inside_clip=inside_clip)
@@ -221,6 +225,11 @@ _recording: Optional[Tuple[float, float, float, float]] = None
 
 # Whether the recording under way left a widget out.
 _recording_cut = False
+
+# How many pending children are being painted from their last layout. Below
+# one a paint clears no mark and records nothing: the layout still to come
+# may change what it drew, and the marks must be there for the paint after it.
+_stale_paints = 0
 
 # A recording's canvas bounds: far enough that its clip is only what the widgets below set.
 _FAR = 1.0e8
@@ -331,11 +340,12 @@ def _replay_child(
 
     last = child._replay_key
     if last is not None and (child._replay_dirty or last != key):
-        # Not recorded now: a child that changes every frame would be recorded every frame.
-        # Anything the paint below invalidates marks the child again.
-        child._replay_dirty = False
-        child._replay_key = key
-        child._replay_picture = None
+        if not _stale_paints:
+            # Not recorded now: a child that changes every frame would be recorded every frame.
+            # Anything the paint below invalidates marks the child again.
+            child._replay_dirty = False
+            child._replay_key = key
+            child._replay_picture = None
         return False
     picture = child._replay_picture
     if picture is not None:
@@ -347,6 +357,8 @@ def _replay_child(
         canvas.restore()
         return True
 
+    if _stale_paints:
+        return False
     child._replay_dirty = False
     child._replay_key = key
     if _recording is not None or child._replay_skip:
@@ -424,6 +436,49 @@ def _record_child(
     return True
 
 
+def paint_pending_child(child: "Widget", canvas: Any, x: int, y: int, width: int, height: int) -> None:
+    """Paint a child the layout left pending, from its last layout.
+
+    The child is painted at the size of that layout, its top left corner at
+    ``(x, y)``. On a side where its rect is smaller now, what falls beyond the
+    rect and its ``paint_outsets`` is cut. A child never laid out is painted
+    as nothing. Its ``last_rect`` is the rect it has now in both cases.
+
+    Args:
+        child: The pending child.
+        canvas: The canvas to paint on.
+        x: The left edge of the child's rect on the canvas.
+        y: The top edge of the child's rect on the canvas.
+        width: The width of the child's rect.
+        height: The height of the child's rect.
+    """
+    global _stale_paints
+
+    size = child._laid_out_size
+    if size is not None:
+        clipped = False
+        skia = get_skia(raise_if_missing=False)
+        shrank = size[0] > width or size[1] > height
+        if shrank and skia is not None and getattr(canvas, "save", None) is not None:
+            # The other sides stay open: what its subtree draws beyond them is not in its outsets.
+            _, _, out_r, out_b = _outsets(child)
+            right = x + width + out_r if size[0] > width else _FAR
+            bottom = y + height + out_b if size[1] > height else _FAR
+            canvas.save()
+            clipped = True
+            clip_rect(canvas, skia.Rect.MakeLTRB(-_FAR, -_FAR, right, bottom))
+        _stale_paints += 1
+        try:
+            replay = _replay_of(canvas)
+            if replay is None or not _replay_child(child, canvas, x, y, size[0], size[1], replay, None):
+                child.paint(canvas, x, y, size[0], size[1])
+        finally:
+            _stale_paints -= 1
+            if clipped:
+                canvas.restore()
+    child.set_last_rect(x, y, width, height)
+
+
 def paint_children_at_layout_rects(
     children: Sequence["Widget"],
     canvas: Any,
@@ -434,11 +489,12 @@ def paint_children_at_layout_rects(
 ) -> None:
     """Paint each laid-out child at ``(x, y)`` plus its layout rect.
 
-    A child left pending by the layout is painted as nothing. A child whose
-    layout rect plus ``paint_outsets`` ends beyond the canvas clip and a small
-    slack is not painted. Both still get their ``last_rect``. A child that
-    draws outside its rect must report that through ``paint_outsets``. With no
-    readable clip, no canvas or a stand-in, every child is painted.
+    A child left pending by the layout is painted from its last layout
+    (:func:`paint_pending_child`). A child whose layout rect plus
+    ``paint_outsets`` ends beyond the canvas clip and a small slack is not
+    painted. It still gets its ``last_rect``. A child that draws outside its
+    rect must report that through ``paint_outsets``. With no readable clip, no
+    canvas or a stand-in, every child is painted.
 
     A child whose subtree declares its drawing ``replay_safe`` is drawn from a
     recording, not painted, while nothing at or below it has invalidated.
@@ -459,13 +515,16 @@ def paint_children_at_layout_rects(
         for child in children:
             rect = child.layout_rect
             if rect is None:
+                if __debug__:
+                    warn_child_without_rect(child)
                 continue
             rel_x, rel_y, w, h = rect
             abs_x = x + rel_x
             abs_y = y + rel_y
-            child.set_last_rect(abs_x, abs_y, w, h)
             if child._layout_pending:
+                paint_pending_child(child, canvas, abs_x, abs_y, w, h)
                 continue
+            child.set_last_rect(abs_x, abs_y, w, h)
             if replay is not None and _replay_child(child, canvas, abs_x, abs_y, w, h, replay, None):
                 continue
             child._paint_inside_clip = True
@@ -503,6 +562,8 @@ def paint_children_at_layout_rects(
     for child in children:
         rect = child.layout_rect
         if rect is None:
+            if __debug__:
+                warn_child_without_rect(child)
             continue
 
         rel_x, rel_y, w, h = rect
@@ -510,8 +571,6 @@ def paint_children_at_layout_rects(
         abs_y = y + rel_y
 
         child.set_last_rect(abs_x, abs_y, w, h)
-        if child._layout_pending:
-            continue
 
         outsets_only = False
         if abs_x >= clip_right or abs_y >= clip_bottom or abs_x + w <= clip_left or abs_y + h <= clip_top:
@@ -530,8 +589,12 @@ def paint_children_at_layout_rects(
                 _forget_pictures(child)
             continue
 
+        if child._layout_pending:
+            paint_pending_child(child, canvas, abs_x, abs_y, w, h)
+            continue
+
         if outsets_only:
-            if replay is not None:
+            if replay is not None and not _stale_paints:
                 # Painted, so that leaving the clip gives up what is recorded below it.
                 child._replay_dirty = False
                 child._replay_key = (w, h, replay[1], replay[2])

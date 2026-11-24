@@ -20,6 +20,7 @@ def test_flow_wrapping():
     # 3 items: 60, 60, 60. Gaps: 10, 10. Total: 200. Fits 3.
     children = [DummyWidget(60, 20) for _ in range(4)]
     layout = Flow(children, main_gap=10, cross_gap=10)
+    layout.layout(200, 100)
     layout.paint(None, 0, 0, 200, 100)
 
     # Check positions
@@ -36,6 +37,7 @@ def test_flow_alignment():
     # Test main alignment (center)
     children = [DummyWidget(50, 20)]
     layout = Flow(children, main_alignment="center")
+    layout.layout(200, 100)
     layout.paint(None, 0, 0, 200, 100)
 
     # 200 width, 50 content. Center = (200-50)/2 = 75

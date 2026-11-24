@@ -47,6 +47,7 @@ def test_viewport_hittest_only_in_visible_area() -> None:
     col = Column(widgets, gap=10)
     scroller = VerticalScrollable(col, height=100)
     canvas = MockCanvas()
+    scroller.layout(200, 100)
     scroller.paint(canvas, 0, 0, 200, 100)
     hit = scroller.hit_test(50, 50)
     assert hit is not None
@@ -62,6 +63,7 @@ def test_viewport_hittest_with_scroll_offset() -> None:
     col = Column(widgets, gap=10)
     scroller = VerticalScrollable(col, height=100)
     canvas = MockCanvas()
+    scroller.layout(200, 100)
     scroller.paint(canvas, 0, 0, 200, 100)
     scroller.scroll_to(50)
     scroller.paint(canvas, 0, 0, 200, 100)
@@ -79,6 +81,7 @@ def test_viewport_hittest_respects_padding() -> None:
     col = Column(widgets, gap=5)
     scroller = VerticalScrollable(col, height=100, style=ScrollableStyle(viewport_padding=10))
     canvas = MockCanvas()
+    scroller.layout(200, 100)
     scroller.paint(canvas, 50, 50, 200, 100)
     hit_inside = scroller.hit_test(99, 99)
     assert hit_inside is not None

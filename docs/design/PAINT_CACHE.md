@@ -159,9 +159,9 @@ flowchart LR
     tree[the widget tree]
     skia[rendering/skia/skia_module.py]
 
-    containers -- "paint_laid_out_children(container, canvas, x, y, w, h) · paint_children_at_layout_rects(children, canvas, x, y)" --> utils
+    containers -- "paint_laid_out_children(container, canvas, x, y) · paint_children_at_layout_rects(children, canvas, x, y) · paint_pending_child(child, canvas, x, y, w, h)" --> utils
     viewport -- "content.paint(canvas, x, y, w, h), the scroll offset subtracted" --> tree
-    utils -- "_replay_dirty · _replay_picture · _replay_origin · _replay_key · _replay_skip" --> kernel
+    utils -- "_replay_dirty · _replay_picture · _replay_origin · _replay_key · _replay_skip · _mark_replay_dirty(), a pending child laid out" --> kernel
     utils -- "_replay_safe on paint and the draw_* hooks" --> replay
     utils -- "paint(target, x, y, w, h), to record a child · paint_outsets()" --> tree
     utils -- "PictureRecorder · drawPicture" --> skia
@@ -170,7 +170,7 @@ flowchart LR
 
 | Module | Role |
 | --- | --- |
-| the containers | `Column`, `Row`, `Flow`, `Grid`, `UniformFlow` and `Stack`; each hands its children to the child painter ([LAYOUT.md](LAYOUT.md)) |
+| the containers | `Column`, `Row`, `Flow`, `Grid`, `UniformFlow` and `Stack`; each hands its children to the child painter; `Container` and `Deck` hand over a pending child only ([LAYOUT.md](LAYOUT.md)) |
 | `layout/layout_utils.py` | paints a container's children; records a clean child and replays its picture ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
 | `layout/scroll_viewport.py` | paints its content at a position with the scroll offset subtracted ([LAYOUT.md](LAYOUT.md)) |
 | `widgeting/widget_kernel.py` | the replay mark, the picture and its key on each widget |
@@ -190,7 +190,8 @@ sequenceDiagram
     participant K as widget_kernel.py
     participant T as the widget tree
 
-    C->>U: paint_laid_out_children(container, canvas, x, y, w, h), or a Stack's paint_children_at_layout_rects(children, canvas, x, y)
+    C->>U: paint_laid_out_children(container, canvas, x, y), or a Stack's paint_children_at_layout_rects(children, canvas, x, y)
+    Note over U: for a child left pending by the layout, the cull tests its rect, and the branches below use the size of its last layout
     loop each child
         alt culled, outside the clip
             U->>K: _replay_picture = None, _replay_key = None, the child and every widget below it
@@ -233,6 +234,9 @@ sequenceDiagram
 - A scroll marks nothing below the viewport.
 - A scroll viewport's paint is undeclared.
 - A move marks nothing at or below the moved child.
+- Leaving a child pending marks nothing. Laying a pending child out marks it
+  changed.
+- A paint at or below a pending child clears no mark and records nothing.
 - A layout mark clears `_replay_skip` on the widget and on every widget above
   it.
 - A declared widget takes the position its input needs from layout, never

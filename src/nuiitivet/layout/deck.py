@@ -1,13 +1,14 @@
 """Deck layout: display only one child at a time."""
 
 from nuiitivet.widgeting.paint_replay import replay_safe
+from nuiitivet.widgeting.unlaid_child import warn_child_without_rect
 from typing import List, Optional, Sequence, Tuple, Union
 
 from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
 from ..observable.protocols import StateBase
 from .measure import preferred_size as measure_preferred_size
-from .layout_utils import expand_layout_children, layout_child_if_needed
+from .layout_utils import expand_layout_children, layout_child_if_needed, paint_pending_child
 
 
 class Deck(Widget):
@@ -214,20 +215,24 @@ class Deck(Widget):
         if not children or self._current_index >= len(children):
             return
 
-        # Auto-layout fallback for Tests or direct paint calls
-        if any(c.layout_rect is None for c in children):
-            self.layout(width, height)
-
         # Only paint the selected child
         selected_child = children[self._current_index]
         rect = selected_child.layout_rect
-        if rect is None or selected_child._layout_pending:
+        if rect is None:
+            if __debug__:
+                warn_child_without_rect(selected_child)
+            self._take_paint_hints()
             return
 
         rel_x, rel_y, w, h = rect
         abs_x = x + rel_x
         abs_y = y + rel_y
 
+        if selected_child._layout_pending:
+            # Its last layout may reach beyond the clip this paint lies inside.
+            self._take_paint_hints()
+            paint_pending_child(selected_child, canvas, abs_x, abs_y, w, h)
+            return
         selected_child.set_last_rect(abs_x, abs_y, w, h)
         self._pass_paint_hints(selected_child)
         selected_child.paint(canvas, abs_x, abs_y, w, h)

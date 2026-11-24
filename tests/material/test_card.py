@@ -46,6 +46,7 @@ def test_child_stretch_expands_to_container():
     container = Card(child, padding=0)
 
     # Paint container at 100x100
+    container.layout(100, 100)
     container.paint(None, 0, 0, 100, 100)
 
     # Child should be stretched to 100x100, ignoring its preferred size of 10x10
@@ -58,6 +59,7 @@ def test_child_stretch_respects_padding():
 
     # Paint container at 100x100. Padding is 10 all around.
     # Inner size is 100 - 10 - 10 = 80.
+    container.layout(100, 100)
     container.paint(None, 0, 0, 100, 100)
 
     # Child should be at (10, 10) with size 80x80
@@ -73,6 +75,7 @@ def test_set_child_replaces_scoped_fragment():
     container.set_child(second)
     container.evaluate_build()
     assert len(container.children) == 1
+    container.layout(50, 50)
     container.paint(None, 0, 0, 50, 50)
     assert second.last_rect == (0, 0, 50, 50)
 

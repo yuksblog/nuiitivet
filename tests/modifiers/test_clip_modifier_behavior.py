@@ -32,6 +32,7 @@ def test_column_default_no_clip():
     col.add_child(t1)
 
     canvas = MagicMock()
+    col.layout(100, 50)
     col.paint(canvas, 0, 0, 100, 50)
 
     # No clipping calls
@@ -52,6 +53,7 @@ def test_column_with_clip_modifier():
     canvas = MagicMock()
     canvas.save = MagicMock(return_value=1)
 
+    col.layout(100, 50)
     col.paint(canvas, 0, 0, 100, 50)
 
     # Clipping applied
@@ -69,6 +71,7 @@ def test_row_default_no_clip():
     row.add_child(t1)
 
     canvas = MagicMock()
+    row.layout(100, 50)
     row.paint(canvas, 0, 0, 100, 50)
 
     canvas.clipRect.assert_not_called()
@@ -86,6 +89,7 @@ def test_row_with_clip_modifier():
     canvas = MagicMock()
     canvas.save = MagicMock(return_value=1)
 
+    row.layout(100, 50)
     row.paint(canvas, 0, 0, 100, 50)
 
     canvas.clipRect.assert_called()
@@ -103,6 +107,7 @@ def test_container_default_no_clip():
     )
 
     canvas = MagicMock()
+    c.layout(100, 50)
     c.paint(canvas, 0, 0, 100, 50)
 
     # Box might call save/restore for other reasons (shadows), but shouldn't call clipRect for content
@@ -128,6 +133,7 @@ def test_container_with_clip_modifier():
     canvas = MagicMock()
     canvas.save = MagicMock(return_value=1)
 
+    c.layout(100, 50)
     c.paint(canvas, 0, 0, 100, 50)
 
     canvas.clipRect.assert_called()

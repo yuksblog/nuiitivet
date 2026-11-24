@@ -649,18 +649,17 @@ def test_transform_origin_tuple_exception():
 
 
 def test_paint_without_layout():
-    """Test paint performs layout if not already done."""
+    """A paint before the layout lays nothing out and paints no child."""
     widget = MockWidget()
     box = TransformBox(widget, rotation=45)
 
     canvas = MagicMock()
-    # Paint without calling layout first
     box.paint(canvas, 0, 0, 100, 100)
 
-    # Child should have layout_rect set
     child = box._child()
     assert child is not None
-    assert child.layout_rect is not None
+    assert child.layout_rect is None
+    assert child.last_rect is None
 
 
 def test_paint_outsets_cover_the_translated_child():

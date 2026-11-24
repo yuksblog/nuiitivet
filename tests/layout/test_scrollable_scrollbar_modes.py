@@ -27,6 +27,7 @@ def _paint(scroller, width, height):
     sb_mod.get_skia = lambda raise_if_missing=False: None
     text_mod.TextBase.paint = lambda self, canvas, x, y, w, h: None
     try:
+        scroller.layout(width, height)
         scroller.paint(canvas=None, x=0, y=0, width=width, height=height)
     finally:
         sb_mod.get_skia = orig_sb_get_skia

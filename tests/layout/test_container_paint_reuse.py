@@ -10,6 +10,7 @@ import skia
 
 from nuiitivet.layout import layout_utils
 from nuiitivet.layout.column import Column
+from nuiitivet.layout.container import Container
 from nuiitivet.layout.flow import Flow
 from nuiitivet.layout.for_each import ForEach
 from nuiitivet.layout.grid import Grid, GridItem
@@ -83,14 +84,25 @@ def test_a_repaint_does_not_rebuild_the_child_list(make) -> None:
 
 
 @pytest.mark.parametrize("make", CONTAINERS, ids=IDS)
-def test_a_paint_without_a_layout_lays_out_first(make) -> None:
+def test_a_paint_without_a_layout_lays_nothing_out_and_paints_no_child(make) -> None:
     leaves: List[Widget] = [_Leaf() for _ in range(3)]
     container = make(leaves)
 
     container.paint(_canvas(400, 400), 0, 0, 400, 400)
 
-    assert all(leaf.layout_rect is not None for leaf in leaves)
-    assert _painted(leaves) == [0, 1, 2]
+    assert all(leaf.layout_rect is None for leaf in leaves)
+    assert _painted(leaves) == []
+
+
+def test_a_paint_that_skips_a_child_with_no_rect_keeps_no_hint() -> None:
+    for make in (lambda child: Box(child), lambda child: Container(child)):
+        child = Column(children=[_Leaf()])
+        parent = make(child)
+        parent._paint_inside_clip = True
+
+        parent.paint(None, 0, 0, 200, 100)
+
+        assert not parent._paint_inside_clip and not child._paint_inside_clip, type(parent).__name__
 
 
 def test_an_added_child_is_painted_on_the_next_frame() -> None:

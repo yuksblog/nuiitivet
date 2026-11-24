@@ -80,6 +80,7 @@ def test_box_clip_uses_rrect_for_corner_radius():
         box = Box(child=DummyChild(), corner_radius=8)
         box.clip_content = True
         canvas = FakeCanvas()
+        box.layout(100, 40)
         box.paint(canvas, 0, 0, 100, 40)
         assert canvas.clip_rrect_calls == 1
         assert canvas.clip_rect_calls == 0

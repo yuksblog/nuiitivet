@@ -22,6 +22,7 @@ from typing import ClassVar, Optional, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.observable.protocols import StateBase
+from nuiitivet.widgeting.unlaid_child import warn_child_without_rect
 
 from ..widgeting.widget import Widget
 from ..scrolling import (
@@ -321,15 +322,12 @@ class _ScrollableBase(Widget):
         3. Apply the scroll offset and paint the child.
         4. Paint the scrollbar.
         """
-        # Auto-layout fallback for tests or direct paint calls.
-        try:
-            if self._viewport.layout_rect is None:
-                self.layout(width, height)
-        except Exception:
-            exception_once(logger, "scrollable_auto_layout_exc", "Auto layout failed in paint")
-
         # Record the painted rect (for hit-testing)
         self.set_last_rect(x, y, width, height)
+        if self._viewport.layout_rect is None:
+            if __debug__:
+                warn_child_without_rect(self._viewport)
+            return
 
         x, y, width, height = self.content_rect(x, y, width, height)
         viewport_width = width

@@ -7,6 +7,7 @@ from typing import Optional, Tuple, Union
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.alignment import alignment_to_point, normalize_alignment
 from nuiitivet.observable import StateBase
+from nuiitivet.widgeting.unlaid_child import warn_child_without_rect
 from ..rendering.sizing import SizingLike
 from ..rendering.visual_bounds import transformed_outsets
 from ..widgeting.modifier import ModifierElement
@@ -250,7 +251,9 @@ class TransformBox(Widget):
             return
 
         if child.layout_rect is None:
-            self.layout(width, height)
+            if __debug__:
+                warn_child_without_rect(child)
+            return
 
         # Fast path: no transforms
         if canvas is None or not self._has_transforms():

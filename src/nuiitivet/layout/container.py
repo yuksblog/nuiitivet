@@ -3,12 +3,13 @@ import logging
 from typing import Optional, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.widgeting.unlaid_child import warn_child_without_rect
 from ..widgeting.widget import Widget
 from ..widgeting.widget_children import ChildContainerMixin
 from ..rendering.sizing import SizingLike
 from .alignment import normalize_alignment
 from .layout_engine import LayoutEngine
-from .layout_utils import layout_child_if_needed, sized_by_parent
+from .layout_utils import layout_child_if_needed, paint_pending_child, sized_by_parent
 from .measure import preferred_size as measure_preferred_size
 
 
@@ -141,24 +142,23 @@ class Container(Widget):
 
         child = self.children[0]
 
-        # Auto-layout fallback for tests or direct paint calls
-        if child.layout_rect is None:
-            self.layout(width, height)
-        if child._layout_pending:
-            return
-
         rect = child.layout_rect
-        if rect:
-            rel_x, rel_y, child_w, child_h = rect
-            cx = x + rel_x
-            cy = y + rel_y
-        else:
-            # Fallback if layout failed
-            ix, iy, iw, ih = self._layout.compute_inner_rect(x, y, width, height)
-            cx, cy, child_w, child_h = self._layout.resolve_child_geometry(child, ix, iy, iw, ih)
+        if rect is None:
+            if __debug__:
+                warn_child_without_rect(child)
+            self._take_paint_hints()
+            return
+        rel_x, rel_y, child_w, child_h = rect
+        cx = x + rel_x
+        cy = y + rel_y
 
         # Container does not clip; child is painted as-is.
         try:
+            if child._layout_pending:
+                # Its last layout may reach beyond the clip this paint lies inside.
+                self._take_paint_hints()
+                paint_pending_child(child, canvas, cx, cy, child_w, child_h)
+                return
             child.set_last_rect(cx, cy, child_w, child_h)
             self._pass_paint_hints(child)
             child.paint(canvas, cx, cy, child_w, child_h)

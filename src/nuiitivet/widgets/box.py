@@ -5,6 +5,7 @@ import logging
 from typing import Optional, Tuple, Union
 
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.widgeting.unlaid_child import warn_child_without_rect
 from ..rendering.skia.paint_cache import CachedPaintMixin
 from ..widgeting.widget import Widget
 from ..theme.types import ColorSpec
@@ -278,23 +279,18 @@ class Box(CachedPaintMixin, Widget):
         hints = self._take_paint_hints()
         if self.children and not getattr(self, "_suppress_child_paint", False):
             child = self.children[0]
+            rect = child.layout_rect
+            if rect is None:
+                if __debug__:
+                    warn_child_without_rect(child)
+                return
             # A box that clips its content narrows the clip; the child must cull against it.
             if hints and not self.clip_content:
                 child._give_paint_hints(hints)
 
-            # Auto-layout fallback for tests or direct paint calls
-            if child.layout_rect is None:
-                self.layout(width, height)
-
-            rect = child.layout_rect
-            if rect:
-                rel_x, rel_y, child_w, child_h = rect
-                cx = x + rel_x
-                cy = y + rel_y
-            else:
-                # Fallback if layout failed (should not happen)
-                ix, iy, iw, ih = self._layout.compute_inner_rect(x, y, width, height)
-                cx, cy, child_w, child_h = self._layout.resolve_child_geometry(child, ix, iy, iw, ih)
+            rel_x, rel_y, child_w, child_h = rect
+            cx = x + rel_x
+            cy = y + rel_y
 
             child.set_last_rect(cx, cy, child_w, child_h)
 

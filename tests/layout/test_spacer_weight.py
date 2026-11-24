@@ -29,6 +29,7 @@ def test_weight_spacer_distribution_horizontal():
     fe = ForEach(items, builder)
     fe.evaluate_build()
     row = Row([fe], gap=0)
+    row.layout(100, 50)
     row.paint(None, 0, 0, 100, 50)
     spacer = fe.children[1]
     spacer_rect = spacer.last_rect
@@ -49,6 +50,7 @@ def test_weight_spacer_multiple_weights():
     fe = ForEach(items, builder)
     fe.evaluate_build()
     row = Row([fe], gap=0)
+    row.layout(100, 50)
     row.paint(None, 0, 0, 100, 50)
     s1 = fe.children[1]
     s2 = fe.children[2]

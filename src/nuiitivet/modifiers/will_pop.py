@@ -6,6 +6,7 @@ import logging
 from typing import Optional, Tuple
 
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.widgeting.unlaid_child import warn_child_without_rect
 
 from ..rendering.sizing import SizingLike
 from ..widgeting.callbacks import WillPopCallback
@@ -110,7 +111,10 @@ class WillPopScope(Widget):
             return
 
         if child.layout_rect is None:
-            self.layout(width, height)
+            if __debug__:
+                warn_child_without_rect(child)
+            self._take_paint_hints()
+            return
         try:
             child.set_last_rect(x, y, width, height)
             self._pass_paint_hints(child)

@@ -9,6 +9,7 @@ from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.widgeting.modifier import ModifierElement
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgeting.paint_replay import replay_safe
+from nuiitivet.widgeting.unlaid_child import warn_child_without_rect
 
 
 class StickBox(Widget):
@@ -59,12 +60,11 @@ class StickBox(Widget):
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         self.set_last_rect(x, y, width, height)
 
-        if self._main_child.layout_rect is None or self._sticker_child.layout_rect is None:
-            self.layout(width, height)
-
         main_rect = self._main_child.layout_rect
         sticker_rect = self._sticker_child.layout_rect
         if main_rect is None or sticker_rect is None:
+            if __debug__:
+                warn_child_without_rect(self._main_child if main_rect is None else self._sticker_child)
             return
 
         mx, my, mw, mh = main_rect
