@@ -439,6 +439,10 @@ def dispatch_file_drop(app: Any, x: int, y: int, paths: Sequence[str]) -> Option
                     type(current).__name__,
                 )
         if handled:
+            # As for a pointer event: the handler may have changed what it draws.
+            mark = getattr(current, "_mark_replay_dirty", None)
+            if callable(mark):
+                mark()
             try:
                 app.invalidate()
             except Exception:

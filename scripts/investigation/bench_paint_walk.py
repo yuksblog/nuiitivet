@@ -27,8 +27,15 @@ swaps the row for one of widgets that draw without a container: a
 ``RadioButton``, an ``Icon`` with a badge stuck to it, a ``Text`` with a
 tooltip, a ``Spacer``, two progress indicators and a divider.
 
+``--board`` times a drag on a board: cards of 300x80 placed on a ``Stack``,
+each a bordered, rounded ``Container`` of three coloured boxes, one card moved
+every frame and marked as its pointer handler marks it. The cards step
+diagonally out of the 1200x800 canvas; ``--in-view`` keeps all of them inside.
+``--no-replay`` paints every child directly.
+
 Run:  python scripts/investigation/bench_paint_walk.py [--rows N] [--frames N] [--wrap NAME] [--profile]
       python scripts/investigation/bench_paint_walk.py --scroll PX [--row NAME]
+      python scripts/investigation/bench_paint_walk.py --board N [--in-view] [--no-replay]
 """
 
 from __future__ import annotations
@@ -46,6 +53,8 @@ from typing import Any, Callable
 WIDTH = 900
 ROW_HEIGHT = 72
 VIEWPORT_HEIGHT = 800
+BOARD_WIDTH = 1200
+BOARD_HEIGHT = 800
 
 ROW_WRAPPERS = (
     "composable",
@@ -289,6 +298,76 @@ def measure_scroll(skia: Any, rows: int, frames: int, viewport: int, row: str = 
     return out
 
 
+def measure_board(skia: Any, cards: int, frames: int, in_view: bool) -> dict[str, float]:
+    """Time one frame of a drag: one card of a board moved, the others still."""
+    import nuiitivet.material as nv
+    from nuiitivet.layout.layout_utils import layout_child_if_needed
+    from nuiitivet.testing import mount
+
+    if in_view:
+        positions = [[20 + (i * 37) % 860, 20 + (i * 53) % 680] for i in range(cards)]
+    else:
+        positions = [[50 + 10 * i, 50 + 10 * i] for i in range(cards)]
+
+    class Board(nv.Stack):
+        def layout(self, width: int, height: int) -> None:
+            nv.Widget.layout(self, width, height)
+            for child, (x, y) in zip(self.children_snapshot(), positions):
+                layout_child_if_needed(child, 300, 80, sized_by_parent=True)
+                child.set_layout_rect(x, y, 300, 80)
+
+    def square() -> Any:
+        return nv.Container(width=50, height=80).modifier(nv.background("#4CAF50"))
+
+    def card() -> Any:
+        body = nv.Container(width="wt", height=80).modifier(nv.background("#FFC107"))
+        row = nv.Row([square(), body, square()], width=300, height=80)
+        return nv.Container(row, width=300, height=80).modifier(nv.border("#000000", 1) | nv.corner_radius(5))
+
+    board = Board([card() for _ in range(cards)], width="wt", height="wt")
+    background = nv.Container(width="wt", height="wt").modifier(nv.background("#90CAF9"))
+    tree = nv.Stack([background, board], width="wt", height="wt")
+    moved = board.children_snapshot()[0]
+    out: dict[str, float] = {}
+
+    with mount(tree, theme=nv.ThemeFactory.light("#6750A4"), leak_check="off") as host:
+
+        def paint() -> None:
+            recorder = skia.PictureRecorder()
+            canvas = recorder.beginRecording(skia.Rect.MakeWH(BOARD_WIDTH, BOARD_HEIGHT))
+            host.root.paint(canvas, 0, 0, BOARD_WIDTH, BOARD_HEIGHT)
+            recorder.finishRecordingAsPicture()
+
+        host.layout(BOARD_WIDTH, BOARD_HEIGHT)
+        start = time.perf_counter()
+        paint()
+        out["first_paint_ms"] = (time.perf_counter() - start) * 1000.0
+        out["widgets"] = float(_count_widgets(host.root))
+
+        layouts = []
+        paints = []
+        for frame in range(frames + 1):
+            positions[0][0] = 20 + (frame * 5) % 400
+            positions[0][1] = 20 + (frame * 3) % 300
+            board.mark_needs_layout()
+            # What delivering the pointer event to the card's handler does.
+            moved._mark_replay_dirty()
+            start = time.perf_counter()
+            host.layout(BOARD_WIDTH, BOARD_HEIGHT)
+            middle = time.perf_counter()
+            paint()
+            end = time.perf_counter()
+            if frame:
+                layouts.append((middle - start) * 1000.0)
+                paints.append((end - middle) * 1000.0)
+            else:
+                out["drag_first_paint_ms"] = (end - middle) * 1000.0
+        out["drag_layout_ms"] = statistics.median(layouts)
+        out["drag_paint_ms"] = statistics.median(paints)
+        out["drag_paint_max_ms"] = max(paints)
+    return out
+
+
 def report(result: dict[str, float]) -> str:
     return json.dumps({"python": sys.version.split()[0], **{k: round(v, 2) for k, v in result.items()}})
 
@@ -300,6 +379,9 @@ def main() -> int:
     parser.add_argument("--wrap", choices=WRAPPERS, default="none", help="wrapper between the list and its rows")
     parser.add_argument("--scroll", type=int, metavar="PX", help="time a scroll frame under a viewport this tall")
     parser.add_argument("--row", choices=ROWS, default="settings", help="what a row holds, with --scroll")
+    parser.add_argument("--board", type=int, metavar="N", help="time a drag frame on a board of this many cards")
+    parser.add_argument("--in-view", action="store_true", help="keep every card inside the canvas, with --board")
+    parser.add_argument("--no-replay", action="store_true", help="paint every child directly")
     parser.add_argument("--profile", action="store_true", help="also print a cProfile of the run")
     args = parser.parse_args()
 
@@ -310,6 +392,15 @@ def main() -> int:
     if skia is None:
         print("skia unavailable; cannot run benchmark", file=sys.stderr)
         return 1
+
+    if args.no_replay:
+        from nuiitivet.layout import layout_utils
+
+        layout_utils._REPLAY = False
+
+    if args.board:
+        print(report(measure_board(skia, args.board, args.frames, args.in_view)))
+        return 0
 
     if args.scroll:
         print(report(measure_scroll(skia, args.rows, args.frames, args.scroll, args.row)))

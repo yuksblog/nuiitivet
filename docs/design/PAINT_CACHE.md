@@ -2,7 +2,7 @@
 
 A frame's paint cost is the Python walk of the widget tree. Three caches
 skip part of that walk: one widget's own visuals, the whole frame, and the
-rows of a scroll viewport.
+children of a container.
 
 ## Overview
 
@@ -15,7 +15,7 @@ paths at their edges.
 flowchart LR
     own[The Own Visuals]
     frame[The Whole Frame]
-    rows[The Scroll Rows]
+    children[The Child Pictures]
     widget[widgeting/widget.py]
     kernel[widgeting/widget_kernel.py]
     runner[backends/pyglet/runner.py]
@@ -24,7 +24,7 @@ flowchart LR
     widget -- "_invalidate_paint_cache(), from a paint dependency setter" --> own
     widget -- "invalidate(): app.invalidate(content=True)" --> frame
     widget -- "invalidate(): _mark_replay_dirty()" --> kernel
-    kernel -- "_replay_dirty" --> rows
+    kernel -- "_replay_dirty" --> children
     runner & dev -- "invalidate(content=False)" --> frame
 ```
 
@@ -32,9 +32,9 @@ flowchart LR
 | --- | --- |
 | The Own Visuals | one widget's background layers, as a Skia surface |
 | The Whole Frame | the last painted tree, as an image |
-| The Scroll Rows | one picture per row of a scroll viewport's content |
+| The Child Pictures | a picture of each clean child of a container |
 | `widgeting/widget.py` | `Widget.invalidate` ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)) |
-| `widgeting/widget_kernel.py` | the paint hints and the replay mark on every widget |
+| `widgeting/widget_kernel.py` | the replay mark on every widget |
 | `backends/pyglet/runner.py` | drives the frames ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
 | `dev/` | the overlays drawn over the tree ([DEV_MODES.md](DEV_MODES.md)) |
 
@@ -42,7 +42,7 @@ flowchart LR
 
 - Every paint-affecting change passes through `Widget.invalidate()`.
 - The own-visuals cache answers to its widget's own properties only. The
-  frame and the rows are marked by every change below them.
+  frame and the child pictures are marked by every change below them.
 
 ## The Own Visuals
 
@@ -139,73 +139,85 @@ sequenceDiagram
 - The cached frame holds no dev overlay.
 - The raster path and the GPU path keep the same two flags.
 - A cached frame fills the whole back buffer.
-- A content change repaints the whole tree.
+- A content change paints the tree from its root.
 
-## The Scroll Rows
+## The Child Pictures
 
-The container a scroll viewport paints as its content keeps one picture per
-child, a row, and replays it while the row is clean.
+A container keeps a picture of a child and replays it while the child is
+clean.
 
 ### Structure
 
 ```mermaid
 flowchart LR
-    viewport[layout/scroll_viewport.py]
+    containers[the containers]
     utils[layout/layout_utils.py]
+    viewport[layout/scroll_viewport.py]
     kernel[widgeting/widget_kernel.py]
     replay[widgeting/paint_replay.py]
     events[runtime/app_events.py]
     tree[the widget tree]
     skia[rendering/skia/skia_module.py]
 
-    viewport -- "content._paint_scroll_content = True, then content.paint(canvas, x, y, w, h)" --> tree
-    tree -- "_pass_paint_hints(child), through a wrapper" --> kernel
-    tree -- "paint_laid_out_children(container, canvas, x, y, w, h)" --> utils
-    utils -- "_paint_scroll_content · _replay_dirty · _replay_picture · _replay_origin · _replay_key · _replay_misses · _replay_skip" --> kernel
+    containers -- "paint_laid_out_children(container, canvas, x, y, w, h) · paint_children_at_layout_rects(children, canvas, x, y)" --> utils
+    viewport -- "content.paint(canvas, x, y, w, h), the scroll offset subtracted" --> tree
+    utils -- "_replay_dirty · _replay_picture · _replay_origin · _replay_key · _replay_skip" --> kernel
     utils -- "_replay_safe on paint and the draw_* hooks" --> replay
-    utils -- "paint(target, x, y, w, h), to record a row · paint_outsets()" --> tree
+    utils -- "paint(target, x, y, w, h), to record a child · paint_outsets()" --> tree
     utils -- "PictureRecorder · drawPicture" --> skia
     events -- "_mark_replay_dirty()" --> kernel
 ```
 
 | Module | Role |
 | --- | --- |
-| `layout/scroll_viewport.py` | paints its content at a position with the scroll offset subtracted, with the scroll-content hint set ([LAYOUT.md](LAYOUT.md)) |
-| `layout/layout_utils.py` | the content container's child painter, with the row pictures |
-| `widgeting/widget_kernel.py` | the hints a parent sets for the paint that follows; the replay mark, the picture and its key on each widget |
+| the containers | `Column`, `Row`, `Flow`, `Grid`, `UniformFlow` and `Stack`; each hands its children to the child painter ([LAYOUT.md](LAYOUT.md)) |
+| `layout/layout_utils.py` | paints a container's children; records a clean child and replays its picture ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |
+| `layout/scroll_viewport.py` | paints its content at a position with the scroll offset subtracted ([LAYOUT.md](LAYOUT.md)) |
+| `widgeting/widget_kernel.py` | the replay mark, the picture and its key on each widget |
 | `widgeting/paint_replay.py` | `replay_safe`, the declaration on a draw method that skipping it on a clean frame is safe |
 | `runtime/app_events.py` | delivers pointer events ([INTERACTION_ARCHITECTURE.md](INTERACTION_ARCHITECTURE.md)) |
-| the widget tree | the wrappers between the viewport and the container, the container, the rows under it |
+| the widget tree | a container's children and the widgets under them |
 | `rendering/skia/skia_module.py` | the Skia binding |
 
 ### Sequence
 
-#### A scroll frame paints the content
+#### A container paints its children
 
 ```mermaid
 sequenceDiagram
-    participant V as scroll_viewport.py
+    participant C as the containers
     participant U as layout_utils.py
     participant K as widget_kernel.py
     participant T as the widget tree
 
-    V->>U: content.paint(canvas, x, y - offset, w, h), the hint set
-    alt the canvas is skewed or rotated
-        U->>T: paint(canvas, x, y, w, h), every row
-    else
-        loop each row
-            alt outside the clip
-                U->>K: _replay_picture = None
-            else clean, with a picture for this size and scale
-                U->>U: drawPicture, shifted to the row's device position
-            else changed, or no picture
-                U->>K: _replay_misses += 1, _replay_dirty = False
-                alt changed on more consecutive paints than the limit, larger than the viewport, or undeclared
-                    U->>T: paint(canvas, x, y, w, h)
+    C->>U: paint_laid_out_children(container, canvas, x, y, w, h), or a Stack's paint_children_at_layout_rects(children, canvas, x, y)
+    loop each child
+        alt culled, outside the clip
+            U->>K: _replay_picture = None, _replay_key = None, the child and every widget below it
+        else culled, beyond the bounds of the recording under way
+            U->>K: _replay_picture = None, _replay_key = None, the child and every widget below it
+            U->>U: the recording under way left a widget out
+        else the canvas is skewed, rotated or a stand-in
+            U->>T: paint(canvas, x, y, w, h)
+        else changed, or at a new size or scale, since its last paint
+            U->>K: _replay_dirty = False, _replay_key, _replay_picture = None
+            U->>T: paint(canvas, x, y, w, h)
+        else with a picture
+            U->>U: drawPicture, shifted to the child's device position
+        else without a picture
+            U->>K: _replay_dirty = False, _replay_key
+            alt a recording is under way, the child is outside the clip or larger than it, or _replay_skip is set
+                U->>T: paint(canvas, x, y, w, h)
+            else undeclared
+                U->>K: _replay_skip = True
+                U->>T: paint(canvas, x, y, w, h)
+            else
+                U->>T: paint(recorder, x, y, w, h), under the canvas matrix
+                U->>U: drawPicture
+                alt the recording left a widget out
+                    U->>K: _replay_skip = True
                 else
-                    U->>T: paint(recorder, x, y, w, h), under the canvas matrix
-                    U->>K: _replay_picture, _replay_origin, _replay_key
-                    U->>U: drawPicture
+                    U->>K: _replay_picture, _replay_origin
                 end
             end
         end
@@ -214,11 +226,16 @@ sequenceDiagram
 
 ### Promises
 
-- A row is replayed only when every widget in it declares each of its draw
+- A child is replayed only when every widget in it declares each of its draw
   methods with `replay_safe`.
-- A row is marked changed by every invalidation at or below it.
+- A child is marked changed by every invalidation at or below it.
 - A handled pointer event marks the widget that handled it.
 - A scroll marks nothing below the viewport.
+- A scroll viewport's paint is undeclared.
+- A move marks nothing at or below the moved child.
+- A layout mark clears `_replay_skip` on the widget and on every widget above
+  it.
 - A declared widget takes the position its input needs from layout, never
   from its last paint.
-- The pictures held are those of the rows on screen.
+- No picture is held at or below a child the cull skipped.
+- A picture holds everything its child draws.

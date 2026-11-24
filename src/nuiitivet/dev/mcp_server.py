@@ -334,7 +334,7 @@ def build_server() -> "FastMCP":
         """Stop the profiling session and return its report (``null`` when nothing was recording).
 
         ``frames`` is the painted count with mean / p95 / max tree-walk ms. ``paints``
-        tracks frames, not damage: every painted frame walks the whole tree.
+        counts paint calls: a widget drawn from its container's recording is not painted.
         ``rebuilds`` and ``bindings`` are the signal, largest first: a widget that
         rebuilds far more often than the interaction warrants is doing wasted work.
         """

@@ -118,6 +118,8 @@ def test_an_invalidation_inside_a_row_repaints_that_row_only() -> None:
     scene.leaves[1].invalidate()
 
     assert scene.frame() == [0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
+    # Still on the next frame, it is recorded again.
+    assert scene.frame() == [0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
     assert scene.frame() == [0] * 10
 
 
@@ -160,14 +162,14 @@ def test_a_row_that_leaves_the_clip_gives_its_recording_up() -> None:
     assert scene.frame(0)[0] == 1
 
 
-def test_a_row_that_changes_every_frame_stops_being_recorded() -> None:
+def test_a_row_that_changes_every_frame_is_not_recorded() -> None:
     scene = _Scene([_Leaf() for _ in range(4)])
     scene.frame()
 
-    for _ in range(layout_utils._CHURN_LIMIT + 1):
+    for _ in range(3):
         scene.leaves[0].invalidate()
         assert scene.frame()[0] == 1
-    assert scene.rows[0]._replay_picture is None
+        assert scene.rows[0]._replay_picture is None
 
     # Once it is still, it is recorded again and replayed.
     assert scene.frame()[0] == 1
@@ -216,6 +218,20 @@ def test_a_handled_pointer_event_dirties_the_handler_and_its_ancestors() -> None
     assert scene.rows[0]._replay_dirty is False
 
 
+def test_a_handled_file_drop_dirties_the_handler_and_its_ancestors() -> None:
+    scene = _Scene([_Leaf() for _ in range(3)])
+    scene.frame()
+    handler: Any = scene.leaves[1]
+    handler.dispatch_file_drop_event = lambda event: True
+    app = MagicMock()
+    app.root.hit_test.return_value = handler
+
+    assert app_events.dispatch_file_drop(app, 0, 0, ["dropped.txt"]) is handler
+
+    assert scene.rows[1]._replay_dirty is True
+    assert scene.rows[0]._replay_dirty is False
+
+
 def _hashes(replay: bool, scale: int) -> list[str]:
     class _Model:
         label = State("first")
@@ -238,7 +254,7 @@ def _hashes(replay: bool, scale: int) -> list[str]:
     canvas.scale(scale, scale)
     out: list[str] = []
 
-    with patch.object(layout_utils, "_ROW_REPLAY", replay):
+    with patch.object(layout_utils, "_REPLAY", replay):
         with mount(viewport, theme=MaterialThemeFactory.light("#6750A4"), leak_check="off") as host:
             host.layout(300, 200)
 

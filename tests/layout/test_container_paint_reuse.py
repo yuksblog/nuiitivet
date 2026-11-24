@@ -158,12 +158,15 @@ def test_containers_inside_the_clip_do_not_read_it_again() -> None:
     rows = [Row(children=[_Leaf(), _Leaf()]) for _ in range(3)]
     column = Column(children=rows)
     column.layout(400, 400)
+    canvas = _canvas(400, 400)
+    # A first paint reads the clip for each child it might record.
+    column.paint(canvas, 0, 0, 400, 400)
 
     with _clip_reads() as reads:
-        column.paint(_canvas(400, 400), 0, 0, 400, 400)
+        column.paint(canvas, 0, 0, 400, 400)
 
     assert reads.call_count == 1
-    assert all(leaf.painted == 1 for row in rows for leaf in row.children)
+    assert all(leaf.painted == 2 for row in rows for leaf in row.children)
 
 
 def test_a_container_that_crosses_the_clip_still_culls() -> None:
@@ -173,9 +176,12 @@ def test_a_container_that_crosses_the_clip_still_culls() -> None:
     second = [_Leaf() for _ in range(4)]
     column = Column(children=[Column(children=first), Column(children=second)])
     column.layout(100, 400)
+    canvas = _canvas(100, 250)
+    # A first paint reads the clip for each child it might record.
+    column.paint(canvas, 0, 0, 100, 400)
 
     with _clip_reads() as reads:
-        column.paint(_canvas(100, 250), 0, 0, 100, 400)
+        column.paint(canvas, 0, 0, 100, 400)
 
     assert _painted(first) == [0, 1, 2, 3]
     # Rows at 200 and 250 are near the clip; 300 and 350 are beyond the slack.

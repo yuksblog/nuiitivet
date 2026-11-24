@@ -8,7 +8,12 @@ from typing import Optional, Sequence, Tuple, Union
 from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
 from .alignment import AlignmentLike, normalize_alignment
-from .layout_utils import expand_layout_children, layout_child_if_needed, sized_by_parent
+from .layout_utils import (
+    expand_layout_children,
+    layout_child_if_needed,
+    paint_children_at_layout_rects,
+    sized_by_parent,
+)
 from .for_each import ForEach, ItemsLike, BuilderFn, KeyFn
 from .measure import preferred_size as measure_preferred_size
 
@@ -182,14 +187,7 @@ class Stack(Widget):
 
     @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
-        hints = self._take_paint_hints()
+        # A child may lie outside the Stack, so the Stack inside the clip says nothing about it.
+        self._take_inside_clip()
         children = expand_layout_children(self.children_snapshot())
-        for child in children:
-            rect = child.layout_rect
-            if rect is None or child._layout_pending:
-                continue
-
-            rx, ry, rw, rh = rect
-            if hints:
-                child._give_paint_hints(hints)
-            child.paint(canvas, x + rx, y + ry, rw, rh)
+        paint_children_at_layout_rects(children, canvas, x, y)

@@ -307,7 +307,7 @@ flowchart LR
 | Module | Role |
 | --- | --- |
 | `layout/layout_utils.py` | runs a frame's layout: the root's pass, then the pending children, until the deadline; lays a child out unless it is clean at the same size, or the deadline has passed and the child's rect is its parent's; paints the children, skipping the pending ones and those beyond the clip and its slack band; tells a child inside the clip so |
-| `widgeting/widget_kernel.py` | `layout`, `paint`, `last_rect`; the pending flag; the paint hints a parent sets for the paint that follows |
+| `widgeting/widget_kernel.py` | `layout`, `paint`, `last_rect`; the pending flag; the inside-clip hint a parent sets for the paint that follows |
 | the containers | the multi-child containers, `Container` and `Deck` ([LAYOUT.md](LAYOUT.md)) |
 | `rendering/skia/geometry.py` | reads the canvas clip |
 | `widgeting/frame_clock.py` | whether a frame is under way and how long a frame is (The Loop) |
@@ -377,5 +377,7 @@ sequenceDiagram
 - A child whose rect plus outsets lies outside the clip and its slack band is
   not painted. It still receives its `last_rect`.
 - Without a readable clip every child is painted.
+- A `Stack` tests its children against the clip, with the inside-clip hint
+  or without it.
 - A wrapper passes the inside-clip hint only while it neither narrows the
   clip nor moves its child. A hint covers one paint.

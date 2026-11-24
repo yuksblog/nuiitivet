@@ -243,7 +243,7 @@ def _frames(names: List[str], replay: bool, scale: int) -> List[bytes]:
     # The harness clock reads the wall clock; a time the test owns makes both runs tick alike.
     now = [1000.0]
     with patch("nuiitivet.testing.clock.time.monotonic", lambda: now[0]), patch.object(
-        layout_utils, "_ROW_REPLAY", replay
+        layout_utils, "_REPLAY", replay
     ):
         scene = _Scene(names, scale)
         with mount(scene.viewport, theme=MaterialThemeFactory.light("#6750A4"), leak_check="off") as host:
@@ -288,7 +288,7 @@ def test_a_list_of_every_declared_widget_replays_to_the_pixels_of_a_direct_paint
 
 
 def _scrolled(name: str, replay: bool, scale: int) -> List[bytes]:
-    with patch.object(layout_utils, "_ROW_REPLAY", replay):
+    with patch.object(layout_utils, "_REPLAY", replay):
         scene = _Scene([name], scale)
         with mount(scene.viewport, theme=MaterialThemeFactory.light("#6750A4"), leak_check="off") as host:
             host.layout(WIDTH, HEIGHT)

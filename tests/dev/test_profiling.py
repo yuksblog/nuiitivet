@@ -7,8 +7,10 @@ from typing import Any, Iterator
 import pytest
 
 from nuiitivet.dev import profiling
+from nuiitivet.layout import layout_utils
 from nuiitivet.observable import State
 from nuiitivet.widgeting import widget_binding, widget_builder
+from nuiitivet.widgeting.paint_replay import replay_safe
 from nuiitivet.widgeting.widget_kernel import WidgetKernel
 
 
@@ -22,6 +24,12 @@ class _Chained(WidgetKernel):
 
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
         super().paint(canvas, x, y, width, height)
+
+
+class _Declared(WidgetKernel):
+    @replay_safe
+    def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
+        pass
 
 
 class _Host:
@@ -60,6 +68,12 @@ def test_start_installs_wrappers_and_stop_restores() -> None:
         assert profiling.stop() is session
     assert _Leaf.__dict__["paint"] is original
     assert profiling.active_session() is None
+
+
+def test_a_session_leaves_a_declared_paint_replay_safe(profiled: profiling.ProfilingSession) -> None:
+    # Recording must time the frames the app paints: with replay off they would be other frames.
+    assert layout_utils._type_replay_safe(_Declared) is True
+    assert layout_utils._type_replay_safe(_Leaf) is False
 
 
 def test_start_is_idempotent(profiled: profiling.ProfilingSession) -> None:
