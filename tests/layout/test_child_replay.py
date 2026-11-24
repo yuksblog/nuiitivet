@@ -94,7 +94,9 @@ class _Scene:
         return [leaf.painted - b for leaf, b in zip(self.leaves, before)]
 
     def color_at(self, x: int, y: int) -> int:
-        red, green, blue = (int(v) for v in self.surface.makeImageSnapshot().toarray()[y, x, :3])
+        # The surface's own channel order differs between platforms.
+        pixels = self.surface.makeImageSnapshot().toarray(colorType=skia.kRGBA_8888_ColorType)
+        red, green, blue = (int(v) for v in pixels[y, x, :3])
         return (red << 16) | (green << 8) | blue
 
 
