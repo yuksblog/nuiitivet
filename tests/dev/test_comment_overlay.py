@@ -509,9 +509,9 @@ def test_the_open_field_paints_under_the_mark_in_amber(
 
     so.paint_comments(app, _Canvas(), 300, 200)
 
-    ((_skia, _canvas, _app, slot, value, accent, _font, _typeface, window),) = painted
+    ((_skia, _canvas, field, slot, accent, _font, _typeface, window),) = painted
     assert slot.side == "right" and slot.anchor == (max(rect[0], 12.0), rect[1] + so.BADGE_RADIUS + so.UNDER_GAP)
-    assert value is mode.writing.field.value
+    assert field is mode.writing.field
     assert accent == so._ACCENT and window == (300.0, 200.0)
 
 
@@ -535,7 +535,7 @@ def test_the_open_field_sits_under_the_thread(
     so.paint_comments(app, _Canvas(), 300, 200)
 
     thread_h = LINE_HEIGHT * 2
-    ((_skia, _canvas, _app, slot, *_rest),) = painted
+    ((_skia, _canvas, _field, slot, *_rest),) = painted
     assert slot.anchor == (max(rect[0], 12.0), rect[1] + so.BADGE_RADIUS + so.UNDER_GAP + thread_h + so.UNDER_GAP)
 
 

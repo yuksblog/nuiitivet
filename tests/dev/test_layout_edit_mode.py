@@ -21,6 +21,7 @@ from nuiitivet.dev.comments import Comments
 from nuiitivet.dev.source_edit import EditLog
 from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT, TEXT_MOTION_BACKSPACE, text_motion_for_key
 from nuiitivet.layout.column import Column
+from nuiitivet.platform.ime import IMEManager
 from nuiitivet.testing import mount
 from nuiitivet.widgets.text import TextBase as Text
 from nuiitivet.widgets.text_editing import TextEditingValue, TextRange
@@ -343,6 +344,7 @@ class _App:
         self.height = 0
         self.invalidated = 0
         self.tree_repaints = 0
+        self.ime = IMEManager()
         self._comment_mode: Any = None
         self._layout_edit_mode: Any = None
 
@@ -1675,6 +1677,33 @@ def test_escape_and_a_click_close_the_field_without_writing(session: _Session) -
     _editing(session)
     session.mode.on_mouse_press(session.app, 50, 20)
     assert session.mode.editor is None and session.text() == before
+
+
+def test_the_open_field_is_where_the_input_method_composes(session: _Session) -> None:
+    assert not session.app.ime.has_cursor_source
+
+    _editing(session)
+
+    editor = session.mode.editor
+    assert editor is not None and session.app.ime.has_cursor_source
+    editor.field.caret_rect = (40.0, 60.0, 2.0, 16.0)
+    assert (session.app.ime.cursor_rect.x, session.app.ime.cursor_rect.y) == (40.0, 60.0)
+
+
+@pytest.mark.parametrize("close", ["enter", "escape", "click", "leave", "reload"])
+def test_a_closed_field_hands_the_input_method_back(session: _Session, close: str) -> None:
+    _editing(session)
+
+    if close == "click":
+        session.mode.on_mouse_press(session.app, 50, 20)
+    elif close == "leave":
+        session.mode.leave(session.app)
+    elif close == "reload":
+        session.mode._reloaded()
+    else:
+        session.mode.on_key_press(session.app, close, 0)
+
+    assert session.mode.editor is None and not session.app.ime.has_cursor_source
 
 
 def test_a_second_click_on_the_selection_opens_the_field(session: _Session) -> None:

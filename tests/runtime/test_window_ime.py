@@ -10,6 +10,8 @@ what runs here is the model side.
 
 from __future__ import annotations
 
+from typing import Optional
+
 from nuiitivet.layout.container import Container
 from nuiitivet.platform.ime import IMEManager
 from nuiitivet.runtime.app import App
@@ -34,7 +36,7 @@ def test_each_window_owns_its_own_ime_state() -> None:
     assert isinstance(a.ime, IMEManager)
     assert a.ime is not b.ime
 
-    a.ime.update_cursor_rect(10, 20, 2, 16)
+    a.ime.set_cursor_source(lambda: (10.0, 20.0, 2.0, 16.0))
     a.ime.update_window_info(100, 200, 640, 480)
 
     assert (b.ime.cursor_rect.x, b.ime.cursor_rect.y) == (0, 0)
@@ -52,13 +54,15 @@ def test_a_cursor_source_is_asked_on_every_read() -> None:
     assert ime.cursor_rect.y == 5.0
 
 
-def test_a_published_rect_replaces_the_source() -> None:
+def test_a_source_with_no_answer_keeps_the_last_rect() -> None:
     ime = IMEManager()
-    ime.set_cursor_source(lambda: (10.0, 20.0, 2.0, 16.0))
+    caret: list[Optional[tuple[float, float, float, float]]] = [(10.0, 20.0, 2.0, 16.0)]
+    ime.set_cursor_source(lambda: caret[0])
+    assert ime.cursor_rect.y == 20.0
 
-    ime.update_cursor_rect(1, 2, 3, 4)
+    caret[0] = None
 
-    assert (ime.cursor_rect.x, ime.cursor_rect.y) == (1, 2)
+    assert (ime.cursor_rect.x, ime.cursor_rect.y) == (10.0, 20.0)
 
 
 def test_the_focused_field_is_the_cursor_source_until_it_loses_focus() -> None:

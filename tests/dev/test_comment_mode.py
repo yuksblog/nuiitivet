@@ -19,6 +19,7 @@ from nuiitivet.input.codes import (
     text_motion_for_key,
 )
 from nuiitivet.layout.column import Column
+from nuiitivet.platform.ime import IMEManager
 from nuiitivet.testing import mount
 from nuiitivet.widgets.text import TextBase as Text
 
@@ -34,6 +35,7 @@ class _App:
         self.height = 200
         self.invalidated = 0
         self.tree_repaints = 0
+        self.ime = IMEManager()
 
     def invalidate(self, immediate: bool = False, content: bool = True) -> None:
         self.invalidated += 1
@@ -1389,6 +1391,44 @@ def test_a_backspace_stroke_with_no_field_open_removes_the_mark_once(motion_firs
         _stroke(mode, app, "backspace", motion_first=motion_first)
 
         assert mode.comments.members() == [] and mode.writing is None
+
+
+def test_the_open_field_is_where_the_input_method_composes() -> None:
+    mode, app, host, _leaf = _marked()
+    with host:
+        assert mode.writing is not None and app.ime.has_cursor_source
+
+        mode.writing.field.caret_rect = (40.0, 60.0, 2.0, 16.0)
+
+        assert (app.ime.cursor_rect.x, app.ime.cursor_rect.y) == (40.0, 60.0)
+
+
+@pytest.mark.parametrize("close", ["enter", "escape", "leave"])
+def test_a_closed_field_hands_the_input_method_back(close: str) -> None:
+    mode, app, host, _leaf = _marked()
+    with host:
+        mode.on_text(app, "wider")
+
+        if close == "leave":
+            mode.leave(app)
+        else:
+            mode.on_key_press(app, close, 0)
+
+        assert mode.writing is None and not app.ime.has_cursor_source
+
+
+def test_the_field_opened_last_keeps_the_input_method() -> None:
+    mode, app, host, _leaf = _marked()
+    with host:
+        first = mode.writing
+        assert first is not None
+        mode.on_text(app, "wider")
+
+        _click(mode, app, 2, 2)
+
+        assert mode.writing is not None and mode.writing is not first
+        mode.writing.field.caret_rect = (40.0, 60.0, 2.0, 16.0)
+        assert app.ime.has_cursor_source and app.ime.cursor_rect.x == 40.0
 
 
 def test_text_is_not_taken_without_a_field() -> None:

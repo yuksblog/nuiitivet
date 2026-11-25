@@ -153,7 +153,7 @@ def paint_comments(app: Any, canvas: Any, width: int, height: int) -> None:
             _paint_hud(skia, canvas, mode, jump_notice, font, typeface, width, height)
             _paint_send(skia, canvas, mode.send_raised, font, typeface, window)
             # Over every mark: a thread read under another mark's badge is a thread not read.
-            _paint_under_mark(skia, canvas, app, thread, writing, rects, font, typeface, window)
+            _paint_under_mark(skia, canvas, thread, writing, rects, font, typeface, window)
             if mode.help:
                 paint_sheet(skia, canvas, "COMMENT MODE", HELP, font, typeface, *window)
         if jump_target is not None:
@@ -220,7 +220,6 @@ def _paint_marks(
 def _paint_under_mark(
     skia: Any,
     canvas: Any,
-    app: Any,
     thread: Optional[tuple[Any, Rect]],
     writing: Any,
     rects: dict[int, Rect],
@@ -263,7 +262,7 @@ def _paint_under_mark(
         paint_rows(skia, canvas, rows, font, typeface, x, top)
         top += thread_box[1] + UNDER_GAP
     if field is not None:
-        paint_field(skia, canvas, app, field.slot.moved((x, top)), field.field.value, _ACCENT, font, typeface, window)
+        paint_field(skia, canvas, field.field, field.slot.moved((x, top)), _ACCENT, font, typeface, window)
 
 
 def _thread_rows(lines: Any, wrap: float) -> list[Row]:

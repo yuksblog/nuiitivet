@@ -117,11 +117,16 @@ class TextEditor:
 
     Attributes:
         slot: Where the field hangs: over the widget, with the room to the window's edge fixed when it opened.
-        value: The text, the selection whose end is the caret, and the input method's uncommitted text.
+        field: The text under edit.
     """
 
     slot: Slot
-    value: TextEditingValue
+    field: InlineField
+
+    @property
+    def value(self) -> TextEditingValue:
+        """The text, the selection whose end is the caret, and the input method's uncommitted text."""
+        return self.field.value
 
 
 @dataclass
@@ -287,8 +292,7 @@ class LayoutEditMode:
         self._edits = edits
         self._request_reload = request_reload
         self._active = False
-        # The window, kept only to re-resolve hover and selection after a
-        # reload replaces the tree under them.
+        # The window the mode is latched on. Weak.
         self._app: Optional[Callable[[], Any]] = None
         self._pointer: Optional[tuple[float, float]] = None
         # Where a non-corner press landed and on what, so travel can start a
@@ -352,7 +356,7 @@ class LayoutEditMode:
         rect = global_visual_rect(node) if node is not None else None
         if editing is None or rect is None:
             return None
-        return TextEditor(editing.slot.moved((rect[0], rect[1])), editing.field.value)
+        return TextEditor(editing.slot.moved((rect[0], rect[1])), editing.field)
 
     @property
     def handles(self) -> list[spacing.Handle]:
@@ -639,7 +643,7 @@ class LayoutEditMode:
         self._press_node = None
         self._drag = None
         self._hover = None
-        self._editing = None
+        self._close_editor()
         self._menu = None
         self._presets = None
         self._handle = None
@@ -663,7 +667,7 @@ class LayoutEditMode:
             return
         # The field and the list held a widget of the old tree; what they
         # showed is gone with it.
-        self._editing = None
+        self._close_editor()
         self._menu = None
         self._presets = None
         self._handle = None
@@ -691,7 +695,7 @@ class LayoutEditMode:
             return False
         self._clear_notice()
         # A click away from the field abandons it; only Enter writes.
-        self._editing = None
+        self._close_editor()
         if self._press_toolbar(app, float(x), float(y)):
             return True
         candidate = self.candidate
@@ -1499,8 +1503,19 @@ class LayoutEditMode:
         rect = global_visual_rect(node) or (0.0, 0.0, 0.0, 0.0)
         window = (float(getattr(app, "width", 0) or 0), float(getattr(app, "height", 0) or 0))
         slot = Slot.over(rect, window)
-        self._editing = _Editing(weak(node) or (lambda: None), InlineField.open(value, wrap=slot.wrap), slot)
+        field = InlineField.open(value, wrap=slot.wrap)
+        self._close_editor()
+        self._editing = _Editing(weak(node) or (lambda: None), field, slot)
+        field.hold_ime(app)
         invalidate(app)
+
+    def _close_editor(self) -> Optional[_Editing]:
+        """Take the field down and return what it held, or ``None`` with none open."""
+        editing, self._editing = self._editing, None
+        app = self._app() if self._app is not None else None
+        if editing is not None and app is not None:
+            editing.field.release_ime(app)
+        return editing
 
     def _edit_key(self, app: Any, key: str, modifier_keys: int) -> None:
         """One key in the field: a shortcut, a write or a cancel."""
@@ -1511,11 +1526,11 @@ class LayoutEditMode:
             self._commit_text(app)
             return
         if outcome == "cancel":
-            self._editing = None
+            self._close_editor()
         invalidate(app)
 
     def _commit_text(self, app: Any) -> None:
-        editing, self._editing = self._editing, None
+        editing = self._close_editor()
         node = editing.node() if editing is not None else None
         if editing is None or node is None:
             return
