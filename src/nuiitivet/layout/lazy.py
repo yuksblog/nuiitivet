@@ -13,7 +13,7 @@ from nuiitivet.common.logging_once import exception_once
 from ..widgeting.idle_work import cancel_idle_work, request_idle_work
 from ..widgeting.widget import Widget
 from .for_each import ForEach
-from .layout_utils import expand_layout_children, layout_deadline
+from .layout_utils import expand_layout_children, layout_deadline, leave_pending
 from .measure import preferred_size as measure_preferred_size
 from .scroll_viewport import ScrollViewport
 
@@ -42,8 +42,9 @@ class LazyItems:
     extent. While attached it keeps the container laid out as the viewport
     scrolls, builds the items ahead of the view while the loop is idle, and
     keeps the ones that left the view until they lie a view's length away.
-    Inside a frame a pass builds until the layout deadline; the rest of the
-    view holds placeholders that idle time replaces.
+    Inside a frame a pass builds until the layout deadline. The rest of the
+    view holds placeholders, and the container is left pending: the next
+    frame lays it out again and builds on.
     """
 
     def __init__(self, provider: ForEach, axis: str, extent: Optional[int]) -> None:
@@ -157,7 +158,9 @@ class LazyItems:
     ) -> Tuple[int, List[Widget]]:
         """Hold widgets for ``range(first, stop)`` and the built ones around it.
 
-        The items in view that have no widget yet are built here. The ones
+        The items in view that have no widget yet are built here, inside a
+        frame until the layout deadline. Placeholders left in view leave
+        ``container`` pending, so the next frame lays it out again. The ones
         around the view are kept while they lie within a view's length of it,
         and the lead is filled in idle time.
 
@@ -166,8 +169,8 @@ class LazyItems:
             first: The first item in view.
             stop: One past the last item in view.
             pitch: Pixels one item and its gap take along the axis.
-            place: Lays one item out at its index; called for the items built
-                in idle time.
+            place: Lays one item out at its index; called for each item built
+                one at a time.
             per_pitch: Items per pitch: the columns of a flow.
 
         Returns:
@@ -196,9 +199,10 @@ class LazyItems:
             # Placeholders for the whole view first; then one item at a time,
             # built, mounted and placed, until the deadline.
             self.provider.set_window(held_first, held_stop, build=(first, first))
-            self._fill_view(deadline, place)
+            if self._fill_view(deadline, place):
+                leave_pending(container)
         children = expand_layout_children(container.children_snapshot())
-        if self._wants_more() or self.provider.placeholder_indices():
+        if self._has_idle_work():
             request_idle_work(self._prefetch)
         return (held_first, children)
 
@@ -290,33 +294,43 @@ class LazyItems:
         held_first, held_stop = self._held
         return held_first > target_first or held_stop < target_stop
 
+    def _has_idle_work(self) -> bool:
+        return self._wants_more() or bool(self.provider.placeholder_indices())
+
     # ---- The build budget ---------------------------------------------------
-    def _next_placeholder(self, *, in_view_only: bool = False) -> Optional[int]:
-        """The placeholder built next: in view, from the scroll's side; else the nearest to the view."""
-        holes = self.provider.placeholder_indices()
+    def _next_placeholder(self, *, in_view: bool) -> Optional[int]:
+        """The placeholder built next: in view, from the scroll's side; out of view, the nearest to it."""
+        first, stop = self._visible
+        holes = [index for index in self.provider.placeholder_indices() if (first <= index < stop) == in_view]
         if not holes:
             return None
-        first, stop = self._visible
-        in_view = [index for index in holes if first <= index < stop]
         if in_view:
-            return max(in_view) if self._direction < 0 else min(in_view)
-        if in_view_only:
-            return None
+            return max(holes) if self._direction < 0 else min(holes)
         return min(holes, key=lambda index: min(abs(index - first), abs(index - (stop - 1))))
 
-    def _fill_view(self, deadline: float, place: PlaceFn) -> None:
-        """Build the placeholders in view one at a time, each placed, until the deadline."""
-        while perf_counter() < deadline:
-            hole = self._next_placeholder(in_view_only=True)
+    def _fill_view(self, deadline: float, place: PlaceFn) -> bool:
+        """Build the placeholders in view one at a time, each placed, until the deadline.
+
+        Returns:
+            Whether the deadline left placeholders in view.
+        """
+        while True:
+            hole = self._next_placeholder(in_view=True)
             if hole is None:
-                return
+                return False
+            if perf_counter() >= deadline:
+                return True
             child = self.provider.build_item(hole)
             if child is None:
-                return
+                return False
             place(child, hole)
 
     def _prefetch(self, deadline: float) -> bool:
-        """Build one item at a time until the deadline: the placeholders, then the lead."""
+        """Build one item at a time until the deadline: the placeholders, the view first, then the lead.
+
+        Building an item replaces a child of the container, which asks for
+        a layout; the next frame shows it.
+        """
         container = self._container_ref()
         place = self._place
         if container is None or place is None:
@@ -324,15 +338,14 @@ class LazyItems:
         if perf_counter() - self._last_scroll_at > REST_SECONDS:
             self._direction = 0
         while perf_counter() < deadline:
-            hole = self._next_placeholder()
+            hole = self._next_placeholder(in_view=True)
+            if hole is None:
+                hole = self._next_placeholder(in_view=False)
             if hole is not None:
                 child = self.provider.build_item(hole)
                 if child is None:
                     return False
                 place(child, hole)
-                first, stop = self._visible
-                if first <= hole < stop:
-                    container.mark_needs_layout()
                 continue
             target_first, target_stop = self._targets()
             held_first, held_stop = self._held
@@ -354,7 +367,7 @@ class LazyItems:
             position = index - self._held[0]
             if 0 <= position < len(children):
                 place(children[position], index)
-        return self._wants_more() or bool(self.provider.placeholder_indices())
+        return self._has_idle_work()
 
     # ---- Following the viewport ---------------------------------------------
     def attach(self, container: Widget) -> None:
