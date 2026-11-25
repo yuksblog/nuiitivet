@@ -8,15 +8,17 @@ a picture, pixels or a chart, and take no Material style. Write each one as
 | You have | Widget |
 | --- | --- |
 | A PNG or a JPEG, as bytes | [`Image`](#image) |
-| Pixels you compute, as `bytes` or a numpy array | [`RasterSurface`](#rastersurface) |
+| Pixels with a size of their own, such as camera frames | [`Image`](#show-frames-from-a-camera), with a `Raster` |
+| A large photo to open without a pause | [`Image`](#open-a-large-photo-without-a-pause), with a `Raster` |
+| Pixels you draw at the widget's size | [`RasterSurface`](#rastersurface) |
 | A matplotlib figure | [`MatplotlibFigure`](#matplotlibfigure) |
 
 ## Image
 
-`Image` shows a PNG or JPEG from bytes in memory, scaled to the widget's
-size. `fit` picks how: `"contain"`, the default, `"cover"`, `"fill"` or
-`"none"`. Without `width` and `height` the widget takes the picture's size.
-[API Reference](../../api/widgets.md#nuiitivet.widgets.Image)
+`Image` shows a picture scaled to the widget's size: a PNG or JPEG as
+bytes, or pixels you decoded as an `nv.Raster`. `fit` picks how:
+`"contain"`, the default, `"cover"`, `"fill"` or `"none"`. Without `width`
+and `height` the widget takes the picture's size. [API Reference](../../api/widgets.md#nuiitivet.widgets.Image)
 
 ```python
 from pathlib import Path
@@ -27,6 +29,80 @@ nv.Image(Path("photo.png").read_bytes(), width=260, height=200)
 ```
 
 ![Image](../../assets/material_widgets_image.png)
+
+A photo shrunk to a thumbnail stays smooth, with no moiré. A small picture
+enlarged turns soft, not blocky.
+
+### Show frames from a camera
+
+A camera library hands you each frame on its own thread. Wrap the frame in
+`nv.Raster.rgba(pixels, width, height)` and write it to the `State` the
+`Image` shows. [API Reference](../../api/widgets.md#nuiitivet.widgets.Raster)
+
+```python
+import numpy as np
+
+frame: nv.State[nv.Raster | None] = nv.State(None)
+
+
+def on_camera_frame(rgba: np.ndarray) -> None:  # on the camera's thread
+    height, width = rgba.shape[:2]
+    frame.value = nv.Raster.rgba(rgba, width, height)
+
+
+nv.Image(frame, fit="cover", width="wt", height="wt")
+```
+
+The write to `frame.value` is safe on the camera's thread. The `Image` is
+empty until the first frame arrives.
+
+A camera frame much larger than the widget makes the window stutter. At
+4000x3000 each redraw of the window takes about 12 ms longer. Shrink the
+frame on the camera's thread to about the size it shows at, with
+`cv2.resize`.
+
+An OpenCV frame also shows with red and blue swapped. Convert it there too:
+`cv2.cvtColor(bgr, cv2.COLOR_BGR2RGBA)`.
+
+The complete app is [`samples/design-system/material_widgets/image_camera.py`](https://github.com/yuksblog/nuiitivet/blob/main/samples/design-system/material_widgets/image_camera.py).
+
+### Open a large photo without a pause
+
+A 12-megapixel JPEG passed as bytes freezes the window for about 0.2 s when
+it first appears. Reading the bytes on a thread does not help. Decode the
+photo with Pillow on a thread into an `nv.Raster`, and show that.
+
+```python
+import asyncio
+from pathlib import Path
+
+from PIL import Image as PILImage
+from PIL import ImageOps
+
+
+def load(path: Path) -> nv.Raster:  # on a thread
+    picture = ImageOps.exif_transpose(PILImage.open(path)).convert("RGBA")
+    return nv.Raster.rgba(picture.tobytes(), picture.width, picture.height)
+
+
+photo: nv.State[nv.Raster | None] = nv.State(None)
+
+
+async def open_photo() -> None:
+    path = await nv.FileDialog.open_file(title="Open a photo", file_types=["jpg", "jpeg", "png"])
+    if path is not None:
+        photo.value = await asyncio.to_thread(load, path)
+
+
+nv.Button("Open photo…", on_click=open_photo)
+nv.Image(photo, width=260, height=200)
+```
+
+`ImageOps.exif_transpose` turns a phone photo upright. Without it the photo
+shows on its side, where the same bytes in `Image` show upright.
+
+The complete app is
+[`samples/design-system/material_widgets/image_open_photo.py`](https://github.com/yuksblog/nuiitivet/blob/main/samples/design-system/material_widgets/image_open_photo.py).
 
 ## RasterSurface
 
