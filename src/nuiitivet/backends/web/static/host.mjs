@@ -259,10 +259,10 @@ export function installHost(CK, canvas, input, fonts) {
   canvas.addEventListener(
     "wheel",
     (e) => {
-      // Ctrl with the wheel is the browser's zoom.
-      if (e.ctrlKey) return;
-      e.preventDefault();
-      host.onWheel?.(e.offsetX, e.offsetY, e.deltaX, e.deltaY, e.deltaMode);
+      // Ctrl with the wheel is the browser's zoom, and a trackpad pinch arrives as one. A widget that took it keeps it.
+      if (!e.ctrlKey) e.preventDefault();
+      const handled = host.onWheel?.(e.offsetX, e.offsetY, e.deltaX, e.deltaY, e.deltaMode, mods(e));
+      if (handled) e.preventDefault();
     },
     { passive: false },
   );

@@ -338,7 +338,19 @@ def test_scroll_forwards_target_and_deltas() -> None:
         result = _call(server, "scroll", {"key": "feed", "dy": 5.0})
     assert result["handled"] is True
     assert result["offset"] == 100.0
-    client.scroll.assert_called_once_with(key="feed", label=None, x=None, y=None, dx=0.0, dy=5.0, window=None)
+    client.scroll.assert_called_once_with(
+        key="feed", label=None, x=None, y=None, dx=0.0, dy=5.0, modifiers=None, window=None
+    )
+
+
+def test_scroll_forwards_the_held_modifiers() -> None:
+    client = _fake_client()
+    with mock.patch.object(BridgeClient, "discover", return_value=client):
+        server = mcp_server.build_server()
+        _call(server, "scroll", {"x": 10, "y": 20, "dy": 1.0, "modifiers": ["ctrl"]})
+    client.scroll.assert_called_once_with(
+        key=None, label=None, x=10, y=20, dx=0.0, dy=1.0, modifiers=["ctrl"], window=None
+    )
 
 
 def test_scroll_into_view_forwards_target_and_alignment() -> None:

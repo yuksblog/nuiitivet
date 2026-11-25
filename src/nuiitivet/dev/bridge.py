@@ -588,6 +588,7 @@ def _make_handler(
                             y=body.get("y"),
                             dx=body.get("dx", 0.0),
                             dy=body.get("dy", 0.0),
+                            modifiers=body.get("modifiers", 0),
                         )
                     )
                 elif path == "/scroll_into_view":

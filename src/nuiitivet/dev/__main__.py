@@ -104,6 +104,17 @@ def _add_window_arg(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--window", type=int, default=None, metavar="ID", help=_WINDOW_HELP)
 
 
+def _add_mod_arg(parser: argparse.ArgumentParser) -> None:
+    """Give ``parser`` the repeatable ``--mod`` flag: the modifier keys held with its input."""
+    parser.add_argument(
+        "--mod",
+        action="append",
+        default=[],
+        metavar="MODIFIER",
+        help="Modifier to hold (repeatable): shift, ctrl, alt, meta, accel.",
+    )
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m nuiitivet.dev",
@@ -329,6 +340,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=0.0,
         help="Horizontal wheel notches (~20px each); positive scrolls right.",
     )
+    _add_mod_arg(scroll)
     _add_window_arg(scroll)
 
     into_view = subparsers.add_parser(
@@ -358,13 +370,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "extend its selection."
         ),
     )
-    key.add_argument(
-        "--mod",
-        action="append",
-        default=[],
-        metavar="MODIFIER",
-        help="Modifier to hold (repeatable): shift, ctrl, alt, meta, accel.",
-    )
+    _add_mod_arg(key)
     _add_window_arg(key)
 
     wait = subparsers.add_parser(
@@ -791,12 +797,18 @@ def _scroll(args: argparse.Namespace) -> int:
     if args.xy is not None:
         x, y = args.xy
         return _run_action(
-            "scroll", lambda c: c.scroll(x=x, y=y, dx=args.dx, dy=args.dy, window=args.window)
+            "scroll",
+            lambda c: c.scroll(x=x, y=y, dx=args.dx, dy=args.dy, modifiers=args.mod, window=args.window),
         )
     return _run_action(
         "scroll",
         lambda c: c.scroll(
-            key=args.key, label=args.label, dx=args.dx, dy=args.dy, window=args.window
+            key=args.key,
+            label=args.label,
+            dx=args.dx,
+            dy=args.dy,
+            modifiers=args.mod,
+            window=args.window,
         ),
     )
 

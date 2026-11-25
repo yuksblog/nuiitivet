@@ -63,7 +63,9 @@ class _App:
     def _dispatch_mouse_release(self, x: int, y: int, *, button: Any = None) -> None:
         pass
 
-    def _dispatch_mouse_scroll(self, x: int, y: int, dx: float, dy: float) -> Optional[_Node]:
+    def _dispatch_mouse_scroll(
+        self, x: int, y: int, dx: float, dy: float, *, modifier_keys: int = 0
+    ) -> Optional[_Node]:
         return self._handler
 
     def _dispatch_text(self, text: str) -> bool:

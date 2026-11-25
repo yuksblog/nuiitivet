@@ -64,8 +64,10 @@ class _App:
     def request_focus(self, node: Any) -> None:
         pass
 
-    def _dispatch_mouse_scroll(self, x: int, y: int, scroll_x: float, scroll_y: float) -> Any:
-        return app_events.dispatch_mouse_scroll(self, x, y, scroll_x, scroll_y)
+    def _dispatch_mouse_scroll(
+        self, x: int, y: int, scroll_x: float, scroll_y: float, *, modifier_keys: int = 0
+    ) -> Any:
+        return app_events.dispatch_mouse_scroll(self, x, y, scroll_x, scroll_y, modifier_keys=modifier_keys)
 
 
 def _recorder() -> tuple[InteractionJournal, InteractionRecorder]:

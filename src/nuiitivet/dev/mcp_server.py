@@ -394,6 +394,7 @@ def build_server() -> "FastMCP":
         y: Optional[float] = None,
         dx: float = 0.0,
         dy: float = 0.0,
+        modifiers: Optional[list[str]] = None,
         window: Optional[int] = None,
     ) -> dict[str, Any]:
         """Send a mouse wheel event to a scrollable region.
@@ -404,13 +405,17 @@ def build_server() -> "FastMCP":
         which does not move as the content scrolls.
 
         ``dx`` / ``dy`` are wheel notches, 20 px each by default; positive is down /
-        right. There is no inertia: send one ``dy=10``, not ten ``dy=1``.
+        right. There is no inertia: send one ``dy=10``, not ten ``dy=1``. ``modifiers``
+        holds the keys held with the wheel, named as for `key`.
 
-        ``handled: false`` means no scrollable region is there. ``at_end: true`` with an
+        ``handled: false`` means nothing took the wheel: no scrollable region is there, or
+        ``ctrl`` was held, which a region passes up to its ancestors. ``at_end: true`` with an
         unchanged ``offset`` means the region is already at its end: that is the stop
         condition. To bring one widget on screen, call `scroll_into_view`.
         """
-        return _client().scroll(key=key, label=label, x=x, y=y, dx=dx, dy=dy, window=window)
+        return _client().scroll(
+            key=key, label=label, x=x, y=y, dx=dx, dy=dy, modifiers=modifiers, window=window
+        )
 
     @tool
     def scroll_into_view(

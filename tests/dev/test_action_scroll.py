@@ -20,14 +20,19 @@ from nuiitivet.dev.action import (
     scroll_into_view,
 )
 from nuiitivet.dev.perception import global_visual_rect
+from nuiitivet.input.codes import MOD_CTRL
 from nuiitivet.input.pointer import PointerEvent, PointerEventType
 from nuiitivet.layout.column import Column
+from nuiitivet.layout.container import Container
 from nuiitivet.layout.row import Row
 from nuiitivet.layout.scrollable import HorizontalScrollable, VerticalScrollable
 from nuiitivet.layout.stack import Stack
+from nuiitivet.modifiers.pointer_input import pointer_input
+from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.runtime import app_events
 from nuiitivet.runtime.pointer import PointerCaptureManager
 from nuiitivet.widgeting.widget import Widget
+from nuiitivet.widgets.box import Box
 
 ROW_SIZE = 40
 ROW_COUNT = 10
@@ -89,8 +94,8 @@ class _App:
     def _dispatch_mouse_release(self, x: int, y: int, *, button: Optional[int] = None) -> None:
         app_events.dispatch_mouse_release(self, x, y, button=button)
 
-    def _dispatch_mouse_scroll(self, x: int, y: int, scroll_x: float, scroll_y: float):
-        return app_events.dispatch_mouse_scroll(self, x, y, scroll_x, scroll_y)
+    def _dispatch_mouse_scroll(self, x: int, y: int, scroll_x: float, scroll_y: float, *, modifier_keys: int = 0):
+        return app_events.dispatch_mouse_scroll(self, x, y, scroll_x, scroll_y, modifier_keys=modifier_keys)
 
 
 def _vertical() -> tuple[_App, VerticalScrollable, list[_Cell]]:
@@ -261,6 +266,69 @@ def test_scroll_reports_unhandled_when_nothing_scrolls_at_those_coordinates() ->
 
     assert result["handled"] is False
     assert "offset" not in result
+
+
+def test_scroll_drives_ctrl_wheel_onto_a_wheel_handler() -> None:
+    """The held modifiers reach ``pointer_input(on_scroll=...)``; a plain wheel holds none."""
+    seen: list[int] = []
+    surface = Box(width=Sizing.fixed(VIEWPORT), height=Sizing.fixed(VIEWPORT)).modifier(
+        pointer_input(on_scroll=lambda e: seen.append(e.modifier_keys))
+    )
+    app = _App(Column([surface]))
+
+    result = scroll(app, x=50, y=50, dy=1.0, modifiers=["ctrl"])
+    scroll(app, x=50, y=50, dy=1.0)
+
+    assert result["handled"] is True
+    assert result["modifiers"] == MOD_CTRL
+    assert seen == [MOD_CTRL, 0]
+
+
+def test_scroll_with_ctrl_on_a_region_answers_that_nothing_took_it() -> None:
+    """A region passes a Ctrl wheel up: it does not move, and the result claims no scroll."""
+    app, scroller, _cells = _vertical()
+
+    result = scroll(app, key="feed", dy=5.0, modifiers=["ctrl"])
+
+    assert scroller.scroll_offset == 0.0
+    assert result["handled"] is False
+    assert "handled_by" not in result
+    assert "offset" not in result
+
+    # The same wheel without Ctrl scrolls.
+    assert scroll(app, key="feed", dy=5.0)["offset"] == 100.0
+
+
+def test_scroll_with_ctrl_on_a_region_reaches_a_wheel_handler_around_it() -> None:
+    seen: list[int] = []
+    cells = [_Cell(f"row-{i}") for i in range(ROW_COUNT)]
+    scroller = VerticalScrollable(Column(cells), width=VIEWPORT, height=VIEWPORT)
+    scroller.key = "feed"
+    zoomable = Container(child=scroller, width=VIEWPORT, height=VIEWPORT).modifier(
+        pointer_input(on_scroll=lambda e: seen.append(e.modifier_keys))
+    )
+    app = _App(zoomable)
+
+    result = scroll(app, key="feed", dy=5.0, modifiers=["ctrl"])
+
+    assert seen == [MOD_CTRL]
+    assert scroller.scroll_offset == 0.0
+    assert result["handled"] is True
+    assert result["handled_by"]["type"] == "InteractionRegion"
+    assert "offset" not in result
+
+    # A plain wheel stops at the region and never reaches the handler around it.
+    assert scroll(app, key="feed", dy=5.0)["offset"] == 100.0
+    assert seen == [MOD_CTRL]
+
+
+def test_scroll_with_an_unknown_modifier_is_rejected_before_any_event() -> None:
+    app, scroller, _cells = _vertical()
+
+    with pytest.raises(ValueError, match="unknown modifier"):
+        scroll(app, key="feed", dy=5.0, modifiers=["hyper"])
+
+    assert scroller.scroll_offset == 0.0
 
 
 def test_scroll_refuses_a_target_that_is_not_a_scroll_region() -> None:

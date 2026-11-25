@@ -136,15 +136,18 @@ class _Loop:
         except Exception:
             exception_once(logger, "web_pointer_exc", "Pointer dispatch raised")
 
-    def _wheel(self, x: float, y: float, delta_x: float, delta_y: float, delta_mode: int) -> None:
+    def _wheel(self, x: float, y: float, delta_x: float, delta_y: float, delta_mode: int, modifier_keys: int) -> bool:
+        """Dispatch a wheel event. ``True`` when a widget took it."""
         win = self._window
         if win is None:
-            return
+            return False
         try:
             steps_x, steps_y = wheel_steps(delta_x, delta_mode), wheel_steps(delta_y, delta_mode)
-            win._dispatch_mouse_scroll(int(x), int(y), steps_x, steps_y)
+            handler = win._dispatch_mouse_scroll(int(x), int(y), steps_x, steps_y, modifier_keys=modifier_keys)
+            return handler is not None
         except Exception:
             exception_once(logger, "web_wheel_exc", "Wheel dispatch raised")
+            return False
 
     def _key(self, down: bool, key: str, code: str, modifier_keys: int, repeat: bool) -> bool:
         """Dispatch a key. ``True`` keeps the browser from acting on it as well.
