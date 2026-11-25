@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import functools
 import logging
 from typing import Any
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.layout.alignment import AlignmentLike, normalize_alignment
-from nuiitivet.observable.protocols import StateBase
+from nuiitivet.observable.protocols import ReadOnlyStateProtocol
 from nuiitivet.rendering.fit import Fit
+from nuiitivet.rendering.raster import Raster, raster_image
 from nuiitivet.rendering.sizing import SizingLike
 from nuiitivet.rendering.skia import clip_rect, make_rect
 from nuiitivet.rendering.skia.skia_module import get_skia
@@ -16,12 +18,24 @@ from nuiitivet.widgeting.paint_replay import replay_safe
 logger = logging.getLogger(__name__)
 
 
+ImageSource = bytes | Raster | None
+
+
 class Image(Widget):
-    """Display a raster image from in-memory bytes."""
+    """A picture fitted into the widget: a PNG or JPEG as bytes, or decoded pixels as a :class:`Raster`.
+
+    Without ``width`` and ``height`` the widget takes the picture's size.
+
+    The picture is smoothed when scaled. Shrunk, it shows no moiré; enlarged,
+    it turns soft, not blocky.
+
+    Bytes are decoded at the first paint, on the UI thread. A Raster was
+    decoded by the app, so its first paint only draws.
+    """
 
     def __init__(
         self,
-        source: bytes | None | StateBase[bytes | None],
+        source: ImageSource | ReadOnlyStateProtocol[ImageSource],
         *,
         fit: Fit = "contain",
         width: SizingLike = None,
@@ -33,7 +47,8 @@ class Image(Widget):
         """Initialize an Image widget.
 
         Args:
-            source: Encoded image bytes, ``None``, or a State that provides them.
+            source: Encoded PNG or JPEG bytes, a :class:`Raster`, ``None``
+                for nothing, or a State of one of them.
             fit: Content fit mode. One of ``"contain"``, ``"cover"``, ``"fill"``, ``"none"``.
             width: Width sizing.
             height: Height sizing.
@@ -46,12 +61,10 @@ class Image(Widget):
         self._align_raw: AlignmentLike = alignment
         self._alignment: tuple[str, str] = normalize_alignment(alignment, default=("center", "center"))
 
-        self._source: bytes | None | StateBase[bytes | None] = source
-        self._resolved_source: bytes | None = None
+        self._source: ImageSource | ReadOnlyStateProtocol[ImageSource] = source
         self._decoded_image: Any | None = None
-        self._decoded_token: tuple[int, int] | None = None
 
-        if isinstance(source, StateBase):
+        if isinstance(source, ReadOnlyStateProtocol):
             self.observe(source, self._on_source_change)
         else:
             self._on_source_change(source)
@@ -173,58 +186,38 @@ class Image(Widget):
 
         self._draw_image_rect(canvas, image, (0.0, 0.0, float(img_w), float(img_h)), (dx, dy, draw_w, draw_h))
 
-    def _on_source_change(self, value: bytes | None) -> None:
-        if value is not None and not isinstance(value, bytes):
+    def _on_source_change(self, value: ImageSource) -> None:
+        old_size = self._image_size(self._decoded_image)
+        self._decoded_image = self._image_of(value)
+        if self._image_size(self._decoded_image) != old_size:
+            self.mark_needs_layout()
+        else:
+            self.invalidate()
+
+    def _image_of(self, value: ImageSource) -> Any | None:
+        if value is None:
+            return None
+        if isinstance(value, Raster):
+            return raster_image(value)
+        if not isinstance(value, bytes):
             exception_once(
                 logger,
                 "image_source_type_exc",
-                "Image source must be bytes | None, got %s",
+                "Image source must be bytes | Raster | None, got %s",
                 type(value).__name__,
             )
-            self._resolved_source = None
-        else:
-            self._resolved_source = value
-
-        self._decoded_image = None
-        self._decoded_token = None
-        self._decode_image_if_needed()
-        self.mark_needs_layout()
-
-    def _decode_image_if_needed(self) -> Any | None:
-        source = self._resolved_source
-        if source is None:
-            self._decoded_image = None
-            self._decoded_token = None
             return None
-
-        token = (id(source), len(source))
-        if self._decoded_token == token and self._decoded_image is not None:
-            return self._decoded_image
 
         backend = get_skia(raise_if_missing=False)
-        if backend is None:
-            self._decoded_image = None
-            self._decoded_token = None
-            return None
-
-        image_cls = getattr(backend, "Image", None)
+        image_cls = getattr(backend, "Image", None) if backend is not None else None
         make_from_encoded = getattr(image_cls, "MakeFromEncoded", None) if image_cls is not None else None
         if not callable(make_from_encoded):
-            self._decoded_image = None
-            self._decoded_token = None
             return None
-
         try:
-            decoded = make_from_encoded(source)
+            return make_from_encoded(value)
         except Exception:
             exception_once(logger, "image_decode_exc", "Failed to decode image bytes")
-            decoded = None
-
-        self._decoded_image = decoded
-        # Keep token even when decode failed to avoid repeated decode attempts
-        # for the same bytes on every frame.
-        self._decoded_token = token
-        return decoded
+            return None
 
     def _image_size(self, image: Any | None) -> tuple[int, int]:
         if image is None:
@@ -251,11 +244,18 @@ class Image(Widget):
         dst_rect = make_rect(dst[0], dst[1], dst[2], dst[3])
 
         if src_rect is not None and dst_rect is not None and hasattr(canvas, "drawImageRect"):
+            sampling = _smooth_sampling(get_skia(raise_if_missing=False))
             try:
-                canvas.drawImageRect(image, src_rect, dst_rect)
+                canvas.drawImageRect(image, src_rect, dst_rect, *sampling)
                 return
             except Exception:
                 exception_once(logger, "image_draw_rect_exc", "drawImageRect failed")
+            if sampling:
+                try:
+                    canvas.drawImageRect(image, src_rect, dst_rect)
+                    return
+                except Exception:
+                    exception_once(logger, "image_draw_rect_plain_exc", "drawImageRect without sampling failed")
 
         # Fallback for canvases without drawImageRect support.
         if src[0] == 0.0 and src[1] == 0.0 and dst[2] == src[2] and dst[3] == src[3] and hasattr(canvas, "drawImage"):
@@ -301,6 +301,26 @@ class Image(Widget):
         if axis_align == "end":
             return 1.0
         return 0.0
+
+
+@functools.lru_cache(maxsize=4)
+def _smooth_sampling(backend: Any) -> tuple[Any, ...]:
+    """The arguments after ``dst`` that make ``drawImageRect`` filter between pixels and mipmap levels."""
+    sampling_cls = getattr(backend, "SamplingOptions", None) if backend is not None else None
+    linear = getattr(getattr(backend, "FilterMode", None), "kLinear", None)
+    if sampling_cls is None or linear is None:
+        return ()
+    mipmap = getattr(getattr(backend, "MipmapMode", None), "kLinear", None)
+    # The strict constraint, Skia's default, turns mipmaps off. The price: a cover crop's edge pixel
+    # may blend in the picture just outside the crop.
+    fast = getattr(getattr(backend, "Canvas", None), "kFast_SrcRectConstraint", None)
+    try:
+        if mipmap is None or fast is None:
+            return (sampling_cls(linear),)
+        return (sampling_cls(linear, mipmap), None, fast)
+    except Exception:
+        exception_once(logger, "image_sampling_exc", "Could not build the image sampling")
+        return ()
 
 
 __all__ = ["Image"]

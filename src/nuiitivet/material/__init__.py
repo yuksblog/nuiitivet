@@ -127,6 +127,7 @@ if TYPE_CHECKING:
         ModalDateInputStyle,
     )
     from nuiitivet.widgets.image import Image
+    from nuiitivet.rendering.raster import Raster
     from nuiitivet.widgets.raster_surface import RasterSurface
     from ..matplotlib.figure import MatplotlibFigure
     from ..matplotlib.controller import MatplotlibController
@@ -255,6 +256,7 @@ __all__ = [
     "SlideInVertically",
     "SlideOutVertically",
     "Image",
+    "Raster",
     "RasterSurface",
     "MatplotlibFigure",
     "MatplotlibController",
@@ -385,6 +387,7 @@ _EXPORTS: dict[str, tuple[str, str]] = {
     "SlideInVertically": ("transitions", "SlideInVertically"),
     "SlideOutVertically": ("transitions", "SlideOutVertically"),
     "Image": ("..widgets.image", "Image"),
+    "Raster": ("..rendering.raster", "Raster"),
     "RasterSurface": ("..widgets.raster_surface", "RasterSurface"),
     "MatplotlibFigure": ("..matplotlib.figure", "MatplotlibFigure"),
     "MatplotlibController": ("..matplotlib.controller", "MatplotlibController"),

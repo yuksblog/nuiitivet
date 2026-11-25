@@ -84,7 +84,7 @@ def test_image_fit_contain_draws_centered(monkeypatch) -> None:
     w.paint(canvas, 0, 0, 100, 100)
 
     assert canvas.drawImageRect.call_count == 1
-    _image, src_rect, dst_rect = canvas.drawImageRect.call_args[0]
+    _image, src_rect, dst_rect = canvas.drawImageRect.call_args[0][:3]
     assert src_rect == (0.0, 0.0, 200.0, 100.0)
     assert dst_rect == (0.0, 25.0, 100.0, 50.0)
 
@@ -100,7 +100,7 @@ def test_image_fit_cover_uses_crop(monkeypatch) -> None:
     w.paint(canvas, 0, 0, 100, 100)
 
     assert canvas.drawImageRect.call_count == 1
-    _image, src_rect, dst_rect = canvas.drawImageRect.call_args[0]
+    _image, src_rect, dst_rect = canvas.drawImageRect.call_args[0][:3]
     assert src_rect == (50.0, 0.0, 100.0, 100.0)
     assert dst_rect == (0.0, 0.0, 100.0, 100.0)
 
@@ -115,7 +115,7 @@ def test_image_fit_fill_stretches(monkeypatch) -> None:
     canvas = MagicMock()
     w.paint(canvas, 0, 0, 120, 80)
 
-    _image, src_rect, dst_rect = canvas.drawImageRect.call_args[0]
+    _image, src_rect, dst_rect = canvas.drawImageRect.call_args[0][:3]
     assert src_rect == (0.0, 0.0, 200.0, 100.0)
     assert dst_rect == (0.0, 0.0, 120.0, 80.0)
 
@@ -133,7 +133,7 @@ def test_image_fit_none_uses_intrinsic_size(monkeypatch) -> None:
 
     canvas.save.assert_called_once()
     canvas.restore.assert_called_once()
-    _image, src_rect, dst_rect = canvas.drawImageRect.call_args[0]
+    _image, src_rect, dst_rect = canvas.drawImageRect.call_args[0][:3]
     assert src_rect == (0.0, 0.0, 200.0, 100.0)
     assert dst_rect == (-50.0, 0.0, 200.0, 100.0)
 
@@ -151,7 +151,7 @@ def test_image_fit_none_no_clip_when_image_fits(monkeypatch) -> None:
 
     canvas.save.assert_not_called()
     canvas.restore.assert_not_called()
-    _image, src_rect, dst_rect = canvas.drawImageRect.call_args[0]
+    _image, src_rect, dst_rect = canvas.drawImageRect.call_args[0][:3]
     assert src_rect == (0.0, 0.0, 200.0, 100.0)
     # Image centered in 300x200: dx = (300-200)*0.5 = 50, dy = (200-100)*0.5 = 50
     assert dst_rect == (50.0, 50.0, 200.0, 100.0)
@@ -160,7 +160,7 @@ def test_image_fit_none_no_clip_when_image_fits(monkeypatch) -> None:
 def test_image_invalid_source_type_ignored() -> None:
     w = Image(None)
     w._on_source_change("bad")  # type: ignore[arg-type]
-    assert w._decode_image_if_needed() is None
+    assert w._decoded_image is None
 
 
 def test_image_decode_failure_not_retried_on_same_source(monkeypatch) -> None:
@@ -196,3 +196,32 @@ def test_image_paint_is_pure_consumer_for_decode(monkeypatch) -> None:
 
     # decode runs on source change (init), not during paint.
     assert _CountingSkiaImage.calls == 1
+
+
+def test_image_draws_without_sampling_when_the_canvas_refuses_it(monkeypatch) -> None:
+    import nuiitivet.widgets.image as image_mod
+
+    monkeypatch.setattr(image_mod, "get_skia", lambda raise_if_missing=False: _DummySkia)
+    monkeypatch.setattr(image_mod, "_smooth_sampling", lambda _backend: ("sampling",))
+    monkeypatch.setattr(image_mod, "make_rect", lambda x, y, w, h: (x, y, w, h))
+
+    def draw_image_rect(*args) -> None:
+        if len(args) > 3:
+            raise TypeError("no sampling overload")
+
+    canvas = MagicMock()
+    canvas.drawImageRect.side_effect = draw_image_rect
+    Image(b"ok", fit="contain", width=100, height=100).paint(canvas, 0, 0, 100, 100)
+
+    assert len(canvas.drawImageRect.call_args_list[-1][0]) == 3
+
+
+def test_image_does_not_observe_a_raw_source_of_the_wrong_type(monkeypatch) -> None:
+    def refuse(*_args) -> None:
+        raise AssertionError("observed")
+
+    monkeypatch.setattr(Image, "observe", refuse)
+
+    w = Image(bytearray(b"ok"))  # type: ignore[arg-type]
+
+    assert w._decoded_image is None

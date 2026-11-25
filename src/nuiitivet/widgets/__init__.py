@@ -9,10 +9,12 @@ from .text import TextBase
 from .icon import IconBase
 from .image import Image
 from .raster_surface import RasterSurface
+from ..rendering.raster import Raster
 
 __all__ = [
     "TextBase",
     "IconBase",
     "Image",
+    "Raster",
     "RasterSurface",
 ]
