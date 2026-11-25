@@ -2463,21 +2463,12 @@ class ModalDateInput(ComposableWidget, OverlayAware[Optional[_Date]]):
                     ),
                     Row(
                         [
-                            # Pin the headline to its MD3 line-height box (32pt /
-                            # 40dp). Centring the icon against this fixed line box
-                            # (rather than the text's ink bounds, which grow with
-                            # descenders like the "y" in "May") keeps the icon on
-                            # the cap-height centre regardless of the month name.
-                            Box(
-                                height=40,
-                                alignment="center-left",
-                                child=Text(
-                                    date_str,
-                                    style=TextStyle(
-                                        color=style.header_headline_color,
-                                    ),
-                                    type_scale=TypeScaleToken.from_size(int(style.header_headline_font_size)),
+                            Text(
+                                date_str,
+                                style=TextStyle(
+                                    color=style.header_headline_color,
                                 ),
+                                type_scale=TypeScaleToken.from_size(int(style.header_headline_font_size)),
                             ),
                             Icon("calendar_today", size=24),
                         ],

@@ -36,15 +36,16 @@ if TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
+# The float error a line height times a line count may carry.
+_FLOAT_SLACK = 1e-6
+
 
 class _Run(NamedTuple):
-    """One laid-out line: its text blob and its tight ink bounds."""
+    """One laid-out line: its text blob and the horizontal extent of its ink."""
 
     blob: Optional[object]
     ink_left: float
-    ink_top: float
     ink_right: float
-    ink_bottom: float
 
 
 class _PaintCache(NamedTuple):
@@ -298,9 +299,11 @@ class TextBase(Widget):
         return fallbacks
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> tuple[int, int]:
-        """Return the preferred (width, height) for this Text including padding (M3準拠).
+        """Return the preferred (width, height), padding included.
 
-        Use explicit sizing if provided, otherwise measure text content.
+        A fixed ``width`` or ``height`` is returned as given. A measured
+        height is the type scale's line height times the number of lines,
+        rounded up. The glyphs do not change it.
         """
         # Check for explicit sizing first
         w_dim = self.width_sizing
@@ -353,21 +356,15 @@ class TextBase(Widget):
                 measured_width = max(0, int(font_size * max(1, len(txt) * 0.6)))
 
             n_lines = max(1, len(lines))
-            if n_lines == 1:
-                # Preserve prior single-line ink-based height.
-                sl, st, sr, sb = measure_text_ink_bounds(tf, font_size, lines[0] if lines else txt, tracking)
-                measured_height = int(max(0.0, sb - st))
-                if measured_height <= 0:
-                    measured_height = int(font_size)
-            else:
-                line_h = float(self.type_scale.line_height)
-                measured_height = int(round(line_h * n_lines))
         except Exception:
             exception_once(_logger, "text_preferred_size_measure_exc", "Text preferred_size measurement failed")
             # Fallback: approximate character width ~0.6 * font_size
             approx_char_w = int(font_size * 0.6)
             measured_width = len(txt) * approx_char_w
-            measured_height = int(font_size)
+            n_lines = 1
+
+        # Rounded up, so the box holds the lines paint stacks at the unrounded line height.
+        measured_height = int(math.ceil(float(self.type_scale.line_height) * n_lines - _FLOAT_SLACK))
 
         # Apply explicit sizing where provided
         if w_dim.kind == "fixed":
@@ -438,12 +435,9 @@ class TextBase(Widget):
         clip = self._overflow == "clip"
         if clip:
             canvas.save()
-            canvas.clipRect(make_rect(cx, cy, cw, ch))
+            canvas.clipRect(self._clip_rect(len(runs), cx, cy, cw, ch))
 
-        if len(runs) == 1:
-            self._paint_single_line(canvas, runs[0], cx, cy, cw, ch, alignment, paint)
-        else:
-            self._paint_multi_line(canvas, cache, cx, cy, cw, ch, alignment, paint)
+        self._paint_lines(canvas, cache, cx, cy, cw, ch, alignment, paint)
 
         if clip:
             canvas.restore()
@@ -478,10 +472,10 @@ class TextBase(Widget):
         if not lines or font is None:
             return _PaintCache(key, tf, [], 0.0, 0.0)
 
-        runs = [
-            _Run(make_text_blob(line, font, tracking), *measure_text_ink_bounds(tf, font_size, line, tracking))
-            for line in lines
-        ]
+        runs: List[_Run] = []
+        for line in lines:
+            ink_left, _, ink_right, _ = measure_text_ink_bounds(tf, font_size, line, tracking)
+            runs.append(_Run(make_text_blob(line, font, tracking), ink_left, ink_right))
         ascent, descent = self._font_vmetrics(font, font_size)
         return _PaintCache(key, tf, runs, ascent, descent)
 
@@ -494,20 +488,20 @@ class TextBase(Widget):
             return float(cx) + cw - ink_w - run.ink_left
         return float(cx) - run.ink_left
 
-    def _paint_single_line(self, canvas, run: _Run, cx, cy, cw, ch, alignment, paint) -> None:
-        """Draw one line using tight ink bounds for centering (parity path)."""
-        if run.blob is None:
-            return
-        ink_h = max(0.0, run.ink_bottom - run.ink_top)
-        ty = float(cy) + (ch - ink_h) / 2 - run.ink_top
-        canvas.drawTextBlob(run.blob, self._aligned_x(run, cx, cw, alignment), ty, paint)
+    def _clip_rect(self, lines: int, cx, cy, cw, ch) -> Optional[object]:
+        """Return the rect ``overflow="clip"`` cuts at: the content box, taller while the lines fit it."""
+        line_h = float(self.type_scale.line_height)
+        if line_h * lines > ch + _FLOAT_SLACK:
+            return make_rect(cx, cy, cw, ch)
+        # A font taller than the line height puts ink past the first and the last line box.
+        return make_rect(cx, cy - line_h, cw, ch + 2 * line_h)
 
-    def _paint_multi_line(self, canvas, cache: _PaintCache, cx, cy, cw, ch, alignment, paint) -> None:
-        """Draw stacked lines on consistent baselines derived from font metrics."""
+    def _paint_lines(self, canvas, cache: _PaintCache, cx, cy, cw, ch, alignment, paint) -> None:
+        """Draw the lines stacked in line boxes, the stack centred in the content box."""
         line_h = float(self.type_scale.line_height)
         block_h = line_h * len(cache.runs)
         top = float(cy) + (ch - block_h) / 2.0
-        # Vertically center the glyph box within each line slot.
+        # The font's ascent and descent, not the line's ink, are centred in the line box.
         baseline_offset = (line_h - (cache.ascent + cache.descent)) / 2.0 + cache.ascent
 
         for i, run in enumerate(cache.runs):

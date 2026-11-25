@@ -142,6 +142,42 @@ def test_basic_dialog_custom_width_propagates_to_box():
     assert float(sizing.value) == 420.0
 
 
+def _text_rects(dialog: BasicDialog) -> dict[str, list[int]]:
+    """Lay ``dialog`` out and return the rect of each of its texts by label."""
+    from nuiitivet.testing import mount
+
+    def texts(node: dict) -> dict[str, list[int]]:
+        found = {node["label"]: node["rect"]} if node["type"] == "Text" else {}
+        for child in node.get("children", []):
+            found.update(texts(child))
+        return found
+
+    with mount(dialog) as host:
+        host.layout(600, 600)
+        return texts(host.tree())
+
+
+def test_basic_dialog_title_and_message_are_spaced_as_md3_line_boxes():
+    """16dp from the headline's 32dp line box to the supporting text's 20dp one."""
+    dialog = BasicDialog(title="Title", message="Body")
+
+    rects = _text_rects(dialog)
+    _, title_y, _, title_h = rects["Title"]
+    _, body_y, _, body_h = rects["Body"]
+
+    assert title_h == 32
+    assert body_h == 20
+    assert body_y - (title_y + title_h) == dialog.style.title_content_gap == 16
+
+
+def test_basic_dialog_spacing_does_not_depend_on_the_glyphs():
+    """A title of x-height letters and one with descenders put the message at the same place."""
+    low = _text_rects(BasicDialog(title="xxxx", message="Body"))
+    tall = _text_rects(BasicDialog(title="Ågjpqy", message="Body"))
+
+    assert low["Body"][1] == tall["Body"][1]
+
+
 def test_color_role_includes_md3_surface_containers():
     """ColorRole exposes the full MD3 surface container ladder."""
     from nuiitivet.material.theme.color_role import ColorRole
