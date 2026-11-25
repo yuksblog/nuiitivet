@@ -599,12 +599,19 @@ class LayoutEditMode:
         return True
 
     def on_text_motion(self, app: Any, motion: int, select: bool) -> bool:
-        """Swallow the motion half of an editing key while latched. ``True`` when consumed.
+        """Apply the motion half of an editing key to the open field. ``True`` when consumed.
 
-        The field reads its keys by name from ``on_key_press``, and the key
-        that deleted a widget must not also backspace a text field behind it.
+        Every motion is consumed while latched: with no field open it edits
+        nothing, so the key that deleted a widget does not also backspace a
+        text field behind it. A held key repeats here, not as a key press.
         """
-        return self._active
+        if not self._active:
+            return False
+        editing = self._editing
+        if editing is not None:
+            editing.field.motion(motion, select)
+            invalidate(app)
+        return True
 
     def _enter(self, app: Any) -> None:
         other = getattr(app, "_comment_mode", None)
@@ -1496,7 +1503,7 @@ class LayoutEditMode:
         invalidate(app)
 
     def _edit_key(self, app: Any, key: str, modifier_keys: int) -> None:
-        """One key in the field: a motion, a shortcut, a write or a cancel."""
+        """One key in the field: a shortcut, a write or a cancel."""
         editing = self._editing
         assert editing is not None
         outcome = editing.field.key(key, modifier_keys)

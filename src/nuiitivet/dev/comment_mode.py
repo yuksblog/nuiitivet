@@ -243,11 +243,19 @@ class CommentMode:
             self._changed(app)
 
     def on_text_motion(self, app: Any, motion: int, select: bool) -> bool:
-        """Swallow the motion half of an editing key while latched. ``True`` when consumed.
+        """Apply the motion half of an editing key to the open field. ``True`` when consumed.
 
-        A key the mode took must not also edit a text field behind it.
+        Every motion is consumed while latched: with no field open it edits
+        nothing, and never a text field behind the overlay. A held key
+        repeats here, not as a key press.
         """
-        return self.active
+        if not self.active:
+            return False
+        writing = self._writing
+        if writing is not None:
+            writing.field.motion(motion, select)
+            invalidate(app)
+        return True
 
     def on_key_release(self, app: Any, name: str, modifier_keys: int) -> bool:
         """Swallow the key-up half while latched. ``True`` when consumed.

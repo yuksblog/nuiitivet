@@ -2,7 +2,8 @@
 
 Layout edit mode opens it over a text literal, comment mode on a mark. It
 never enters the widget tree: the mode feeds it typed text, the input
-method's composition and keys by name, and it edits as ``EditableText`` does.
+method's composition, keys by name and text motions, and it edits as
+``EditableText`` does.
 ``Shift+Enter`` breaks a line; the box grows with the text, wraps at the room
 between its anchor and the window's margin, and stays inside the window. The
 mode decides what a commit writes to.
@@ -13,13 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Literal, Optional
 
-from nuiitivet.input.codes import (
-    MOD_SHIFT,
-    TEXT_MOTION_DOWN,
-    TEXT_MOTION_UP,
-    resolve_modifiers,
-    text_motion_for_key,
-)
+from nuiitivet.input.codes import MOD_SHIFT, TEXT_MOTION_DOWN, TEXT_MOTION_UP, resolve_modifiers
 from nuiitivet.platform import get_system_clipboard
 from nuiitivet.widgets.text_editing import (
     TextEditingValue,
@@ -154,7 +149,8 @@ class InlineField:
 
         ``Enter`` asks to commit, unless it is the ``Enter`` that confirms a
         composition; ``Shift+Enter`` breaks the line; ``Escape`` asks to
-        cancel; any other key edits in place.
+        cancel; the accelerator's ``A`` / ``C`` / ``X`` / ``V`` edit in place.
+        An editing key does nothing here: it edits through ``motion``.
         """
         just_committed, self.ime_just_committed = self.ime_just_committed, False
         shift = bool(resolve_modifiers(int(modifier_keys)) & MOD_SHIFT)
@@ -169,24 +165,30 @@ class InlineField:
             if broken is not None:
                 self._adopt(broken)
             return None
-        motion = text_motion_for_key(key)
-        if motion in (TEXT_MOTION_UP, TEXT_MOTION_DOWN):
-            lines = break_lines(self.value.text, measure, self.wrap)
-            moved, goal_x = move_lines(
-                self.value, lines, -1 if motion == TEXT_MOTION_UP else 1, measure, goal_x=self.goal_x, select=shift
-            )
-            if moved is not None:
-                self.value = moved
-            self.goal_x = goal_x
-        elif motion is not None:
-            moved = apply_motion(self.value, motion, select=shift)
-            if moved is not None:
-                self._adopt(moved)
-        elif accel_held(modifier_keys):
+        if accel_held(modifier_keys):
             changed = apply_shortcut(self.value, key, get_system_clipboard(), line_breaks=True)
             if changed is not None:
                 self._adopt(changed)
         return None
+
+    def motion(self, motion: int, select: bool) -> None:
+        """Apply one ``TEXT_MOTION_*`` code: move the caret, or erase one character.
+
+        ``select`` extends the selection. Up and Down walk the lines as
+        wrapped, keeping the column.
+        """
+        if motion in (TEXT_MOTION_UP, TEXT_MOTION_DOWN):
+            lines = break_lines(self.value.text, measure, self.wrap)
+            walked, goal_x = move_lines(
+                self.value, lines, -1 if motion == TEXT_MOTION_UP else 1, measure, goal_x=self.goal_x, select=select
+            )
+            if walked is not None:
+                self.value = walked
+            self.goal_x = goal_x
+            return
+        moved = apply_motion(self.value, motion, select=select)
+        if moved is not None:
+            self._adopt(moved)
 
     def _adopt(self, value: TextEditingValue) -> None:
         self.value = value

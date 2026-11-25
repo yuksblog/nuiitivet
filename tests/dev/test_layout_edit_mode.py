@@ -19,7 +19,7 @@ from nuiitivet.dev.layout_edit_mode import LayoutEditMode
 from nuiitivet.dev.comment_mode import CommentMode
 from nuiitivet.dev.comments import Comments
 from nuiitivet.dev.source_edit import EditLog
-from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT
+from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT, TEXT_MOTION_BACKSPACE, text_motion_for_key
 from nuiitivet.layout.column import Column
 from nuiitivet.testing import mount
 from nuiitivet.widgets.text import TextBase as Text
@@ -1495,6 +1495,14 @@ def _editing(session: _Session) -> None:
     session.mode.on_key_press(session.app, "enter", 0)
 
 
+def _stroke(session: _Session, key: str, modifier_keys: int = 0) -> None:
+    """One stroke of an editing key: its key press, then its motion, the order Windows sends them in."""
+    motion = text_motion_for_key(key)
+    assert motion is not None
+    session.mode.on_key_press(session.app, key, modifier_keys)
+    session.mode.on_text_motion(session.app, motion, bool(modifier_keys & MOD_SHIFT))
+
+
 def test_enter_opens_a_field_with_the_widgets_text(session: _Session) -> None:
     _editing(session)
 
@@ -1532,14 +1540,14 @@ def test_the_caret_and_the_editing_keys_edit_the_field_not_the_tree(session: _Se
     before = session.text()
     mode, app = session.mode, session.app
 
-    mode.on_key_press(app, "backspace", 0)
-    mode.on_key_press(app, "home", 0)
+    _stroke(session, "backspace")
+    _stroke(session, "home")
     mode.on_text(app, "x")
-    mode.on_key_press(app, "right", 0)
-    mode.on_key_press(app, "delete", 0)
-    mode.on_key_press(app, "end", 0)
+    _stroke(session, "right")
+    _stroke(session, "delete")
+    _stroke(session, "end")
     mode.on_text(app, "w")
-    mode.on_key_press(app, "left", 0)
+    _stroke(session, "left")
 
     editor = mode.editor
     assert editor is not None and editor.value == TextEditingValue("xAw", TextRange(2, 2))
@@ -1550,8 +1558,8 @@ def test_shift_extends_the_selection_and_typing_replaces_it(session: _Session) -
     _editing(session)
     mode, app = session.mode, session.app
 
-    mode.on_key_press(app, "left", MOD_SHIFT)
-    mode.on_key_press(app, "left", MOD_SHIFT)
+    _stroke(session, "left", MOD_SHIFT)
+    _stroke(session, "left", MOD_SHIFT)
     editor = mode.editor
     assert editor is not None and editor.value.selection == TextRange(3, 1)
 
@@ -1610,9 +1618,20 @@ def test_the_enter_that_confirms_a_composition_does_not_write(session: _Session)
     assert mode.editor is None and 'Text("AAA火"' in session.text()
 
 
-def test_text_motions_are_swallowed_while_latched(session: _Session) -> None:
-    from nuiitivet.input.codes import TEXT_MOTION_BACKSPACE
+def test_a_held_editing_key_repeats_as_motions_alone(session: _Session) -> None:
+    """The backend sends the key press once, then a motion for each repeat."""
+    _editing(session)
+    mode, app = session.mode, session.app
 
+    _stroke(session, "backspace")
+    assert mode.on_text_motion(app, TEXT_MOTION_BACKSPACE, False) is True
+    assert mode.on_text_motion(app, TEXT_MOTION_BACKSPACE, False) is True
+
+    editor = mode.editor
+    assert editor is not None and editor.value.text == ""
+
+
+def test_text_motions_are_swallowed_while_latched(session: _Session) -> None:
     assert session.mode.on_text_motion(session.app, TEXT_MOTION_BACKSPACE, False) is True
 
     session.mode.on_key_press(session.app, "escape", 0)
