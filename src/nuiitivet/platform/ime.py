@@ -50,9 +50,6 @@ class IMEManager:
     def set_cursor_source(self, source: CursorSource) -> None:
         """Register the function asked for the caret's rect on every read.
 
-        A field whose caret moves without the field hearing of it, as when the
-        content around it scrolls, registers a source and publishes nothing.
-
         Args:
             source: Returns ``(x, y, width, height)`` in window-local logical
                 coordinates, or ``None`` to keep the last rect.
@@ -67,20 +64,6 @@ class IMEManager:
         """
         if self._cursor_source == source:
             self._cursor_source = None
-
-    def update_cursor_rect(self, x: float, y: float, width: float, height: float) -> None:
-        """Publish a cursor rect, in window-local logical coordinates.
-
-        It replaces a registered source: the last writer owns the caret.
-
-        Args:
-            x: Left edge.
-            y: Top edge.
-            width: Caret width.
-            height: Caret height.
-        """
-        self._cursor_source = None
-        self._cursor_rect = IMECursorInfo(x, y, width, height)
 
     def update_window_info(self, x: int, y: int, width: int, height: int) -> None:
         """Publish the window's screen location and logical size."""

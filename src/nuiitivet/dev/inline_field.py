@@ -119,6 +119,8 @@ class InlineField:
     ime_just_committed: bool = False
     # The x a run of Up/Down aims for; any other edit drops it.
     goal_x: Optional[float] = None
+    # Where the caret was last painted, in window coordinates; ``None`` before the first paint.
+    caret_rect: Optional[Rect] = None
 
     @classmethod
     def open(cls, text: str, *, wrap: Optional[float] = None) -> InlineField:
@@ -130,6 +132,21 @@ class InlineField:
     def text(self) -> str:
         """The text as it stands, composition included."""
         return self.value.text
+
+    def hold_ime(self, app: Any) -> None:
+        """Become the field ``app``'s input method composes in, with its candidates at this caret."""
+        ime = getattr(app, "ime", None)
+        if ime is not None:
+            ime.set_cursor_source(self._ime_caret_rect)
+
+    def release_ime(self, app: Any) -> None:
+        """Stop being the field ``app``'s input method composes in. A field that took over since stays."""
+        ime = getattr(app, "ime", None)
+        if ime is not None:
+            ime.clear_cursor_source(self._ime_caret_rect)
+
+    def _ime_caret_rect(self) -> Optional[Rect]:
+        return self.caret_rect
 
     def type(self, text: str) -> None:
         """Insert typed text at the caret, replacing any selection. A line break comes from the key, not from here."""
@@ -214,22 +231,21 @@ def field_rect(slot: Slot, text: str, window: Size) -> Rect:
 def paint_field(
     skia: Any,
     canvas: Any,
-    app: Any,
+    field: InlineField,
     slot: Slot,
-    value: TextEditingValue,
     accent: tuple[int, int, int],
     font: Any,
     typeface: Any,
     window: Size,
 ) -> Rect:
-    """Draw the field in its ``slot`` and return the rect it took, as ``field_rect`` gives it.
+    """Draw ``field`` in its ``slot`` and return the rect it took, as ``field_rect`` gives it.
 
-    The caret's rect is published to the window's IME state, so the candidate
-    window opens beside it.
+    The caret's rect is kept on ``field``, for the window's IME to ask.
     """
     from nuiitivet.rendering.skia.font import make_text_blob, measure_text_width
 
     pad = _PAD
+    value = field.value
     text, selection = value.text, value.selection
     lines = break_lines(text, measure, slot.wrap)
 
@@ -279,9 +295,7 @@ def paint_field(
     caret_top = baseline_of(caret_row) - _BOX_H / 2.0 - FONT_SIZE / 2.5 + 4.0
     if selection.is_collapsed:
         canvas.drawLine(caret_px, caret_top, caret_px, caret_top + _BOX_H - 8.0, stroke)
-    ime = getattr(app, "ime", None)
-    if ime is not None:
-        ime.update_cursor_rect(caret_px, caret_top, 2.0, _BOX_H - 8.0)
+    field.caret_rect = (caret_px, caret_top, 2.0, _BOX_H - 8.0)
     return (x, y, box_w, box_h)
 
 

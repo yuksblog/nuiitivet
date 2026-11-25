@@ -112,7 +112,7 @@ def paint_layout_edit(app: Any, canvas: Any, width: int, height: int) -> None:
             _paint_toolbar(skia, canvas, bar, font, typeface, window)
         editor = mode.editor if active else None
         if editor is not None:
-            paint_field(skia, canvas, app, editor.slot, editor.value, _ACCENT, font, typeface, window)
+            paint_field(skia, canvas, editor.field, editor.slot, _ACCENT, font, typeface, window)
         if active:
             _paint_hud(skia, canvas, mode, jump_notice, font, typeface, width, height)
             if mode.help:

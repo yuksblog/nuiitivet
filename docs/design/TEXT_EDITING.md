@@ -23,7 +23,7 @@ flowchart LR
     editor -- "insert_text · compose_text · end_composition · apply_motion · apply_shortcut · apply(old, new)" --> value
     dispatch -- "on_text · on_key · on_text_motion · on_ime_composition · on_ime_commit" --> editor
     os -- "a composition update · where is the caret" --> ime
-    ime -- "on_ime_composition(text, start, length)" --> dispatch
+    ime -- "on_ime_composition(text, start, length) · on_text(text)" --> dispatch
     editor -- "set_cursor_source(rect_fn)" --> ime
 ```
 
@@ -233,26 +233,30 @@ flowchart LR
     runner[backends/pyglet/runner.py]
     window[runtime/window.py]
     editor[widgets/editable_text.py]
+    field[dev/inline_field.py]
     os[the OS input method]
 
     runner -- "install_patch(pyglet_window, window) · discard_conversation(pyglet_window)" --> macos & windows & linux
     runner -- "update_window_info(x, y, w, h), on draw" --> manager
     window -- "IMEManager()" --> manager
-    editor -- "set_cursor_source(rect_fn) · clear_cursor_source(rect_fn)" --> manager
-    macos & windows & linux -- "cursor_rect" --> manager
+    editor & field -- "set_cursor_source(rect_fn) · clear_cursor_source(rect_fn)" --> manager
+    macos & windows -- "cursor_rect" --> manager
+    windows -- "has_cursor_source" --> manager
     macos & windows & linux -- "on_ime_composition(text, start, length)" --> runner
-    os -- "setMarkedText · WM_IME_COMPOSITION · PreeditDraw · the caret query" --> macos & windows & linux
+    windows -- "on_text(text), a commit" --> runner
+    os -- "setMarkedText · the WM_IME messages · PreeditDraw · the caret query" --> macos & windows & linux
 ```
 
 | Module | Role |
 | --- | --- |
 | `platform/ime.py` | `IMEManager`: the window's position and the caret source |
 | `backends/pyglet/ime/macos.py` | overrides `setMarkedText:selectedRange:replacementRange:` and `firstRectForCharacterRange:actualRange:` on the `NSTextView` through the Objective-C runtime |
-| `backends/pyglet/ime/windows.py` | subclasses the window procedure for the composition messages |
+| `backends/pyglet/ime/windows.py` | subclasses the window procedure: keeps the composition messages from the OS and places the IME's windows at the caret |
 | `backends/pyglet/ime/linux.py` | recreates the X input context with preedit callbacks |
 | `backends/pyglet/runner.py` | installs the patch when the window is realised; drops the OS conversation on deactivate ([APP_WINDOW.md](APP_WINDOW.md)) |
 | `runtime/window.py` | owns the manager ([APP_WINDOW.md](APP_WINDOW.md)) |
-| `widgets/editable_text.py` | the focused field, the caret source (The Editor) |
+| `widgets/editable_text.py` | the focused field, a caret source (The Editor) |
+| `dev/inline_field.py` | the field a dev mode has open, a caret source ([DEV_MODES.md](DEV_MODES.md)) |
 | the OS input method | composes and asks for the caret |
 
 ### Sequence
@@ -279,6 +283,10 @@ sequenceDiagram
 
 - One `IMEManager` per window.
 - The focused field is its window's caret source. It withdraws on unmount.
-- The caret rect is computed when the OS asks, from layout state. Nothing
-  publishes it on paint.
+- The field a dev mode opens is the caret source until it closes.
+- The caret rect is read from the source when a patch needs it. Nothing
+  publishes it to the manager.
+- A composition is drawn by the field alone while its window has a caret
+  source. With none, the Windows patch leaves the composition to the OS.
+- An IME commit reaches the field as one text event.
 - A window that loses the OS focus drops its OS-side conversation.

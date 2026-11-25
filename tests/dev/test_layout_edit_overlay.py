@@ -16,6 +16,7 @@ from nuiitivet.dev.layout_edit_mode import LayoutEditMode
 from nuiitivet.dev.source_edit import EditLog
 from nuiitivet.input.codes import MOD_CTRL, MOD_SHIFT
 from nuiitivet.layout.column import Column
+from nuiitivet.platform.ime import IMEManager
 from nuiitivet.testing import mount
 from nuiitivet.widgets.text import TextBase as Text
 
@@ -33,14 +34,6 @@ class _Canvas:
         return _record
 
 
-class _IME:
-    def __init__(self) -> None:
-        self.rects: list[tuple[float, float, float, float]] = []
-
-    def update_cursor_rect(self, x: float, y: float, width: float, height: float) -> None:
-        self.rects.append((x, y, width, height))
-
-
 class _App:
     def __init__(self, root: Any, mode: Any = None, jump: Any = None) -> None:
         self.root = root
@@ -49,7 +42,7 @@ class _App:
         self.modifier_keys = 0
         self._layout_edit_mode = mode
         self._source_jump = jump
-        self.ime = _IME()
+        self.ime = IMEManager()
 
     def invalidate(self) -> None:
         pass
@@ -333,8 +326,8 @@ def test_the_open_field_paints_over_the_widget() -> None:
 
             assert canvas.calls.count("drawRoundRect") >= 3, "the field's box and edge, plus the badge"
             assert "drawTextBlob" in canvas.calls and "drawLine" in canvas.calls, "the text and the caret"
-            assert app.ime.rects, "the caret's rect reaches the IME, so the candidate window opens beside it"
-            assert app.ime.rects[-1][0] > 0.0 and app.ime.rects[-1][3] > 0.0
+            caret = app.ime.cursor_rect
+            assert caret.x > 0.0 and caret.height > 0.0, "the IME is told where the painted caret is"
 
             lines_with_caret = canvas.calls.count("drawLine")
             mode.on_key_press(app, "a", MOD_CTRL)

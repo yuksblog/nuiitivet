@@ -295,8 +295,17 @@ class CommentMode:
         rect = self._mark_rect(index)
         slot = Slot.under(rect or (0.0, 0.0, 0.0, 0.0), FIELD_LEAST, UNDER_GAP, _window(app))
         field = InlineField.open(self._comments.editable_line(index) or "", wrap=slot.wrap)
+        self._close_field(app)
         self._writing = Writing(index, field, slot, new)
+        field.hold_ime(app)
         invalidate(app)
+
+    def _close_field(self, app: Any) -> Optional[Writing]:
+        """Take the field down and return what it held, or ``None`` with none open."""
+        writing, self._writing = self._writing, None
+        if writing is not None:
+            writing.field.release_ime(app)
+        return writing
 
     def _open_newest(self, app: Any) -> None:
         """Open the field on the mark just made."""
@@ -329,7 +338,7 @@ class CommentMode:
             self._write(app)
             return
         if outcome == "cancel":
-            self._writing = None
+            self._close_field(app)
             if writing.new and not self._comments.thread(writing.index):
                 # A click taken back at once: the mark was made for the text that never came.
                 self._comments.remove(writing.index)
@@ -339,7 +348,7 @@ class CommentMode:
 
     def _write(self, app: Any) -> None:
         """Close the field, keeping its text as the human's newest line on the mark."""
-        writing, self._writing = self._writing, None
+        writing = self._close_field(app)
         if writing is None:
             return
         before = self._comments.thread(writing.index)
@@ -378,7 +387,7 @@ class CommentMode:
         self._walked = None
         self._hovered_badge = None
         self._band = None
-        self._writing = None
+        self._close_field(app)
         self._near_send = False
         self._placement.reset()
         self._splash.show(app, _SPLASH_ON)
@@ -397,7 +406,7 @@ class CommentMode:
         self._walked = None
         self._hovered_badge = None
         self._band = None
-        self._writing = None
+        self._close_field(app)
         self._near_send = False
         self._changed(app)
 
