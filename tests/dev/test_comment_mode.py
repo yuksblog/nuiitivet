@@ -2,14 +2,22 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 import pytest
 
 from nuiitivet.dev.comment_mode import CommentMode
 from nuiitivet.dev.interaction import InteractionJournal
 from nuiitivet.dev.comments import Comments
-from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT
+from nuiitivet.input.codes import (
+    MOD_ALT,
+    MOD_CTRL,
+    MOD_META,
+    MOD_SHIFT,
+    TEXT_MOTION_BACKSPACE,
+    TEXT_MOTION_LEFT,
+    text_motion_for_key,
+)
 from nuiitivet.layout.column import Column
 from nuiitivet.testing import mount
 from nuiitivet.widgets.text import TextBase as Text
@@ -67,6 +75,20 @@ def _mark(mode: CommentMode, app: _App, x: float, y: float) -> None:
     _click(mode, app, x, y)
     if mode.writing is not None:
         mode.on_key_press(app, "enter", 0)
+
+
+def _stroke(mode: CommentMode, app: _App, key: str, modifier_keys: int = 0, *, motion_first: bool = False) -> None:
+    """One stroke of an editing key: its key press and its motion.
+
+    Windows sends the key press first; macOS sends the motion first.
+    """
+    motion = text_motion_for_key(key)
+    assert motion is not None
+    if motion_first:
+        mode.on_text_motion(app, motion, bool(modifier_keys & MOD_SHIFT))
+    mode.on_key_press(app, key, modifier_keys)
+    if not motion_first:
+        mode.on_text_motion(app, motion, bool(modifier_keys & MOD_SHIFT))
 
 
 def _walk(mode: CommentMode, app: _App, key: str, at: tuple[float, float] = (2.0, 2.0)) -> None:
@@ -997,8 +1019,6 @@ def test_a_sent_mark_can_still_be_cleared() -> None:
 
 
 def test_text_motions_are_swallowed_while_latched() -> None:
-    from nuiitivet.input.codes import TEXT_MOTION_BACKSPACE
-
     mode, _comments, app = _mode()
     assert mode.on_text_motion(app, TEXT_MOTION_BACKSPACE, False) is False
 
@@ -1276,11 +1296,99 @@ def test_the_mode_keys_are_the_fields_while_it_is_open() -> None:
     with host:
         _click(mode, app, 2, 2)
         mode.on_text(app, "w")
-        mode.on_key_press(app, "backspace", 0)
+        _stroke(mode, app, "backspace")
         mode.on_key_press(app, "w", 0)
 
         assert mode.comments.members() == [leaf]
         assert mode.writing is not None and mode.writing.field.text == ""
+
+
+@pytest.mark.parametrize(
+    "lead, key, text, selection",
+    [
+        (None, "backspace", "ab\nc", (4, 4)),
+        ("left", "delete", "ab\nc", (4, 4)),
+        (None, "left", "ab\ncd", (4, 4)),
+        ("left", "right", "ab\ncd", (5, 5)),
+        (None, "up", "ab\ncd", (2, 2)),
+        ("up", "down", "ab\ncd", (5, 5)),
+    ],
+)
+@pytest.mark.parametrize("motion_first", [False, True])
+def test_one_stroke_of_an_editing_key_acts_once(
+    monkeypatch: pytest.MonkeyPatch,
+    motion_first: bool,
+    lead: Optional[str],
+    key: str,
+    text: str,
+    selection: tuple[int, int],
+) -> None:
+    """``lead`` first takes the caret off the text's end, where ``key`` has room to act."""
+    monkeypatch.setattr("nuiitivet.dev.inline_field.measure", lambda s: 10.0 * len(s))
+    mode, app, host, _leaf = _marked()
+    with host:
+        mode.on_text(app, "ab")
+        mode.on_key_press(app, "enter", MOD_SHIFT)
+        mode.on_text(app, "cd")
+        if lead is not None:
+            _stroke(mode, app, lead, motion_first=motion_first)
+
+        _stroke(mode, app, key, motion_first=motion_first)
+
+        assert mode.writing is not None
+        value = mode.writing.field.value
+        assert (value.text, (value.selection.start, value.selection.end)) == (text, selection)
+
+
+def test_a_held_editing_key_repeats_as_motions_alone() -> None:
+    """The backend sends the key press once, then a motion for each repeat."""
+    mode, app, host, _leaf = _marked()
+    with host:
+        mode.on_text(app, "wider")
+        repaints = app.invalidated
+
+        _stroke(mode, app, "backspace")
+        assert mode.on_text_motion(app, TEXT_MOTION_BACKSPACE, False) is True
+        assert mode.on_text_motion(app, TEXT_MOTION_BACKSPACE, False) is True
+
+        assert mode.writing is not None and mode.writing.field.text == "wi"
+        assert app.invalidated > repaints, "each repeat asks for a frame"
+
+
+def test_shift_extends_the_selection_on_the_stroke_and_on_its_repeats() -> None:
+    mode, app, host, _leaf = _marked()
+    with host:
+        mode.on_text(app, "wider")
+
+        _stroke(mode, app, "left", MOD_SHIFT)
+        mode.on_text_motion(app, TEXT_MOTION_LEFT, True)
+
+        assert mode.writing is not None
+        selection = mode.writing.field.value.selection
+        assert (selection.start, selection.end) == (5, 3)
+
+
+def test_a_motion_with_no_field_open_removes_no_mark_and_reaches_nothing() -> None:
+    mode, app, host, leaf = _marked()
+    with host:
+        mode.on_key_press(app, "enter", 0)
+        assert mode.writing is None
+
+        assert mode.on_text_motion(app, TEXT_MOTION_BACKSPACE, False) is True
+
+        assert mode.comments.members() == [leaf]
+
+
+@pytest.mark.parametrize("motion_first", [False, True])
+def test_a_backspace_stroke_with_no_field_open_removes_the_mark_once(motion_first: bool) -> None:
+    mode, app, host, _leaf = _marked()
+    with host:
+        mode.on_key_press(app, "enter", 0)
+        mode.on_mouse_motion(app, 2, 2)
+
+        _stroke(mode, app, "backspace", motion_first=motion_first)
+
+        assert mode.comments.members() == [] and mode.writing is None
 
 
 def test_text_is_not_taken_without_a_field() -> None:

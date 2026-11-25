@@ -1151,6 +1151,8 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
     @window.event
     def on_text_motion(motion):
         motion_code = _normalize_text_motion(motion)
+        if motion_code is None:
+            return
         if _dev_consumed(win, "on_text_motion", win, motion_code, False):
             try:
                 win.invalidate()
@@ -1171,6 +1173,8 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
     @window.event
     def on_text_motion_select(motion):
         motion_code = _normalize_text_motion(motion)
+        if motion_code is None:
+            return
         if _dev_consumed(win, "on_text_motion", win, motion_code, True):
             try:
                 win.invalidate()
@@ -1532,12 +1536,14 @@ def _normalize_key(symbol: int, pyglet_modifiers: int) -> tuple[str, int]:
     return name, modifier_keys
 
 
-def _normalize_text_motion(motion: int) -> int:
+def _normalize_text_motion(motion: int) -> Optional[int]:
     """Translate a pyglet text-motion constant into nuiitivet's TEXT_MOTION_* code.
 
-    Motions nuiitivet has no code for (word, page and file moves) pass through
-    unchanged.
+    A move to the file's edge is a move to the line's. ``None`` for a motion
+    nuiitivet has no code for: word and page moves, copy and paste.
     """
+    # pyglet numbers its motions from 1 as nuiitivet does, so an unmapped one
+    # passed through as it is would read as another motion.
     try:
         keymod = pyglet.window.key
 
@@ -1548,12 +1554,12 @@ def _normalize_text_motion(motion: int) -> int:
             keymod.MOTION_RIGHT: TEXT_MOTION_RIGHT,
             keymod.MOTION_BEGINNING_OF_LINE: TEXT_MOTION_HOME,
             keymod.MOTION_END_OF_LINE: TEXT_MOTION_END,
+            keymod.MOTION_BEGINNING_OF_FILE: TEXT_MOTION_HOME,
+            keymod.MOTION_END_OF_FILE: TEXT_MOTION_END,
             keymod.MOTION_UP: TEXT_MOTION_UP,
             keymod.MOTION_DOWN: TEXT_MOTION_DOWN,
         }
-        mapped = mapping.get(int(motion))
-        if mapped is not None:
-            return mapped
+        return mapping.get(int(motion))
     except Exception:
         exception_once(logger, "pyglet_normalize_text_motion_exc", "Failed to normalize text motion")
-    return int(motion)
+    return None

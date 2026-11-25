@@ -154,13 +154,26 @@ def test_normalize_modifiers(pyglet_modifiers: int, expected_modifier_keys: int)
         (pyglet_key.MOTION_END_OF_LINE, TEXT_MOTION_END),
         (pyglet_key.MOTION_UP, TEXT_MOTION_UP),
         (pyglet_key.MOTION_DOWN, TEXT_MOTION_DOWN),
+        # A field has no file moves; the Home key on macOS and Ctrl+Home on Windows send them.
+        (pyglet_key.MOTION_BEGINNING_OF_FILE, TEXT_MOTION_HOME),
+        (pyglet_key.MOTION_END_OF_FILE, TEXT_MOTION_END),
     ],
 )
 def test_normalize_text_motion(pyglet_motion: int, expected_motion: int) -> None:
     assert _normalize_text_motion(pyglet_motion) == expected_motion
 
 
-@pytest.mark.parametrize("pyglet_motion", [pyglet_key.MOTION_NEXT_WORD, pyglet_key.MOTION_NEXT_PAGE])
-def test_normalize_text_motion_passes_unmapped_motions_through(pyglet_motion: int) -> None:
-    """Word and page motions have no nuiitivet code: pass, don't raise."""
-    assert _normalize_text_motion(pyglet_motion) == int(pyglet_motion)
+@pytest.mark.parametrize(
+    "pyglet_motion",
+    [
+        pyglet_key.MOTION_NEXT_WORD,
+        pyglet_key.MOTION_PREVIOUS_WORD,
+        pyglet_key.MOTION_NEXT_PAGE,
+        pyglet_key.MOTION_PREVIOUS_PAGE,
+        pyglet_key.MOTION_COPY,
+        pyglet_key.MOTION_PASTE,
+    ],
+)
+def test_normalize_text_motion_drops_unmapped_motions(pyglet_motion: int) -> None:
+    """pyglet numbers these from 1 as nuiitivet numbers its own: passed through, a word move erases."""
+    assert _normalize_text_motion(pyglet_motion) is None

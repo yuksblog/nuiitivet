@@ -1,8 +1,20 @@
-"""The inline field's keys: several lines, broken by Shift+Enter, walked by the arrows."""
+"""The inline field's keys and motions: several lines, broken by Shift+Enter, walked by the arrows."""
 
 from __future__ import annotations
 
-from nuiitivet.input.codes import MOD_SHIFT
+import pytest
+
+from nuiitivet.input.codes import (
+    MOD_SHIFT,
+    TEXT_MOTION_BACKSPACE,
+    TEXT_MOTION_DELETE,
+    TEXT_MOTION_DOWN,
+    TEXT_MOTION_END,
+    TEXT_MOTION_HOME,
+    TEXT_MOTION_LEFT,
+    TEXT_MOTION_RIGHT,
+    TEXT_MOTION_UP,
+)
 from nuiitivet.dev import inline_field
 from nuiitivet.dev.inline_field import InlineField
 from nuiitivet.widgets.text_editing import TextRange
@@ -35,11 +47,11 @@ def test_up_and_down_walk_the_lines_keeping_the_column(monkeypatch) -> None:
     field = InlineField.open("abcd\nef\nghij")
     field.value = field.value.copy_with(selection=TextRange(3, 3))
 
-    field.key("down", 0)
+    field.motion(TEXT_MOTION_DOWN, False)
     assert field.value.selection == TextRange(7, 7)
-    field.key("down", 0)
+    field.motion(TEXT_MOTION_DOWN, False)
     assert field.value.selection == TextRange(11, 11)
-    field.key("up", MOD_SHIFT)
+    field.motion(TEXT_MOTION_UP, True)
     assert field.value.selection == TextRange(11, 7)
 
 
@@ -47,10 +59,37 @@ def test_home_and_end_stop_at_the_line() -> None:
     field = InlineField.open("ab\ncd")
     field.value = field.value.copy_with(selection=TextRange(4, 4))
 
-    field.key("home", 0)
+    field.motion(TEXT_MOTION_HOME, False)
     assert field.value.selection == TextRange(3, 3)
-    field.key("end", 0)
+    field.motion(TEXT_MOTION_END, False)
     assert field.value.selection == TextRange(5, 5)
+
+
+def test_a_motion_erases_moves_and_selects() -> None:
+    field = InlineField.open("abcd")
+
+    field.motion(TEXT_MOTION_BACKSPACE, False)
+    assert field.text == "abc"
+    field.motion(TEXT_MOTION_LEFT, False)
+    field.motion(TEXT_MOTION_LEFT, True)
+    assert field.value.selection == TextRange(2, 1)
+    field.motion(TEXT_MOTION_RIGHT, False)
+    assert field.value.selection == TextRange(2, 2), "an unselecting move lands on the selection's near edge"
+    field.motion(TEXT_MOTION_DELETE, False)
+    assert field.text == "ab"
+
+
+@pytest.mark.parametrize("key", ["backspace", "delete", "left", "right", "home", "end", "up", "down"])
+def test_an_editing_key_by_name_leaves_the_field_alone(key: str) -> None:
+    """Its motion edits, so the key press of the same stroke must not edit as well."""
+    field = InlineField.open("ab\ncd")
+    field.value = field.value.copy_with(selection=TextRange(4, 4))
+    before = field.value
+
+    assert field.key(key, 0) is None
+    assert field.key(key, MOD_SHIFT) is None
+
+    assert field.value == before
 
 
 def test_a_paste_keeps_line_breaks_normalized(monkeypatch) -> None:
@@ -106,6 +145,6 @@ def test_up_and_down_walk_the_wrapped_lines(monkeypatch) -> None:
     field = InlineField.open("ab cd ef", wrap=50.0)
     field.value = field.value.copy_with(selection=TextRange(0, 0))
 
-    field.key("down", 0)
+    field.motion(TEXT_MOTION_DOWN, False)
 
     assert field.value.selection == TextRange(6, 6), "the second line starts where the first wrapped"
