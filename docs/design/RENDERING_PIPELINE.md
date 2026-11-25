@@ -46,6 +46,12 @@ flowchart LR
   measured result reaches a `State` through the size-change queue.
 - `preferred_size()` has no side effect. On a mounted composable it never
   calls `build()`.
+- A widget keeps showing what it last showed until its new content is
+  ready: a pending child its last layout, a `RasterSurface` its last pixels.
+  Only a widget that never had content is painted as nothing.
+- Work a frame's layout leaves at its deadline continues in the next frame.
+  It never waits for idle time. Idle work between the two frames may do part
+  of it.
 
 ## The Loop
 
@@ -284,7 +290,8 @@ flowchart LR
 `layout_utils` runs a frame's layout, lays a container's children out and
 paints them at their rects. Inside a frame the layout stops descending at its
 deadline. The frames after finish it. Until then a child it stopped at is
-painted from its last layout, the one that last ran on it.
+painted from its last layout, the one that last ran on it. A lazy container
+that stopped building at the deadline leaves itself pending too.
 
 ### Structure
 
@@ -306,13 +313,14 @@ flowchart LR
     utils -- "local_clip_bounds(canvas) · clip_rect(canvas, rect)" --> skia
     utils -- "frame_started_at() · frame_interval()" --> frame
     utils & containers -- "warn_child_without_rect(child)" --> unlaid
+    containers -- "leave_pending(container), from a lazy container's provider" --> utils
 ```
 
 | Module | Role |
 | --- | --- |
 | `layout/layout_utils.py` | runs a frame's layout: the root's pass, then the pending children, until the deadline; lays a child out unless it is clean at the same size, or the deadline has passed and the child's rect is its parent's; paints the children, a pending one from its last layout, skipping those beyond the clip and its slack band; tells a child inside the clip so |
 | `widgeting/widget_kernel.py` | `layout`, `paint`, `hit_test`, `last_rect`; the pending flag and the size of the last layout; the inside-clip hint a parent sets for the paint that follows |
-| the containers | the multi-child containers, `Container` and `Deck` ([LAYOUT.md](LAYOUT.md)) |
+| the containers | the multi-child containers, `Container` and `Deck`; a lazy container's provider leaves the container pending while a placeholder in view remains ([LAYOUT.md](LAYOUT.md)) |
 | `rendering/skia/geometry.py` | reads the canvas clip and narrows it |
 | `widgeting/frame_clock.py` | whether a frame is under way and how long a frame is (The Loop) |
 | `runtime/window.py · backends/pyglet/gpu_frame.py` | start a frame's layout; ask whether a subtree is pending (The Frame) |
@@ -341,6 +349,9 @@ sequenceDiagram
         U->>K: layout(w, h), then _laid_out_size = (w, h)
     end
     C->>K: set_layout_rect(x, y, w, h)
+    opt a lazy container's layout, from any caller, left a placeholder in view at the deadline
+        C->>U: leave_pending(container), from its provider
+    end
 ```
 
 #### A pending child is painted
@@ -391,6 +402,8 @@ sequenceDiagram
 - Past the deadline a child whose rect its parent decided is left pending: it
   keeps the rect, nothing below it runs. A child sized by its content is laid
   out whatever the time.
+- A widget whose own layout stopped at the deadline with work left that
+  shows leaves itself pending. It is painted from the layout just made.
 - A pending child is painted at the size of its last layout, from the top
   left corner of its rect. A pending child never laid out is painted as
   nothing. In both cases its `last_rect` is its rect.

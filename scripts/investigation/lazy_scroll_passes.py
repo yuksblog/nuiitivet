@@ -7,7 +7,12 @@ a frame leaves over given to idle work, which builds the rows ahead of the
 view. ``--turn-every N`` reverses the scroll every N passes, so the rows kept
 behind the view are scrolled back over. ``--fling`` slows the scroll to a
 stop over the first half of the passes, so the blank rows a fast pass left
-can be watched filling in.
+can be watched filling in. ``--halt`` scrolls at full speed for the first
+half and stops dead, so the blank rows the last fast pass left must be filled
+with no scroll to lay the table out. ``--no-idle`` gives idle work no time,
+as the loop does while a draw is pending at every frame: an animation, a
+live image. Each pass lays the root out only when a scroll dirtied it, as the
+window does.
 
 Policies:
 
@@ -111,7 +116,9 @@ def run(
     eager_alive: bool,
     turn_every: int,
     fling: bool,
+    halt: bool,
     no_budget: bool,
+    no_idle: bool,
     middle_budget: Optional[int],
     old_budget: Optional[int],
 ) -> None:
@@ -155,13 +162,15 @@ def run(
     last_blank_pass = -1
     # A fling slows from the given speed to a stop over the first half of
     # the passes and rests for the second half.
-    slowing = passes // 2 if fling else 0
+    slowing = passes // 2 if fling or halt else 0
     now = 0.0
     try:
         for index in range(passes):
             if turn_every and index and index % turn_every == 0:
                 direction = -direction
             step = step_px
+            if halt and index >= slowing:
+                step = 0
             if fling:
                 step = round(rows_per_pass * max(0.0, 1.0 - index / slowing)) * compare.ROW_HEIGHT
             offset += direction * step
@@ -177,7 +186,8 @@ def run(
             if pacer is not None:
                 pacer.before_frame()
             controller.scroll_to(offset)
-            layout_frame(scroller, compare.TABLE_WIDTH, compare.TABLE_HEIGHT, root_pass=True)
+            # As the window decides: the root's pass only when a scroll dirtied the tree.
+            layout_frame(scroller, compare.TABLE_WIDTH, compare.TABLE_HEIGHT, root_pass=scroller.needs_layout)
             end_frame()
             allocated.append(gc.get_count()[0] - before)
             if pacer is not None:
@@ -194,7 +204,8 @@ def run(
                 last_blank_pass = index
             # What the frame left over goes to the idle work, as the loop does.
             built_before = stats.built
-            run_idle_work(max(0.0, FRAME_SECONDS - elapsed))
+            if not no_idle:
+                run_idle_work(max(0.0, FRAME_SECONDS - elapsed))
             built_in_idle += stats.built - built_before
         held = len(scroller._child._laid_out_children)
         waiting = len(gc.get_objects()) - alive
@@ -226,7 +237,7 @@ def run(
     print(
         f"{'':>13} | blank rows in view after a pass: {blank_rows / passes:.1f} per pass, in {blank_passes} passes"
         + (f", the last at pass {last_blank_pass}" if blank_passes else "")
-        + (f"; the fling stops at pass {slowing}" if fling else "")
+        + (f"; the scroll stops at pass {slowing}" if fling or halt else "")
     )
     print(
         f"{'':>13} | after the passes: {waiting:,} tracked objects more than before, peak RSS +{rss_growth:.0f} MB, "
@@ -242,8 +253,11 @@ def main() -> None:
     parser.add_argument("--passes", type=int, default=120)
     parser.add_argument("--eager-alive", action="store_true", help="keep an eager table of the same rows alive")
     parser.add_argument("--turn-every", type=int, default=0, help="reverse the scroll every N passes; 0 never")
-    parser.add_argument("--fling", action="store_true", help="slow from --rows-per-pass to a stop, then rest")
+    stop = parser.add_mutually_exclusive_group()
+    stop.add_argument("--fling", action="store_true", help="slow from --rows-per-pass to a stop, then rest")
+    stop.add_argument("--halt", action="store_true", help="full speed for the first half, then a dead stop")
     parser.add_argument("--no-budget", action="store_true", help="every pass builds the whole view, as before step 7")
+    parser.add_argument("--no-idle", action="store_true", help="no idle work between passes: a draw pending every frame")
     parser.add_argument("--middle-budget", type=int, default=None, help="the pacer's middle_budget")
     parser.add_argument("--old-budget", type=int, default=None, help="the pacer's old_budget")
     parser.add_argument(
@@ -266,7 +280,9 @@ def main() -> None:
         eager_alive=args.eager_alive,
         turn_every=args.turn_every,
         fling=args.fling,
+        halt=args.halt,
         no_budget=args.no_budget,
+        no_idle=args.no_idle,
         middle_budget=args.middle_budget,
         old_budget=args.old_budget,
     )

@@ -126,11 +126,11 @@ def layout_child_if_needed(child: "Widget", width: int, height: int, *, sized_by
     if sized_by_parent:
         deadline = layout_deadline()
         if deadline is not None and perf_counter() >= deadline:
-            _leave_pending(child)
+            leave_pending(child)
             return
     if child._layout_pending:
         # Not left to ``layout()``: an override may not reach the kernel's.
-        _end_pending(child)
+        end_pending(child)
     _lay_out(child, width, height)
 
 
@@ -139,14 +139,23 @@ def _lay_out(child: "Widget", width: int, height: int) -> None:
     child._laid_out_size = (int(width), int(height))
 
 
-def _leave_pending(child: "Widget") -> None:
+def leave_pending(child: "Widget") -> None:
+    """Leave ``child`` pending: the next frame lays it out at its rect.
+
+    Until then it is painted from its last layout. A widget whose own layout
+    stopped at :func:`layout_deadline` with work left that shows calls this
+    on itself.
+    """
     if child._layout_pending:
         return
     child._layout_pending = True
-    _pending.append(weakref.ref(child))
+    # The kernel's layout clears the flag and leaves the entry behind.
+    if not any(ref() is child for ref in _pending):
+        _pending.append(weakref.ref(child))
 
 
-def _end_pending(child: "Widget") -> None:
+def end_pending(child: "Widget") -> None:
+    """End ``child``'s pending state; its layout is the one painted from now on."""
     child._layout_pending = False
     # The pictures recorded while it showed its last layout are stale.
     child._mark_replay_dirty()
@@ -172,7 +181,7 @@ def _layout_pending_subtrees() -> None:
         child = _pending.popleft()()
         if child is None or not child._layout_pending:
             continue
-        _end_pending(child)
+        end_pending(child)
         rect = child.layout_rect
         if rect is None or child.parent is None:
             # It left the tree and no frame shows it. Dirty, so the pass that takes it back lays it out.
