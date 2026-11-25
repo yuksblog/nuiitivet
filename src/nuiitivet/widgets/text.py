@@ -6,6 +6,7 @@ Displays a string or State-like value and invalidates when the value changes.
 from nuiitivet.widgeting.paint_replay import replay_safe
 import logging
 import math
+import unicodedata
 from typing import Any, Callable, List, Literal, NamedTuple, Optional, Tuple, Union, TYPE_CHECKING
 
 from nuiitivet.common.logging_once import exception_once
@@ -27,6 +28,7 @@ from nuiitivet.theme.dependency import ThemeKept
 from nuiitivet.theme.resolver import resolve_color_to_rgba
 from nuiitivet.theme.type_scale import DEFAULT_TYPE_SCALE, TypeScale, TypeScaleToken
 from nuiitivet.rendering.sizing import SizingLike
+from nuiitivet.widgets._line_break_data import LINE_BREAK_RANGES
 from nuiitivet.widgets.semantics import Semantics, SemanticsNode, SemanticsRole, attach_semantics
 from nuiitivet.widgets.text_style import TextStyle, TextStyleProtocol
 
@@ -35,6 +37,18 @@ if TYPE_CHECKING:
 
 
 _logger = logging.getLogger(__name__)
+
+
+def _line_break_classes(*names: str) -> frozenset[str]:
+    """Return the characters of the given Unicode line break classes."""
+    return frozenset(
+        chr(code) for name in names for low, high in LINE_BREAK_RANGES[name] for code in range(low, high + 1)
+    )
+
+
+def _quotation_marks(excluding: str) -> frozenset[str]:
+    """Return the quotation marks outside a general category: ``Pi`` opens, ``Pf`` closes."""
+    return frozenset(mark for mark in _line_break_classes("QU") if unicodedata.category(mark) != excluding)
 
 
 class _Run(NamedTuple):
@@ -149,12 +163,60 @@ class TextBase(Widget):
             return None
         return v if v >= 1 else 1
 
+    # East Asian wide, fullwidth and halfwidth: a line may break beside one.
+    _BREAKING_WIDTHS = frozenset("WFH")
+    # Kinsoku, by Unicode line break class. No line starts with closing
+    # punctuation, a hyphen, an iteration mark, a small kana, a unit sign, a
+    # no-break space, an emoji modifier or the tail of a Hangul syllable.
+    _NO_LINE_START = (
+        _line_break_classes(
+            "BA", "CJ", "CL", "CP", "EM", "EX", "GL", "HH", "HY", "IN", "IS", "JT", "JV", "NS", "PO", "SY", "WJ"
+        )
+        | _quotation_marks(excluding="Pi")
+        # Its class allows the break, but Japanese typed on Windows carries it for the wave dash.
+        | {"\N{FULLWIDTH TILDE}"}
+    )
+    # No line ends with an opening bracket, a currency sign or a joiner.
+    _NO_LINE_END = _line_break_classes("BB", "GL", "OP", "PR", "WJ", "ZWJ") | _quotation_marks(excluding="Pf")
+
+    @classmethod
+    def _breaks_between(cls, before: str, after: str) -> bool:
+        """Whether a line may end with ``before`` and the next start with ``after``.
+
+        The Unicode line breaking algorithm (UAX 14) in a simplified form. A
+        break needs an East Asian character on one side, so a word in a spaced
+        script stays whole. Kinsoku forbids it, by the line break class of
+        either character. So does a combining mark or a format character
+        after it.
+        """
+        widths = (unicodedata.east_asian_width(before), unicodedata.east_asian_width(after))
+        if cls._BREAKING_WIDTHS.isdisjoint(widths):
+            return False
+        if before in cls._NO_LINE_END or after in cls._NO_LINE_START:
+            return False
+        return unicodedata.category(after) not in ("Mn", "Mc", "Me", "Cf")
+
+    @classmethod
+    def _unbreakable_pieces(cls, word: str) -> List[str]:
+        """Split a word without spaces into the pieces a line may break between."""
+        if word.isascii():
+            return [word]
+        pieces: List[str] = []
+        start = 0
+        for i in range(1, len(word)):
+            if cls._breaks_between(word[i - 1], word[i]):
+                pieces.append(word[start:i])
+                start = i
+        pieces.append(word[start:])
+        return pieces
+
     def _wrap_paragraph(self, para: str, avail_w: float, measure: Callable[[str], float]) -> List[str]:
         """Greedily wrap a single paragraph (no hard breaks) to ``avail_w``.
 
         Wrapping only occurs when ``soft_wrap`` is enabled and a bounded width
-        is available. Words longer than the width are broken character-by-
-        character so they never overflow silently.
+        is available. A line breaks at a space, or beside a CJK character
+        where :meth:`_breaks_between` allows. A piece longer than the width is
+        broken character-by-character so it never overflows silently.
         """
         if not self._soft_wrap or avail_w <= 0 or measure(para) <= avail_w:
             return [para]
@@ -166,21 +228,28 @@ class TextBase(Widget):
             if measure(candidate) <= avail_w:
                 cur = candidate
                 continue
-            if cur:
-                lines.append(cur)
-                cur = ""
-            if measure(word) <= avail_w:
-                cur = word
-            else:
-                # Break an overly long word across lines by character.
-                chunk = ""
-                for ch in word:
-                    if chunk and measure(chunk + ch) > avail_w:
-                        lines.append(chunk)
-                        chunk = ch
-                    else:
-                        chunk += ch
-                cur = chunk
+            # A word that fits is never split, so it costs one measure.
+            glue = " "
+            for piece in self._unbreakable_pieces(word):
+                candidate = piece if not cur else cur + glue + piece
+                glue = ""
+                if measure(candidate) <= avail_w:
+                    cur = candidate
+                    continue
+                if cur:
+                    lines.append(cur)
+                    cur = ""
+                if measure(piece) <= avail_w:
+                    cur = piece
+                else:
+                    chunk = ""
+                    for ch in piece:
+                        if chunk and measure(chunk + ch) > avail_w:
+                            lines.append(chunk)
+                            chunk = ch
+                        else:
+                            chunk += ch
+                    cur = chunk
         if cur or not lines:
             lines.append(cur)
         return lines
