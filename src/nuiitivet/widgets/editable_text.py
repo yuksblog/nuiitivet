@@ -8,8 +8,6 @@ from nuiitivet.input.pointer import PointerEvent
 from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgeting.callbacks import invoke_event_handler, StrCallback
 from nuiitivet.input.codes import (
-    MOD_CTRL,
-    MOD_META,
     MOD_SHIFT,
     TEXT_MOTION_DOWN,
     TEXT_MOTION_END,
@@ -38,6 +36,7 @@ from nuiitivet.widgets.text_editing import (
     compose_text,
     end_composition,
     insert_text,
+    shortcut_held,
 )
 from nuiitivet.widgets.text_lines import (
     Measure,
@@ -844,7 +843,7 @@ class EditableText(InteractionHostMixin, Widget):
             )
             return True
 
-        if not modifier_keys & (MOD_CTRL | MOD_META):
+        if not shortcut_held(modifier_keys):
             return False
         new_value = apply_shortcut(
             current_value, key, get_system_clipboard(), filter=self._filter_input, line_breaks=self.multiline

@@ -523,6 +523,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         exception_once(logger, "pyglet_set_app_scale_exc", "Failed to set win._scale")
 
     _install_ime_patch(window, win)
+    _install_text_command_patch()
     _install_first_mouse_patch(window, win)
     accessibility = _install_accessibility(window, win)
 
@@ -1300,6 +1301,17 @@ def _install_ime_patch(window: object, win: object) -> None:
             install_patch(window, win)
     except Exception:
         exception_once(logger, "pyglet_install_ime_patch_exc", "Failed to install IME patch")
+
+
+def _install_text_command_patch() -> None:
+    """macOS: raise text motions for the caret keys pyglet drops. No-op off macOS."""
+    try:
+        if sys.platform == "darwin":
+            from .text_commands_macos import install_patch
+
+            install_patch()
+    except Exception:
+        exception_once(logger, "pyglet_install_text_command_patch_exc", "Failed to install the text command patch")
 
 
 def _discard_ime_conversation(window: object) -> None:

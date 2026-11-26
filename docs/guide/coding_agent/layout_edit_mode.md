@@ -187,7 +187,7 @@ that whole expression.
 opens over the widget. `Enter` writes the new string into the literal the code
 passed (`text=` / `label=`, or the first argument). `Esc` or a click elsewhere
 cancels. The field edits like a text field: `Shift+←/→` selects,
-`Ctrl+A/C/X/V` (`Cmd` on macOS) select all, copy, cut and paste. Text that
+`Ctrl+A/C/X/V` (on macOS `Cmd` only) select all, copy, cut and paste. Text that
 comes from a variable, an f-string or a function call cannot be edited here —
 the badge says so.
 

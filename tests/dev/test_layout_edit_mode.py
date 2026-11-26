@@ -19,7 +19,15 @@ from nuiitivet.dev.layout_edit_mode import LayoutEditMode
 from nuiitivet.dev.comment_mode import CommentMode
 from nuiitivet.dev.comments import Comments
 from nuiitivet.dev.source_edit import EditLog
-from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT, TEXT_MOTION_BACKSPACE, text_motion_for_key
+from nuiitivet.input.codes import (
+    MOD_ALT,
+    MOD_CTRL,
+    MOD_META,
+    MOD_SHIFT,
+    TEXT_MOTION_BACKSPACE,
+    accel_mask,
+    text_motion_for_key,
+)
 from nuiitivet.layout.column import Column
 from nuiitivet.platform.ime import IMEManager
 from nuiitivet.testing import mount
@@ -1588,8 +1596,8 @@ def test_the_accelerator_shortcuts_select_all_and_reach_the_clipboard(
     _editing(session)
     mode, app = session.mode, session.app
 
-    mode.on_key_press(app, "a", MOD_CTRL)
-    mode.on_key_press(app, "x", MOD_CTRL)
+    mode.on_key_press(app, "a", accel_mask())
+    mode.on_key_press(app, "x", accel_mask())
     editor = mode.editor
     assert editor is not None and editor.value.text == "" and clipboard.text == "AAA"
 
@@ -1598,8 +1606,8 @@ def test_the_accelerator_shortcuts_select_all_and_reach_the_clipboard(
     editor = mode.editor
     assert editor is not None and editor.value == TextEditingValue("AAAAAA", TextRange(6, 6))
 
-    mode.on_key_press(app, "a", MOD_CTRL)
-    mode.on_key_press(app, "c", MOD_CTRL)
+    mode.on_key_press(app, "a", accel_mask())
+    mode.on_key_press(app, "c", accel_mask())
     assert clipboard.text == "AAAAAA" and mode.selected is session.leaf(), "the field took the keys, not the tree"
 
 

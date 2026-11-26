@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import sys
 import unicodedata
 from dataclasses import dataclass
 from typing import Callable, Optional, Protocol
 
 from nuiitivet.input.codes import (
+    MOD_CTRL,
+    MOD_META,
     TEXT_MOTION_BACKSPACE,
     TEXT_MOTION_DELETE,
     TEXT_MOTION_END,
@@ -229,6 +232,17 @@ def apply_motion(value: TextEditingValue, motion: int, *, select: bool = False) 
     return value.copy_with(selection=moved) if moved != selection else None
 
 
+def shortcut_held(modifier_keys: int) -> bool:
+    """Whether *modifier_keys* hold the accelerator of :func:`apply_shortcut`.
+
+    Cmd on macOS, where Ctrl with a letter moves the caret. Ctrl or Meta
+    elsewhere: a browser on macOS reports Cmd as Meta.
+    """
+    if sys.platform == "darwin":
+        return bool(modifier_keys & MOD_META)
+    return bool(modifier_keys & (MOD_CTRL | MOD_META))
+
+
 def apply_shortcut(
     value: TextEditingValue,
     key: str,
@@ -239,7 +253,7 @@ def apply_shortcut(
 ) -> Optional[TextEditingValue]:
     """The accelerator's ``a`` / ``c`` / ``x`` / ``v``: select all, copy, cut, paste.
 
-    The caller has checked the accelerator; *key* is the normalized name. A
+    The caller has checked :func:`shortcut_held`; *key* is the normalized name. A
     paste is normalized as an insertion is, keeping its line breaks only with
     *line_breaks*. The value returned is the one to adopt, unchanged for a
     copy, and ``None`` names a key that is not a shortcut.

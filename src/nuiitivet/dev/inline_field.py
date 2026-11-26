@@ -23,10 +23,10 @@ from nuiitivet.widgets.text_editing import (
     apply_shortcut,
     compose_text,
     insert_text,
+    shortcut_held,
 )
 from nuiitivet.widgets.text_lines import break_lines, caret_x, line_of, move_lines
 
-from .gesture import accel_held
 from .hud import CAPTION_BG, CAPTION_INK, FONT_SIZE, MARGIN, color, fit_inside
 
 Point = tuple[float, float]
@@ -170,7 +170,8 @@ class InlineField:
         An editing key does nothing here: it edits through ``motion``.
         """
         just_committed, self.ime_just_committed = self.ime_just_committed, False
-        shift = bool(resolve_modifiers(int(modifier_keys)) & MOD_SHIFT)
+        held = resolve_modifiers(int(modifier_keys))
+        shift = bool(held & MOD_SHIFT)
         if key == "escape":
             return "cancel"
         if key == "enter":
@@ -182,7 +183,7 @@ class InlineField:
             if broken is not None:
                 self._adopt(broken)
             return None
-        if accel_held(modifier_keys):
+        if shortcut_held(held):
             changed = apply_shortcut(self.value, key, get_system_clipboard(), line_breaks=True)
             if changed is not None:
                 self._adopt(changed)

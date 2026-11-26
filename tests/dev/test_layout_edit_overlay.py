@@ -14,7 +14,7 @@ from nuiitivet._interaction.perception import describe_tree
 from nuiitivet.dev import layout_edit_overlay as lo
 from nuiitivet.dev.layout_edit_mode import LayoutEditMode
 from nuiitivet.dev.source_edit import EditLog
-from nuiitivet.input.codes import MOD_CTRL, MOD_SHIFT
+from nuiitivet.input.codes import MOD_CTRL, MOD_SHIFT, accel_mask
 from nuiitivet.layout.column import Column
 from nuiitivet.platform.ime import IMEManager
 from nuiitivet.testing import mount
@@ -330,7 +330,7 @@ def test_the_open_field_paints_over_the_widget() -> None:
             assert caret.x > 0.0 and caret.height > 0.0, "the IME is told where the painted caret is"
 
             lines_with_caret = canvas.calls.count("drawLine")
-            mode.on_key_press(app, "a", MOD_CTRL)
+            mode.on_key_press(app, "a", accel_mask())
             canvas = _Canvas()
             lo.paint_layout_edit(app, canvas, app.width, app.height)
 

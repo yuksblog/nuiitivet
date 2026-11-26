@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
+import pytest
+
 from nuiitivet.input.codes import (
+    MOD_ALT,
+    MOD_CTRL,
+    MOD_META,
+    MOD_SHIFT,
     TEXT_MOTION_BACKSPACE,
     TEXT_MOTION_DELETE,
     TEXT_MOTION_END,
@@ -18,6 +24,7 @@ from nuiitivet.widgets.text_editing import (
     compose_text,
     end_composition,
     insert_text,
+    shortcut_held,
 )
 
 
@@ -127,6 +134,32 @@ def test_an_unknown_motion_is_nothing() -> None:
 
 
 # --- shortcuts -------------------------------------------------------------------
+
+
+def test_cmd_alone_holds_the_shortcuts_on_macos(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ctrl with a letter is a caret move there, and arrives as a text motion."""
+    monkeypatch.setattr("sys.platform", "darwin")
+
+    assert shortcut_held(MOD_META) is True
+    assert shortcut_held(MOD_META | MOD_SHIFT) is True
+    assert shortcut_held(MOD_CTRL) is False
+    assert shortcut_held(MOD_CTRL | MOD_SHIFT) is False
+
+
+@pytest.mark.parametrize("platform", ["win32", "linux", "emscripten"])
+def test_ctrl_or_meta_holds_the_shortcuts_off_macos(monkeypatch: pytest.MonkeyPatch, platform: str) -> None:
+    monkeypatch.setattr("sys.platform", platform)
+
+    assert shortcut_held(MOD_CTRL) is True
+    assert shortcut_held(MOD_META) is True
+
+
+@pytest.mark.parametrize("platform", ["darwin", "win32", "linux"])
+def test_no_other_modifier_holds_the_shortcuts(monkeypatch: pytest.MonkeyPatch, platform: str) -> None:
+    monkeypatch.setattr("sys.platform", platform)
+
+    assert shortcut_held(0) is False
+    assert shortcut_held(MOD_SHIFT | MOD_ALT) is False
 
 
 def test_select_all_copy_cut_and_paste() -> None:

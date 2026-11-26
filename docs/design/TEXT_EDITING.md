@@ -20,7 +20,7 @@ flowchart LR
     os[the OS input method]
 
     app -- "TextField(value, on_change, on_submit, input_filter) · TextField.multiline(...)" --> editor
-    editor -- "insert_text · compose_text · end_composition · apply_motion · apply_shortcut · apply(old, new)" --> value
+    editor -- "insert_text · compose_text · end_composition · apply_motion · shortcut_held · apply_shortcut · apply(old, new)" --> value
     dispatch -- "on_text · on_key · on_text_motion · on_ime_composition · on_ime_commit" --> editor
     os -- "a composition update · where is the caret" --> ime
     ime -- "on_ime_composition(text, start, length) · on_text(text)" --> dispatch
@@ -42,6 +42,8 @@ flowchart LR
   characters from `on_text`. It claims keys on `on_key`.
 - The IME is reached by patching the platform window, never through the
   backend's own text input.
+- In a macOS window `Ctrl+F/B/A/E` and `Cmd+←/→` arrive as text motions. A
+  field's shortcuts answer to `Cmd` there, never to `Ctrl`.
 
 ## The Value
 
@@ -57,7 +59,7 @@ flowchart LR
     editor[widgets/editable_text.py]
     app[the app]
 
-    editor -- "insert_text(value, text, filter, line_breaks) · compose_text(value, text, start, length) · end_composition(value) · apply_motion(value, motion, select) · apply_shortcut(value, key, clipboard, filter, line_breaks)" --> value
+    editor -- "insert_text(value, text, filter, line_breaks) · compose_text(value, text, start, length) · end_composition(value) · apply_motion(value, motion, select) · shortcut_held(modifier_keys) · apply_shortcut(value, key, clipboard, filter, line_breaks)" --> value
     value -- "apply(old, new)" --> filter
     app -- "allow(pattern) · deny(pattern) · digits_only() · max_length(n) · matching(pattern) · a Callable[[str], str] · a | b" --> filter
 ```
@@ -96,7 +98,7 @@ flowchart LR
     app -- "TextField(value, on_change, on_submit, input_filter) · TextField.multiline(min_lines, max_lines, ...)" --> material
     material -- "is a" --> base
     base -- "EditableText(value, on_change, on_submit, input_filter, multiline, ...) · value · focus()" --> editor
-    editor -- "insert_text · compose_text · end_composition · apply_motion · apply_shortcut" --> value
+    editor -- "insert_text · compose_text · end_composition · apply_motion · shortcut_held · apply_shortcut" --> value
     editor -- "break_lines · line_of · caret_x · index_at · move_lines · line_edge" --> lines
     editor -- "FocusNode(on_text, on_key, on_text_motion, on_ime_composition, on_ime_commit)" --> interaction
     editor -- "subscribe(_on_external_change) · obs.value = text" --> observable
@@ -174,12 +176,15 @@ node bubbles them up its chain.
 
 ```mermaid
 flowchart LR
+    commands[backends/pyglet/text_commands_macos.py]
     runner[backends/pyglet/runner.py]
     window[runtime/window.py]
     interaction[widgets/interaction.py]
     editor[widgets/editable_text.py]
     shortcuts[input/shortcut.py]
 
+    runner -- "install_patch()" --> commands
+    commands -- "on_text_motion(motion) · on_text_motion_select(motion)" --> runner
     runner -- "_dispatch_text(text) · _dispatch_text_motion(motion, select) · _dispatch_ime_composition(text, start, length) · _dispatch_key_press(key, mods) · _set_os_active(active)" --> window
     window -- "handle_text_event(text) · handle_text_motion_event · handle_ime_composition_event · handle_ime_commit_event() · handle_key_event · accepts_text_input" --> interaction
     interaction -- "on_text · on_text_motion · on_ime_composition · on_ime_commit · on_key" --> editor
@@ -188,6 +193,7 @@ flowchart LR
 
 | Module | Role |
 | --- | --- |
+| `backends/pyglet/text_commands_macos.py` | adds the caret commands of `Ctrl+F/B/A/E` and `Cmd+←/→` to the `NSTextView`; each raises a text motion on the pyglet window |
 | `backends/pyglet/runner.py` | the `on_text`, `on_text_motion`, `on_ime_composition` and activate handlers ([APP_WINDOW.md](APP_WINDOW.md)) |
 | `runtime/window.py` | hands each event to the focused node |
 | `widgets/interaction.py` | `FocusNode`: the handlers and the bubbling to the parent node |
