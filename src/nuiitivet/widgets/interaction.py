@@ -1564,10 +1564,10 @@ class InteractionRegion(InteractionHostMixin, Widget):
         super().layout(width, height)
         if not self.children:
             return
-        l, t, r, b = self.padding
-        cw = max(0, width - l - r)
-        ch = max(0, height - t - b)
-        self.children[0].layout(cw, ch)
+        cx, cy, cw, ch = self.content_rect(0, 0, width, height)
+        child = self.children[0]
+        child.layout(cw, ch)
+        child.set_layout_rect(cx, cy, cw, ch)
 
     @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
@@ -1606,13 +1606,17 @@ class InteractionRegion(InteractionHostMixin, Widget):
 
 
 def ensure_interaction_region(widget: Widget) -> InteractionRegion:
+    """Return ``widget`` if it is a region, else a new region around it.
+
+    The region copies the widget's width and height sizing and has no padding.
+    The widget is inset once, by its own padding.
+    """
     if isinstance(widget, InteractionRegion):
         return widget
     return InteractionRegion(
         widget,
         width=widget.width_sizing,
         height=widget.height_sizing,
-        padding=widget.padding,
     )
 
 
