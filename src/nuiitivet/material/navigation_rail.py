@@ -314,6 +314,8 @@ class _RailItemButton(InteractiveWidget):
             padding=0,
             focusable=True,
             traversable=False,
+            # The rail mounts this button, never the RailItem, so the key lives here.
+            key=rail_item.key,
         )
 
         # Add children manually; draw_children is overridden.

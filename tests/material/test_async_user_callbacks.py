@@ -112,7 +112,10 @@ async def test_async_callbacks_of_filter_chip_navigation_rail_and_docked_search_
         return Row(
             [
                 NavigationRail(
-                    children=[RailItem(icon="home", label="Home"), RailItem(icon="book", label="Library")],
+                    children=[
+                        RailItem(icon="home", label="Home"),
+                        RailItem(icon="book", label="Library", key="library"),
+                    ],
                     on_select=_recorder(calls, "navigation rail"),
                 ),
                 Column(
@@ -132,12 +135,7 @@ async def test_async_callbacks_of_filter_chip_navigation_rail_and_docked_search_
         )
 
     with AppHarness(build, size=(800, 600)) as app:
-        # The collapsed rail also holds the expanded label, clipped to nothing; the
-        # visible one sits under the icon, the leftmost of the two.
-        x, y, w, h = min((n.rect for n in app.get_all(label="Library") if n.rect is not None), key=lambda r: r[0])
-        app.click(x=x + w / 2, y=y + h / 2)
-        await app.idle()
-        for key in ("chip", "docked"):
+        for key in ("library", "chip", "docked"):
             app.click(key=key)
             await app.idle()
 

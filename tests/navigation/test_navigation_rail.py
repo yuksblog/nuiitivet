@@ -5,9 +5,12 @@ from typing import Optional
 
 import pytest
 
+from nuiitivet.dev.snapshot import path_of, restore_states, snapshot_states
 from nuiitivet.material.badge import LargeBadge, SmallBadge
 from nuiitivet.material.navigation_rail import NavigationRail, RailItem
 from nuiitivet.material.interactive_widget import InteractiveWidget
+from nuiitivet.testing import AppHarness
+from nuiitivet.widgeting.widget import Widget
 from nuiitivet.widgets.interaction import FocusNode
 from nuiitivet.observable.value import _StateValue
 
@@ -487,3 +490,46 @@ def test_rail_item_badge_subscription_disposed():
     button._dispose_badge()
     assert button._small_badge_subscription is None
     assert button._large_badge_subscription is None
+
+
+def test_rail_item_key_reaches_the_tree_and_click_selects_it() -> None:
+    """The widget the rail mounts for an item carries the item's key."""
+
+    def build() -> Widget:
+        return NavigationRail(
+            children=[RailItem(icon="home", label="Home"), RailItem(icon="search", label="Search", key="rail-2")],
+            key="rail",
+        )
+
+    with AppHarness(build, size=(800, 600)) as app:
+        rail = app.get(key="rail").widget
+        assert app.get(key="rail-2").widget is rail._item_buttons[1]
+
+        app.click(key="rail-2")
+
+        assert rail.current_index == 1
+
+
+def test_keyed_rail_item_keeps_its_state_when_a_reload_inserts_an_item_before_it() -> None:
+    """Hot reload matches a keyed rail item by its key, not by its position."""
+    old_label = _StateValue("Search")
+    old = NavigationRail(
+        children=[RailItem(icon="home", label="Home"), RailItem(icon="search", label=old_label, key="search")]
+    )
+    old_label.value = "Find"
+    snapshot = snapshot_states(old)
+
+    inserted_label = _StateValue("Starred")
+    new_label = _StateValue("Search")
+    new = NavigationRail(
+        children=[
+            RailItem(icon="home", label="Home"),
+            RailItem(icon="star", label=inserted_label),
+            RailItem(icon="search", label=new_label, key="search"),
+        ]
+    )
+    restore_states(new, snapshot)
+
+    assert new_label.value == "Find"
+    assert inserted_label.value == "Starred"
+    assert path_of(new, new._item_buttons[2]) == path_of(old, old._item_buttons[1])
