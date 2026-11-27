@@ -5,6 +5,8 @@ from __future__ import annotations
 import pytest
 
 from nuiitivet.input.codes import (
+    MOD_CTRL,
+    MOD_META,
     MOD_SHIFT,
     TEXT_MOTION_BACKSPACE,
     TEXT_MOTION_DELETE,
@@ -92,21 +94,56 @@ def test_an_editing_key_by_name_leaves_the_field_alone(key: str) -> None:
     assert field.value == before
 
 
-def test_a_paste_keeps_line_breaks_normalized(monkeypatch) -> None:
-    class _Clipboard:
-        def get_text(self) -> str:
-            return "a\r\nb"
+class _Clipboard:
+    def __init__(self, text: str = "") -> None:
+        self.text = text
 
-        def set_text(self, text: str) -> None:
-            pass
+    def get_text(self) -> str:
+        return self.text
 
-    monkeypatch.setattr(inline_field, "get_system_clipboard", lambda: _Clipboard())
-    monkeypatch.setattr(inline_field, "accel_held", lambda mods: True)
+    def set_text(self, text: str) -> None:
+        self.text = text
+
+
+def test_a_paste_keeps_line_breaks_normalized(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(inline_field, "get_system_clipboard", lambda: _Clipboard("a\r\nb"))
     field = InlineField.open("")
 
-    field.key("v", 0)
+    field.key("v", MOD_META)
 
     assert field.text == "a\nb"
+
+
+@pytest.mark.parametrize("key", ["a", "c", "x", "v"])
+def test_ctrl_with_a_shortcut_letter_leaves_the_field_alone_on_macos(monkeypatch: pytest.MonkeyPatch, key: str) -> None:
+    """Ctrl with a letter is a caret move there, and its motion edits."""
+    clipboard = _Clipboard("kept")
+    monkeypatch.setattr(inline_field, "get_system_clipboard", lambda: clipboard)
+    monkeypatch.setattr("sys.platform", "darwin")
+    field = InlineField.open("abcd")
+    field.value = field.value.copy_with(selection=TextRange(1, 3))
+    before = field.value
+
+    assert field.key(key, MOD_CTRL) is None
+
+    assert field.value == before and clipboard.text == "kept"
+
+
+@pytest.mark.parametrize("platform, accel", [("darwin", MOD_META), ("win32", MOD_CTRL), ("linux", MOD_CTRL)])
+def test_the_accelerator_selects_all_and_reaches_the_clipboard(
+    monkeypatch: pytest.MonkeyPatch, platform: str, accel: int
+) -> None:
+    clipboard = _Clipboard()
+    monkeypatch.setattr(inline_field, "get_system_clipboard", lambda: clipboard)
+    monkeypatch.setattr("sys.platform", platform)
+    field = InlineField.open("abcd")
+
+    field.key("a", accel)
+    assert field.value.selection == TextRange(0, 4)
+    field.key("x", accel)
+    assert field.text == "" and clipboard.text == "abcd"
+    field.key("v", accel)
+    assert field.text == "abcd"
 
 
 # --- where the field hangs ------------------------------------------------------

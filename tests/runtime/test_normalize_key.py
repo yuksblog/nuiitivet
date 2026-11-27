@@ -24,6 +24,7 @@ from nuiitivet.input.codes import (
     TEXT_MOTION_RIGHT,
     TEXT_MOTION_UP,
 )
+from nuiitivet.widgets.text_editing import shortcut_held
 
 
 @pytest.mark.parametrize(
@@ -80,18 +81,20 @@ def test_normalize_key_preserves_modifiers(
     assert _normalize_key(symbol, pyglet_modifiers) == (expected_name, expected_modifier_keys)
 
 
-def test_normalize_key_ctrl_a_reaches_editable_text_shortcut() -> None:
-    """Ctrl+A must arrive as the ("a", MOD_CTRL) pair EditableText gates its shortcuts on."""
+def test_normalize_key_ctrl_a_reaches_editable_text_shortcut(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Off macOS, Ctrl+A must arrive as the ("a", MOD_CTRL) pair EditableText gates its shortcuts on."""
     name, modifier_keys = _normalize_key(pyglet_key.A, pyglet_key.MOD_CTRL)
+    monkeypatch.setattr("sys.platform", "win32")
     assert name == "a"
-    assert bool(modifier_keys & (MOD_CTRL | MOD_META))
+    assert shortcut_held(modifier_keys)
 
 
-def test_normalize_key_cmd_a_reaches_editable_text_shortcut() -> None:
+def test_normalize_key_cmd_a_reaches_editable_text_shortcut(monkeypatch: pytest.MonkeyPatch) -> None:
     """Cmd+A (macOS) maps to META and must satisfy the same gate."""
     name, modifier_keys = _normalize_key(pyglet_key.A, pyglet_key.MOD_COMMAND)
+    monkeypatch.setattr("sys.platform", "darwin")
     assert name == "a"
-    assert bool(modifier_keys & (MOD_CTRL | MOD_META))
+    assert shortcut_held(modifier_keys)
 
 
 def test_normalize_key_shift_arrow_reaches_slider_coarse_step() -> None:
