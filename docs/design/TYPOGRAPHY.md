@@ -106,8 +106,11 @@ flowchart LR
 
 ### Promises
 
-- Font size, weight and tracking reach the Skia font path. Line height
-  places the lines.
+- Font size, weight and tracking reach the Skia font path.
+- Every line is one line box, the token's `line_height` tall. A `Text`
+  without a fixed height is as tall as its line boxes.
+- The font's ascent and descent are centred in the line box. A line's
+  glyphs do not move its baseline.
 - Wrapping and ellipsis are measured with the same tracking the blob is
   shaped with.
 
