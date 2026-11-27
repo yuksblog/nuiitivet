@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from nuiitivet.layout.container import Container
 from nuiitivet.modifiers import on_size_changed
+from nuiitivet.observable import State
 from nuiitivet.rendering.size import Size
 from nuiitivet.rendering.sizing import Sizing
 from nuiitivet.runtime.app import App
 from nuiitivet.runtime.window import Window
 from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgeting.widget_size_change import flush_size_change_callbacks
+from nuiitivet.widgets.raster_surface import RasterSurface
 import pytest
 
 
@@ -137,3 +139,31 @@ def test_snapshot_settling_is_bounded_when_a_callback_keeps_resizing() -> None:
     app._settle_pending_size_changes(800, 600)
 
     assert 0 < len(calls) <= Window._MAX_SNAPSHOT_SETTLE_PASSES
+
+
+def test_snapshot_settling_runs_a_render_without_another_layout() -> None:
+    """A render request cannot change the layout, so it adds no settle pass."""
+    drawn: list[int] = []
+
+    def draw(value: int, w: int, h: int) -> bytes:
+        drawn.append(value)
+        return bytes(w * h * 4)
+
+    data = State(7)
+    app = _mounted_app(RasterSurface.draw(data, draw, width=200, height=100))
+    app.root.layout(800, 600)
+    flush_size_change_callbacks()
+    data.value = 8
+    layouts: list[tuple[int, int]] = []
+    real_layout = app.root.layout
+
+    def counting_layout(width: int, height: int) -> None:
+        layouts.append((width, height))
+        real_layout(width, height)
+
+    app.root.layout = counting_layout  # type: ignore[method-assign]
+
+    app._settle_pending_size_changes(800, 600)
+
+    assert drawn == [7, 8]
+    assert layouts == []
