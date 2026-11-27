@@ -225,10 +225,35 @@ def make_opacity_paint(opacity: float):
         return None
 
 
+def make_tint_paint(rgba: Tuple[int, int, int, int]):
+    """Create a saveLayer paint that recolours what the layer holds to one colour.
+
+    Each pixel takes *rgba*, with its alpha scaled by the pixel's own, so a
+    glyph keeps its anti-aliased edge.
+
+    Args:
+        rgba: The colour as an ``(r, g, b, a)`` tuple.
+
+    Returns:
+        The paint, or ``None`` when skia is unavailable.
+    """
+    skia = get_skia(raise_if_missing=False)
+    if skia is None:
+        return None
+    try:
+        paint = skia.Paint()
+        paint.setColorFilter(skia.ColorFilters.Blend(rgba_to_skia_color(rgba), skia.BlendMode.kSrcIn))
+        return paint
+    except Exception:
+        exception_once(_logger, "skia_make_tint_paint_exc", "Failed to create tint paint")
+        return None
+
+
 __all__ = [
     "skcolor",
     "make_paint",
     "shared_paint",
     "rgba_to_skia_color",
     "make_opacity_paint",
+    "make_tint_paint",
 ]

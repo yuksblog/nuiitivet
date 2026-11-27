@@ -29,9 +29,11 @@ from nuiitivet.rendering.skia import (
     make_paint,
     make_rect,
     make_text_blob,
+    make_tint_paint,
     get_typeface,
 )
 from nuiitivet.theme.resolver import resolve_color_to_rgba
+from nuiitivet.theme.types import ColorSpec
 from nuiitivet.widgets.editable_text import EditableText
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.platform import get_system_clipboard
@@ -99,7 +101,10 @@ def _build_text_field_icon(
     if on_tap is not None:
         from nuiitivet.material.buttons import IconButton
 
-        return IconButton(icon, on_click=on_tap)
+        button = IconButton(icon, on_click=on_tap)
+        # A disabled field tints its icons, so the button must not dim itself on top.
+        button.disabled_opacity = 1.0
+        return button
 
     from nuiitivet.material.icon import Icon
 
@@ -192,7 +197,8 @@ class TextField(InteractiveWidget):
                 supporting text all change -- and is independent of what
                 *supporting_text* says, so a field can be flagged without a
                 message and carry a message without being flagged.
-            disabled: Whether the text field is disabled.
+            disabled: Whether the field takes no input. A disabled field
+                paints in the style's ``disabled_*`` colours, over *is_error*.
             width: Width specification.
             padding: Insets from the allocated rect to the field container.
             style: Custom style configuration.
@@ -308,7 +314,7 @@ class TextField(InteractiveWidget):
             # action. Wrapping unconditionally would claim Enter and drop it.
             on_submit=self._handle_editable_submit if on_submit is not None else None,
             input_filter=input_filter,
-            text_color=style.text_color,
+            text_color=style.disabled_text_color if initial_disabled else style.text_color,
             cursor_color=style.error_cursor_color if self.is_error else style.cursor_color,
             selection_color=style.selection_color,
             font_size=16,  # BodyLarge
@@ -335,14 +341,16 @@ class TextField(InteractiveWidget):
             motion=EXPRESSIVE_DEFAULT_EFFECTS,
         )
 
-        init_ind_color = resolve_color_to_rgba(style.indicator_color, theme=None)
+        init_ind_spec = style.disabled_indicator_color if initial_disabled else style.indicator_color
+        init_ind_color = resolve_color_to_rgba(init_ind_spec, theme=None)
         self._anim_indicator_color = Animatable.vector(
             init_ind_color,
             converter=RgbaTupleConverter(),
             motion=EXPRESSIVE_DEFAULT_EFFECTS,
         )
 
-        init_label_color = resolve_color_to_rgba(style.label_color, theme=None)
+        init_label_spec = style.disabled_label_color if initial_disabled else style.label_color
+        init_label_color = resolve_color_to_rgba(init_label_spec, theme=None)
         self._anim_label_color = Animatable.vector(
             init_label_color,
             converter=RgbaTupleConverter(),
@@ -420,7 +428,8 @@ class TextField(InteractiveWidget):
                 tapped; the icon changes as for *on_tap_leading_icon*.
             supporting_text: Supporting text displayed below the field.
             is_error: Whether the field is in its error state.
-            disabled: Whether the text field is disabled.
+            disabled: Whether the field takes no input; it paints in the style's
+                ``disabled_*`` colours.
             width: Width specification.
             padding: Insets from the allocated rect to the field container.
             style: Custom style configuration.
@@ -499,8 +508,16 @@ class TextField(InteractiveWidget):
                 pass
             self._editable.state.focused = False
 
+        self._sync_editable_colors()
+        self._update_label_state()
         self._mouse_cursor_changed()
         self.invalidate()
+
+    def _sync_editable_colors(self) -> None:
+        """Hand the editable the text and cursor colours of the field's current state."""
+        style = self._dense
+        self._editable.text_color = style.disabled_text_color if self.disabled else style.text_color
+        self._editable.cursor_color = style.error_cursor_color if self.is_error else style.cursor_color
 
     def _set_label(self, value: Any) -> None:
         self.label = str(value) if value is not None else None
@@ -517,15 +534,13 @@ class TextField(InteractiveWidget):
 
     def _set_supporting_text(self, value: Any) -> None:
         self.supporting_text = str(value) if value is not None else None
-        style = self._dense
-        self._editable.cursor_color = style.error_cursor_color if self.is_error else style.cursor_color
+        self._sync_editable_colors()
         self._update_label_state()
         self.mark_needs_layout()
 
     def _set_is_error(self, value: Any) -> None:
         self.is_error = bool(value)
-        style = self._dense
-        self._editable.cursor_color = style.error_cursor_color if self.is_error else style.cursor_color
+        self._sync_editable_colors()
         self._update_label_state()
         self.invalidate()
 
@@ -553,19 +568,19 @@ class TextField(InteractiveWidget):
         def _snap_resolve(c):
             return resolve_color_to_rgba(c, theme=theme)
 
+        focused = self._editable.state.focused
         if hasattr(self, "_anim_label_color"):
-            correct = _snap_resolve(style.label_color)
+            correct = _snap_resolve(self._label_color_spec(style, focused))
             self._anim_label_color._value.value = correct
             self._anim_label_color._target = correct
         if hasattr(self, "_anim_indicator_color"):
-            correct = _snap_resolve(style.indicator_color)
+            correct = _snap_resolve(self._indicator_color_spec(style, focused))
             self._anim_indicator_color._value.value = correct
             self._anim_indicator_color._target = correct
 
         # The editable was built from the preset for the same reason, so hand it
         # the theme's colours now that they can be resolved.
-        self._editable.text_color = style.text_color
-        self._editable.cursor_color = style.error_cursor_color if self.is_error else style.cursor_color
+        self._sync_editable_colors()
         self._editable.selection_color = style.selection_color
 
         # Ensure visual state matches the current theme/focus on mount.
@@ -911,42 +926,44 @@ class TextField(InteractiveWidget):
         target = 1.0 if should_float else 0.0
         self._label_progress.target = target
 
-        # Style updates
         style = self._dense
-        is_error = bool(self.is_error)
-
         theme = self._resolvable_theme()
 
-        def _resolve(c):
-            return resolve_color_to_rgba(c, theme=theme)
-
-        # 1. Label Color
-        if is_error:
-            target_label_c = style.error_label_color
-        elif is_focused:
-            target_label_c = style.focused_label_color
-        else:
-            target_label_c = style.label_color
         if hasattr(self, "_anim_label_color"):
-            self._anim_label_color.target = _resolve(target_label_c)
+            spec = self._label_color_spec(style, is_focused)
+            self._anim_label_color.target = resolve_color_to_rgba(spec, theme=theme)
 
-        # 2. Indicator Color
-        if is_error:
-            target_ind_c = style.error_indicator_color
-        elif is_focused:
-            target_ind_c = style.focused_indicator_color
-        else:
-            target_ind_c = style.indicator_color
         if hasattr(self, "_anim_indicator_color"):
-            self._anim_indicator_color.target = _resolve(target_ind_c)
+            spec = self._indicator_color_spec(style, is_focused)
+            self._anim_indicator_color.target = resolve_color_to_rgba(spec, theme=theme)
 
-        # 3. Indicator Width
+        # Indicator Width
         if is_focused:
             target_w = style.focused_indicator_width
         else:
             target_w = style.indicator_width
         if hasattr(self, "_anim_indicator_width"):
             self._anim_indicator_width.target = float(target_w)
+
+    def _label_color_spec(self, style: TextFieldStyle, focused: bool) -> ColorSpec:
+        """The label colour for the field's state: disabled, then error, then focused."""
+        if self.disabled:
+            return style.disabled_label_color
+        if self.is_error:
+            return style.error_label_color
+        if focused:
+            return style.focused_label_color
+        return style.label_color
+
+    def _indicator_color_spec(self, style: TextFieldStyle, focused: bool) -> ColorSpec:
+        """The indicator or outline colour for the field's state: disabled, then error, then focused."""
+        if self.disabled:
+            return style.disabled_indicator_color
+        if self.is_error:
+            return style.error_indicator_color
+        if focused:
+            return style.focused_indicator_color
+        return style.indicator_color
 
     def build(self) -> Widget:
         return self
@@ -1002,7 +1019,8 @@ class TextField(InteractiveWidget):
     def _draw_container(self, canvas, cx, cy, cw, ch, *, text_x_abs: int | None = None):
         style = self._dense
 
-        container_color = resolve_color_to_rgba(style.container_color, theme=self._resolvable_theme())
+        container_spec = style.disabled_container_color if self.disabled else style.container_color
+        container_color = resolve_color_to_rgba(container_spec, theme=self._resolvable_theme())
         paint_container = make_paint(color=container_color)
         rect = make_rect(cx, cy, cw, ch)
 
@@ -1145,17 +1163,21 @@ class TextField(InteractiveWidget):
                 canvas.drawTextBlob(blob, text_x, current_label_y, paint_label)
 
     def _draw_icons(self, canvas, x, y):
-        if self.leading_icon:
-            rect = self.leading_icon.layout_rect
-            if rect is not None:
-                lx, ly, lw, lh = rect
-                self.leading_icon.paint(canvas, x + lx, y + ly, lw, lh)
-
-        if self.trailing_icon:
-            rect = self.trailing_icon.layout_rect
-            if rect is not None:
-                tx, ty, tw, th = rect
-                self.trailing_icon.paint(canvas, x + tx, y + ty, tw, th)
+        tint = None
+        if self.disabled:
+            spec = self._dense.disabled_icon_color
+            tint = make_tint_paint(resolve_color_to_rgba(spec, theme=self._resolvable_theme()))
+        for icon in (self.leading_icon, self.trailing_icon):
+            if icon is None or icon.layout_rect is None:
+                continue
+            ix, iy, iw, ih = icon.layout_rect
+            if tint is not None:
+                canvas.saveLayer(make_rect(x + ix, y + iy, iw, ih), tint)
+            try:
+                icon.paint(canvas, x + ix, y + iy, iw, ih)
+            finally:
+                if tint is not None:
+                    canvas.restore()
 
     def _draw_supporting_text(self, canvas, cx, cy, ch):
         if not self.supporting_text:
@@ -1168,7 +1190,12 @@ class TextField(InteractiveWidget):
             supporting_metrics = supporting_font.getMetrics()
             supporting_y = cy + ch + 4 - supporting_metrics.fAscent
 
-            supporting_color_spec = style.error_supporting_text_color if self.is_error else style.supporting_text_color
+            if self.disabled:
+                supporting_color_spec = style.disabled_supporting_text_color
+            elif self.is_error:
+                supporting_color_spec = style.error_supporting_text_color
+            else:
+                supporting_color_spec = style.supporting_text_color
             supporting_color = resolve_color_to_rgba(supporting_color_spec, theme=self._resolvable_theme())
             paint_supporting = make_paint(color=supporting_color)
 

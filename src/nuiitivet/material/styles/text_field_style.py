@@ -22,6 +22,8 @@ class TextFieldStyle:
     draws an underline indicator with top-rounded container corners while
     ``"outlined"`` draws a full rectangular border. Use the :meth:`filled`
     and :meth:`outlined` factory methods to obtain the standard presets.
+
+    A disabled field paints with the ``disabled_*`` colours, in error or not.
     """
 
     # Visual mode (drives container shape and indicator drawing)
@@ -29,6 +31,7 @@ class TextFieldStyle:
 
     # Container
     container_color: ColorSpec = ColorRole.SURFACE_CONTAINER_HIGHEST
+    disabled_container_color: ColorSpec = (ColorRole.ON_SURFACE, 0.04)
 
     # Border / Indicator
     indicator_color: ColorSpec = ColorRole.ON_SURFACE_VARIANT
@@ -36,14 +39,21 @@ class TextFieldStyle:
     focused_indicator_color: ColorSpec = ColorRole.PRIMARY
     focused_indicator_width: float = 2.0
     error_indicator_color: ColorSpec = ColorRole.ERROR
+    disabled_indicator_color: ColorSpec = (ColorRole.ON_SURFACE, 0.38)
 
     # Text
     text_color: ColorSpec = ColorRole.ON_SURFACE
+    disabled_text_color: ColorSpec = (ColorRole.ON_SURFACE, 0.38)
     label_color: ColorSpec = ColorRole.ON_SURFACE_VARIANT
     focused_label_color: ColorSpec = ColorRole.PRIMARY
     error_label_color: ColorSpec = ColorRole.ERROR
+    disabled_label_color: ColorSpec = (ColorRole.ON_SURFACE, 0.38)
     supporting_text_color: ColorSpec = ColorRole.ON_SURFACE_VARIANT
     error_supporting_text_color: ColorSpec = ColorRole.ERROR
+    disabled_supporting_text_color: ColorSpec = (ColorRole.ON_SURFACE, 0.38)
+
+    # Icons. A disabled field tints both icons; enabled, they keep their own colour.
+    disabled_icon_color: ColorSpec = (ColorRole.ON_SURFACE, 0.38)
 
     # Cursor & Selection
     cursor_color: ColorSpec = ColorRole.PRIMARY
@@ -85,7 +95,9 @@ class TextFieldStyle:
         return cls(
             mode="filled",
             container_color=ColorRole.SURFACE_CONTAINER_HIGHEST,
+            disabled_container_color=(ColorRole.ON_SURFACE, 0.04),
             indicator_color=ColorRole.ON_SURFACE_VARIANT,
+            disabled_indicator_color=(ColorRole.ON_SURFACE, 0.38),
             border_radius=4.0,
             content_insets=(16, 8, 16, 8),  # Adjusted for label
         )
@@ -96,7 +108,9 @@ class TextFieldStyle:
         return cls(
             mode="outlined",
             container_color=(0, 0, 0, 0),  # Transparent
+            disabled_container_color=(0, 0, 0, 0),
             indicator_color=ColorRole.OUTLINE,
+            disabled_indicator_color=(ColorRole.ON_SURFACE, 0.12),
             focused_indicator_width=3.0,  # MD3: focused outline width = 3dp
             border_radius=4.0,
             content_insets=(16, 16, 16, 16),
