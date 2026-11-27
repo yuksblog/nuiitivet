@@ -124,7 +124,7 @@ class _StateValue(MutableStateBase[T]):
         self._notify_subs()
 
         batch_ctx = _batch_context.get()
-        if batch_ctx is not None:
+        if batch_ctx is not None and batch_ctx.is_open:
             batch_ctx.record_change(self)
 
     def _process_pending_update(self, dt: float) -> None:

@@ -131,7 +131,7 @@ class ComputedState(StateBase[T]):
 
     def _on_dep(self, _v: Any) -> None:
         batch_ctx = _batch_context.get()
-        if batch_ctx is not None:
+        if batch_ctx is not None and batch_ctx.is_open:
             batch_ctx.record_computed(self)
             return
 
