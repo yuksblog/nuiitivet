@@ -29,6 +29,7 @@ from typing import Iterator
 import pytest
 import skia
 
+from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_SHIFT
 from nuiitivet.web.server import load_server_functions, make_server, site
 
 APP = Path(__file__).resolve().parents[2] / "samples" / "web" / "hello" / "app.py"
@@ -500,3 +501,99 @@ def test_file_dialogs_in_a_browser_pick_cancel_and_download(dialog_page_url: str
         finally:
             browser.close()
     assert not errors, errors
+
+
+# -- wheel modifiers -------------------------------------------------------------
+
+_WHEEL_RECORD = """seen: list[int] = []
+"""
+
+# The left half is a wheel handler, the right half a list far longer than the page.
+_WHEEL_APP = '''import nuiitivet.material as nv
+from record import seen
+
+
+def build_root() -> nv.Widget:
+    surface = nv.Container(width=160, height=200).modifier(
+        nv.pointer_input(on_scroll=lambda event: seen.append(event.modifier_keys))
+    )
+    rows = nv.Column([nv.Text(f"row {index}") for index in range(200)])
+    return nv.Row([surface, nv.VerticalScrollable(rows, width=160, height=200, key="feed")])
+
+
+def main() -> None:
+    nv.App(nv.Window(content=build_root)).run()
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+
+@pytest.fixture(scope="module")
+def wheel_page_url(tmp_path_factory: pytest.TempPathFactory) -> Iterator[str]:
+    """A built site of an app with a wheel handler beside a scrollable list, served on a free port."""
+    root = tmp_path_factory.mktemp("wheel")
+    (root / "record.py").write_text(_WHEEL_RECORD)
+    (root / "app.py").write_text(_WHEEL_APP)
+    httpd = make_server(site(root / "app.py", bundle_runtime=True), 0)
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{httpd.server_address[1]}/"
+    httpd.shutdown()
+    httpd.server_close()
+
+
+def test_a_wheel_carries_its_modifier_keys_and_an_untaken_ctrl_wheel_stays_the_browsers(wheel_page_url: str) -> None:
+    with playwright_api.sync_playwright() as playwright:
+        browser = _launch(playwright)
+        try:
+            page = browser.new_page(viewport={"width": 320, "height": 200}, device_scale_factor=1)
+            errors: list[str] = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(wheel_page_url)
+            page.wait_for_function("document.body.dataset.state !== undefined", timeout=180_000)
+            assert page.evaluate("document.body.dataset.state") == "running"
+            # Read on the way up from the canvas: whether the page kept each wheel event from the browser.
+            page.evaluate("window.kept = []; addEventListener('wheel', (e) => window.kept.push(e.defaultPrevented))")
+
+            _Page(page)  # defines _widget() in the page
+
+            def wheel(count: int, held: str = "") -> None:
+                """Turn the wheel with ``held`` down, and wait until the page has seen ``count`` wheel events."""
+                if held:
+                    page.keyboard.down(held)
+                page.mouse.wheel(0, 100)
+                if held:
+                    page.keyboard.up(held)
+                page.wait_for_function("count => window.kept.length === count", arg=count, timeout=10_000)
+
+            # Over the handler: every wheel reaches it with the keys held, Ctrl included.
+            page.mouse.move(80, 100)
+            wheel(1)
+            wheel(2, "Shift")
+            wheel(3, "Alt")
+            wheel(4, "Control")
+            seen = json.loads(str(_in_page(page, "import json\nfrom record import seen\njson.dumps(seen)")))
+
+            # Over the list: a plain wheel scrolls it, a Ctrl wheel leaves it where it is.
+            page.mouse.move(240, 100)
+            wheel(5)
+            scrolled = float(str(_in_page(page, "str(_widget('feed').scroll_offset)")))
+            wheel(6, "Control")
+            after_ctrl = float(str(_in_page(page, "str(_widget('feed').scroll_offset)")))
+
+            # A dispatch that throws: the page still keeps a plain wheel, or the browser would scroll the page.
+            before_throw = list(errors)
+            page.evaluate("() => { NV_HOST.onWheel = () => { throw new Error('wheel dispatch down'); }; }")
+            with page.expect_event("pageerror"):
+                wheel(7)
+            kept = page.evaluate("window.kept")
+        finally:
+            browser.close()
+    assert not before_throw, before_throw
+    assert len(errors) == 1 and "wheel dispatch down" in errors[0], errors
+    assert seen == [0, MOD_SHIFT, MOD_ALT, MOD_CTRL]
+    assert scrolled > 0
+    assert after_ctrl == scrolled
+    # Only the Ctrl wheel the list passed up is left to the browser, which zooms the page with it.
+    assert kept == [True, True, True, True, True, False, True]

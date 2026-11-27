@@ -68,13 +68,22 @@ def scroll(
     y: Optional[float] = None,
     dx: float = 0.0,
     dy: float = 0.0,
+    modifiers: Any = 0,
 ) -> dict[str, Any]:
     """Synthesize a wheel event over a scroll region, and mark it on screen.
 
     See :func:`nuiitivet._interaction.action.scroll`.
     """
     return _action.scroll(
-        app, key=key, label=label, x=x, y=y, dx=dx, dy=dy, on_action=OVERLAY_OBSERVER
+        app,
+        key=key,
+        label=label,
+        x=x,
+        y=y,
+        dx=dx,
+        dy=dy,
+        modifiers=modifiers,
+        on_action=OVERLAY_OBSERVER,
     )
 
 

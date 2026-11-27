@@ -598,6 +598,7 @@ def scroll(
     y: Optional[float] = None,
     dx: float = 0.0,
     dy: float = 0.0,
+    modifiers: Any = 0,
     on_action: Optional[ActionObserver] = None,
 ) -> dict[str, Any]:
     """Synthesize a mouse wheel event over a scroll region.
@@ -618,14 +619,19 @@ def scroll(
     Scrolling is linear with no inertia, so one ``dy=10`` equals ten ``dy=1``;
     prefer the single call.
 
+    ``modifiers`` is an int mask or an iterable of names (``["ctrl"]``), and the
+    wheel event carries it as its ``modifier_keys``. A scroll region passes a
+    wheel with Ctrl held up to its ancestors, so the region does not move, and
+    ``handled`` is ``True`` only when an ancestor's handler took the event.
+
     The result reports what actually happened -- ``handled`` plus the region's
     resulting ``offset`` / ``max_extent`` / ``at_start`` / ``at_end`` -- because
     unlike a click, "already at the end" and "nothing consumed it" are otherwise
     indistinguishable from success, leaving the caller no stop condition.
 
     Raises:
-        ValueError: If both deltas are zero, no target is given, or the named
-            target is not a scroll region.
+        ValueError: If both deltas are zero, no target is given, the named
+            target is not a scroll region, or a modifier name is unknown.
         TargetNotFoundError: If the identifier matched nothing.
         TargetNotVisibleError: If the region is scrolled out of view or covered.
     """
@@ -633,19 +639,21 @@ def scroll(
     ddx, ddy = float(dx), float(dy)
     if ddx == 0.0 and ddy == 0.0:
         raise ValueError("scroll needs a non-zero 'dx' or 'dy' (in wheel notches)")
+    mask = resolve_modifiers(modifiers)
 
     px, py, target_info = _resolve_point(
         app, key=key, label=label, x=x, y=y, verb="scroll", require=_require_scroll_region
     )
     ix, iy = int(round(px)), int(round(py))
 
-    handler = app._dispatch_mouse_scroll(ix, iy, ddx, ddy)
+    handler = app._dispatch_mouse_scroll(ix, iy, ddx, ddy, modifier_keys=mask)
     result: dict[str, Any] = {
         "scrolled": target_info,
         "x": ix,
         "y": iy,
         "dx": ddx,
         "dy": ddy,
+        "modifiers": mask,
         "handled": handler is not None,
     }
     if handler is not None:

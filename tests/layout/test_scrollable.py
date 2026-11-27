@@ -3,6 +3,7 @@
 import pytest
 from nuiitivet.runtime.app import App
 from nuiitivet.runtime.window import Window
+from nuiitivet.input.codes import MOD_ALT, MOD_CTRL, MOD_META, MOD_SHIFT
 from nuiitivet.input.pointer import PointerEventType
 from nuiitivet.scrolling import ScrollController, ScrollDirection, ScrollPhysics
 from nuiitivet.widgeting.widget import Widget
@@ -339,6 +340,32 @@ def test_scrollable_handle_scroll_event():
     child = Column([Text(f"Item {i}") for i in range(50)])
     scrollable = VerticalScrollable(child=child, controller=controller)
     handled = send_pointer_event_for_test(scrollable, PointerEventType.SCROLL, 0, 0, scroll_y=3)
+    assert handled is True
+    assert controller.get_offset() == 60.0
+
+
+@pytest.mark.parametrize("scrollable_class", [VerticalScrollable, HorizontalScrollable])
+def test_scrollable_passes_a_ctrl_wheel_up(scrollable_class):
+    """Ctrl with the wheel is zoom: the region neither moves nor consumes it."""
+    direction = scrollable_class._direction
+    controller = ScrollController(axes=(direction,), primary_axis=direction)
+    controller._update_metrics(max_extent=500.0, viewport_size=200, content_size=700, axis=direction)
+    scrollable = scrollable_class(child=Column([Text("Item")]), controller=controller)
+
+    for held in (MOD_CTRL, MOD_CTRL | MOD_SHIFT):
+        handled = send_pointer_event_for_test(scrollable, PointerEventType.SCROLL, 0, 0, scroll_y=3, modifier_keys=held)
+        assert handled is False
+        assert controller.get_offset(direction) == 0.0
+
+
+@pytest.mark.parametrize("held", [MOD_SHIFT, MOD_ALT, MOD_META, MOD_SHIFT | MOD_ALT | MOD_META])
+def test_scrollable_scrolls_on_a_wheel_with_the_other_modifiers(held):
+    controller = ScrollController()
+    controller._update_metrics(max_extent=500.0, viewport_size=200, content_size=700)
+    scrollable = VerticalScrollable(child=Column([Text("Item")]), controller=controller)
+
+    handled = send_pointer_event_for_test(scrollable, PointerEventType.SCROLL, 0, 0, scroll_y=3, modifier_keys=held)
+
     assert handled is True
     assert controller.get_offset() == 60.0
 

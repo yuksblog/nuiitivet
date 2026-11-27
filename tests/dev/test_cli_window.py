@@ -19,6 +19,7 @@ class _RecordingClient:
 
     def __init__(self) -> None:
         self.window: Any = "unset"
+        self.scroll_modifiers: Any = "unset"
 
     def describe_tree(self, *, window: Optional[int] = None) -> dict[str, Any]:
         self.window = window
@@ -40,6 +41,7 @@ class _RecordingClient:
 
     def scroll(self, **kwargs: Any) -> dict[str, Any]:
         self.window = kwargs.get("window")
+        self.scroll_modifiers = kwargs.get("modifiers")
         return {}
 
     def scroll_into_view(self, **kwargs: Any) -> dict[str, Any]:
@@ -99,6 +101,12 @@ def test_omitting_window_addresses_the_main_window(
 def test_click_by_xy_carries_the_window_too(client: _RecordingClient) -> None:
     assert cli.main(["click", "--xy", "10", "20", "--window", "2"]) == 0
     assert client.window == 2
+
+
+@pytest.mark.parametrize("target", [["--key", "a"], ["--xy", "10", "20"]], ids=["key", "xy"])
+def test_scroll_modifiers_reach_the_client(client: _RecordingClient, target: list[str]) -> None:
+    assert cli.main(["scroll", *target, "--dy", "1", "--mod", "ctrl"]) == 0
+    assert client.scroll_modifiers == ["ctrl"]
 
 
 def test_an_unknown_window_id_reports_the_bridge_reason(

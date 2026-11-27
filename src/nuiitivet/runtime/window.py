@@ -2316,11 +2316,19 @@ class Window:
             return
         _dispatch_mouse_release_fn(self, x, y, button=button, modifier_keys=modifier_keys)
 
-    def _dispatch_mouse_scroll(self, x: int, y: int, scroll_x: float, scroll_y: float) -> Optional[Widget]:
-        """Deliver a wheel event; return the widget that consumed it, if any."""
+    def _dispatch_mouse_scroll(
+        self, x: int, y: int, scroll_x: float, scroll_y: float, *, modifier_keys: Optional[int] = None
+    ) -> Optional[Widget]:
+        """Deliver a wheel event; return the widget that consumed it, if any.
+
+        ``modifier_keys`` is the mask the event carries. A backend whose wheel
+        event reports no modifiers passes ``None``, and the event carries the
+        keys the window holds.
+        """
         if self._modal_blocked():
             return None
-        return _dispatch_mouse_scroll_fn(self, x, y, scroll_x, scroll_y)
+        held = self._modifier_keys if modifier_keys is None else modifier_keys
+        return _dispatch_mouse_scroll_fn(self, x, y, scroll_x, scroll_y, modifier_keys=held)
 
     def _dispatch_file_drop(self, x: int, y: int, paths: Sequence[str]) -> Optional[Widget]:
         """Deliver an OS file drop; return the widget that consumed it, if any."""

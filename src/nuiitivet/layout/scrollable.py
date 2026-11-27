@@ -35,6 +35,7 @@ from ..scrolling import (
 )
 from ..rendering.padding import PaddingLike, parse_padding
 from ..rendering.sizing import Sizing, SizingLike
+from ..input.codes import MOD_CTRL
 from ..input.pointer import PointerEvent, PointerEventType
 from ..widgets.scrollbar import (
     HorizontalScrollbar,
@@ -66,7 +67,8 @@ class _ScrollableBase(Widget):
     :class:`HorizontalScrollable`, which fix the scroll axis via ``_direction``.
 
     Makes a child widget scrollable if it exceeds the viewport. Supports mouse
-    wheel, drag, and scrollbar interactions.
+    wheel, drag, and scrollbar interactions. A wheel event with Ctrl held does
+    not scroll: it passes up to the ancestors.
     """
 
     #: Scroll axis fixed by each concrete subclass.
@@ -439,6 +441,10 @@ class _ScrollableBase(Widget):
 
     def _handle_scroll(self, event: PointerEvent) -> bool:
         if self.physics is ScrollPhysics.NEVER:
+            return False
+        # Ctrl with the wheel is zoom, and a browser sends a trackpad pinch as one.
+        # Passed up, it reaches an ancestor's handler, or the browser's own zoom.
+        if event.modifier_keys & MOD_CTRL:
             return False
 
         if self.direction is ScrollDirection.VERTICAL:

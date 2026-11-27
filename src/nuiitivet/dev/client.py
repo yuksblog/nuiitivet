@@ -531,6 +531,7 @@ class BridgeClient:
         y: Optional[float] = None,
         dx: float = 0.0,
         dy: float = 0.0,
+        modifiers: Optional[list[str]] = None,
         window: Optional[int] = None,
     ) -> dict[str, Any]:
         """Scroll a region by wheel notches, named by ``key`` / ``label`` or ``x`` / ``y``.
@@ -541,7 +542,8 @@ class BridgeClient:
         carries no identity.
 
         ``dx`` / ``dy`` are wheel notches, 20 px each by default; positive is
-        toward the content's end (down / right). The result reports ``handled``
+        toward the content's end (down / right). ``modifiers`` names the keys
+        held with the wheel (e.g. ``["ctrl"]``). The result reports ``handled``
         and the region's resulting ``offset`` / ``max_extent`` / ``at_end``, so
         "it moved" is distinguishable from "it was already at the end".
         """
@@ -549,6 +551,8 @@ class BridgeClient:
         for name, value in (("key", key), ("label", label), ("x", x), ("y", y), ("window", window)):
             if value is not None:
                 payload[name] = value
+        if modifiers:
+            payload["modifiers"] = modifiers
         return self._post("/scroll", payload)
 
     def scroll_into_view(

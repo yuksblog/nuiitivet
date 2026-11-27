@@ -154,6 +154,12 @@ def test_scroll_by_xy() -> None:
     assert args.command == "scroll"
     assert args.xy == [10.0, 20.0]
     assert args.dx == -2.0
+    assert args.mod == []
+
+
+def test_scroll_with_modifiers() -> None:
+    args = _parse_args(["scroll", "--xy", "10", "20", "--dy", "1", "--mod", "ctrl", "--mod", "shift"])
+    assert args.mod == ["ctrl", "shift"]
 
 
 def test_scroll_requires_a_target() -> None:

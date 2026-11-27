@@ -21,7 +21,7 @@ from nuiitivet.dev.client import BridgeClient, BridgeNotFoundError, find_discove
 from nuiitivet.dev.interaction import InteractionJournal
 from nuiitivet.dev.journal import ReloadJournal
 from nuiitivet.dev.runtime_journal import RuntimeJournal
-from nuiitivet.input.codes import TEXT_MOTION_BACKSPACE, TEXT_MOTION_LEFT
+from nuiitivet.input.codes import MOD_CTRL, MOD_SHIFT, TEXT_MOTION_BACKSPACE, TEXT_MOTION_LEFT
 
 
 class _FakeNode:
@@ -68,6 +68,7 @@ class _FakeApp:
         self.blank = False
         self.presses: list[tuple] = []
         self.scrolls: list[tuple] = []
+        self.scroll_modifier_keys: list[int] = []
         self.texts: list[str] = []
         self.key_presses: list[tuple] = []
         self.text_motions: list[tuple] = []
@@ -86,8 +87,11 @@ class _FakeApp:
     def _dispatch_mouse_release(self, x: int, y: int, *, button: Any = None) -> None:
         pass
 
-    def _dispatch_mouse_scroll(self, x: int, y: int, scroll_x: float, scroll_y: float) -> Any:
+    def _dispatch_mouse_scroll(
+        self, x: int, y: int, scroll_x: float, scroll_y: float, *, modifier_keys: int = 0
+    ) -> Any:
         self.scrolls.append((x, y, scroll_x, scroll_y))
+        self.scroll_modifier_keys.append(modifier_keys)
         return _FakeRegion(key="feed")
 
     def _dispatch_text(self, text: str) -> bool:
@@ -603,6 +607,38 @@ def test_bridge_scroll_by_key(tmp_path: Path, dev_run: None) -> None:
             # The metrics the handling widget reported ride back out.
             assert result["offset"] == 240.0
             assert result["at_end"] is False
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_scroll_carries_the_held_modifiers(tmp_path: Path, dev_run: None) -> None:
+    app, _region = _app_with_region()
+    bridge = DevBridge(app, tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+
+            result = client.scroll(key="feed", dy=1.0, modifiers=["ctrl", "shift"])
+            assert result["modifiers"] == MOD_CTRL | MOD_SHIFT
+
+            # A plain wheel holds nothing.
+            assert client.scroll(key="feed", dy=1.0)["modifiers"] == 0
+            assert app.scroll_modifier_keys == [MOD_CTRL | MOD_SHIFT, 0]
+    finally:
+        bridge.shutdown()
+
+
+def test_bridge_scroll_with_an_unknown_modifier_is_400(tmp_path: Path, dev_run: None) -> None:
+    app, _region = _app_with_region()
+    bridge = DevBridge(app, tmp_path)
+    bridge.start()
+    try:
+        with _Pump(bridge):
+            client = BridgeClient("127.0.0.1", _port_of(bridge))
+            with pytest.raises(RuntimeError, match="unknown modifier"):
+                client.scroll(key="feed", dy=1.0, modifiers=["hyper"])
+            assert app.scrolls == []
     finally:
         bridge.shutdown()
 

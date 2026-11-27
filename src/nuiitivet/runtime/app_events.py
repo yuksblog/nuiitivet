@@ -373,7 +373,9 @@ def _dispatch_mouse_release(app: Any, x: int, y: int, *, button: Optional[int] =
         exception_once(logger, "app_events_clear_pressed_target_exc", "Failed to clear app._pressed_target")
 
 
-def dispatch_mouse_scroll(app: Any, x: int, y: int, scroll_x: float, scroll_y: float) -> Optional[Any]:
+def dispatch_mouse_scroll(
+    app: Any, x: int, y: int, scroll_x: float, scroll_y: float, *, modifier_keys: int = 0
+) -> Optional[Any]:
     """Dispatch a mouse scroll (wheel) event to the widget under the cursor.
 
     Returns the widget that consumed the event (it may be an ancestor of the
@@ -395,7 +397,7 @@ def dispatch_mouse_scroll(app: Any, x: int, y: int, scroll_x: float, scroll_y: f
         return None
 
     pointer_id = _primary_pointer_id(app)
-    scroll_event = PointerEvent.scroll_event(pointer_id, x, y, scroll_x, scroll_y)
+    scroll_event = PointerEvent.scroll_event(pointer_id, x, y, scroll_x, scroll_y, modifier_keys=modifier_keys)
     return _deliver_pointer_event(app, target, scroll_event)
 
 
