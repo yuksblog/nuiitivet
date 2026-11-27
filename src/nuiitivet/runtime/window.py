@@ -1609,11 +1609,18 @@ class Window:
         first = rgba[:4]
         return rgba == first * (len(rgba) // 4)
 
-    def _dispatch_mouse_motion(self, x: int, y: int, *, buttons: int = 0, modifier_keys: int = 0):
+    def _dispatch_mouse_motion(self, x: int, y: int, *, buttons: int = 0, modifier_keys: Optional[int] = None):
+        """Deliver a pointer move as a drag, hover, enter or leave.
+
+        ``modifier_keys`` is the mask the events carry. A backend whose move
+        event reports no modifiers passes ``None``, and the events carry the
+        keys the window holds.
+        """
         if self._modal_blocked():
             self._apply_mouse_cursor(MouseCursor.DEFAULT)
             return
-        _dispatch_mouse_motion_fn(self, x, y, buttons=buttons, modifier_keys=modifier_keys)
+        held = self._modifier_keys if modifier_keys is None else modifier_keys
+        _dispatch_mouse_motion_fn(self, x, y, buttons=buttons, modifier_keys=held)
 
     def _sync_mouse_cursor(self) -> None:
         """Re-resolve the cursor for the pointer where it is."""

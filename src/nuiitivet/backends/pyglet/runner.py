@@ -941,6 +941,7 @@ def _realize_window(owner_app: Any, win: Any, event_loop: Any, renderer: Rendere
         if _dev_consumed(win, "on_mouse_motion", win, x_log, y_conv):
             return True
         try:
+            # pyglet's move reports no modifiers, so the window fills in the keys it holds.
             win._dispatch_mouse_motion(x_log, y_conv)
         except Exception:
             exception_once(logger, "pyglet_on_mouse_motion_dispatch_exc", "Mouse motion dispatch raised")
