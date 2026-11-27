@@ -189,6 +189,11 @@ class SourceSubscribingState(StateBase[TOut], Generic[TIn, TOut]):
         """
         return self._held_value
 
+    def _flush_depth(self) -> int:
+        """The source's depth: a wrapper reacts while its source notifies."""
+        source = self._source
+        return source._flush_depth() if isinstance(source, StateBase) else 0
+
     def _clock_callbacks(self) -> Sequence[Callable[[float], None]]:
         """Callbacks this State may have armed, for :meth:`dispose` to disarm.
 

@@ -48,6 +48,7 @@ class ComputedState(StateBase[T]):
         self._dep_disposables: List[Disposable] = []
         self._dispatch_to_ui = dispatch
         self._disposed = False
+        self._depth = 0
 
         self._lock = threading.Lock()
         self._is_scheduled = False
@@ -101,6 +102,8 @@ class ComputedState(StateBase[T]):
         finally:
             _tracking_context.reset(token)
 
+        self._depth = 1 + max((dep._flush_depth() for dep in self._deps), default=0)
+
         for dep in self._deps:
             import weakref
 
@@ -120,6 +123,10 @@ class ComputedState(StateBase[T]):
 
         if new_value is not UNSET:
             self._value = new_value
+
+    def _flush_depth(self) -> int:
+        """One more than the deepest node the last run read."""
+        return self._depth
 
     @property
     def value(self) -> T:
