@@ -119,6 +119,10 @@ class StateBase(Generic[T]):
     def value(self) -> T:  # pragma: no cover - overridden
         raise NotImplementedError
 
+    def _flush_depth(self) -> int:
+        """How many derivations deep this node is, the order of a batch flush."""
+        return 0
+
 
 class MutableStateBase(StateBase[T]):
     """Concrete base for States whose ``value`` is writable.

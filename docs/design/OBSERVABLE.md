@@ -110,7 +110,7 @@ sequenceDiagram
     H->>V: .value = w
     Note over V,B: the same steps, the same entries
     I->>B: exit the outermost batch
-    B->>D: recompute once
+    B->>D: recompute, the shallowest first
     D->>S: notify_all
 ```
 
@@ -124,9 +124,21 @@ sequenceDiagram
 - `dispatch=False` keeps a node's notification synchronous on the writing
   thread. Every intermediate value is delivered.
 - A derivation, a predicate or a fold runs on the thread that triggered it.
-- `batch()` nests. Each derivation a batch reaches recomputes once, at the
+- `batch()` nests. The derivations a batch reaches recompute at the
   outermost exit. A batch exited off the UI thread marshals that flush when
   any dirty value dispatches.
+- The flush takes the queued derivations by depth, the shallowest first. A
+  derivation recomputes after every queued node it reads.
+- A value node's depth is 0. A derivation's depth is one more than the
+  deepest node its last run read. A wrapper's depth is its source's.
+- A derivation notified after its run recomputes again. A subscriber that
+  writes a State the derivation reads, during the flush, notifies it.
+- A derivation's depth changes only when it runs. A derivation that starts
+  reading a deeper node leaves its readers' depths stale. A stale depth can
+  run a reader before a node it reads.
+- With every depth current and no write during the flush, each derivation
+  recomputes once.
+- A flush that keeps recomputing one derivation raises `RuntimeError`.
 - A task or a callback scheduled inside a batch outlives it. Its writes after
   the batch's flush returns notify at once. A `batch()` it opens is a new
   batch.

@@ -331,3 +331,159 @@ def test_a_write_made_during_the_flush_is_deferred_to_the_same_flush():
 
     assert seen == [(11, 10)]
     assert e.value == 21
+
+
+# The queue's order follows object ids, so one graph can flush in the right
+# order by chance. Each test below builds its graph many times.
+_GRAPHS = 50
+
+
+def _plus_one(v: int) -> int:
+    return v + 1
+
+
+def test_batch_diamond_reads_current_values() -> None:
+    for _ in range(_GRAPHS):
+        source = State(0)
+        derived = source.map(lambda v: v * 10)
+        both = source.combine(derived).compute(lambda s, d: (s, d))
+
+        with batch():
+            source.value = 1
+
+        assert both.value == (1, 10)
+
+
+def test_batch_diamond_with_a_two_derivation_path_reads_current_values() -> None:
+    for _ in range(_GRAPHS):
+        source = State(0)
+        second = source.map(lambda v: v * 10).map(_plus_one)
+        both = source.combine(second).compute(lambda s, d: (s, d))
+
+        with batch():
+            source.value = 1
+
+        assert both.value == (1, 11)
+
+
+def test_batch_diamond_through_a_wrapper_runs_once_on_current_values() -> None:
+    for _ in range(_GRAPHS):
+        runs: list[tuple[int, int]] = []
+
+        def both_fn(s: int, d: int) -> tuple[int, int]:
+            runs.append((s, d))
+            return (s, d)
+
+        source = State(0)
+        passed = source.map(lambda v: v * 10).filter(lambda v: True, initial=0)
+        both = source.combine(passed).compute(both_fn)
+        runs.clear()
+
+        with batch():
+            source.value = 1
+
+        assert runs == [(1, 10)]
+        assert both.value == (1, 10)
+
+
+def test_batch_diamond_runs_each_function_once() -> None:
+    for _ in range(_GRAPHS):
+        runs = {"first": 0, "second": 0, "both": 0}
+
+        def first_fn(v: int) -> int:
+            runs["first"] += 1
+            return v * 10
+
+        def second_fn(v: int) -> int:
+            runs["second"] += 1
+            return v + 1
+
+        def both_fn(s: int, d: int) -> tuple[int, int]:
+            runs["both"] += 1
+            return (s, d)
+
+        source = State(0)
+        second = source.map(first_fn).map(second_fn)
+        both = source.combine(second).compute(both_fn)
+        runs.update(dict.fromkeys(runs, 0))
+
+        with batch():
+            source.value = 1
+
+        assert runs == {"first": 1, "second": 1, "both": 1}
+        assert both.value == (1, 11)
+
+
+def test_batch_derivation_that_starts_reading_a_deeper_state_ends_current() -> None:
+    for _ in range(_GRAPHS):
+        flag = State(False)
+        source = State(0)
+        deep = source.map(_plus_one).map(_plus_one).map(_plus_one)
+        pick = State.compute(lambda: deep.value if flag.value else -1)
+
+        with batch():
+            flag.value = True
+            source.value = 10
+
+        assert pick.value == 13
+
+
+def test_batch_reader_of_a_switched_derivation_whose_value_stayed_ends_current() -> None:
+    flag = State(False)
+    source = State(0)
+    other = State(0)
+    deep = source.map(_plus_one).map(_plus_one).map(_plus_one)
+    switch = State.compute(lambda: deep.value >= 0 if flag.value else True)
+    passthrough = switch.map(lambda v: v)
+    both = State.compute(lambda: (other.value, passthrough.value))
+    # ``switch`` now reads ``deep``. Its value stays True, so ``passthrough``
+    # does not rerun.
+    flag.value = True
+
+    with batch():
+        source.value = -100
+        other.value = 1
+
+    assert both.value == (1, False)
+
+
+def test_batch_reader_of_a_derivation_that_switches_to_a_shallower_state_ends_current() -> None:
+    flag = State(False)
+    plain = State(3)
+    source = State(0)
+    other = State(0)
+    deep = source.map(_plus_one).map(_plus_one).map(_plus_one)
+    switch = State.compute(lambda: deep.value if flag.value else plain.value)
+    both = State.compute(lambda: (other.value, switch.value))
+    # ``switch`` now reads ``deep``. Its value stays 3, so ``both`` does not
+    # rerun.
+    flag.value = True
+
+    with batch():
+        other.value = 1
+        flag.value = False
+        plain.value = 7
+
+    assert both.value == (1, 7)
+
+
+def test_batch_subscriber_writing_a_state_its_derivation_read_ends_current() -> None:
+    source = State(0)
+    clamped = source.map(lambda v: v)
+    clamped.subscribe(lambda v: source.set(min(v, 5)))
+    doubled = clamped.map(lambda v: v * 2)
+
+    with batch():
+        source.value = 9
+
+    assert (source.value, clamped.value, doubled.value) == (5, 5, 10)
+
+
+def test_batch_feedback_loop_raises() -> None:
+    source = State(0)
+    echo = source.map(lambda v: v)
+    echo.subscribe(lambda v: source.set(v + 1))
+
+    with pytest.raises(RuntimeError, match="feedback loop"):
+        with batch():
+            source.value = 1
