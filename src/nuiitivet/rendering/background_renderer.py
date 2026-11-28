@@ -11,8 +11,12 @@ from .skia.geometry import draw_round_rect
 from .shadow import NO_SHADOWS
 from nuiitivet.common.back_reference import back_reference
 from nuiitivet.common.logging_once import exception_once
+from nuiitivet.theme.resolver import resolve_color_to_rgba
+from nuiitivet.theme.theme import Theme
 import logging
-from typing import Any
+from typing import Any, Optional, Tuple
+
+Radii = Tuple[float, float, float, float]
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +31,15 @@ class BackgroundRenderer:
 
     def __init__(self, owner) -> None:
         self._owner_ref = back_reference(owner)
+        # Each visit asks for the same answers until a size or a property changes.
+        self._radii_key: Any = None
+        self._radii: Radii = (0.0, 0.0, 0.0, 0.0)
+        self._stroke_key: Any = None
+        self._stroke_paint: Any = None
+        self._border_key: Any = None
+        self._border_draw: Optional[Tuple[str, Any]] = None
+        self._clip_key: Any = None
+        self._clip_shape: Optional[Tuple[str, Any]] = None
 
     @property
     def owner(self) -> Any:
@@ -56,17 +69,28 @@ class BackgroundRenderer:
                 )
                 return 0.0
 
-    def corner_radii_pixels(self, width: int, height: int):
+    def corner_radii_pixels(self, width: int, height: int) -> Radii:
         """Return per-corner radii in pixels as a 4-tuple (tl, tr, br, bl).
 
         Accepts owner's `corner_radii` (4-tuple of floats) or `corner_radius` scalar.
         Values <= 1.0 are treated as proportions of min(width,height)/2.
         """
-        cr_owner = getattr(self.owner, "corner_radii", None)
+        owner = self.owner
+        cr_owner = getattr(owner, "corner_radii", None)
         if cr_owner is None:
             # fallback to scalar corner_radius
-            cr_owner = getattr(self.owner, "corner_radius", 0.0)
+            cr_owner = getattr(owner, "corner_radius", 0.0)
+        if isinstance(cr_owner, list):
+            cr_owner = tuple(cr_owner)
+        # The type is part of the key: an int radius is pixels, an equal float a proportion.
+        key = (cr_owner, type(cr_owner), width, height)
+        if key != self._radii_key:
+            self._radii = self._resolve_corner_radii(cr_owner, width, height)
+            self._radii_key = key
+        return self._radii
 
+    @staticmethod
+    def _resolve_corner_radii(cr_owner: Any, width: int, height: int) -> Radii:
         try:
             if isinstance(cr_owner, (list, tuple)):
                 if len(cr_owner) != 4:
@@ -234,94 +258,70 @@ class BackgroundRenderer:
     def _draw_border(self, canvas, x, y, width, height, bw, eff_rad):
         if canvas is None:
             return
-
-        from nuiitivet.theme.resolver import resolve_color_to_rgba
-        from nuiitivet.theme.theme import Theme
-
         try:
             stroke_rgba = resolve_color_to_rgba(self.owner.border_color, theme=Theme.of(self.owner))
-            stroke_paint = make_paint(color=stroke_rgba, style="stroke", stroke_width=bw, aa=True)
+            stroke_key = (stroke_rgba, bw)
+            if stroke_key != self._stroke_key:
+                self._stroke_paint = make_paint(color=stroke_rgba, style="stroke", stroke_width=bw, aa=True)
+                self._stroke_key = stroke_key
+            stroke_paint = self._stroke_paint
             if stroke_paint is None:
                 return
+        except Exception:
+            exception_once(logger, "background_renderer_border_paint_exc", "Failed to resolve the border paint")
+            return
+        half = bw / 2.0
+        try:
+            border_key = (x, y, width, height, bw, eff_rad)
+            if border_key != self._border_key:
+                self._border_draw = self._border_shape(x, y, width, height, bw, eff_rad)
+                self._border_key = border_key
+            drawn = self._border_draw
+            if drawn is None:
+                return
+            kind, shape = drawn
+            if kind == "path":
+                canvas.drawPath(shape, stroke_paint)
+            elif kind == "rrect":
+                canvas.drawRRect(shape, stroke_paint)
+            else:
+                canvas.drawRect(shape, stroke_paint)
+        except Exception:
+            exception_once(logger, "background_renderer_draw_border_exc", "Failed to draw the rounded border")
+            self._border_key = None
+            # A square border still shows where the box ends.
+            rect = make_rect(x + half, y + half, width - bw, height - bw)
+            if rect is not None:
+                try:
+                    canvas.drawRect(rect, stroke_paint)
+                except Exception:
+                    exception_once(logger, "background_renderer_draw_border_rect_exc", "Failed to draw border")
 
-            try:
-                if eff_rad and (isinstance(eff_rad, (list, tuple)) or eff_rad > 0.0):
-                    rr_x = x + bw / 2.0
-                    rr_y = y + bw / 2.0
-                    rr_w = width - bw
-                    rr_h = height - bw
-                    try:
-                        rect = make_rect(rr_x, rr_y, rr_w, rr_h)
-                        if rect is None:
-                            return
-                        if isinstance(eff_rad, (list, tuple)):
-                            adjusted = []
-                            all_equal = True
-                            first_r = None
-                            for r in eff_rad:
-                                rv = float(max(0.0, r - bw / 2.0))
-                                if first_r is None:
-                                    first_r = rv
-                                elif abs(rv - first_r) > 0.001:
-                                    all_equal = False
-                                adjusted.append(rv)
-
-                            if all_equal and first_r is not None:
-                                rrect = resolve_rrect(rect, (first_r, first_r, first_r, first_r))
-                            else:
-                                rrect = resolve_rrect(rect, adjusted)
-                            if rrect is None and first_r is not None:
-                                rrect = resolve_rrect(rect, first_r)
-                        else:
-                            rr_rad = max(0.0, float(eff_rad - bw / 2.0))
-                            rrect = resolve_rrect(rect, rr_rad)
-
-                        if rrect is not None:
-                            path = make_path()
-                            if path is not None and path_add_rrect(path, rrect):
-                                canvas.drawPath(path, stroke_paint)
-                            else:
-                                canvas.drawRRect(rrect, stroke_paint)
-                        else:
-                            canvas.drawRect(rect, stroke_paint)
-                    except Exception:
-                        try:
-                            if isinstance(eff_rad, (list, tuple)):
-                                fallback_radius = float(max(eff_rad))
-                            else:
-                                fallback_radius = float(eff_rad)
-                        except Exception:
-                            exception_once(
-                                logger,
-                                "background_renderer_fallback_radius_float_exc",
-                                "Failed to compute fallback border radius",
-                            )
-                            fallback_radius = 0.0
-                        rect = make_rect(rr_x, rr_y, rr_w, rr_h)
-                        if rect is None:
-                            return
-                        rr = resolve_rrect(rect, fallback_radius)
-                        if rr is not None:
-                            canvas.drawRRect(rr, stroke_paint)
-                        else:
-                            canvas.drawRect(rect, stroke_paint)
-                else:
-                    br = make_rect(x + bw / 2.0, y + bw / 2.0, width - bw, height - bw)
-                    if br is not None:
-                        canvas.drawRect(br, stroke_paint)
-            except Exception:
-                exception_once(
-                    logger,
-                    "background_renderer_draw_border_inner_exc",
-                    "Failed to draw border",
-                )
-        except Exception as e:
-            exception_once(
-                logger,
-                "background_renderer_draw_border_outer_exc",
-                "Error in _draw_border outer: %s",
-                e,
-            )
+    @staticmethod
+    def _border_shape(x, y, width, height, bw, eff_rad) -> Optional[Tuple[str, Any]]:
+        """The stroke's centre line, inset by half the stroke so it stays inside the rect."""
+        half = bw / 2.0
+        rect = make_rect(x + half, y + half, width - bw, height - bw)
+        if rect is None:
+            return None
+        if not isinstance(eff_rad, (list, tuple)):
+            eff_rad = (eff_rad, eff_rad, eff_rad, eff_rad)
+        adjusted = [float(max(0.0, r - half)) for r in eff_rad]
+        if not adjusted:
+            return ("rect", rect)
+        first_r = adjusted[0]
+        if all(abs(r - first_r) <= 0.001 for r in adjusted):
+            rrect = resolve_rrect(rect, (first_r, first_r, first_r, first_r))
+        else:
+            rrect = resolve_rrect(rect, adjusted)
+        if rrect is None:
+            rrect = resolve_rrect(rect, first_r)
+        if rrect is None:
+            return ("rect", rect)
+        path = make_path()
+        if path is not None and path_add_rrect(path, rrect):
+            return ("path", path)
+        return ("rrect", rrect)
 
     def paint_shadow_and_background(self, canvas, x, y, width, height):
         """Draw shadow and background (but not border).
@@ -330,9 +330,6 @@ class BackgroundRenderer:
         ``Shadows`` tuple — ``Box.shadows``'s setter guarantees it.
         """
         # draw shadow first if requested
-        from nuiitivet.theme.resolver import resolve_color_to_rgba
-        from nuiitivet.theme.theme import Theme
-
         try:
             layers = getattr(self.owner, "shadows", NO_SHADOWS)
             if layers:
@@ -379,15 +376,62 @@ class BackgroundRenderer:
     def paint_border(self, canvas, x, y, width, height):
         """Draw border only."""
         try:
-            if getattr(self.owner, "border_width", 0) and getattr(self.owner, "border_color", None) is not None:
+            owner = self.owner
+            border_width = getattr(owner, "border_width", 0)
+            if border_width and getattr(owner, "border_color", None) is not None:
                 radii = self.corner_radii_pixels(width, height)
-                self._draw_border(canvas, x, y, width, height, int(getattr(self.owner, "border_width", 0)), radii)
+                self._draw_border(canvas, x, y, width, height, int(border_width), radii)
         except Exception:
             exception_once(
                 logger,
                 "background_renderer_paint_border_exc",
                 "Failed to paint border",
             )
+
+    def clip_to_shape(self, canvas, x, y, width, height, radii: Radii) -> bool:
+        """Clip ``canvas`` to a rounded rect, anti-aliased.
+
+        Args:
+            canvas: The canvas to clip.
+            x: Left edge of the rect.
+            y: Top edge of the rect.
+            width: Width of the rect.
+            height: Height of the rect.
+            radii: Corner radii in pixels, (tl, tr, br, bl).
+
+        Returns:
+            ``True`` when a clip was applied.
+        """
+        if canvas is None:
+            return False
+        key = (x, y, width, height, tuple(radii))
+        if key != self._clip_key:
+            rect = make_rect(x, y, width, height)
+            rrect = resolve_rrect(rect, radii)
+            self._clip_shape = None if rect is None else ("rrect", rrect) if rrect is not None else ("rect", rect)
+            self._clip_key = key
+        shape = self._clip_shape
+        if shape is None:
+            return False
+        kind, value = shape
+        try:
+            if kind == "rrect":
+                canvas.clipRRect(value, True)
+            else:
+                canvas.clipRect(value, True)
+            return True
+        except Exception:
+            exception_once(logger, "background_renderer_clip_exc", "Failed to clip to the rounded rect")
+        # Content clipped square still stays inside the box.
+        rect = make_rect(x, y, width, height)
+        if rect is None:
+            return False
+        try:
+            canvas.clipRect(rect, True)
+        except Exception:
+            exception_once(logger, "background_renderer_clip_rect_exc", "Failed to clip to the rect")
+            return False
+        return True
 
     def paint_background(self, canvas, x, y, width, height):
         """High-level helper: draw shadow/background/border using owner's config.

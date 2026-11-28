@@ -68,7 +68,7 @@ flowchart LR
 | Module | Role |
 | --- | --- |
 | `rendering/skia/paint_cache.py` | `CachedPaintMixin`: the offscreen surface, its snapshot, and the size, outsets and device scale it was recorded at |
-| `widgets/box.py` | `Box`, the mixin's user; its background, border and shadow are the recorded layers ([BOX_MODEL.md](BOX_MODEL.md)) |
+| `widgets/box.py` | `Box`, the mixin's user; its background and shadow are the recorded layers ([BOX_MODEL.md](BOX_MODEL.md)) |
 | `widgeting/widget.py` | clears the cache when a declared paint dependency is set; `invalidate_paint_cache`, the explicit clear ([WIDGET_ARCHITECTURE.md](WIDGET_ARCHITECTURE.md)) |
 | `theme/dependency.py` | re-measures and clears the cache of a marked leaf on a theme change ([THEME_CONSUMPTION.md](THEME_CONSUMPTION.md)) |
 | `rendering/skia/skia_module.py` | the Skia binding ([RENDERING_PIPELINE.md](RENDERING_PIPELINE.md)) |

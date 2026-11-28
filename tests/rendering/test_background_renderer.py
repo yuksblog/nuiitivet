@@ -74,7 +74,7 @@ def test_paint_background_calls_draw_methods(monkeypatch):
     monkeypatch.setattr(br, "_draw_shadow", fake_draw_shadow)
 
     # ensure resolve_color_to_rgba and make_paint don't raise/return None
-    monkeypatch.setattr("nuiitivet.theme.resolver.resolve_color_to_rgba", lambda c, **_: (1, 1, 1, 1))
+    monkeypatch.setattr("nuiitivet.rendering.background_renderer.resolve_color_to_rgba", lambda c, **_: (1, 1, 1, 1))
     monkeypatch.setattr("nuiitivet.rendering.background_renderer.make_paint", lambda **kw: object())
 
     # No shadow configured -> only background should be called
@@ -102,3 +102,68 @@ def test_paint_background_no_bg_early_return(monkeypatch):
     monkeypatch.setattr(br, "_draw_background", fake_draw_background)
     br.paint_background(canvas=None, x=0, y=0, width=10, height=10)
     assert not called["bg"]
+
+
+def test_radii_follow_the_type_of_an_equal_value():
+    owner = DummyOwner()
+    br = BackgroundRenderer(owner)
+
+    # An int radius is pixels; the equal float is a proportion of the half size.
+    owner.corner_radius = 1
+    assert br.corner_radii_pixels(100, 80) == (1.0, 1.0, 1.0, 1.0)
+    owner.corner_radius = 1.0
+    assert br.corner_radii_pixels(100, 80) == (40.0, 40.0, 40.0, 40.0)
+
+
+def test_radii_follow_a_size_change_and_a_list_changed_in_place():
+    owner = DummyOwner()
+    br = BackgroundRenderer(owner)
+
+    owner.corner_radius = 0.5
+    assert br.corner_radii_pixels(100, 80) == (20.0, 20.0, 20.0, 20.0)
+    assert br.corner_radii_pixels(100, 40) == (10.0, 10.0, 10.0, 10.0)
+
+    radii = [4, 4, 4, 4]
+    owner.corner_radii = radii
+    assert br.corner_radii_pixels(100, 80) == (4.0, 4.0, 4.0, 4.0)
+    radii[0] = 8
+    assert br.corner_radii_pixels(100, 80) == (8.0, 4.0, 4.0, 4.0)
+
+
+class _RecordingCanvas:
+    """Records draw and clip calls; refuses the rounded ones."""
+
+    def __init__(self) -> None:
+        self.calls: list = []
+
+    def clipRRect(self, rrect, aa) -> None:
+        raise RuntimeError("no rounded clip")
+
+    def clipRect(self, rect, aa) -> None:
+        self.calls.append("clipRect")
+
+    def drawPath(self, path, paint) -> None:
+        raise RuntimeError("no path")
+
+    def drawRect(self, rect, paint) -> None:
+        self.calls.append("drawRect")
+
+
+def test_a_refused_rounded_clip_falls_back_to_the_rect():
+    br = BackgroundRenderer(DummyOwner())
+    canvas = _RecordingCanvas()
+
+    assert br.clip_to_shape(canvas, 0, 0, 40, 30, (6.0, 6.0, 6.0, 6.0))
+    assert canvas.calls == ["clipRect"]
+
+
+def test_a_refused_rounded_border_falls_back_to_the_rect():
+    owner = DummyOwner()
+    owner.corner_radius = 6
+    owner.border_width = 2
+    owner.border_color = "#000000"
+    br = BackgroundRenderer(owner)
+    canvas = _RecordingCanvas()
+
+    br.paint_border(canvas, 0, 0, 40, 30)
+    assert canvas.calls == ["drawRect"]

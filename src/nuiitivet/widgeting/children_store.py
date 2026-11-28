@@ -1,6 +1,6 @@
 from collections import deque
 import logging
-from typing import Any, Deque, Iterable, List, Optional, Sequence, Union
+from typing import Any, Deque, Iterable, List, Optional, Sequence, Tuple, Union
 
 from nuiitivet.common.back_reference import back_reference
 from nuiitivet.common.logging_once import debug_once, exception_once
@@ -60,7 +60,7 @@ class ChildrenStore:
         self.overflow_policy: str = "none"
         self._configure(max_children=max_children, overflow_policy=overflow_policy)
         self._dirty_snapshot = True
-        self._snapshot_cache: Optional[List] = None
+        self._snapshot_cache: Optional[Tuple[Any, ...]] = None
 
     @property
     def owner(self) -> Any:
@@ -82,15 +82,15 @@ class ChildrenStore:
         return list(self._items)[idx]
 
     def snapshot(self) -> List:
-        """Return a stable list snapshot of children. Cached until mutation."""
-        if self._dirty_snapshot or self._snapshot_cache is None:
-            self._snapshot_cache = list(self._items)
-            self._dirty_snapshot = False
-        return list(self._snapshot_cache)
+        """Return a list copy of the children, safe to mutate."""
+        return list(self.view())
 
-    def view(self) -> Sequence:
-        """Immutable view of current children (tuple)."""
-        return tuple(self.snapshot())
+    def view(self) -> Tuple[Any, ...]:
+        """Return the children as a tuple, the same object until the next mutation."""
+        if self._dirty_snapshot or self._snapshot_cache is None:
+            self._snapshot_cache = tuple(self._items)
+            self._dirty_snapshot = False
+        return self._snapshot_cache
 
     def _configure(self, *, max_children: Optional[int] = None, overflow_policy: Optional[str] = None) -> None:
         if max_children is not None:

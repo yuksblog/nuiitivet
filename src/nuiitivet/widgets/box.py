@@ -11,7 +11,6 @@ from ..widgeting.widget import Widget
 from ..theme.types import ColorSpec
 from ..rendering.background_renderer import BackgroundRenderer
 from ..rendering.shadow import ShadowLike, Shadows, normalize_shadows, shadow_outsets
-from ..rendering.skia.geometry import clip_round_rect, make_rect
 from ..rendering.padding import PaddingLike
 from ..rendering.sizing import SizingLike
 from ..layout.layout_engine import LayoutEngine
@@ -33,6 +32,11 @@ class Box(CachedPaintMixin, Widget):
 
     A widget that draws a box with optional background, border, and shadow.
     """
+
+    _theme_state_ready = False
+    _corner_radius: Union[float, Tuple[float, float, float, float]] = 0
+    _border_width = 0.0
+    _align_raw: Union[str, Tuple[str, str]] = "center"
 
     def __init__(
         self,
@@ -112,7 +116,7 @@ class Box(CachedPaintMixin, Widget):
 
     @property
     def corner_radius(self) -> Union[float, Tuple[float, float, float, float]]:
-        return getattr(self, "_corner_radius", 0)
+        return self._corner_radius
 
     @corner_radius.setter
     def corner_radius(self, value: Union[float, Tuple[float, float, float, float], StateBase]) -> None:
@@ -124,7 +128,7 @@ class Box(CachedPaintMixin, Widget):
 
     @property
     def border_width(self) -> float:
-        return getattr(self, "_border_width", 0.0)
+        return self._border_width
 
     @border_width.setter
     def border_width(self, value: Union[float, StateBase]) -> None:
@@ -152,7 +156,7 @@ class Box(CachedPaintMixin, Widget):
 
     @property
     def alignment(self) -> Union[str, Tuple[str, str]]:
-        return getattr(self, "_align_raw", "center")
+        return self._align_raw
 
     @alignment.setter
     def alignment(self, value: Union[str, Tuple[str, str]]):
@@ -262,6 +266,9 @@ class Box(CachedPaintMixin, Widget):
     def draw_background(self, canvas, x: int, y: int, width: int, height: int):
         if canvas is None:
             return
+        # Recording nothing would still blit an empty image on every visit.
+        if self.bgcolor is None and not self.shadows:
+            return
         if self.replay_paint_cache(canvas, x, y, width, height):
             return
         with self.paint_cache(canvas, x, y, width, height) as target:
@@ -278,8 +285,9 @@ class Box(CachedPaintMixin, Widget):
     @replay_safe
     def draw_children(self, canvas, x: int, y: int, width: int, height: int):
         hints = self._take_paint_hints()
-        if self.children and not getattr(self, "_suppress_child_paint", False):
-            child = self.children[0]
+        children = self.children
+        if children:
+            child = children[0]
             rect = child.layout_rect
             if rect is None:
                 if __debug__:
@@ -297,11 +305,10 @@ class Box(CachedPaintMixin, Widget):
 
             clip_saved = False
             if self.clip_content and canvas is not None:
-                rect = make_rect(x, y, width, height)
-                radii = list(self.corner_radii_pixels(width, height))
                 try:
                     canvas.save()
-                    if rect is not None and clip_round_rect(canvas, rect, radii, True):
+                    radii = self.corner_radii_pixels(width, height)
+                    if self._renderer.clip_to_shape(canvas, x, y, width, height, radii):
                         clip_saved = True
                     else:
                         canvas.restore()
@@ -398,7 +405,7 @@ class Box(CachedPaintMixin, Widget):
         return (_component(left), _component(top), _component(right), _component(bottom))
 
     def _handle_visual_state_change(self) -> None:
-        if not getattr(self, "_theme_state_ready", False):
+        if not self._theme_state_ready:
             return
         try:
             self.invalidate_paint_cache()

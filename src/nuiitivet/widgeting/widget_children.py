@@ -43,7 +43,7 @@ class ChildContainerMixin:
     @property
     def children(self) -> Tuple:
         try:
-            return tuple(self._children_store.view())
+            return self._children_store.view()
         except Exception:
             exception_once(logger, "children_store_view_exc", "ChildrenStore.view failed")
             return tuple()
