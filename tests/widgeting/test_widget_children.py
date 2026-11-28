@@ -23,3 +23,21 @@ def test_child_container_mixin_bypasses_overrides():
     assert owner.override_called is False
     assert owner.children[0] is child
     assert getattr(child, "_parent", None) is owner
+
+
+def test_children_is_the_same_tuple_until_a_mutation():
+    owner = Dummy()
+    first, second = Dummy(), Dummy()
+    owner.add_child(first)
+
+    before = owner.children
+    assert owner.children is before
+
+    owner.add_child(second)
+    after = owner.children
+    assert after is not before
+    assert after == (first, second)
+    assert before == (first,)
+
+    owner.remove_child(first)
+    assert owner.children == (second,)

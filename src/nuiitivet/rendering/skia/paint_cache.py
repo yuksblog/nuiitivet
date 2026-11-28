@@ -367,21 +367,6 @@ class CachedPaintMixin:
             )
             return False
 
-    def paint_outsets(self) -> Tuple[int, int, int, int]:  # pragma: no cover - default passthrough
-        parent = getattr(super(), "paint_outsets", None)
-        if callable(parent):
-            try:
-                return parent()
-            except Exception:
-                exception_once(
-                    _logger,
-                    f"paint_cache_paint_outsets_exc:{type(self).__name__}",
-                    "Exception in paint_outsets() for widget=%s",
-                    type(self).__name__,
-                )
-                return (0, 0, 0, 0)
-        return (0, 0, 0, 0)
-
     def _resolve_paint_cache_bounds(
         self,
         x: int,
@@ -389,7 +374,8 @@ class CachedPaintMixin:
         width: int,
         height: int,
     ) -> Tuple[int, int, int, int, Tuple[int, int, int, int]]:
-        outsets = self._coerce_paint_outsets(self.paint_outsets())
+        # The mixin sits on a Widget, which defines paint_outsets.
+        outsets = self._coerce_paint_outsets(cast(Any, self).paint_outsets())
         left, top, right, bottom = outsets
         extended_w = max(0, width + left + right)
         extended_h = max(0, height + top + bottom)
