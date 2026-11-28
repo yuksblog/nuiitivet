@@ -180,7 +180,7 @@ class RasterSurface(Widget):
             self._requested_px = None
             return
         self._requested_px = self._wanted_px
-        queue_deferred_publish(self, self._render, widget=self)
+        queue_deferred_publish(self, self._render, affects_layout=False, widget=self)
 
     def preferred_size(self, max_width: Optional[int] = None, max_height: Optional[int] = None) -> Tuple[int, int]:
         """Return the fixed width and height; an axis that is not fixed has no intrinsic size beyond the padding."""

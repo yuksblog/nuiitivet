@@ -50,11 +50,13 @@ flowchart LR
     window[runtime/window.py]
     geometry[layout/geometry.py]
     scroll[scrolling/controller.py]
+    raster[widgets/raster_surface.py]
     app[the app]
 
     kernel -- "queue_size_change(widget, size), from set_layout_rect" --> sizechange
     geometry -- "queue_size_change(self, size), from layout" --> sizechange
-    scroll -- "queue_deferred_publish(state, publish_metrics, widget)" --> sizechange
+    scroll -- "queue_deferred_publish(state, publish_metrics, affects_layout=True, widget)" --> sizechange
+    raster -- "queue_deferred_publish(self, _render, affects_layout=False, widget)" --> sizechange
     sizechange -- "invalidate(), on the first queued entry" --> kernel
     window -- "flush_size_change_callbacks()" --> sizechange
     sizechange -- "_dispatch_size_change(size)" --> kernel
@@ -68,6 +70,7 @@ flowchart LR
 | `runtime/window.py` | the flush's caller (The Frame) |
 | `layout/geometry.py` | queues its own size (The Providers) |
 | `scrolling/controller.py` | queues the publish of the scroll metrics |
+| `widgets/raster_surface.py` | queues a `RasterSurface` render |
 | the app | the size callbacks |
 
 ### Sequence
@@ -97,6 +100,9 @@ sequenceDiagram
 
 - A size callback runs once per changed size.
 - A widget dropped or unmounted before the flush is skipped.
+- A flush reports a change only when a size callback or a publish with
+  `affects_layout=True` ran, or a publish was queued during it. A
+  `RasterSurface` render runs at the flush and reports none.
 
 ## The Providers
 
@@ -157,7 +163,7 @@ flowchart LR
 ## The Frame
 
 The window runs the frame the queue was drained for. `render_to_png` drains
-the queue again until nothing runs, before it paints.
+the queue again until a drain reports no change, before it paints.
 
 ### Structure
 
@@ -216,9 +222,9 @@ sequenceDiagram
     Note over W: render_to_png: mount, layout(w, h)
     loop a bounded number of times
         W->>Q: flush_size_change_callbacks()
-        alt nothing ran
+        alt no change reported
             Q-->>W: False
-        else something ran
+        else a change reported
             W->>B: flush_binding_invalidations()
             W->>R: flush_scope_recompositions()
             W->>T: layout(w, h)

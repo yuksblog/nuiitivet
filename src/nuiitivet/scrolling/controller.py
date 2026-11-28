@@ -307,7 +307,7 @@ class ScrollController:
         """
         state = self._resolve_axis(axis)
         if state.set_metrics(max_extent, viewport_size, content_size):
-            queue_deferred_publish(state, state.publish_metrics, widget=widget)
+            queue_deferred_publish(state, state.publish_metrics, affects_layout=True, widget=widget)
 
 
 __all__ = ["ScrollAxisState", "ScrollController"]
