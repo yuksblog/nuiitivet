@@ -7,7 +7,13 @@ from ..widgeting.widget import Widget
 from ..rendering.sizing import SizingLike
 from .gap import normalize_gap
 from .metrics import compute_aligned_offsets, align_offset
-from .layout_utils import expand_layout_children, layout_child_if_needed, paint_laid_out_children, sized_by_parent
+from .layout_utils import (
+    expand_layout_children,
+    layout_child_if_needed,
+    paint_laid_out_children,
+    reach_down,
+    sized_by_parent,
+)
 from .for_each import ForEach, ItemsLike, BuilderFn, KeyFn
 from .lazy import LazyItems
 from .measure import preferred_size as measure_preferred_size
@@ -301,7 +307,7 @@ class Column(Widget):
 
     @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int):
-        paint_laid_out_children(self, canvas, x, y)
+        paint_laid_out_children(self, canvas, x, y, reach=reach_down)
 
     def _lazy_preferred_size(
         self, lazy: LazyItems, max_width: Optional[int], max_height: Optional[int]

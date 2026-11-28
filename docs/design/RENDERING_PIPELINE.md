@@ -304,11 +304,14 @@ flowchart LR
     frame[widgeting/frame_clock.py]
     painters[runtime/window.py · backends/pyglet/gpu_frame.py]
     unlaid[widgeting/unlaid_child.py]
+    movers[the widgets whose outsets move]
 
     painters -- "layout_frame(root, w, h, root_pass) · has_pending_layout(window)" --> utils
-    containers -- "layout_child_if_needed(child, w, h, sized_by_parent) · paint_laid_out_children(container, canvas, x, y) · paint_children_at_layout_rects(children, canvas, x, y) · paint_pending_child(child, canvas, x, y, w, h)" --> utils
+    containers -- "layout_child_if_needed(child, w, h, sized_by_parent) · paint_laid_out_children(container, canvas, x, y, reach) · paint_children_at_layout_rects(children, canvas, x, y) · paint_pending_child(child, canvas, x, y, w, h)" --> utils
     utils -- "needs_layout · layout_rect · layout(w, h) · paint(canvas, x, y, w, h)" --> kernel
-    utils -- "paint_outsets() · set_last_rect(x, y, w, h) · _paint_inside_clip · _layout_pending · _laid_out_size" --> kernel
+    utils -- "paint_outsets() · set_last_rect(x, y, w, h) · clear_last_rect() · _paint_inside_clip · _layout_pending · _laid_out_size" --> kernel
+    utils -- "_children_outsets · _painted_span, the container's" --> kernel
+    movers -- "_paint_outsets_changed()" --> kernel
     utils -- "clear_needs_layout(), the root's · _mark_replay_dirty(), a pending child laid out · mark_needs_layout(), a pending child that left the tree" --> kernel
     utils -- "local_clip_bounds(canvas) · clip_rect(canvas, rect)" --> skia
     utils -- "frame_started_at() · frame_interval()" --> frame
@@ -318,9 +321,10 @@ flowchart LR
 
 | Module | Role |
 | --- | --- |
-| `layout/layout_utils.py` | runs a frame's layout: the root's pass, then the pending children, until the deadline; lays a child out unless it is clean at the same size, or the deadline has passed and the child's rect is its parent's; paints the children, a pending one from its last layout, skipping those beyond the clip and its slack band; tells a child inside the clip so |
-| `widgeting/widget_kernel.py` | `layout`, `paint`, `hit_test`, `last_rect`; the pending flag and the size of the last layout; the inside-clip hint a parent sets for the paint that follows |
-| the containers | the multi-child containers, `Container` and `Deck`; a lazy container's provider leaves the container pending while a placeholder in view remains ([LAYOUT.md](LAYOUT.md)) |
+| `layout/layout_utils.py` | runs a frame's layout: the root's pass, then the pending children, until the deadline; lays a child out unless it is clean at the same size, or the deadline has passed and the child's rect is its parent's; paints the children, a pending one from its last layout, skipping those beyond the clip and its slack band; visits only the children a container's reach gives; tells a child inside the clip so |
+| `widgeting/widget_kernel.py` | `layout`, `paint`, `hit_test`, `last_rect`; the pending flag and the size of the last layout; the inside-clip hint a parent sets for the paint that follows; a container's largest child outsets and the span its last paint visited, dropped up the tree by `_paint_outsets_changed` |
+| the containers | the multi-child containers, `Container` and `Deck`; a lazy container's provider leaves the container pending while a placeholder in view remains ([LAYOUT.md](LAYOUT.md)); `Column`, `Row`, `Flow` and `UniformFlow` answer which of their children a rect reaches |
+| the widgets whose outsets move | `TransformBox`, the animated `visible` box, `Box` with its shadows, `Clickable` with its disabled state |
 | `rendering/skia/geometry.py` | reads the canvas clip and narrows it |
 | `widgeting/frame_clock.py` | whether a frame is under way and how long a frame is (The Loop) |
 | `runtime/window.py · backends/pyglet/gpu_frame.py` | start a frame's layout; ask whether a subtree is pending (The Frame) |
@@ -424,7 +428,15 @@ sequenceDiagram
 - Where no frame is under way a pass leaves nothing pending. A frame's layout
   run there lays out every pending child.
 - A child whose rect plus outsets lies outside the clip and its slack band is
-  not painted. It still receives its `last_rect`.
+  not painted.
+- A container that answers which children a rect reaches has its paint visit
+  those only. The rect is the clip, widened by the slack band and by the
+  largest outset of any child. `Column`, `Row`, `Flow` and the eager
+  `UniformFlow` answer. `Grid`, `Stack` and the lazy `UniformFlow` do not.
+- A child the paint visits receives its `last_rect`. A child the paint stops
+  visiting has none.
+- A widget whose `paint_outsets()` changes without a layout calls
+  `_paint_outsets_changed()`.
 - Without a readable clip every child is painted.
 - A `Stack` tests its children against the clip, with the inside-clip hint
   or without it.

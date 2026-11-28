@@ -36,6 +36,11 @@ Headless, for a timing of the first build only::
 
     python scripts/debug/lazy_table_compare.py --rows 3000 --png /tmp/compare.png
 
+Headless, for the idle repaint the stats line causes, as a median over
+frames::
+
+    python scripts/debug/lazy_table_compare.py --only eager --rows 3000 --bench 200
+
 The lazy side asks for a layout pass on every scroll step. In the side by
 side run that pass walks the eager side too, so ``--only`` gives the cleaner
 per-frame numbers.
@@ -327,11 +332,47 @@ def build_root(model: Model, only: Optional[str], eager_stats: SideStats, lazy_s
     )
 
 
+def bench(root: nv.Widget, width: int, height: int, frames: int) -> None:
+    """Time the repaint that follows a stats line refresh, the one an idle window shows."""
+    import statistics
+
+    import skia
+
+    from nuiitivet.testing import mount
+
+    with mount(root, theme=nv.ThemeFactory.light("#6750A4"), leak_check="off") as host:
+        host.layout(width, height)
+        surface = skia.Surface(width, height)
+        samples: dict[str, List[float]] = {"frame": []}
+        for name, _ in SIDES.items():
+            samples[name] = []
+        for frame in range(frames + 1):
+            for stats in SideStats.all:
+                stats.refresh()
+            host.settle()
+            started = perf_counter()
+            host.root.paint(surface.getCanvas(), 0, 0, width, height)
+            elapsed = (perf_counter() - started) * 1000
+            if frame == 0:
+                continue  # The first paint records every row in view.
+            samples["frame"].append(elapsed)
+            for name, stats in SIDES.items():
+                samples[name].append(stats.paint_ms)
+    for name, values in samples.items():
+        if values:
+            print(f"{name}: median {statistics.median(values):.2f} ms, max {max(values):.2f} ms")
+
+
+# The stats of the sides built, by name.
+SIDES: dict[str, SideStats] = {}
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--rows", type=int, default=3000, help="number of records (default 3000)")
     parser.add_argument("--only", choices=("eager", "lazy"), help="show one side alone")
     parser.add_argument("--png", default="", help="render one frame to this file and print the build stats")
+    parser.add_argument("--bench", type=int, default=0, metavar="FRAMES", help="time this many idle repaints headless")
     args = parser.parse_args()
 
     # args.only = "lazy"
@@ -339,8 +380,15 @@ def main() -> None:
     model = Model(args.rows)
     eager_stats = SideStats()
     lazy_stats = SideStats()
+    if args.only != "lazy":
+        SIDES["eager"] = eager_stats
+    if args.only != "eager":
+        SIDES["lazy"] = lazy_stats
     sides = 1 if args.only else 2
     width = sides * (TABLE_WIDTH + SCROLLBAR_WIDTH + 2) + (sides - 1) * 16 + 32
+    if args.bench:
+        bench(build_root(model, args.only, eager_stats, lazy_stats), width, TABLE_HEIGHT + 260, args.bench)
+        return
     app = nv.App(
         nv.Window(
             content=lambda: build_root(model, args.only, eager_stats, lazy_stats),

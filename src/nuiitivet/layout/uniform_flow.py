@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from nuiitivet.widgeting.paint_replay import replay_safe
 import math
+from bisect import bisect_left, bisect_right
 from typing import List, Optional, Sequence, Tuple, Union
 
 from ..widgeting.widget import Widget
@@ -412,7 +413,19 @@ class UniformFlow(Widget):
 
     @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
-        paint_laid_out_children(self, canvas, x, y)
+        paint_laid_out_children(self, canvas, x, y, reach=self._reach)
+
+    def _reach(
+        self, children: Sequence[Widget], left: float, top: float, right: float, bottom: float
+    ) -> Tuple[int, int]:
+        rows = self._row_tracks
+        cols = len(self._column_tracks)
+        # The lazy list starts at the first item it holds, not at the first row.
+        if self._lazy is not None or not rows or not cols or len(rows) * cols < len(children):
+            return (0, len(children))
+        first = bisect_right(rows, top, key=lambda track: track[0] + track[1])
+        stop = bisect_left(rows, bottom, lo=first, key=lambda track: track[0])
+        return (min(len(children), first * cols), min(len(children), stop * cols))
 
     def _lazy_preferred_size(
         self, lazy: LazyItems, max_width: Optional[int], max_height: Optional[int]

@@ -27,6 +27,27 @@ Rect: TypeAlias = Tuple[int, int, int, int]
 VisualRect: TypeAlias = Tuple[float, float, float, float]
 
 
+def _grown_outsets(
+    kept: Tuple[List[Any], Tuple[int, int, int, int]], child: Any, below: Any
+) -> Optional[Tuple[List[Any], Tuple[int, int, int, int]]]:
+    """``kept`` grown to the outsets of ``child`` and ``below``; ``None`` when one cannot say.
+
+    ``below`` stands for the container's own child when ``child`` provides
+    its children. Grown and never shrunk, the outsets only widen the span a
+    paint visits, and the next layout narrows it again.
+    """
+    left, top, right, bottom = kept[1]
+    for widget in (child, below):
+        if widget is None:
+            continue
+        try:
+            out_l, out_t, out_r, out_b = widget.paint_outsets()
+        except Exception:
+            return None
+        left, top, right, bottom = max(left, out_l), max(top, out_t), max(right, out_r), max(bottom, out_b)
+    return (kept[0], (left, top, right, bottom))
+
+
 class WidgetKernel:
     """Provides layout primitives and shared widget state."""
 
@@ -123,6 +144,12 @@ class WidgetKernel:
     _replay_key: Optional[tuple] = None
     _replay_skip: bool = False
 
+    # What a container that answers which children a clip reaches keeps between paints.
+    # ``_children_outsets``: its child list and the largest outset of any child on each side.
+    # ``_painted_span``: its child list and the ``(start, stop)`` its last paint visited.
+    _children_outsets: Optional[Tuple[List[Any], Tuple[int, int, int, int]]] = None
+    _painted_span: Optional[Tuple[List[Any], int, int]] = None
+
     def _take_inside_clip(self) -> bool:
         """Return whether this paint was told it lies inside the clip, and forget it."""
         if self._paint_inside_clip:
@@ -152,6 +179,22 @@ class WidgetKernel:
         hints = self._take_paint_hints()
         if hints:
             child._give_paint_hints(hints)
+
+    def _paint_outsets_changed(self) -> None:
+        """Tell the containers above that ``paint_outsets()`` changed without a layout.
+
+        A container keeps its children's largest outsets until its next
+        layout. Without this call it misses a child that now reaches into the
+        clip from outside its rect.
+        """
+        below: Any = None
+        child: Any = self
+        node: Any = getattr(self, "_parent", None)
+        while node is not None:
+            kept = node._children_outsets
+            if kept is not None:
+                node._children_outsets = _grown_outsets(kept, child, below)
+            below, child, node = child, node, getattr(node, "_parent", None)
 
     def _mark_replay_dirty(self) -> None:
         """Mark this widget and every ancestor as changed since it was recorded."""

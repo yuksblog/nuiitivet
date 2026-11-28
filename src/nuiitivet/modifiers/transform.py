@@ -99,6 +99,7 @@ class TransformBox(Widget):
             self._rotation = float(value)
         except Exception:
             self._rotation = 0.0
+        self._paint_outsets_changed()
         self.invalidate()
 
     def _bind_scale(self, scale: ScaleLike) -> None:
@@ -125,6 +126,7 @@ class TransformBox(Widget):
                 self._scale_x = self._scale_y = float(value)
         except Exception:
             self._scale_x = self._scale_y = 1.0
+        self._paint_outsets_changed()
         self.invalidate()
 
     def _bind_translation(self, translation: TranslateLike) -> None:
@@ -148,6 +150,7 @@ class TransformBox(Widget):
             self._translate_y = float(dy)
         except Exception:
             self._translate_x = self._translate_y = 0.0
+        self._paint_outsets_changed()
         self.invalidate()
 
     def _bind_opacity(self, opacity: OpacityLike) -> None:
@@ -330,6 +333,7 @@ class TransformModifier(ModifierElement):
         # bindings from previously applied transform modifiers.
         if isinstance(widget, TransformBox):
             widget._transform_origin = self.transform_origin
+            widget._paint_outsets_changed()
             if self.rotation is not None:
                 widget._bind_rotation(self.rotation)
             if self.scale is not None:

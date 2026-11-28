@@ -107,6 +107,7 @@ class Box(CachedPaintMixin, Widget):
             self.observe(value, lambda v: setattr(self, "shadows", v))
             return
         self._shadows = normalize_shadows(value)
+        self._paint_outsets_changed()
         self._handle_visual_state_change()
 
     @property
