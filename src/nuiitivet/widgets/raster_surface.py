@@ -108,7 +108,6 @@ class RasterSurface(Widget):
         """
         surface = cls(width=width, height=height, padding=padding, key=key)
         surface._source = (data, draw)
-        surface.observe(data, lambda _value: surface.request_render())
         return surface
 
     @classmethod
@@ -151,7 +150,6 @@ class RasterSurface(Widget):
         surface = cls(width=width, height=height, padding=padding, key=key)
         surface._source = (data, draw)
         surface._in_thread = True
-        surface.observe(data, lambda _value: surface.request_render())
         return surface
 
     @property
@@ -205,6 +203,12 @@ class RasterSurface(Widget):
         if wanted == (0, 0) or wanted == self._requested_px:
             return
         self.request_render()
+
+    def on_mount(self) -> None:
+        """Follow the data while mounted. A surface mounted again draws the data's current value."""
+        super().on_mount()
+        if self._source is not None:
+            self.observe(self._source[0], lambda _value: self.request_render())
 
     def on_unmount(self) -> None:
         """Stop following the data; a call still awaited is cancelled, and one on a thread is not shown."""

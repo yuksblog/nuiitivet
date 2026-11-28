@@ -11,7 +11,10 @@ from unittest.mock import MagicMock
 import pytest
 
 import nuiitivet.widgets.raster_surface as raster_mod
+from nuiitivet.layout.column import Column
 from nuiitivet.observable import State, runtime
+from nuiitivet.testing import AppHarness
+from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.widgeting.widget_size_change import flush_size_change_callbacks
 from nuiitivet.widgets.raster_surface import RasterSurface
 
@@ -188,6 +191,7 @@ def test_draw_from_data_passes_the_value_and_follows_changes(fake_skia: list[tup
         return _pixels(w, h)
 
     surface = RasterSurface.draw(data, draw, width=80, height=40)
+    surface.mount(None)
     surface.layout(80, 40)
     flush_size_change_callbacks()
     data.value = 2
@@ -311,6 +315,7 @@ async def test_changes_during_a_coroutine_call_are_drawn_once_with_the_newest(
     data: State[int] = State(1)
     runs = _GatedTasks()
     surface = RasterSurface.draw(data, runs, width="wt", height="wt")
+    surface.mount(None)
     surface.layout(80, 40)
     flush_size_change_callbacks()
     await _settle()
@@ -345,6 +350,7 @@ async def test_a_coroutine_call_that_raises_keeps_the_raster(fake_skia: list[tup
         return _pixels(w, h)
 
     surface = RasterSurface.draw(data, draw, width=80, height=40)
+    surface.mount(None)
     surface.layout(80, 40)
     flush_size_change_callbacks()
     await _settle()
@@ -429,6 +435,7 @@ def test_changes_during_a_thread_call_are_drawn_once_with_the_newest(
     data: State[int] = State(1)
     runs = _GatedThreads()
     surface = RasterSurface.draw_in_thread(data, runs, width="wt", height="wt")
+    surface.mount(None)
     surface.layout(80, 40)
     flush_size_change_callbacks()
     _started(runs, 1)
@@ -463,6 +470,7 @@ def test_a_thread_call_that_raises_keeps_the_raster_and_the_next_change_draws(
     runs = _GatedThreads()
     runs.fail.add(2)
     surface = RasterSurface.draw_in_thread(data, runs, width=80, height=40)
+    surface.mount(None)
     surface.layout(80, 40)
     flush_size_change_callbacks()
     _started(runs, 1)
@@ -526,6 +534,7 @@ def test_where_no_thread_starts_the_surface_stays_empty_and_asks_again(
     data: State[int] = State(1)
     draw = MagicMock(side_effect=lambda value, w, h: _pixels(w, h))
     surface = RasterSurface.draw_in_thread(data, draw, width=80, height=40)
+    surface.mount(None)
     surface.layout(80, 40)
     with monkeypatch.context() as patched:
         patched.setattr(threading.Thread, "start", refuse)
@@ -572,6 +581,7 @@ def test_a_result_that_cannot_be_handed_over_does_not_stop_the_surface(
     data: State[int] = State(1)
     draw = MagicMock(side_effect=lambda value, w, h: _pixels(w, h))
     surface = RasterSurface.draw_in_thread(data, draw, width=80, height=40)
+    surface.mount(None)
     surface.layout(80, 40)
     with monkeypatch.context() as patched:
         patched.setattr(clock, "schedule_once", refuse)
@@ -628,6 +638,7 @@ def test_a_request_made_at_no_size_is_drawn_when_the_size_comes_back(fake_skia: 
         return _pixels(w, h)
 
     surface = RasterSurface.draw(data, draw, width="wt", height="wt")
+    surface.mount(None)
     surface.layout(80, 40)
     flush_size_change_callbacks()
 
@@ -693,3 +704,108 @@ def test_a_thread_result_that_lands_after_unmount_is_not_shown_and_starts_nothin
 
     assert _painted(surface, 80, 40) is None
     assert runs.calls == [(1, 80, 40)]
+
+
+# --- Mounted again -------------------------------------------------------------------
+
+
+def test_a_surface_mounted_again_draws_the_current_value_and_follows_changes(
+    fake_skia: list[tuple[int, int]],
+) -> None:
+    data: State[int] = State(1)
+    seen: list[int] = []
+
+    def draw(value: int, w: int, h: int) -> bytes:
+        seen.append(value)
+        return _pixels(w, h)
+
+    surface = RasterSurface.draw(data, draw, width=80, height=40)
+    surface.mount(None)
+    surface.layout(80, 40)
+    flush_size_change_callbacks()
+    surface.unmount()
+    data.value = 2
+    flush_size_change_callbacks()
+    assert seen == [1]
+
+    surface.mount(None)
+    # The same size as before the unmount: the layout alone queues nothing.
+    surface.layout(80, 40)
+    flush_size_change_callbacks()
+    assert seen == [1, 2]
+    data.value = 3
+    flush_size_change_callbacks()
+    assert seen == [1, 2, 3]
+
+
+def test_a_thread_surface_mounted_again_draws_the_current_value_and_follows_changes(
+    fake_skia: list[tuple[int, int]], clock: _ManualClock
+) -> None:
+    data: State[int] = State(1)
+    runs = _GatedThreads()
+    surface = RasterSurface.draw_in_thread(data, runs, width=80, height=40)
+    surface.mount(None)
+    surface.layout(80, 40)
+    flush_size_change_callbacks()
+    _started(runs, 1)
+    runs.finish(1)
+    clock.tick()
+    surface.unmount()
+    data.value = 2
+
+    surface.mount(None)
+    surface.layout(80, 40)
+    flush_size_change_callbacks()
+    _started(runs, 2)
+    runs.finish(2)
+    clock.tick()
+    data.value = 3
+    flush_size_change_callbacks()
+    _started(runs, 3)
+    runs.finish(3)
+    clock.tick()
+
+    assert [value for value, _w, _h in runs.calls] == [1, 2, 3]
+    assert fake_skia == [(80, 40), (80, 40), (80, 40)]
+
+
+@pytest.mark.parametrize("make", [RasterSurface.draw, RasterSurface.draw_in_thread])
+def test_only_a_mounted_surface_holds_a_subscription_on_its_data(
+    make: Callable[..., RasterSurface],
+) -> None:
+    data: State[int] = State(1)
+    surface = make(data, lambda value, w, h: _pixels(w, h), width=80, height=40)
+    assert data._subs == []
+
+    for _ in range(2):
+        surface.mount(None)
+        assert len(data._subs) == 1
+        surface.unmount()
+        assert data._subs == []
+
+
+async def test_a_surface_built_once_by_a_column_builder_follows_its_data_when_it_comes_back() -> None:
+    """The issue's reproduction: one surface leaves the list and comes back."""
+    drawn: list[int] = []
+
+    def draw(value: int, w: int, h: int) -> bytes:
+        drawn.append(value)
+        return _pixels(w, h)
+
+    value: State[int] = State(1)
+    shown: State[list[str]] = State(["surface"])
+    surface = RasterSurface.draw_in_thread(value, draw, width=100, height=100, key="surface")
+
+    class _Pane(ComposableWidget):
+        def build(self) -> Widget:
+            return Column.builder(shown, lambda _item, _index: surface, key_fn=lambda item, _index: item)
+
+    with AppHarness(_Pane, size=(300, 300)) as app:
+        await app.wait_for(lambda: drawn == [1])
+        shown.value = []
+        await app.idle()
+        value.value = 2
+        shown.value = ["surface"]
+        await app.wait_for(lambda: drawn == [1, 2])
+        value.value = 3
+        await app.wait_for(lambda: drawn == [1, 2, 3])
