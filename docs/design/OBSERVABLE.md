@@ -127,6 +127,9 @@ sequenceDiagram
 - `batch()` nests. Each derivation a batch reaches recomputes once, at the
   outermost exit. A batch exited off the UI thread marshals that flush when
   any dirty value dispatches.
+- A task or a callback scheduled inside a batch outlives it. Its writes after
+  the batch's flush returns notify at once. A `batch()` it opens is a new
+  batch.
 - Pointer, key and focus dispatch run inside `batch()`.
 - `_StateValue`, `ComputedState` and `SourceSubscribingState`
   each define the full operator set.

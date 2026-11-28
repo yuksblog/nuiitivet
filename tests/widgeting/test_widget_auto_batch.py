@@ -1,4 +1,13 @@
-from nuiitivet.widgeting.widget import Widget
+import asyncio
+from typing import Awaitable, Callable, Optional, Union
+
+import pytest
+
+from nuiitivet.layout.column import Column
+from nuiitivet.material.buttons import Button
+from nuiitivet.material.text import Text
+from nuiitivet.testing import AppHarness
+from nuiitivet.widgeting.widget import ComposableWidget, Widget
 from nuiitivet.input.pointer import PointerEvent, PointerEventType
 from nuiitivet.observable import State
 from nuiitivet.material import ButtonStyle
@@ -162,3 +171,76 @@ def test_interaction_controller_batching():
     assert callback_called
     assert w.computations == 2  # Flushed after callback
     assert w.computed.value == 200
+
+
+class _Counter(ComposableWidget):
+    """A button and a label derived from the count.
+
+    The click calls ``start`` from a sync handler, or awaits ``work`` as an
+    async handler when ``start`` is ``None``.
+    """
+
+    def __init__(self, start: Optional[Callable[["_Counter"], None]]) -> None:
+        super().__init__()
+        self.count = State(0)
+        self.label = self.count.map(lambda n: f"count={n}")
+        self.done = asyncio.Event()
+        self._start = start
+
+    def bump(self) -> None:
+        self.count.value += 1
+        self.done.set()
+
+    async def work(self) -> None:
+        await asyncio.sleep(0)
+        self.bump()
+
+    def _on_click(self) -> None:
+        assert self._start is not None
+        self._start(self)
+
+    def build(self) -> Widget:
+        on_click: Union[Callable[[], None], Callable[[], Awaitable[None]]] = self._on_click
+        if self._start is None:
+            on_click = self.work
+        return Column([Button("go", on_click=on_click, key="go"), Text(self.label)])
+
+
+def _create_task(counter: _Counter) -> None:
+    asyncio.get_running_loop().create_task(counter.work())
+
+
+def _call_soon(counter: _Counter) -> None:
+    asyncio.get_running_loop().call_soon(counter.bump)
+
+
+def _call_later(counter: _Counter) -> None:
+    asyncio.get_running_loop().call_later(0.01, counter.bump)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("start", [_create_task, _call_soon, _call_later])
+async def test_work_a_sync_handler_schedules_updates_the_derived_state(start: Callable[[_Counter], None]) -> None:
+    counter = _Counter(start)
+
+    with AppHarness(lambda: counter, size=(300, 200)) as app:
+        await app.idle()
+        app.click(key="go")
+        await asyncio.wait_for(counter.done.wait(), timeout=1.0)
+        await app.idle()
+
+    assert counter.count.value == 1
+    assert counter.label.value == "count=1"
+
+
+@pytest.mark.asyncio
+async def test_an_async_handler_updates_the_derived_state_after_its_await() -> None:
+    counter = _Counter(None)
+
+    with AppHarness(lambda: counter, size=(300, 200)) as app:
+        await app.idle()
+        app.click(key="go")
+        await asyncio.wait_for(counter.done.wait(), timeout=1.0)
+        await app.idle()
+
+    assert counter.label.value == "count=1"

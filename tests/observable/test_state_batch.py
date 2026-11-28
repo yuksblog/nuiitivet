@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import contextvars
+import gc
+import weakref
+
 import pytest
 from nuiitivet.observable import State, batch
 
@@ -261,3 +265,69 @@ def test_batch_exception_no_flush():
     assert computed.value == 0
 
     assert m.val.value == 1
+
+
+def test_a_context_copied_inside_a_batch_recomputes_at_once_after_the_exit():
+    count = State(0)
+    label = count.map(lambda n: f"count={n}")
+
+    with batch():
+        copied = contextvars.copy_context()
+
+    copied.run(count.set, 1)
+
+    assert label.value == "count=1"
+
+
+def test_a_context_copied_inside_a_batch_keeps_no_state_it_writes_after_the_exit():
+    with batch():
+        copied = contextvars.copy_context()
+
+    state = State(0)
+    copied.run(state.set, 1)
+    ref = weakref.ref(state)
+    del state
+    gc.collect()
+
+    assert ref() is None
+
+
+def test_a_batch_opened_in_a_copied_context_defers_nothing_for_another_copy():
+    count = State(0)
+    label = count.map(lambda n: f"count={n}")
+
+    with batch():
+        first = contextvars.copy_context()
+        second = contextvars.copy_context()
+
+    seen: list[str] = []
+
+    def write_from_second_inside_a_batch_of_first() -> None:
+        with batch():
+            second.run(count.set, 1)
+            seen.append(label.value)
+
+    first.run(write_from_second_inside_a_batch_of_first)
+
+    assert seen == ["count=1"]
+
+
+def test_a_write_made_during_the_flush_is_deferred_to_the_same_flush():
+    a = State(0)
+    b = State(0)
+    d = a.map(lambda v: v * 10)
+    seen: list[tuple[int, int]] = []
+
+    def compute_e() -> int:
+        seen.append((b.value, d.value))
+        return b.value + d.value
+
+    e = State.compute(compute_e)
+    d.subscribe(lambda v: b.set(v + 1))
+    seen.clear()
+
+    with batch():
+        a.value = 1
+
+    assert seen == [(11, 10)]
+    assert e.value == 21

@@ -11,6 +11,7 @@ from . import runtime
 class BatchContext:
     def __init__(self):
         self._depth = 0
+        self._flushing = False
         self._pending_states: Set[Any] = set()
         self._pending_computeds: Set[Any] = set()
 
@@ -22,13 +23,24 @@ class BatchContext:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._depth -= 1
         if self._depth == 0:
+            self._flushing = True
             try:
                 if exc_type is None:
                     self._flush()
             finally:
+                self._flushing = False
                 _batch_context.set(None)
                 self._pending_states.clear()
                 self._pending_computeds.clear()
+
+    @property
+    def is_open(self) -> bool:
+        """Whether a write here is deferred: from the outermost enter until its flush returns.
+
+        A task or callback scheduled inside the batch copies the context that
+        points here. Its writes after the exit notify at once.
+        """
+        return self._depth > 0 or self._flushing
 
     def nested(self):
         """Return a context manager that increments/decrements depth without creating a new context."""
@@ -76,9 +88,12 @@ class BatchContext:
 
 
 def batch() -> BatchContext:
-    """Context manager for batching State updates."""
+    """Context manager for batching State updates.
+
+    Inside an open batch it returns that batch, which flushes at the outermost exit.
+    """
     current: Optional[Any] = _batch_context.get()
-    if current is not None:
+    if current is not None and current.is_open:
         return current
     return BatchContext()
 
