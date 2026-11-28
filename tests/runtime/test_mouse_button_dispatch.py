@@ -2,11 +2,12 @@
 
 Covers that ``button``/``modifier_keys`` reach the delivered ``PointerEvent``,
 that a secondary (right/middle) press neither activates nor blurs focus, and
-that a wheel event from a backend that reports no modifiers carries the keys
-the window holds.
+that a wheel or move event from a backend that reports no modifiers carries
+the keys the window holds.
 """
 
 from nuiitivet.layout.container import Container
+from nuiitivet.layout.row import Row
 from nuiitivet.modifiers.pointer_input import pointer_input
 from nuiitivet.runtime import app_events
 from nuiitivet.runtime.pointer import PointerCaptureManager
@@ -155,3 +156,64 @@ def test_a_wheel_with_its_own_modifiers_ignores_the_keys_the_window_holds(nuiiti
     window._dispatch_mouse_scroll(100, 100, 0.0, 1.0, modifier_keys=0)
 
     assert seen == [MOD_CTRL, 0]
+
+
+def _hover_surface(nuiitivet_app):
+    """A window whose left half is a ``pointer_input`` surface, and the events it received."""
+    seen: list[tuple[str, int]] = []
+    surface = Container(width=100, height=200).modifier(
+        pointer_input(
+            on_enter=lambda e: seen.append(("enter", e.modifier_keys)),
+            on_move=lambda e: seen.append(("move", e.modifier_keys)),
+            on_leave=lambda e: seen.append(("leave", e.modifier_keys)),
+        )
+    )
+    content = Row([surface, Container(width=100, height=200)])
+    return nuiitivet_app(content, size=(200, 200)).window, seen
+
+
+def _cross(window) -> None:
+    """Move into the surface, inside it, and out again, with no mask."""
+    for x in (50, 60, 150):
+        window._dispatch_mouse_motion(x, 100)
+
+
+def test_a_move_without_modifiers_carries_the_keys_the_window_holds(nuiitivet_app):
+    """The pyglet path: the key events set the window's mask, the move event reports none."""
+    window, seen = _hover_surface(nuiitivet_app)
+    window._dispatch_mouse_motion(150, 100)
+
+    for held in (MOD_CTRL, MOD_SHIFT, MOD_ALT, 0):
+        window._set_modifier_keys(held)
+        seen.clear()
+        _cross(window)
+
+        assert seen and {kind for kind, _ in seen} == {"enter", "move", "leave"}
+        assert all(mask == held for _, mask in seen), (held, seen)
+
+
+def test_a_move_with_its_own_modifiers_ignores_the_keys_the_window_holds(nuiitivet_app):
+    """The web path: the move event reports its own modifiers."""
+    window, seen = _hover_surface(nuiitivet_app)
+    window._set_modifier_keys(MOD_SHIFT)
+
+    window._dispatch_mouse_motion(50, 100, modifier_keys=MOD_CTRL)
+    window._dispatch_mouse_motion(150, 100, modifier_keys=0)
+
+    assert ("enter", MOD_CTRL) in seen
+    assert ("leave", 0) in seen
+    assert all(mask != MOD_SHIFT for _, mask in seen)
+
+
+def test_a_captured_move_takes_its_own_mask_or_the_keys_the_window_holds(nuiitivet_app):
+    """A drag outside the surface reaches the capturing surface with the same mask choice as a hover."""
+    window, seen = _hover_surface(nuiitivet_app)
+    window._dispatch_mouse_motion(50, 100)
+    window._dispatch_mouse_press(50, 100, button=BUTTON_LEFT)
+    window._set_modifier_keys(MOD_CTRL)
+    seen.clear()
+
+    window._dispatch_mouse_motion(150, 100, buttons=BUTTON_LEFT)
+    window._dispatch_mouse_motion(160, 100, buttons=BUTTON_LEFT, modifier_keys=MOD_SHIFT)
+
+    assert seen == [("move", MOD_CTRL), ("move", MOD_SHIFT)]
