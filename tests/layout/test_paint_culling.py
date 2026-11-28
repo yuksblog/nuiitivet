@@ -51,7 +51,7 @@ def test_column_paints_only_children_near_the_clip() -> None:
     assert _painted(leaves) == [0, 1, 2]
 
 
-def test_culled_children_still_get_their_last_rect() -> None:
+def test_children_beyond_the_clip_have_no_last_rect() -> None:
     leaves = [_Leaf() for _ in range(10)]
     column = Column(children=leaves)
     column.layout(100, 500)
@@ -59,7 +59,8 @@ def test_culled_children_still_get_their_last_rect() -> None:
     column.paint(_canvas(), 0, 0, 100, 500)
 
     assert leaves[9].painted == 0
-    assert leaves[9].last_rect == (0, 450, 100, 50)
+    assert leaves[9].last_rect is None
+    assert leaves[0].last_rect == (0, 0, 100, 50)
 
 
 def test_row_and_flow_cull_the_same_way() -> None:

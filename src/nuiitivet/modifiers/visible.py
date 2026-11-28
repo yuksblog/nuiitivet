@@ -133,6 +133,7 @@ class _AnimatedVisibleBox(Widget):
         animatable = self._ensure_animatable()
         animatable.set_motion(self._active_transition.motion)
         animatable.target = 1.0 if next_visible else 0.0
+        self._paint_outsets_changed()
         self.invalidate()
 
     def _ensure_animatable(self) -> Animatable[float]:
@@ -143,6 +144,7 @@ class _AnimatedVisibleBox(Widget):
 
         def _on_progress(value: float) -> None:
             self._progress = float(value)
+            self._paint_outsets_changed()
             self.invalidate()
 
         self._animatable_subscription = animatable.subscribe(_on_progress)

@@ -159,7 +159,7 @@ flowchart LR
     tree[the widget tree]
     skia[rendering/skia/skia_module.py]
 
-    containers -- "paint_laid_out_children(container, canvas, x, y) · paint_children_at_layout_rects(children, canvas, x, y) · paint_pending_child(child, canvas, x, y, w, h)" --> utils
+    containers -- "paint_laid_out_children(container, canvas, x, y, reach) · paint_children_at_layout_rects(children, canvas, x, y) · paint_pending_child(child, canvas, x, y, w, h)" --> utils
     viewport -- "content.paint(canvas, x, y, w, h), the scroll offset subtracted" --> tree
     utils -- "_replay_dirty · _replay_picture · _replay_origin · _replay_key · _replay_skip · _mark_replay_dirty(), a pending child laid out" --> kernel
     utils -- "_replay_safe on paint and the draw_* hooks" --> replay
@@ -190,9 +190,12 @@ sequenceDiagram
     participant K as widget_kernel.py
     participant T as the widget tree
 
-    C->>U: paint_laid_out_children(container, canvas, x, y), or a Stack's paint_children_at_layout_rects(children, canvas, x, y)
+    C->>U: paint_laid_out_children(container, canvas, x, y, reach), or a Stack's paint_children_at_layout_rects(children, canvas, x, y)
+    opt a child the last paint visited lies outside the span the reach gives
+        U->>K: _replay_picture = None, _replay_key = None, the child and every widget below it
+    end
     Note over U: for a child left pending by the layout, the cull tests its rect, and the branches below use the size of its last layout
-    loop each child
+    loop each child of the span the reach gives, every child without a reach
         alt culled, outside the clip
             U->>K: _replay_picture = None, _replay_key = None, the child and every widget below it
         else culled, beyond the bounds of the recording under way
@@ -241,5 +244,6 @@ sequenceDiagram
   it.
 - A declared widget takes the position its input needs from layout, never
   from its last paint.
-- No picture is held at or below a child the cull skipped.
+- No picture is held at or below a child the cull skipped, or a child the
+  paint does not visit.
 - A picture holds everything its child draws.

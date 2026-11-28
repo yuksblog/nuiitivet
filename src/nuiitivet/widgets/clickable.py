@@ -160,6 +160,8 @@ class Clickable(InteractionHostMixin, FocusTraversalBlocker, Box):
 
         self._disabled = next_disabled
         self.state.disabled = next_disabled
+        # The focus ring's reach is in the outsets of an enabled widget only.
+        self._paint_outsets_changed()
 
         if next_disabled:
             # Ensure visual state doesn't get stuck.

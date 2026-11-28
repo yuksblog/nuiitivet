@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from nuiitivet.widgeting.paint_replay import replay_safe
+from bisect import bisect_left, bisect_right
 from typing import List, Optional, Sequence, Tuple, Union
 
 from ..widgeting.widget import Widget
@@ -64,6 +65,8 @@ class Flow(Widget):
         self.main_alignment = main_alignment or "start"
         self.run_alignment = run_alignment or "start"
         self.cross_alignment = cross_alignment or "start"
+        # Per line of the last layout: the index of its first child, its top, its bottom.
+        self._lines: List[Tuple[int, int, int]] = []
 
     @classmethod
     def builder(
@@ -208,6 +211,7 @@ class Flow(Widget):
         super().layout(width, height)
         children = expand_layout_children(self.children_snapshot())
         self._laid_out_children = children
+        self._lines = []
         if not children:
             return
 
@@ -222,7 +226,21 @@ class Flow(Widget):
 
     @replay_safe
     def paint(self, canvas, x: int, y: int, width: int, height: int) -> None:
-        paint_laid_out_children(self, canvas, x, y)
+        paint_laid_out_children(self, canvas, x, y, reach=self._reach)
+
+    def _reach(
+        self, children: Sequence[Widget], left: float, top: float, right: float, bottom: float
+    ) -> Tuple[int, int]:
+        # Line tops only grow, and a child lies within its line.
+        lines = self._lines
+        if not lines or lines[-1][0] >= len(children):
+            return (0, len(children))
+        first = bisect_right(lines, top, key=lambda line: line[2])
+        stop = bisect_left(lines, bottom, lo=first, key=lambda line: line[1])
+        return (
+            lines[first][0] if first < len(lines) else len(children),
+            lines[stop][0] if stop < len(lines) else len(children),
+        )
 
     def _layout_flow(self, children: List[Widget], x: int, y: int, w: int, h: int) -> None:
         # Simple flow layout implementation
@@ -259,7 +277,10 @@ class Flow(Widget):
         start_y = y + align_offset(h, total_content_h, self.run_alignment)
 
         current_y = start_y
+        first = 0
         for row_items, row_w, row_h in rows:
+            self._lines.append((first, int(current_y), int(current_y + row_h)))
+            first += len(row_items)
             # Calculate row start x based on main_alignment
             start_x = x + align_offset(w, row_w, self.main_alignment)
             current_x = start_x

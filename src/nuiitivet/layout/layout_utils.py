@@ -3,9 +3,10 @@
 import logging
 import math
 import weakref
+from bisect import bisect_left, bisect_right
 from collections import deque
 from time import perf_counter
-from typing import Any, Deque, List, Optional, Sequence, Tuple, TYPE_CHECKING
+from typing import Any, Callable, Deque, List, Optional, Sequence, Tuple, TYPE_CHECKING
 
 from nuiitivet.common.logging_once import exception_once
 from nuiitivet.rendering.skia import clip_rect, get_skia, local_clip_bounds
@@ -203,13 +204,68 @@ def _layout_pending_subtrees() -> None:
 _CULL_SLACK = 32
 
 
-def paint_laid_out_children(container: Any, canvas: Any, x: int, y: int) -> None:
+# Answers which of a container's laid-out children a rect reaches, as
+# ``(start, stop)`` into the list. The rect is ``(left, top, right, bottom)``
+# in the container's coordinates. Every child outside the span lies wholly
+# beyond the rect.
+Reach = Callable[[Sequence["Widget"], float, float, float, float], Tuple[int, int]]
+
+
+def reach_down(children: Sequence["Widget"], left: float, top: float, right: float, bottom: float) -> Tuple[int, int]:
+    """The span of ``children`` the rect reaches, for children laid out top to bottom without overlap."""
+    try:
+        start = bisect_right(children, top, key=_bottom_of)
+        return (start, bisect_left(children, bottom, lo=start, key=_top_of))
+    except TypeError:
+        # A child with no rect.
+        return (0, len(children))
+
+
+def reach_across(
+    children: Sequence["Widget"], left: float, top: float, right: float, bottom: float
+) -> Tuple[int, int]:
+    """The span of ``children`` the rect reaches, for children laid out left to right without overlap."""
+    try:
+        start = bisect_right(children, left, key=_right_of)
+        return (start, bisect_left(children, right, lo=start, key=_left_of))
+    except TypeError:
+        return (0, len(children))
+
+
+def _top_of(child: "Widget") -> int:
+    return child.layout_rect[1]  # type: ignore[index]
+
+
+def _bottom_of(child: "Widget") -> int:
+    rect = child.layout_rect
+    return rect[1] + rect[3]  # type: ignore[index]
+
+
+def _left_of(child: "Widget") -> int:
+    return child.layout_rect[0]  # type: ignore[index]
+
+
+def _right_of(child: "Widget") -> int:
+    rect = child.layout_rect
+    return rect[0] + rect[2]  # type: ignore[index]
+
+
+def paint_laid_out_children(container: Any, canvas: Any, x: int, y: int, *, reach: Optional[Reach] = None) -> None:
     """Paint a container's children at their layout rects.
 
     The child list is the one the container's last ``layout()`` kept, for as
     long as the container needs no layout: every change to its children marks
     it. A container that needs a layout builds the list here. A child with no
     rect is not painted.
+
+    Args:
+        container: The container whose children are painted.
+        canvas: The canvas to paint on.
+        x: The left edge of the container on the canvas.
+        y: The top edge of the container on the canvas.
+        reach: Answers which children the clip reaches, so that the paint
+            visits those only. A child the paint stops visiting gives up its
+            recordings and its ``last_rect``. ``None`` visits every child.
     """
 
     # A hint covers the paint it was set for and no later one.
@@ -218,11 +274,83 @@ def paint_laid_out_children(container: Any, canvas: Any, x: int, y: int) -> None
         container._paint_inside_clip = False
 
     children = getattr(container, "_laid_out_children", None)
-    if children is None or container.needs_layout:
+    laid_out = children is not None and not container.needs_layout
+    if not laid_out:
         children = expand_layout_children(container.children_snapshot())
+    if not children:
+        return
 
-    if children:
+    if reach is None or inside_clip:
+        if reach is not None:
+            _leave_span(container, children, 0, len(children))
         paint_children_at_layout_rects(children, canvas, x, y, inside_clip=inside_clip)
+        return
+
+    clip = local_clip_bounds(canvas)
+    start, stop = 0, len(children)
+    if laid_out and clip is not None:
+        out_l, out_t, out_r, out_b = _children_outsets(container, children)
+        # A child on one side reaches in by its outset on the side facing the clip.
+        start, stop = reach(
+            children,
+            clip[0] - x - _CULL_SLACK - out_r,
+            clip[1] - y - _CULL_SLACK - out_b,
+            clip[2] - x + _CULL_SLACK + out_l,
+            clip[3] - y + _CULL_SLACK + out_t,
+        )
+    _leave_span(container, children, start, stop)
+    if start > 0 or stop < len(children):
+        children = children[start:stop]
+    if children:
+        _paint_culled(children, canvas, x, y, clip, _replay_of(canvas))
+
+
+def _children_outsets(container: Any, children: List["Widget"]) -> Tuple[int, int, int, int]:
+    """The largest outset of any of ``children`` on each side, kept until the list changes."""
+    kept = container._children_outsets
+    if kept is not None and kept[0] is children:
+        return kept[1]
+    left = top = right = bottom = 0
+    for child in children:
+        out_l, out_t, out_r, out_b = _outsets(child)
+        left = max(left, out_l)
+        top = max(top, out_t)
+        right = max(right, out_r)
+        bottom = max(bottom, out_b)
+    outsets = (left, top, right, bottom)
+    container._children_outsets = (children, outsets)
+    return outsets
+
+
+def _leave_span(container: Any, children: List["Widget"], start: int, stop: int) -> None:
+    """Keep the span this paint visits; the children the last paint visited and this one skips leave."""
+    last = container._painted_span
+    container._painted_span = (children, start, stop)
+    if last is None:
+        return
+    old, old_start, old_stop = last
+    if old is children:
+        for index in range(old_start, min(old_stop, start)):
+            _leave(children[index])
+        for index in range(max(old_start, stop), old_stop):
+            _leave(children[index])
+        return
+    kept = {id(child) for child in children[start:stop]}
+    for child in old[old_start:old_stop]:
+        # A child moved to another container is that container's to paint.
+        if id(child) not in kept and _held_by(container, child):
+            _leave(child)
+
+
+def _held_by(container: Any, child: "Widget") -> bool:
+    """Whether ``child`` is ``container``'s, directly or through a provider."""
+    parent = child._parent
+    return parent is container or (parent is not None and parent._parent is container)
+
+
+def _leave(child: "Widget") -> None:
+    # Off the canvas, a last rect would say where the widget was before.
+    _forget_pictures(child, last_rects=True)
 
 
 # Tests turn this off to compare a replayed frame against a direct paint.
@@ -294,14 +422,16 @@ def _replay_of(canvas: Any) -> Optional[_Replay]:
         return None
 
 
-def _forget_pictures(root: Any) -> None:
-    """Give up the recordings in ``root``'s subtree: it left the clip."""
+def _forget_pictures(root: Any, *, last_rects: bool = False) -> None:
+    """Give up the recordings in ``root``'s subtree, and with ``last_rects`` its last rects: it left the clip."""
     stack = [root]
     while stack:
         node = stack.pop()
         node._replay_picture = None
         # As before any paint: it is recorded when it comes back.
         node._replay_key = None
+        if last_rects:
+            node.clear_last_rect()
         stack.extend(node.children_snapshot())
         built = getattr(node, "built_child", None)
         if built is not None:
@@ -516,8 +646,6 @@ def paint_children_at_layout_rects(
         inside_clip: The parent lies wholly inside the clip, so no child is
             culled.
     """
-    global _recording_cut
-
     replay = _replay_of(canvas)
 
     if inside_clip:
@@ -540,7 +668,20 @@ def paint_children_at_layout_rects(
             child.paint(canvas, abs_x, abs_y, w, h)
         return
 
-    clip = local_clip_bounds(canvas)
+    _paint_culled(children, canvas, x, y, local_clip_bounds(canvas), replay)
+
+
+def _paint_culled(
+    children: Sequence["Widget"],
+    canvas: Any,
+    x: int,
+    y: int,
+    clip: Optional[Tuple[float, float, float, float]],
+    replay: Optional[_Replay],
+) -> None:
+    """Paint each child the clip and the recording under way reach; ``clip`` is ``None`` when it is unknown."""
+    global _recording_cut
+
     if clip is None:
         clip_left = clip_top = -math.inf
         clip_right = clip_bottom = math.inf
