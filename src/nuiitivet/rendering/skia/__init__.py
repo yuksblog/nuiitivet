@@ -9,6 +9,7 @@ from .color import (
     make_paint,
     shared_paint,
     make_opacity_paint,
+    make_tint_paint,
     skcolor,
     rgba_to_skia_color,
 )
@@ -64,6 +65,7 @@ __all__ = [
     "make_paint",
     "shared_paint",
     "make_opacity_paint",
+    "make_tint_paint",
     "skcolor",
     "rgba_to_skia_color",
     "get_typeface",

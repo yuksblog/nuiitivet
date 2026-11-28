@@ -1,4 +1,4 @@
-"""Material Widgets - TextField filled/outlined/error/multi-line."""
+"""Material Widgets - TextField filled/outlined/error/disabled/multi-line."""
 
 from __future__ import annotations
 
@@ -34,6 +34,13 @@ def build_root() -> nv.Widget:
                     is_error=True,
                     width=320,
                     style=nv.TextFieldStyle.outlined(),
+                ),
+                nv.TextField(
+                    value="ACME-0042",
+                    label="Account ID",
+                    leading_icon="badge",
+                    disabled=True,
+                    width=320,
                 ),
                 nv.TextField.multiline(
                     value="Ships in two parts.\nThe second follows a week later.",
